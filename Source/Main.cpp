@@ -13,18 +13,12 @@ bool g_running = true;
 struct Window {
     Vec2Int size = {};
     Vec2Int pos = {};
-    SDL_Window* SDL_Context;
+    SDL_Window* SDL_Context = nullptr;
 }g_window;
 
+//#define _DEBUGPRINT
 #define FAIL assert(false);
 #define arrsize(arr__) (sizeof(arr__) / sizeof(arr__[0]))
-
-//#define Enum(name) enum class name; \
-//inline uint32 operator+(name a)     \
-//{                                   \
-//	return static_cast<uint32>(a);  \
-//}                                   \
-//enum class name
 
 #define ENUMOPS(T) \
 constexpr auto operator+(T a)\
@@ -40,40 +34,277 @@ enum class Shader : uint32 {
 };
 ENUMOPS(Shader);
 
+
 struct Rect {
     Vec2 botLeft = {};
     Vec2 topRight = {};
 };
 
-struct Texture {
+void DebugPrint(const char* fmt, ...)
+{
+    va_list list;
+    va_start(list, fmt);
+    char buffer[4096];
+    vsnprintf(buffer, sizeof(buffer), fmt, list);
+    OutputDebugStringA(buffer);
+    va_end(list);
+}
+
+class Texture {
+public:
+    enum T : uint32 {
+        Invalid,
+        Minecraft,
+        Test,
+        Count,
+    };
+    ENUMOPS(T);
+
     Vec2Int size = {};
     int32 n = 0;//bytes per pixel
     uint8* data = {};
-    GLuint GL_Handle = {};
+    GLuint gl_handle = {};
+
+	Texture(const char* fileLocation)
+	{
+		data = stbi_load(fileLocation, &size.x, &size.y, &n, STBI_rgb_alpha);
+
+		glGenTextures(1, &gl_handle);
+        Bind();
+		glBindTexture(GL_TEXTURE_2D, gl_handle);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+#ifdef _DEBUGPRINT
+        DebugPrint("Texture Created\n");
+#endif // _DEBUGPRINT
+
+	}
+
+    inline void Bind()
+    {
+        glBindTexture(GL_TEXTURE_2D, gl_handle);
+#ifdef _DEBUGPRINT
+        DebugPrint("Texture Bound\n");
+#endif
+    }
 };
 
-struct DrawCall {
-    //Texture* texture = nullptr;
-    GLuint texture = 0;
-    GLuint vertexBuffer = 0;
-    GLuint indexBuffer = 0;
-    Shader program = Shader::Invalid;
-    gbMat4 transform;
+class ShaderProgram
+{
+    //TODO: Hold file handles/names
+    GLuint m_handle = 0;
+    GLuint m_vhandle = 0;
+    GLuint m_phandle = 0;
+
+    ShaderProgram(const ShaderProgram& rhs) = delete;
+    ShaderProgram& operator=(const ShaderProgram& rhs) = delete;
+
+public:
+    ShaderProgram(const char* vertexText, const char* pixelText)
+    {
+        m_vhandle = glCreateShader(GL_VERTEX_SHADER);
+        m_phandle = glCreateShader(GL_FRAGMENT_SHADER);
+
+        glShaderSource(m_vhandle, 1, &vertexText, 0);
+        glCompileShader(m_vhandle);
+
+        GLint status;
+        glGetShaderiv(m_vhandle, GL_COMPILE_STATUS, &status);
+        if (status == GL_FALSE)
+        {
+            GLint log_length;
+            glGetShaderiv(m_vhandle, GL_INFO_LOG_LENGTH, &log_length);
+            GLchar info[4096];
+            glGetShaderInfoLog(m_vhandle, log_length, NULL, info);
+            DebugPrint("Vertex Shader compilation error: %s\n", info);
+            FAIL;
+        }
+#ifdef _DEBUGPRINT
+        DebugPrint("Shader Vertex Created\n");
+#endif
+
+        glShaderSource(m_phandle, 1, &pixelText, 0);
+        glCompileShader(m_phandle);
+        glGetShaderiv(m_phandle, GL_COMPILE_STATUS, &status);
+        if (status == GL_FALSE)
+        {
+            GLint log_length;
+            glGetShaderiv(m_phandle, GL_INFO_LOG_LENGTH, &log_length);
+            GLchar info[4096];
+            glGetShaderInfoLog(m_phandle, log_length, NULL, info);
+            DebugPrint("Shader compilation error: %s\n", info);
+            FAIL;
+        }
+#ifdef _DEBUGPRINT
+        DebugPrint("Shader Pixel Created\n");
+#endif
+
+        m_handle = glCreateProgram();
+        glAttachShader(m_handle, m_vhandle);
+        glAttachShader(m_handle, m_phandle);
+        glLinkProgram(m_handle);
+
+        glGetProgramiv(m_handle, GL_LINK_STATUS, &status);
+        if (status == GL_FALSE)
+        {
+            GLint log_length;
+            glGetProgramiv(m_handle, GL_INFO_LOG_LENGTH, &log_length);
+            GLchar info[4096];
+            glGetProgramInfoLog(m_handle, log_length, NULL, info);
+            DebugPrint("Shader linking error: %s\n", info);
+            FAIL;
+        }
+#ifdef _DEBUGPRINT
+        DebugPrint("Shader Created\n");
+#endif
+    }
+
+    ~ShaderProgram()
+    {
+        //TODO: Delete shaders as well
+        glDeleteProgram(m_handle);
+#ifdef _DEBUGPRINT
+        DebugPrint("Shader Deleted\n");
+#endif
+    }
+
+    void UseShader()
+    {
+        glUseProgram(m_handle);
+#ifdef _DEBUGPRINT
+        DebugPrint("Shader Used\n");
+#endif
+    }
+
+    void UpdateUniformMat4(const char* name, GLsizei count, GLboolean transpose, const GLfloat* value)
+    {
+        GLint loc = glGetUniformLocation(m_handle, name);
+        glUniformMatrix4fv(loc, count, transpose, value);
+#ifdef _DEBUGPRINT
+        DebugPrint("Shader Uniform Updated %s\n", name);
+#endif
+    }
+
 };
+
+class GpuBuffer
+{
+    GLuint m_target;
+    size_t m_allocated_size;
+    GLuint m_handle;
+
+    GpuBuffer(const GpuBuffer& rhs) = delete;
+    GpuBuffer& operator=(const GpuBuffer& rhs) = delete;
+
+protected:
+    GpuBuffer(GLuint target)
+        : m_target(target)
+        , m_allocated_size(0)
+    {
+		glGenBuffers(1, &m_handle);
+#ifdef _DEBUGPRINT
+        DebugPrint("GPU Buffer Created %i\n", m_target);
+#endif
+    }
+
+    void UploadData(void* data, size_t size)
+    {
+        Bind();
+        size_t required_size = size;
+        if (m_allocated_size < required_size)
+        {
+            glBufferData(m_target, required_size, nullptr, GL_STATIC_DRAW);
+            m_allocated_size = required_size;
+        }
+        glBufferSubData(m_target, 0, required_size, data);
+    }
+
+public:
+    virtual ~GpuBuffer()
+    {
+        glDeleteBuffers(1, &m_handle);
+#ifdef _DEBUGPRINT
+        DebugPrint("GPU Buffer deleted %i, %i\n", m_target, m_handle);
+#endif
+    }
+
+    void Bind()
+    {
+        glBindBuffer(m_target, m_handle);
+#ifdef _DEBUGPRINT
+        DebugPrint("GPU Buffer Bound %i, %i\n", m_target, m_handle);
+#endif
+    }
+
+    GLuint GetGLHandle()
+    {
+        return m_handle;
+    }
+};
+
+class IndexBuffer : public GpuBuffer
+{
+public:
+
+    IndexBuffer()
+        : GpuBuffer(GL_ELEMENT_ARRAY_BUFFER)
+    { }
+
+    void Upload(uint32* indices, size_t count)
+    {
+        UploadData(indices, sizeof(indices[0]) * count);
+#ifdef _DEBUGPRINT
+        DebugPrint("Index Buffer Upload,size %i\n", count);
+#endif
+    }
+};
+
+class VertexBuffer : public GpuBuffer
+{
+public:
+    VertexBuffer()
+        : GpuBuffer(GL_ARRAY_BUFFER)
+    { }
+
+    void Upload(Vertex* vertices, size_t count)
+    {
+        UploadData(vertices, sizeof(vertices[0]) * count);
+#ifdef _DEBUGPRINT
+        DebugPrint("Vertex Buffer Upload,size %i\n", count);
+#endif
+    }
+};
+
+#if 0
+class VertexBuffer2 : public GpuBuffer
+{
+public:
+    VertexBuffer2()
+        : GpuBuffer(GL_ARRAY_BUFFER)
+    { }
+
+    void Upload(Vert2d* vertices, size_t count)
+    {
+        UploadData(vertices, sizeof(vertices[0]) * count);
+    }
+};
+#endif
 
 struct Renderer {
     SDL_GLContext GL_Context = {};
-    GLuint programs[+(Shader::Count)];
-	std::vector<DrawCall> drawcalls;
-	std::unordered_map<std::string, Texture> textures;
-	GLuint squareIndexBuffer;
+    ShaderProgram* programs[+Shader::Count] = {};
+    Texture* textures[Texture::Count] = {};
+    IndexBuffer* squareIndexBuffer = nullptr;
     GLuint vao;
 }g_renderer;
 
 uint32 squareIndexes[] = {
 	0,1,2,1,2,3,
 };
-int32 indices3D[36] = {};
+uint32 cubeIndices[36] = {};
 
 struct Key {
 	bool down;
@@ -87,16 +318,8 @@ struct Mouse {
 	Vec2Int wheel; //Y for vertical rotations, X for Horizontal rotations/movement
 }g_mouse;
 
+Vec3 cameraPosition = { 2, 2, 2 };
 
-void DebugPrint(const char* fmt, ...)
-{
-    va_list list;
-    va_start(list, fmt);
-    char buffer[4096];
-    vsnprintf(buffer, sizeof(buffer), fmt, list);
-    OutputDebugStringA(buffer);
-    va_end(list);
-}
 
 enum class BlockType : uint32 {
     Invalid,
@@ -127,10 +350,10 @@ ENUMOPS(BlockType);
 enum class Face : uint32 {
 	Front,
 	Back,
-	Top,
 	Bot,
-	Left,
+	Top,
 	Right,
+	Left,
 	Count,
 };
 ENUMOPS(Face);
@@ -152,6 +375,41 @@ Rect GetRectFromSprite(uint32 i)
     return result;
 }
 
+float p = 1.0f;
+float tf = 1.0f;
+float te = 0.0f;
+Vertex cubeVertices[] = {
+    { { -p,  p, -p }, { tf, te }, { -1.0f, 0.0f, 0.0f } }, // top right
+    { { -p, -p, -p }, { te, te }, { -1.0f, 0.0f, 0.0f } }, // Top Left
+    { { -p,  p,  p }, { tf, tf }, { -1.0f, 0.0f, 0.0f } }, // bot right
+    { { -p, -p,  p }, { te, tf }, { -1.0f, 0.0f, 0.0f } }, // -x bottom Left
+
+    { {  p,  p, -p }, { tf, te }, {  1.0f, 0.0f, 0.0f } },
+    { {  p, -p, -p }, { te, te }, {  1.0f, 0.0f, 0.0f } },
+    { {  p,  p,  p }, { tf, tf }, {  1.0f, 0.0f, 0.0f } },
+    { {  p, -p,  p }, { te, tf }, {  1.0f, 0.0f, 0.0f } }, // +x
+
+    { { -p, -p,  p }, { te, tf }, { 0.0f, -1.0f, 0.0f } }, // -y
+    { { -p, -p, -p }, { te, te }, { 0.0f, -1.0f, 0.0f } },
+    { {  p, -p,  p }, { tf, tf }, { 0.0f, -1.0f, 0.0f } },
+    { {  p, -p, -p }, { tf, te }, { 0.0f, -1.0f, 0.0f } },
+
+    { { -p,  p,  p }, { te, tf }, { 0.0f,  1.0f, 0.0f } }, // +y
+    { { -p,  p, -p }, { te, te }, { 0.0f,  1.0f, 0.0f } },
+    { {  p,  p,  p }, { tf, tf }, { 0.0f,  1.0f, 0.0f } },
+    { {  p,  p, -p }, { tf, te }, { 0.0f,  1.0f, 0.0f } },
+
+    { { -p,  p, -p }, { te, tf }, { 0.0f, 0.0f, -1.0f } }, // -z
+    { { -p, -p, -p }, { te, te }, { 0.0f, 0.0f, -1.0f } },
+    { {  p,  p, -p }, { tf, tf }, { 0.0f, 0.0f, -1.0f } },
+    { {  p, -p, -p }, { tf, te }, { 0.0f, 0.0f, -1.0f } },
+
+    { { -p,  p,  p }, { te, tf }, { 0.0f, 0.0f,  1.0f } }, // z
+    { { -p, -p,  p }, { te, te }, { 0.0f, 0.0f,  1.0f } },
+    { {  p,  p,  p }, { tf, tf }, { 0.0f, 0.0f,  1.0f } },
+    { {  p, -p,  p }, { tf, te }, { 0.0f, 0.0f,  1.0f } },
+};
+
 struct Block {
     Vec3 p = {};
     BlockType t = BlockType::Invalid;
@@ -159,47 +417,11 @@ struct Block {
     uint32 spriteLocation[static_cast<uint32>(Face::Count)] = {
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation,
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation };
+    VertexBuffer vertexBuffer;
+    IndexBuffer indexBuffer;
 
 	void Render()
 	{
-		DrawCall dc = {};
-
-		float p = 1.0f;
-		float tf = 1.0f;
-		float te = 0.0f;
-		Vert3d cubeVertices[] = {
-			{ { -p, -p,  p }, { -1.0f, 0.0f, 0.0f }, { te, tf } }, // -x bottom Left
-			{ { -p, -p, -p }, { -1.0f, 0.0f, 0.0f }, { te, te } }, // Top Left
-			{ { -p,  p,  p }, { -1.0f, 0.0f, 0.0f }, { tf, tf } }, // bot right
-			{ { -p,  p, -p }, { -1.0f, 0.0f, 0.0f }, { tf, te } }, // top right
-
-			{ {  p, -p,  p }, { 1.0f, 0.0f, 0.0f }, { te, tf } }, // +x
-			{ {  p, -p, -p }, { 1.0f, 0.0f, 0.0f }, { te, te } },
-			{ {  p,  p,  p }, { 1.0f, 0.0f, 0.0f }, { tf, tf } },
-			{ {  p,  p, -p }, { 1.0f, 0.0f, 0.0f }, { tf, te } },
-
-			{ { -p, -p,  p }, { 0.0f, -1.0f, 0.0f }, { te, tf } }, // -y
-			{ { -p, -p, -p }, { 0.0f, -1.0f, 0.0f }, { te, te } },
-			{ {  p, -p,  p }, { 0.0f, -1.0f, 0.0f }, { tf, tf } },
-			{ {  p, -p, -p }, { 0.0f, -1.0f, 0.0f }, { tf, te } },
-
-			{ { -p,  p,  p }, { 0.0f, 1.0f, 0.0f }, { te, tf } }, // +y
-			{ { -p,  p, -p }, { 0.0f, 1.0f, 0.0f }, { te, te } },
-			{ {  p,  p,  p }, { 0.0f, 1.0f, 0.0f }, { tf, tf } },
-			{ {  p,  p, -p }, { 0.0f, 1.0f, 0.0f }, { tf, te } },
-
-			{ { -p,  p, -p }, { 0.0f, 0.0f, -1.0f }, { te, tf } }, // -z
-			{ { -p, -p, -p }, { 0.0f, 0.0f, -1.0f }, { te, te } },
-			{ {  p,  p, -p }, { 0.0f, 0.0f, -1.0f }, { tf, tf } },
-			{ {  p, -p, -p }, { 0.0f, 0.0f, -1.0f }, { tf, te } },
-
-			{ { -p,  p,  p }, { 0.0f, 0.0f, 1.0f }, { te, tf } }, // z
-			{ { -p, -p,  p }, { 0.0f, 0.0f, 1.0f }, { te, te } },
-			{ {  p,  p,  p }, { 0.0f, 0.0f, 1.0f }, { tf, tf } },
-			{ {  p, -p,  p }, { 0.0f, 0.0f, 1.0f }, { tf, te } },
-		};
-		static_assert(arrsize(cubeVertices) == 24, "");
-
 		for (uint32 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
 		{
             uint32 tileIndex = spriteLocation[faceIndex];
@@ -218,91 +440,54 @@ struct Block {
 			cubeVertices[faceIndex * 4 + 2].uv = { itrx, itry }; //Bot Right
 			cubeVertices[faceIndex * 4 + 3].uv = { itrx, ibly }; //Top Right
 		}
+        vertexBuffer.Upload(cubeVertices, arrsize(cubeVertices));
+        indexBuffer.Upload(cubeIndices,  arrsize(cubeIndices));
+        g_renderer.textures[Texture::Minecraft]->Bind();
+        g_renderer.programs[+Shader::Simple3D]->UseShader();
+        glEnable(GL_DEPTH_TEST);
+		glDepthMask(GL_TRUE);
 
-		glGenBuffers(1, &dc.vertexBuffer);
-		glBindBuffer(GL_ARRAY_BUFFER, dc.vertexBuffer);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+		glEnableVertexArrayAttrib(g_renderer.vao, 0);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+		glEnableVertexArrayAttrib(g_renderer.vao, 1);
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
+		glEnableVertexArrayAttrib(g_renderer.vao, 2);
 
-		glGenBuffers(1, &dc.indexBuffer);
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, dc.indexBuffer);
-		glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices3D), indices3D, GL_STATIC_DRAW);
+		gbMat4 perspective;
+		gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.65f, 1000.0f);
+		gbMat4 view;
+		Vec3 a = { 1.0f, 1.0f, 1.0f };
+		gb_mat4_look_at(&view, cameraPosition + a, cameraPosition, { 0,1,0 });
+        gbMat4 transform;
+		gb_mat4_identity(&transform);
 
-		gb_mat4_identity(&dc.transform);
-		//dc.transform = ;
+        ShaderProgram* p = g_renderer.programs[+Shader::Simple3D];
+        p->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
+        p->UpdateUniformMat4("u_view", 1, false, view.e);
+        p->UpdateUniformMat4("u_model", 1, false, transform.e);
 
-		dc.texture = g_renderer.textures["MinecraftSpriteSheet"].GL_Handle;
-		dc.program = Shader::Simple3D;
-		g_renderer.drawcalls.push_back(dc);
+		glDrawElements(GL_TRIANGLES, arrsize(cubeIndices), GL_UNSIGNED_INT, 0);
 	}
 };
 
 struct Grass : public Block {
 
-	Grass()
-	{
-		defaultSpriteLocation = 3;
-		spriteLocation[+Face::Top] = 0;
-		spriteLocation[+Face::Bot] = 2;
-	}
+    Grass()
+    {
+        defaultSpriteLocation = 3;
+        spriteLocation[+Face::Top] = 0;
+        spriteLocation[+Face::Bot] = 2;
+    }
 };
 
-GLuint CreateShaderProgram(const char* vertexText, const char* pixelText)
-{
-	GLuint vertexShaderHandle = glCreateShader(GL_VERTEX_SHADER);
-	GLuint pixShaderHandle = glCreateShader(GL_FRAGMENT_SHADER);
 
-	glShaderSource(vertexShaderHandle, 1, &vertexText, 0);
-	glCompileShader(vertexShaderHandle);
-
-	GLint status;
-	glGetShaderiv(vertexShaderHandle, GL_COMPILE_STATUS, &status);
-	if (status == GL_FALSE)
-	{
-		GLint log_length;
-		glGetShaderiv(vertexShaderHandle, GL_INFO_LOG_LENGTH, &log_length);
-		GLchar info[4096];
-		glGetShaderInfoLog(vertexShaderHandle, log_length, NULL, info);
-		DebugPrint("Vertex Shader compilation error: %s\n", info);
-        FAIL;
-	}
-
-	glShaderSource(pixShaderHandle, 1, &pixelText, 0);
-	glCompileShader(pixShaderHandle);
-
-	glGetShaderiv(pixShaderHandle, GL_COMPILE_STATUS, &status);
-	if (status == GL_FALSE)
-	{
-		GLint log_length;
-		glGetShaderiv(pixShaderHandle, GL_INFO_LOG_LENGTH, &log_length);
-		GLchar info[4096];
-		glGetShaderInfoLog(pixShaderHandle, log_length, NULL, info);
-		DebugPrint("Shader compilation error: %s\n", info);
-        FAIL;
-	}
-
-	GLuint program = glCreateProgram();
-	glAttachShader(program, vertexShaderHandle);
-	glAttachShader(program, pixShaderHandle);
-	glLinkProgram(program);
-
-    glGetProgramiv(program, GL_LINK_STATUS, &status);
-    if(status == GL_FALSE)
-    {
-        GLint log_length;
-        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &log_length);
-        GLchar info[4096];
-        glGetProgramInfoLog(program, log_length, NULL, info);
-        DebugPrint("Shader linking error: %s\n", info);
-        FAIL;
-    }
-	return program;
-}
 
 const char* vert3DShaderText = R"term(
 #version 330 core
 layout(location = 0) in vec3 v_position;
-layout(location = 1) in vec3 v_normal;
-layout(location = 2) in vec2 v_uv;
+layout(location = 1) in vec2 v_uv;
+layout(location = 2) in vec3 v_normal;
 
 uniform mat4 u_perspective;
 uniform mat4 u_view;
@@ -456,219 +641,69 @@ void InitializeVideo()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glClearColor(1.0f, 0.0f, 1.0f, 0.0f);
-    glDisable(GL_DEPTH_TEST);
-    glDepthMask(GL_FALSE);
-    // Enable the debug callback
+    glEnable(GL_DEPTH_TEST);
     glEnable(GL_DEBUG_OUTPUT);
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallback(OpenGLErrorCallback, NULL);
     //glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, GL_FALSE);
 }
 
-Texture CreateTexture(const char* c)
+#if 0
+void Draw2DTexture(Texture t, Rect s, Rect d)
 {
-    Texture result = {};
-	result.data = stbi_load(c, &result.size.x, &result.size.y, &result.n, STBI_rgb_alpha);
+	glDepthMask(GL_FALSE);
+	float iblx = Clamp(s.botLeft.x  / t.size.x, 0.0f, 1.0f);
+	float ibly = Clamp(s.botLeft.y  / t.size.y, 0.0f, 1.0f);
+	float itrx = Clamp(s.topRight.x / t.size.x, 0.0f, 1.0f);
+	float itry = Clamp(s.topRight.y / t.size.y, 0.0f, 1.0f);
 
-	glGenTextures(1, &result.GL_Handle);
-	glBindTexture(GL_TEXTURE_2D, result.GL_Handle);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, result.size.x, result.size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, result.data);
+    float dblx = Clamp(d.botLeft.x,  -1.0f, 1.0f);
+    float dbly = Clamp(d.botLeft.y,  -1.0f, 1.0f);
+    float dtrx = Clamp(d.topRight.x, -1.0f, 1.0f);
+    float dtry = Clamp(d.topRight.y, -1.0f, 1.0f);
 
-    return result;
+    Vert3d vertices[] = {
+        { { dblx, dbly, 0}, { iblx, ibly }, {} }, //bot left
+        { { dblx, dtry, 0}, { iblx, itry }, {} }, //top left
+        { { dtrx, dbly, 0}, { itrx, ibly }, {} }, //bot right
+        { { dtrx, dtry, 0}, { itrx, itry }, {} }, //top right
+    };
+    //NOTE: Just for reference if the vertices are messed up:
+    //Vertex vertices[] = {
+    //	{ -1, -1, 0, 0.0f, 0.0f },
+    //	{ -1,  1, 0, 0.0f, 1.0f },
+    //	{  1, -1, 0, 1.0f, 0.0f },
+    //	{  1,  1, 0, 1.0f, 1.0f },
+    //};
+
+    VertexBuffer3 vertexBuffer;
+    vertexBuffer.Upload(vertices, sizeof(vertices));
+    vertexBuffer.Bind();
+
+    //GLint size = 0;
+    //glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
+    //if (size != sizeof(vertices))
+    //{
+    //    DebugPrint("ERROR");
+    //    FAIL;
+    //}
+    //glUseProgram(g_renderer.programs[+program]);
+
+
+    g_renderer.squareIndexBuffer->Bind();
+    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_renderer.squareIndexBuffer);
+    glBindTexture(GL_TEXTURE_2D, t.gl_handle);
+
+    g_renderer.programs[+Shader::Simple2D]->UseShader();
+    //glEnableVertexArrayAttrib(g_renderer.vao, 0);
+    //glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vert2d), (void*)offsetof(Vert2d, x));
+    //glEnableVertexArrayAttrib(g_renderer.vao, 1);
+    //glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vert2d), (void*)offsetof(Vert2d, u));
+    //glDisableVertexArrayAttrib(g_renderer.vao, 2);
+
+    glDrawElements(GL_TRIANGLES, sizeof(squareIndexes) / sizeof(uint32), GL_UNSIGNED_INT, 0);
 }
-
-//NOTE: DrawCall screenLocation is based on the -1 to +1 locations
-DrawCall CreateDrawCall(Rect s, Rect d, Texture* t, Shader program)
-{
-    DrawCall dc = {};
-
-	float iblx = Clamp(s.botLeft.x  / t->size.x, 0.0f, 1.0f);
-	float ibly = Clamp(s.botLeft.y  / t->size.y, 0.0f, 1.0f);
-	float itrx = Clamp(s.topRight.x / t->size.x, 0.0f, 1.0f);
-	float itry = Clamp(s.topRight.y / t->size.y, 0.0f, 1.0f);
-
-	switch (program)
-    {
-    case Shader::Simple2D:
-	{
-
-		float dblx = Clamp(d.botLeft.x,  -1.0f, 1.0f);
-		float dbly = Clamp(d.botLeft.y,  -1.0f, 1.0f);
-		float dtrx = Clamp(d.topRight.x, -1.0f, 1.0f);
-		float dtry = Clamp(d.topRight.y, -1.0f, 1.0f);
-
-		Vert2d vertices[] = {
-			{ dblx, dbly, 0, iblx, ibly }, //bot left
-			{ dblx, dtry, 0, iblx, itry }, //top left
-			{ dtrx, dbly, 0, itrx, ibly }, //bot right
-			{ dtrx, dtry, 0, itrx, itry }, //top right
-		};
-		//NOTE: Just for reference if the vertices are messed up:
-		//Vertex vertices[] = {
-		//	{ -1, -1, 0, 0.0f, 0.0f },
-		//	{ -1,  1, 0, 0.0f, 1.0f },
-		//	{  1, -1, 0, 1.0f, 0.0f },
-		//	{  1,  1, 0, 1.0f, 1.0f },
-		//};
-
-		GLuint vertexBuffer;
-		glGenBuffers(1, &vertexBuffer);
-		glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-		GLint size = 0;
-		glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
-		if (size != sizeof(vertices))
-		{
-			DebugPrint("ERROR");
-			FAIL;
-		}
-		//glUseProgram(g_renderer.programs[+program]);
-
-		dc.vertexBuffer = vertexBuffer;
-		dc.indexBuffer = g_renderer.squareIndexBuffer;
-		break;
-	}
-	case Shader::Simple3D:
-	{
-        float p = 1.0f;
-        float tf = 1.0f;
-        float te = 0.0f;
-
-        s.botLeft.x;
-
-        Vert3d cubeVertices[] = {
-            { { -p, -p,  p }, { -1.0f, 0.0f, 0.0f }, { te, tf } }, // -x
-            { { -p, -p, -p }, { -1.0f, 0.0f, 0.0f }, { te, te } },
-            { { -p,  p,  p }, { -1.0f, 0.0f, 0.0f }, { tf, tf } },
-            { { -p,  p, -p }, { -1.0f, 0.0f, 0.0f }, { tf, te } },
-
-            { {  p, -p,  p }, { 1.0f, 0.0f, 0.0f }, { te, tf } }, // +x
-            { {  p, -p, -p }, { 1.0f, 0.0f, 0.0f }, { te, te } },
-            { {  p,  p,  p }, { 1.0f, 0.0f, 0.0f }, { tf, tf } },
-            { {  p,  p, -p }, { 1.0f, 0.0f, 0.0f }, { tf, te } },
-
-            { { -p, -p,  p }, { 0.0f, -1.0f, 0.0f }, { te, tf } }, // -y
-            { { -p, -p, -p }, { 0.0f, -1.0f, 0.0f }, { te, te } },
-            { {  p, -p,  p }, { 0.0f, -1.0f, 0.0f }, { tf, tf } },
-            { {  p, -p, -p }, { 0.0f, -1.0f, 0.0f }, { tf, te } },
-
-            { { -p,  p,  p }, { 0.0f, 1.0f, 0.0f }, { te, tf } }, // +y
-            { { -p,  p, -p }, { 0.0f, 1.0f, 0.0f }, { te, te } },
-            { {  p,  p,  p }, { 0.0f, 1.0f, 0.0f }, { tf, tf } },
-            { {  p,  p, -p }, { 0.0f, 1.0f, 0.0f }, { tf, te } },
-
-            { { -p,  p, -p }, { 0.0f, 0.0f, -1.0f }, { te, tf } }, // -z
-            { { -p, -p, -p }, { 0.0f, 0.0f, -1.0f }, { te, te } },
-            { {  p,  p, -p }, { 0.0f, 0.0f, -1.0f }, { tf, tf } },
-            { {  p, -p, -p }, { 0.0f, 0.0f, -1.0f }, { tf, te } },
-
-            { { -p,  p,  p }, { 0.0f, 0.0f, 1.0f }, { te, tf } }, // z
-            { { -p, -p,  p }, { 0.0f, 0.0f, 1.0f }, { te, te } },
-            { {  p,  p,  p }, { 0.0f, 0.0f, 1.0f }, { tf, tf } },
-            { {  p, -p,  p }, { 0.0f, 0.0f, 1.0f }, { tf, te } },
-        };
-        static_assert(arrsize(cubeVertices) == 24, "");
-
-
-        glGenBuffers(1, &dc.vertexBuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, dc.vertexBuffer);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(cubeVertices), cubeVertices, GL_STATIC_DRAW);
-
-        glGenBuffers(1, &dc.indexBuffer);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, dc.indexBuffer);
-        glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices3D), indices3D, GL_STATIC_DRAW);
-
-        gb_mat4_identity(&dc.transform);
-        //dc.transform = ;
-
-        break;
-    }
-    }
-
-    dc.texture = t->GL_Handle;
-    dc.program = program;
-    return dc;
-}
-
-Vec3 cameraPosition = { 2, 2, 2 };
-void RenderUpdate()
-{
-    //glEnable(GL_DEPTH_TEST);
-    //glDepthMask(GL_TRUE);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    for (DrawCall& dc : g_renderer.drawcalls)
-    {
-
-        glBindBuffer(GL_ARRAY_BUFFER, dc.vertexBuffer);
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, dc.indexBuffer);
-        glBindTexture(GL_TEXTURE_2D, dc.texture);
-        glUseProgram(g_renderer.programs[+dc.program]);
-
-        switch (dc.program)
-        {
-        case Shader::Simple2D:
-		{
-            glDisable(GL_DEPTH_TEST);
-            glDepthMask(GL_FALSE);
-
-            glEnableVertexArrayAttrib(g_renderer.vao, 0);
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vert2d), (void*)offsetof(Vert2d, x));
-            glEnableVertexArrayAttrib(g_renderer.vao, 1);
-            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vert2d), (void*)offsetof(Vert2d, u));
-            glDisableVertexArrayAttrib(g_renderer.vao, 2);
-
-            glDrawElements(GL_TRIANGLES, sizeof(squareIndexes) / sizeof(uint32), GL_UNSIGNED_INT, 0);
-			break;
-		}
-		case Shader::Simple3D:
-		{
-            glEnable(GL_DEPTH_TEST);
-            glDepthMask(GL_TRUE);
-
-            glEnableVertexArrayAttrib(g_renderer.vao, 0);
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vert3d), (void*)offsetof(Vert3d, p));
-            glEnableVertexArrayAttrib(g_renderer.vao, 1);
-            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vert3d), (void*)offsetof(Vert3d, n));
-            glEnableVertexArrayAttrib(g_renderer.vao, 2);
-            glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vert3d), (void*)offsetof(Vert3d, uv));
-
-            gbMat4 perspective;
-            gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.65f, 1000.0f);
-            gbMat4 view;
-            Vec3 a = { 1.0f, 1.0f, 1.0f };
-            gb_mat4_look_at(&view, cameraPosition + a, cameraPosition, { 0,1,0 });
-
-
-            GLint loc;
-            loc = glGetUniformLocation(g_renderer.programs[+dc.program], "u_perspective");
-            glUniformMatrix4fv(loc, 1, false, perspective.e);
-
-            loc = glGetUniformLocation(g_renderer.programs[+dc.program], "u_view");
-            glUniformMatrix4fv(loc, 1, false, view.e);
-
-            loc = glGetUniformLocation(g_renderer.programs[+dc.program], "u_model");
-            glUniformMatrix4fv(loc, 1, false, dc.transform.e);
-
-            glDrawElements(GL_TRIANGLES, arrsize(indices3D), GL_UNSIGNED_INT, 0);
-			break;
-		}
-        default:
-        {
-            FAIL;
-            break;
-        }
-        }
-
-    }
-
-    g_renderer.drawcalls.clear();
-}
+#endif
 
 int main(int argc, char* argv[])
 {
@@ -680,35 +715,34 @@ int main(int argc, char* argv[])
 	double totalTime = SDL_GetPerformanceCounter() / freq; //sec
 	double previousTime = totalTime;
 
-	glGenBuffers(1, &g_renderer.squareIndexBuffer);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_renderer.squareIndexBuffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(squareIndexes), squareIndexes, GL_STATIC_DRAW);
-
-    g_renderer.textures["MinecraftSpriteSheet"] = CreateTexture("Assets/MinecraftSpriteSheet20120215.png");
-    g_renderer.programs[+Shader::Simple2D] = CreateShaderProgram(vertexShaderText, pixelShaderText);
-    g_renderer.programs[+Shader::Simple3D] = CreateShaderProgram(vert3DShaderText, pix3DShaderText);
-
-    for (int face = 0; face < 6; ++face)
-    {
-        int base_index = face * 4;
-        indices3D[face * 6 + 0] = base_index + 0;
-        indices3D[face * 6 + 1] = base_index + 1;
-        indices3D[face * 6 + 2] = base_index + 2;
-        indices3D[face * 6 + 3] = base_index + 1;
-        indices3D[face * 6 + 4] = base_index + 2;
-        indices3D[face * 6 + 5] = base_index + 3;
-    }
+    static_assert(arrsize(cubeVertices) == 24, "");
 
 	glGenVertexArrays(1, &g_renderer.vao);
 	glBindVertexArray(g_renderer.vao);
 
-    Grass* testGrassBlock = new Grass();
+    g_renderer.squareIndexBuffer = new IndexBuffer();
+    g_renderer.squareIndexBuffer->Upload(squareIndexes, arrsize(squareIndexes));
+	//glGenBuffers(1, &g_renderer.squareIndexBuffer);
+	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_renderer.squareIndexBuffer);
+	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(squareIndexes), squareIndexes, GL_STATIC_DRAW);
 
-    //Keep in mind:
-    //program
-    //vertexBuffer
-    //indexBuffer
-    //texture
+    g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png");
+    //g_renderer.programs[+Shader::Simple2D] = new ShaderProgram(vertexShaderText, pixelShaderText);
+    g_renderer.programs[+Shader::Simple3D] = new ShaderProgram(vert3DShaderText, pix3DShaderText);
+
+    for (int face = 0; face < 6; ++face)
+    {
+        int base_index = face * 4;
+        cubeIndices[face * 6 + 0] = base_index + 0;
+        cubeIndices[face * 6 + 1] = base_index + 1;
+        cubeIndices[face * 6 + 2] = base_index + 2;
+        cubeIndices[face * 6 + 3] = base_index + 1;
+        cubeIndices[face * 6 + 4] = base_index + 2;
+        cubeIndices[face * 6 + 5] = base_index + 3;
+    }
+
+
+    Grass* testGrassBlock = new Grass();
 
     while (g_running)
     {
@@ -823,7 +857,14 @@ int main(int argc, char* argv[])
             cameraPosition.y += cameraMovement * deltaTime;
         if (keyStates[SDLK_e].down)
             cameraPosition.y -= cameraMovement * deltaTime;
+        if (keyStates[SDLK_BACKQUOTE].down)
+            g_running = false;
 
+
+        //RENDERER:
+        glEnable(GL_DEPTH_TEST);
+		glDepthMask(GL_TRUE);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         Rect imageSource = {
             .botLeft  = { 0 ,  1440 },
@@ -833,18 +874,8 @@ int main(int argc, char* argv[])
             .botLeft  = { -1, -1 },
             .topRight = {  1,  1 },
         };
-        g_renderer.drawcalls.push_back(CreateDrawCall(GetRectFromSprite(0), screenLocation,
-                            &g_renderer.textures["MinecraftSpriteSheet"], Shader::Simple2D));
-
-        //imageSource = {
-        //    .botLeft  = { 17 , 1440 },
-        //    .topRight = { 32 , 1456 },
-        //};
-        //g_renderer.drawcalls.push_back(CreateDrawCall(imageSource, {},
-        //                    &g_renderer.textures["MinecraftSpriteSheet"], Shader::Simple3D));
-
         testGrassBlock->Render();
-        RenderUpdate();
+        //Draw2DTexture(*g_renderer.textures[Texture::Minecraft], GetRectFromSprite(0), screenLocation);
 
         //double renderTotalTime = SDL_GetPerformanceCounter() / freq;
         //std::erase_if(frameTimes, [renderTotalTime](const float& a)

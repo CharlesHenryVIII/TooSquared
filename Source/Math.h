@@ -64,16 +64,16 @@ const uint32 CollisionLeft = 8;
 typedef gbVec2 Vec2;
 typedef gbVec3 Vec3;
 
-union Vert2d {
-    struct { float x, y, z, u, v; };
-    struct { Vec3 xyz; Vec2 uv; };
-    float e[5];
-};
+//union Vert2d {
+//    struct { float x, y, z, u, v; };
+//    struct { Vec3 xyz; Vec2 uv; };
+//    float e[5];
+//};
 
-struct Vert3d {
+struct Vertex {
     Vec3 p;
-    Vec3 n;
     Vec2 uv;
+    Vec3 n;
 };
 
 template<typename T>
