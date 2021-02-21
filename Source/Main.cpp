@@ -19,11 +19,16 @@ struct Key {
 };
 
 struct Mouse {
-	Vec2Int pos;
-	Vec2Int wheel; //Y for vertical rotations, X for Horizontal rotations/movement
+	Vec2Int pos = {};
+    Vec2Int pDelta = {};
+	Vec2Int wheel = {}; //Y for vertical rotations, X for Horizontal rotations/movement
 }g_mouse;
 
-Vec3 cameraPosition = { 2, 2, 2 };
+struct Camera {
+    Vec3 p = { 2, 2, 2 };
+    Vec3 r = {};
+    Mat4 view;
+} g_camera;
 
 uint32 cubeIndices[36] = {};
 
@@ -155,17 +160,14 @@ struct Block {
 		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
 		glEnableVertexArrayAttrib(g_renderer.vao, 2);
 
-		gbMat4 perspective;
+		Mat4 perspective;
 		gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.65f, 1000.0f);
-		gbMat4 view;
-		Vec3 a = { 1.0f, 1.0f, 1.0f };
-		gb_mat4_look_at(&view, cameraPosition + a, cameraPosition, { 0,1,0 });
-        gbMat4 transform;
+        Mat4 transform;
         gb_mat4_translate(&transform, p);
 
         ShaderProgram* sp = g_renderer.programs[+Shader::Simple3D];
         sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
-        sp->UpdateUniformMat4("u_view", 1, false, view.e);
+        sp->UpdateUniformMat4("u_view", 1, false, g_camera.view.e);
         sp->UpdateUniformMat4("u_model", 1, false, transform.e);
 
 		glDrawElements(GL_TRIANGLES, arrsize(cubeIndices), GL_UNSIGNED_INT, 0);
@@ -309,25 +311,35 @@ int main(int argc, char* argv[])
 	double previousTime = totalTime;
     double LastShaderUpdateTime = totalTime;
 
-    std::vector<Grass*> grassBlockList;
-    for (float z = -5; z < 6; z++)
+    g_camera.view;
+	Vec3 a = { 1.0f, 1.0f, 1.0f };
+	gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
+
+	std::vector<Grass*> grassBlockList;
     {
-        for (float x = -5; x < 6; x++)
-        {
-            Grass* temp = new Grass();
-            temp->p = { x, 0.0f, z };
-            grassBlockList.push_back(temp);
-        }
-    }
+		const int32 cubeSize = 5;
+		for (float z = -cubeSize; z <= cubeSize; z++)
+		{
+			for (float y = -(2 * cubeSize); y <= 0; y++)
+			{
+				for (float x = -cubeSize; x <= cubeSize; x++)
+				{
+					Grass* temp = new Grass();
+					temp->p = { x, y, z };
+					grassBlockList.push_back(temp);
+				}
+			}
+		}
+		{
+			Grass* temp = new Grass();
+			temp->p = { 0.0f, 1.0f, 0.0f };
+			grassBlockList.push_back(temp);
+		}
+	}
 
-    //Grass* testGrassBlock1 = new Grass();
-    //testGrassBlock1->p = { 0, 0, 0 };
-    //grassBlockList.push_back(testGrassBlock1);
-    //Grass* testGrassBlock2 = new Grass();
-    //testGrassBlock2->p = { 1.0f, 0, 0 };
-    //grassBlockList.push_back(testGrassBlock2);
+	double testTimer = totalTime;
 
-    while (g_running)
+	while (g_running)
     {
         totalTime = SDL_GetPerformanceCounter() / freq;
         float deltaTime = float(totalTime - previousTime);// / 10;
@@ -338,53 +350,95 @@ int main(int argc, char* argv[])
          * Event Queing and handling
          *
          ********/
+        Vec2Int originalMouseLocation = {};
+        Vec2Int newMouseLocation = {};
 
-        SDL_Event SDLEvent;
-        while (SDL_PollEvent(&SDLEvent))
-        {
-            switch (SDLEvent.type)
-            {
-            case SDL_QUIT:
-                g_running = false;
-                break;
-            case SDL_KEYDOWN:
-            {
-                int mods = 0;
-				keyStates[SDLEvent.key.keysym.sym].down = true;
-                break;
-            }
-            case SDL_KEYUP:
-                keyStates[SDLEvent.key.keysym.sym].down = false;
-                break;
-            case SDL_MOUSEBUTTONDOWN:
-            case SDL_MOUSEBUTTONUP:
-				keyStates[SDLEvent.button.button].down = SDLEvent.button.state;
-                break;
-            case SDL_MOUSEMOTION:
-                g_mouse.pos.x = SDLEvent.motion.x;
-                g_mouse.pos.y = SDLEvent.motion.y;
-                break;
-            case SDL_MOUSEWHEEL:
-            {
-                g_mouse.wheel.x = SDLEvent.wheel.x;
-                g_mouse.wheel.y = SDLEvent.wheel.y;
-                break;
-            }
-            case SDL_WINDOWEVENT:
-                if (SDLEvent.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
-                {
-                    g_window.size.x = SDLEvent.window.data1;
-                    g_window.size.y = SDLEvent.window.data2;
-                    glViewport(0, 0, g_window.size.x, g_window.size.y);
-                }
-                else if (SDLEvent.window.event == SDL_WINDOWEVENT_FOCUS_GAINED)
-                {
-                    SDL_CaptureMouse(SDL_TRUE);
-                }
-                break;
-            }
+		g_mouse.pDelta = { 0, 0 };
 
-        }
+		SDL_Event SDLEvent;
+		while (SDL_PollEvent(&SDLEvent))
+		{
+			switch (SDLEvent.type)
+			{
+			case SDL_QUIT:
+				g_running = false;
+				break;
+			case SDL_KEYDOWN:
+			{
+				if (g_window.hasAttention)
+				{
+					int mods = 0;
+					keyStates[SDLEvent.key.keysym.sym].down = true;
+				}
+				break;
+			}
+			case SDL_KEYUP:
+				if (g_window.hasAttention)
+				{
+					keyStates[SDLEvent.key.keysym.sym].down = false;
+				}
+				break;
+			case SDL_MOUSEBUTTONDOWN:
+			case SDL_MOUSEBUTTONUP:
+				if (g_window.hasAttention)
+				{
+					keyStates[SDLEvent.button.button].down = SDLEvent.button.state;
+				}
+				break;
+			case SDL_MOUSEMOTION:
+			{
+				if (g_window.hasAttention)
+				{
+					g_mouse.pDelta.x = SDLEvent.motion.x - g_mouse.pos.x;
+					g_mouse.pos.x = SDLEvent.motion.x;
+					g_mouse.pDelta.y = SDLEvent.motion.y - g_mouse.pos.y;
+					g_mouse.pos.y = SDLEvent.motion.y;
+				}
+				break;
+			}
+			case SDL_MOUSEWHEEL:
+			{
+				if (g_window.hasAttention)
+				{
+					g_mouse.wheel.x = SDLEvent.wheel.x;
+					g_mouse.wheel.y = SDLEvent.wheel.y;
+				}
+				break;
+			}
+
+			case SDL_WINDOWEVENT:
+			{
+				switch (SDLEvent.window.event)
+				{
+				case SDL_WINDOWEVENT_SIZE_CHANGED:
+				{
+					g_window.size.x = SDLEvent.window.data1;
+					g_window.size.y = SDLEvent.window.data2;
+					glViewport(0, 0, g_window.size.x, g_window.size.y);
+					break;
+				}
+				case SDL_WINDOWEVENT_FOCUS_GAINED:
+				{
+					g_window.hasAttention = true;
+                    g_mouse.pDelta = {};
+					SDL_CaptureMouse(SDL_TRUE);
+					break;
+				}
+				case SDL_WINDOWEVENT_LEAVE:
+				{
+					//g_window.hasAttention = false;
+					break;
+				}
+				case SDL_WINDOWEVENT_FOCUS_LOST:
+				{
+					g_window.hasAttention = false;
+					break;
+				}
+				}
+				break;
+			}
+			}
+		}
 
         /*********************
          *
@@ -425,23 +479,53 @@ int main(int argc, char* argv[])
             key.second.downPrevFrame = key.second.down;
         }
 
-
-        const float cameraMovement = 0.5f;
-
-        if (keyStates[SDLK_s].down)
-            cameraPosition.z += cameraMovement * deltaTime;
-        if (keyStates[SDLK_w].down)
-            cameraPosition.z -= cameraMovement * deltaTime;
-        if (keyStates[SDLK_d].down)
-            cameraPosition.x += cameraMovement * deltaTime;
-        if (keyStates[SDLK_a].down)
-            cameraPosition.x -= cameraMovement * deltaTime;
-        if (keyStates[SDLK_q].down)
-            cameraPosition.y += cameraMovement * deltaTime;
-        if (keyStates[SDLK_e].down)
-            cameraPosition.y -= cameraMovement * deltaTime;
         if (keyStates[SDLK_BACKQUOTE].down)
             g_running = false;
+
+        float cameraMovement = 0.5f;
+        if (keyStates[SDLK_LSHIFT].down)
+            cameraMovement = 4.0f;
+		g_camera.r = {};
+        Vec3 cameraDelta = {};
+        if (keyStates[SDLK_w].down)
+            cameraDelta.z += cameraMovement * deltaTime;
+        if (keyStates[SDLK_s].down)
+            cameraDelta.z -= cameraMovement * deltaTime;
+        if (keyStates[SDLK_a].down)
+            cameraDelta.x += cameraMovement * deltaTime;
+        if (keyStates[SDLK_d].down)
+            cameraDelta.x -= cameraMovement * deltaTime;
+        if (keyStates[SDLK_LCTRL].down)
+            cameraDelta.y += cameraMovement * deltaTime;
+        if (keyStates[SDLK_SPACE].down)
+            cameraDelta.y -= cameraMovement * deltaTime;
+        if (keyStates[SDLK_q].down)
+            g_camera.r.z -= 0.5f * deltaTime;
+        if (keyStates[SDLK_e].down)
+            g_camera.r.z += 0.5f * deltaTime;
+
+
+
+        Mat4 xRot;
+        gb_mat4_identity(&xRot);
+        Mat4 yRot;
+        gb_mat4_identity(&yRot);
+        Mat4 zRot;
+		gb_mat4_rotate(&zRot, { 0, 0, 1 }, g_camera.r.z); //mouse y movement spin about the x coordinate
+        Mat4 pos;
+        gb_mat4_identity(&pos);
+
+        if (keyStates[SDL_BUTTON_LEFT].down)
+        {
+			g_camera.r.x += g_mouse.pDelta.x * 0.5f * deltaTime;
+			g_camera.r.y += g_mouse.pDelta.y * 0.5f * deltaTime;
+			gb_mat4_rotate(&xRot, { 0, 1, 0 }, g_camera.r.x); //mouse x movement spin about the Y coordinate
+			gb_mat4_rotate(&yRot, { 1, 0, 0 }, g_camera.r.y); //mouse y movement spin about the x coordinate
+		}
+
+
+		gb_mat4_translate(&pos, cameraDelta);
+		g_camera.view = xRot * yRot * zRot * pos * g_camera.view;
 
 
         RenderUpdate(deltaTime);
@@ -450,6 +534,8 @@ int main(int argc, char* argv[])
             if (g)
                 g->Render();
         }
+
+		//gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
 
         //double renderTotalTime = SDL_GetPerformanceCounter() / freq;
         //std::erase_if(frameTimes, [renderTotalTime](const float& a)

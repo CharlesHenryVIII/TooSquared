@@ -11,6 +11,7 @@ struct Window {
     Vec2Int size = {};
     Vec2Int pos = {};
     SDL_Window* SDL_Context = nullptr;
+    bool hasAttention = true;
 };
 
 enum class ts_MessageBox {

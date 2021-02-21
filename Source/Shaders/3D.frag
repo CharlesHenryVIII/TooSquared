@@ -8,7 +8,8 @@ out vec4 color;
 
 void main()
 {
-    color = texture(sampler, p_uv);
+    vec4 realColor = texture(sampler, p_uv);
+    color = realColor;//vec4(realColor.rgb * clamp(1.3 - gl_FragCoord.z, 0, 1), realColor.a);
     //color.xyz = p_normal;
     //color.a = 1;
 }

@@ -87,8 +87,8 @@ bool ShaderProgram::CompileShader(GLuint handle, const char* text)
 
 		SDL_MessageBoxButtonData buttons[] = {
 			//{ /* .flags, .buttonid, .text */        0, 0, "Continue" },
-			{ SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Retry" },
-			{ SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 2, "Stop" },
+			{ SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 0, "Retry" },
+			{ SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 1, "Stop" },
 		};
 
 		int32 buttonID = CreateMessageWindow(buttons, arrsize(buttons), ts_MessageBox::Error, "Shader Compilation Error", reinterpret_cast<char*>(info));

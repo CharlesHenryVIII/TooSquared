@@ -58,6 +58,7 @@ const uint32 CollisionLeft = 8;
 
 typedef gbVec2 Vec2;
 typedef gbVec3 Vec3;
+typedef gbMat4 Mat4;
 
 //union Vert2d {
 //    struct { float x, y, z, u, v; };
