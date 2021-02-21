@@ -2,6 +2,7 @@
 #include "Misc.h"
 #include "STB/stb_image.h"
 
+Renderer g_renderer;
 
 const SDL_MessageBoxColorScheme colorScheme = {
 	/* .colors (.r, .g, .b) */
@@ -301,3 +302,22 @@ void VertexBuffer::Upload(Vertex* vertices, size_t count)
 	DebugPrint("Vertex Buffer Upload,size %i\n", count);
 #endif
 }
+
+double s_lastShaderUpdateTime = 0;
+double s_incrimentalTime = 0;
+void RenderUpdate(float deltaTime)
+{
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	if (s_lastShaderUpdateTime + 0.1f <= s_incrimentalTime)
+	{
+		for (ShaderProgram* s : g_renderer.programs)
+		{
+			if (s)
+				s->CheckForUpdate();
+		}
+		s_lastShaderUpdateTime = s_incrimentalTime;
+	}
+    s_incrimentalTime += deltaTime;
+}
+

@@ -110,4 +110,14 @@ public:
     void Upload(Vertex* vertices, size_t count);
 };
 
+struct Renderer {
+    SDL_GLContext GL_Context = {};
+    ShaderProgram* programs[+Shader::Count] = {};
+    Texture* textures[Texture::Count] = {};
+    IndexBuffer* squareIndexBuffer = nullptr;
+    GLuint vao;
+};
+extern Renderer g_renderer;
+
 int32 CreateMessageWindow(SDL_MessageBoxButtonData* buttons, int32 numOfButtons, ts_MessageBox type, const char* title, const char* message);
+void RenderUpdate(float deltaTime);

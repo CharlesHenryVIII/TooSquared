@@ -49,14 +49,6 @@ public:
 };
 #endif
 
-struct Renderer {
-    SDL_GLContext GL_Context = {};
-    ShaderProgram* programs[+Shader::Count] = {};
-    Texture* textures[Texture::Count] = {};
-    IndexBuffer* squareIndexBuffer = nullptr;
-    GLuint vao;
-}g_renderer;
-
 #ifdef _2DRENDERING
 uint32 squareIndexes[] = {
 	0,1,2,1,2,3,
@@ -447,38 +439,6 @@ void Draw2DTexture(Texture t, Rect s, Rect d)
     glDrawElements(GL_TRIANGLES, sizeof(squareIndexes) / sizeof(uint32), GL_UNSIGNED_INT, 0);
 }
 #endif
-
-double s_lastShaderUpdateTime = 0;
-double s_incrimentalTime = 0;
-void RenderUpdate(float deltaTime)
-{
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-	if (s_lastShaderUpdateTime + 0.1f <= s_incrimentalTime)
-	{
-		for (ShaderProgram* s : g_renderer.programs)
-		{
-			if (s)
-				s->CheckForUpdate();
-		}
-		s_lastShaderUpdateTime = s_incrimentalTime;
-	}
-    s_incrimentalTime += deltaTime;
-
-
-#ifdef _2DRENDERING
-	Rect imageSource = {
-		.botLeft = { 0 ,  1440 },
-		.topRight = { 16 , 1456 },
-	};
-	Rect screenLocation = {
-		.botLeft = { -1, -1 },
-		.topRight = {  1,  1 },
-	};
-	//Draw2DTexture(*g_renderer.textures[Texture::Minecraft], GetRectFromSprite(0), screenLocation);
-#endif
-
-}
 
 int main(int argc, char* argv[])
 {
