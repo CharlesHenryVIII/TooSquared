@@ -1,5 +1,5 @@
 #pragma once
-#include "SDL\include\SDL_pixels.h"
+//#include "SDL\include\SDL_pixels.h"
 #include "gb_math.h"
 
 #include <cassert>
@@ -17,15 +17,10 @@ using uint8 = uint8_t;
 using uint16 = uint16_t;
 using uint32 = uint32_t;
 using uint64 = uint64_t;
-//using uint64 = uint64_t;
-//typedef uint64_t uint64;
-//#define uint64_t uint64
 
-struct Color {
-    float r;
-    float g;
-    float b;
-    float a;
+union Color {
+    struct { float r, g, b, a; };
+    float e[4];
 };
 
 const Color Red = { 1.0f, 0.0f, 0.0f, 1.0f };
@@ -74,6 +69,11 @@ struct Vertex {
     Vec3 p;
     Vec2 uv;
     Vec3 n;
+};
+
+struct Rect {
+    Vec2 botLeft = {};
+    Vec2 topRight = {};
 };
 
 template<typename T>
@@ -262,11 +262,5 @@ inline float Distance(Vec2 a, Vec2 b)
     return Pythags(a - b);
 }
 
-void Swap(void* a, void* b, const int size);
-Vec2 CreateRandomVec2(const Vec2& min, const Vec2& max);
-Color CreateRandomColor(Color min, Color max);
-Color CreateRandomColorShade(float min, float max);
-float LinearToAngularVelocity(Vec2 centerOfCircle, Vec2 position, Vec2 velocity);
 //gbVec3 Vec2TogbVec3(Vec2 v);
 //Vec2 gbMat4ToVec2(gbMat4 m);
-Vec2 RotateVec2(Vec2 v, float deg);

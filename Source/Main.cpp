@@ -3,6 +3,8 @@
 #include "glew.h"
 #define STB_IMAGE_IMPLEMENTATION
 #include "STB/stb_image.h"
+#include "Misc.h"
+#include "Rendering.h"
 
 #include <Windows.h>
 #include <unordered_map>
@@ -17,15 +19,7 @@ struct Window {
 }g_window;
 
 //#define _DEBUGPRINT
-#define FAIL assert(false);
-#define arrsize(arr__) (sizeof(arr__) / sizeof(arr__[0]))
-
-#define ENUMOPS(T) \
-constexpr auto operator+(T a)\
-{                       \
-    return static_cast<typename std::underlying_type<T>::type>(a);\
-}
-
+//#define _2DRENDERING
 enum class Shader : uint32 {
     Invalid,
     Simple2D,
@@ -34,11 +28,6 @@ enum class Shader : uint32 {
 };
 ENUMOPS(Shader);
 
-
-struct Rect {
-    Vec2 botLeft = {};
-    Vec2 topRight = {};
-};
 
 void DebugPrint(const char* fmt, ...)
 {
@@ -92,74 +81,75 @@ public:
     }
 };
 
+
 class ShaderProgram
 {
     //TODO: Hold file handles/names
     GLuint m_handle = 0;
-    GLuint m_vhandle = 0;
-    GLuint m_phandle = 0;
+    std::string m_vertexFile;
+    std::string m_pixelFile;
+	FILETIME m_vertexLastWriteTime = {};
+	FILETIME m_pixelLastWriteTime = {};
+    //HANDLE m_vertexFileHandle;
+    //HANDLE m_vertexFileHandle;
 
     ShaderProgram(const ShaderProgram& rhs) = delete;
     ShaderProgram& operator=(const ShaderProgram& rhs) = delete;
 
-public:
-    ShaderProgram(const char* vertexText, const char* pixelText)
+    bool CompileShader(GLuint handle, const char* text)
     {
-        m_vhandle = glCreateShader(GL_VERTEX_SHADER);
-        m_phandle = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(handle, 1, &text, NULL);
+        glCompileShader(handle);
 
-        glShaderSource(m_vhandle, 1, &vertexText, 0);
-        glCompileShader(m_vhandle);
+		GLint status;
+		glGetShaderiv(handle, GL_COMPILE_STATUS, &status);
+		if (status == GL_FALSE)
+		{
+			GLint log_length;
+			glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &log_length);
+			GLchar info[4096];
+			glGetShaderInfoLog(handle, log_length, NULL, info);
+			DebugPrint("Vertex Shader compilation error: %s\n", info);
 
-        GLint status;
-        glGetShaderiv(m_vhandle, GL_COMPILE_STATUS, &status);
-        if (status == GL_FALSE)
-        {
-            GLint log_length;
-            glGetShaderiv(m_vhandle, GL_INFO_LOG_LENGTH, &log_length);
-            GLchar info[4096];
-            glGetShaderInfoLog(m_vhandle, log_length, NULL, info);
-            DebugPrint("Vertex Shader compilation error: %s\n", info);
-            FAIL;
-        }
+			SDL_MessageBoxButtonData buttons[] = {
+				//{ /* .flags, .buttonid, .text */        0, 0, "Continue" },
+				{ SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 1, "Retry" },
+				{ SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 2, "Stop" },
+			};
+
+			int32 buttonID = CreateMessageWindow(buttons, arrsize(buttons), ts_MessageBox::Error, "Shader Compilation Error", reinterpret_cast<char*>(info));
+			if (buttons[buttonID].buttonid == 2)//NOTE: Stop button
+			{
+				DebugPrint("stop hit");
+				g_running = false;
+				return false;
+			}
+			else
+			{
+				if (buttons[buttonID].buttonid == 0)//NOTE: Continue button
+				{
+
+					return false;
+				}
+				else if (buttons[buttonID].buttonid == 1)//NOTE: Retry button
+				{
+					CheckForUpdate();
+				}
+			}
+		}
 #ifdef _DEBUGPRINT
-        DebugPrint("Shader Vertex Created\n");
+		DebugPrint("Shader Vertex/Fragment Created\n");
 #endif
+		return true;
+	}
 
-        glShaderSource(m_phandle, 1, &pixelText, 0);
-        glCompileShader(m_phandle);
-        glGetShaderiv(m_phandle, GL_COMPILE_STATUS, &status);
-        if (status == GL_FALSE)
-        {
-            GLint log_length;
-            glGetShaderiv(m_phandle, GL_INFO_LOG_LENGTH, &log_length);
-            GLchar info[4096];
-            glGetShaderInfoLog(m_phandle, log_length, NULL, info);
-            DebugPrint("Shader compilation error: %s\n", info);
-            FAIL;
-        }
-#ifdef _DEBUGPRINT
-        DebugPrint("Shader Pixel Created\n");
-#endif
+public:
+	ShaderProgram(const std::string& vertexFileLocation, const std::string& pixelFileLocation)
+	{
+		m_vertexFile = vertexFileLocation;
+		m_pixelFile = pixelFileLocation;
 
-        m_handle = glCreateProgram();
-        glAttachShader(m_handle, m_vhandle);
-        glAttachShader(m_handle, m_phandle);
-        glLinkProgram(m_handle);
-
-        glGetProgramiv(m_handle, GL_LINK_STATUS, &status);
-        if (status == GL_FALSE)
-        {
-            GLint log_length;
-            glGetProgramiv(m_handle, GL_INFO_LOG_LENGTH, &log_length);
-            GLchar info[4096];
-            glGetProgramInfoLog(m_handle, log_length, NULL, info);
-            DebugPrint("Shader linking error: %s\n", info);
-            FAIL;
-        }
-#ifdef _DEBUGPRINT
-        DebugPrint("Shader Created\n");
-#endif
+        CheckForUpdate();
     }
 
     ~ShaderProgram()
@@ -170,6 +160,110 @@ public:
         DebugPrint("Shader Deleted\n");
 #endif
     }
+
+    FILETIME GetShaderTimeAndText(uint8* buffer, const size_t bufferLength, const std::string& fileLoc)
+    {
+        HANDLE bufferHandle = CreateFileA(fileLoc.c_str(), GENERIC_READ, FILE_SHARE_READ,
+                NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+        {
+            if (bufferHandle == INVALID_HANDLE_VALUE)
+                FAIL;
+        }//HANDLE should be valid
+
+        uint32 bytesRead;
+        static_assert(sizeof(DWORD) == sizeof(uint32));
+        static_assert(sizeof(LPVOID) == sizeof(void*));
+        if (!ReadFile(bufferHandle, buffer, (DWORD)bufferLength, reinterpret_cast<LPDWORD>(&bytesRead), NULL))
+        {
+            DebugPrint("Read File failed");
+            DWORD error = GetLastError();
+            if (error == ERROR_INSUFFICIENT_BUFFER)
+                FAIL;
+        }
+
+        FILETIME creationTime;
+        FILETIME lastAccessTime;
+        FILETIME lastWriteTime;
+        if (!GetFileTime(bufferHandle, &creationTime, &lastAccessTime, &lastWriteTime))
+        {
+            DebugPrint("GetFileTime failed with %d\n", GetLastError());
+        }
+        CloseHandle(bufferHandle);
+        return lastWriteTime;
+    }
+
+    void CheckForUpdate()
+    {
+        const size_t bufferLength = 1024;
+        uint8 vertexBufferText[bufferLength] = {};
+        FILETIME vertexLastWriteFiletime = GetShaderTimeAndText(vertexBufferText, bufferLength, m_vertexFile);
+
+        uint8 pixelBufferText[bufferLength] = {};
+        FILETIME pixelLastWriteFiletime = GetShaderTimeAndText(pixelBufferText, bufferLength, m_pixelFile);
+
+
+        if (m_vertexLastWriteTime.dwLowDateTime  < vertexLastWriteFiletime.dwLowDateTime  ||
+            m_vertexLastWriteTime.dwHighDateTime < vertexLastWriteFiletime.dwHighDateTime ||
+            m_pixelLastWriteTime.dwLowDateTime   < pixelLastWriteFiletime.dwLowDateTime  ||
+            m_pixelLastWriteTime.dwHighDateTime  < pixelLastWriteFiletime.dwHighDateTime)
+        {
+			GLuint vhandle = glCreateShader(GL_VERTEX_SHADER);
+			GLuint phandle = glCreateShader(GL_FRAGMENT_SHADER);
+            //Compile shaders and link to program
+            if (!CompileShader(vhandle, reinterpret_cast<char*>(vertexBufferText)) ||
+                !CompileShader(phandle, reinterpret_cast<char*>(pixelBufferText)))
+                return;
+
+
+			GLuint handle = glCreateProgram();
+
+            glAttachShader(handle, vhandle);
+            glAttachShader(handle, phandle);
+            glLinkProgram(handle);
+
+            GLint status;
+            glGetProgramiv(handle, GL_LINK_STATUS, &status);
+            if (status == GL_FALSE)
+            {
+                GLint log_length;
+                glGetProgramiv(m_handle, GL_INFO_LOG_LENGTH, &log_length);
+                GLchar info[4096];
+                glGetProgramInfoLog(m_handle, log_length, NULL, info);
+                DebugPrint("Shader linking error: %s\n", info);
+
+				SDL_MessageBoxButtonData buttons[] = {
+					{ SDL_MESSAGEBOX_BUTTON_RETURNKEY_DEFAULT, 0, "Retry" },
+					{ SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 1, "Stop" },
+				};
+				int32 buttonID = CreateMessageWindow(buttons, arrsize(buttons), ts_MessageBox::Error, "Shader Compilation Error", reinterpret_cast<char*>(info));
+                if (buttonID = 0)
+                {
+                    CheckForUpdate();
+                }
+                else if (buttonID = 1)
+                {
+					g_running = false;
+                    return;
+                }
+                else
+                {
+                    FAIL;
+                }
+
+			}
+            else 
+			{
+				m_handle = handle;
+#ifdef _DEBUGPRINT
+				DebugPrint("Shader Created\n");
+#endif
+				m_vertexLastWriteTime = vertexLastWriteFiletime;
+				m_pixelLastWriteTime = pixelLastWriteFiletime;
+				glDeleteShader(vhandle);
+				glDeleteShader(phandle);
+			}
+		}
+	}
 
     void UseShader()
     {
@@ -189,6 +283,18 @@ public:
     }
 
 };
+
+//Usage code:
+//
+//g_renderer.shaders[+Shader::Simple3D] = new ShaderProgram("","");
+//
+//if (time > 100ms)
+//  for (ShaderProgram s : g_renderer.shaders)
+//      {
+//          s.CheckShaderForUpdates();
+//      }
+//
+//
 
 class GpuBuffer
 {
@@ -278,7 +384,7 @@ public:
     }
 };
 
-#if 0
+#ifdef _2DRENDERING
 class VertexBuffer2 : public GpuBuffer
 {
 public:
@@ -301,9 +407,11 @@ struct Renderer {
     GLuint vao;
 }g_renderer;
 
+#ifdef _2DRENDERING
 uint32 squareIndexes[] = {
 	0,1,2,1,2,3,
 };
+#endif
 uint32 cubeIndices[36] = {};
 
 struct Key {
@@ -444,8 +552,6 @@ struct Block {
         indexBuffer.Upload(cubeIndices,  arrsize(cubeIndices));
         g_renderer.textures[Texture::Minecraft]->Bind();
         g_renderer.programs[+Shader::Simple3D]->UseShader();
-        glEnable(GL_DEPTH_TEST);
-		glDepthMask(GL_TRUE);
 
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
 		glEnableVertexArrayAttrib(g_renderer.vao, 0);
@@ -483,45 +589,11 @@ struct Grass : public Block {
 
 
 
-const char* vert3DShaderText = R"term(
-#version 330 core
-layout(location = 0) in vec3 v_position;
-layout(location = 1) in vec2 v_uv;
-layout(location = 2) in vec3 v_normal;
-
-uniform mat4 u_perspective;
-uniform mat4 u_view;
-uniform mat4 u_model;
-
-out vec2 p_uv;
-out vec3 p_normal;
-
-void main()
-{
-    p_uv = v_uv;
-    //p_normal = (u_view * u_model * vec4(v_normal, 0)).xyz;
-    p_normal = v_normal;
-	gl_Position = u_perspective * u_view * u_model * vec4(v_position, 1.0);
-}
-)term";
 
 const char* pix3DShaderText = R"term(
-#version 330 core
-uniform sampler2D sampler;
-
-in vec2 p_uv;
-in vec3 p_normal;
-
-out vec4 color;
-
-void main()
-{
-    color = texture(sampler, p_uv);
-    //color.xyz = p_normal;
-    //color.a = 1;
-}
 )term";
 
+#ifdef _2DRENDERING
 const char* vertexShaderText = R"term(
 #version 330 core
 layout(location = 0) in vec3 v_position;
@@ -554,6 +626,7 @@ void main()
 
 }
 )term";
+#endif
 
 
 void OpenGLErrorCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
@@ -585,6 +658,8 @@ void OpenGLErrorCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
     //        id, _type.c_str(), _severity.c_str(), _source.c_str(), message);
     //DebugPrint("vs \n");
     //DebugPrint("%s\n\n", message);
+
+    AssertOnce(severity != GL_DEBUG_SEVERITY_HIGH);
 }
 
 void InitializeVideo()
@@ -646,9 +721,40 @@ void InitializeVideo()
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallback(OpenGLErrorCallback, NULL);
     //glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, GL_FALSE);
+
+	static_assert(arrsize(cubeVertices) == 24, "");
+
+	glGenVertexArrays(1, &g_renderer.vao);
+	glBindVertexArray(g_renderer.vao);
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+
+
+#ifdef _2DRENDERING
+	//g_renderer.squareIndexBuffer = new IndexBuffer();
+	//g_renderer.squareIndexBuffer->Upload(squareIndexes, arrsize(squareIndexes));
+#endif
+
+	g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png");
+#ifdef _2DRENDERING
+	//g_renderer.programs[+Shader::Simple2D] = new ShaderProgram(vertexShaderText, pixelShaderText);
+#endif
+	g_renderer.programs[+Shader::Simple3D] = new ShaderProgram("Source/Shaders/3D.vert", "Source/Shaders/3D.frag");
+
+	for (int face = 0; face < 6; ++face)
+	{
+		int base_index = face * 4;
+		cubeIndices[face * 6 + 0] = base_index + 0;
+		cubeIndices[face * 6 + 1] = base_index + 1;
+		cubeIndices[face * 6 + 2] = base_index + 2;
+		cubeIndices[face * 6 + 3] = base_index + 1;
+		cubeIndices[face * 6 + 4] = base_index + 2;
+		cubeIndices[face * 6 + 5] = base_index + 3;
+	}
 }
 
-#if 0
+#ifdef _2DRENDERING
 void Draw2DTexture(Texture t, Rect s, Rect d)
 {
 	glDepthMask(GL_FALSE);
@@ -705,6 +811,38 @@ void Draw2DTexture(Texture t, Rect s, Rect d)
 }
 #endif
 
+double s_lastShaderUpdateTime = 0;
+double s_incrimentalTime = 0;
+void RenderUpdate(float deltaTime)
+{
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	if (s_lastShaderUpdateTime + 0.1f <= s_incrimentalTime)
+	{
+		for (ShaderProgram* s : g_renderer.programs)
+		{
+			if (s)
+				s->CheckForUpdate();
+		}
+		s_lastShaderUpdateTime = s_incrimentalTime;
+	}
+    s_incrimentalTime += deltaTime;
+
+
+#ifdef _2DRENDERING
+	Rect imageSource = {
+		.botLeft = { 0 ,  1440 },
+		.topRight = { 16 , 1456 },
+	};
+	Rect screenLocation = {
+		.botLeft = { -1, -1 },
+		.topRight = {  1,  1 },
+	};
+	//Draw2DTexture(*g_renderer.textures[Texture::Minecraft], GetRectFromSprite(0), screenLocation);
+#endif
+
+}
+
 int main(int argc, char* argv[])
 {
     std::unordered_map<int32, Key> keyStates;
@@ -714,33 +852,7 @@ int main(int argc, char* argv[])
 	double freq = double(SDL_GetPerformanceFrequency()); //HZ
 	double totalTime = SDL_GetPerformanceCounter() / freq; //sec
 	double previousTime = totalTime;
-
-    static_assert(arrsize(cubeVertices) == 24, "");
-
-	glGenVertexArrays(1, &g_renderer.vao);
-	glBindVertexArray(g_renderer.vao);
-
-    g_renderer.squareIndexBuffer = new IndexBuffer();
-    g_renderer.squareIndexBuffer->Upload(squareIndexes, arrsize(squareIndexes));
-	//glGenBuffers(1, &g_renderer.squareIndexBuffer);
-	//glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_renderer.squareIndexBuffer);
-	//glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(squareIndexes), squareIndexes, GL_STATIC_DRAW);
-
-    g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png");
-    //g_renderer.programs[+Shader::Simple2D] = new ShaderProgram(vertexShaderText, pixelShaderText);
-    g_renderer.programs[+Shader::Simple3D] = new ShaderProgram(vert3DShaderText, pix3DShaderText);
-
-    for (int face = 0; face < 6; ++face)
-    {
-        int base_index = face * 4;
-        cubeIndices[face * 6 + 0] = base_index + 0;
-        cubeIndices[face * 6 + 1] = base_index + 1;
-        cubeIndices[face * 6 + 2] = base_index + 2;
-        cubeIndices[face * 6 + 3] = base_index + 1;
-        cubeIndices[face * 6 + 4] = base_index + 2;
-        cubeIndices[face * 6 + 5] = base_index + 3;
-    }
-
+    double LastShaderUpdateTime = totalTime;
 
     Grass* testGrassBlock = new Grass();
 
@@ -861,21 +973,8 @@ int main(int argc, char* argv[])
             g_running = false;
 
 
-        //RENDERER:
-        glEnable(GL_DEPTH_TEST);
-		glDepthMask(GL_TRUE);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        Rect imageSource = {
-            .botLeft  = { 0 ,  1440 },
-            .topRight = { 16 , 1456 },
-        };
-        Rect screenLocation = {
-            .botLeft  = { -1, -1 },
-            .topRight = {  1,  1 },
-        };
-        testGrassBlock->Render();
-        //Draw2DTexture(*g_renderer.textures[Texture::Minecraft], GetRectFromSprite(0), screenLocation);
+		testGrassBlock->Render();
+        RenderUpdate(deltaTime);
 
         //double renderTotalTime = SDL_GetPerformanceCounter() / freq;
         //std::erase_if(frameTimes, [renderTotalTime](const float& a)
