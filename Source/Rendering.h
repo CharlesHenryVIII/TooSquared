@@ -14,6 +14,13 @@ struct Window {
     bool hasAttention = true;
 };
 
+struct Camera {
+    Vec3 p = { 2, 2, 2 };
+    Vec3 r = {};
+    Mat4 view;
+};
+
+
 enum class ts_MessageBox {
 	Invalid,
 	Error = SDL_MESSAGEBOX_ERROR,
@@ -127,6 +134,11 @@ struct Renderer {
 
 extern Renderer g_renderer;
 extern Window g_window;
+extern Camera g_camera;
+
+struct Block;
 
 int32 CreateMessageWindow(SDL_MessageBoxButtonData* buttons, int32 numOfButtons, ts_MessageBox type, const char* title, const char* message);
 void RenderUpdate(float deltaTime);
+void RenderBlock(Block* block);
+void InitializeVideo();

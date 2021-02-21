@@ -1,9 +1,11 @@
 #include "Rendering.h"
 #include "Misc.h"
 #include "STB/stb_image.h"
+#include "Block.h"
 
 Renderer g_renderer;
 Window g_window;
+Camera g_camera;
 
 const SDL_MessageBoxColorScheme colorScheme = {
 	/* .colors (.r, .g, .b) */
@@ -320,4 +322,215 @@ void RenderUpdate(float deltaTime)
 		s_lastShaderUpdateTime = s_incrimentalTime;
 	}
     s_incrimentalTime += deltaTime;
+}
+
+const uint32 pixelsPerBlock = 16;
+const uint32 blocksPerRow = 16;
+Rect GetRectFromSprite(uint32 i)
+{
+    assert(i <= blocksPerRow * blocksPerRow);
+    i = Clamp<uint32>(i, 0, blocksPerRow);
+    uint32 x = i % blocksPerRow;
+    uint32 y = i / blocksPerRow;
+
+    Rect result = {};
+    result.botLeft.x = static_cast<float>(x * pixelsPerBlock);
+    result.botLeft.y = static_cast<float>(pixelsPerBlock * (blocksPerRow - y - 1));
+    result.topRight.x = result.botLeft.x + pixelsPerBlock;
+    result.topRight.y = result.botLeft.y + pixelsPerBlock;
+    return result;
+}
+
+Vertex cubeVertices[] = {
+    { { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // top right
+    { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // Top Left
+    { { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // bot right
+    { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // -x bottom Left
+
+    { {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
+    { {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
+    { {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
+    { {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } }, // +x
+
+    { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } }, // -y
+    { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
+    { {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
+    { {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
+
+    { { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } }, // +y
+    { { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
+    { {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
+    { {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
+
+    { { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } }, // -z
+    { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
+    { {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
+    { {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
+
+    { { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } }, // z
+    { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
+    { {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
+    { {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
+};
+uint32 cubeIndices[36] = {};
+
+void RenderBlock(Block* block)
+{
+    for (uint32 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
+    {
+        uint32 tileIndex = block->spriteLocation[faceIndex];
+        if (tileIndex == 254)
+            tileIndex = block->defaultSpriteLocation;
+        Rect s = GetRectFromSprite(tileIndex);
+
+        const uint32 size = blocksPerRow * pixelsPerBlock;
+        float iblx = Clamp(s.botLeft.x  / size, 0.0f, 1.0f);
+        float ibly = Clamp(s.botLeft.y  / size, 0.0f, 1.0f);
+        float itrx = Clamp(s.topRight.x / size, 0.0f, 1.0f);
+        float itry = Clamp(s.topRight.y / size, 0.0f, 1.0f);
+
+        cubeVertices[faceIndex * 4 + 0].uv = { iblx, itry }; //Bot Left
+        cubeVertices[faceIndex * 4 + 1].uv = { iblx, ibly }; //Top Left
+        cubeVertices[faceIndex * 4 + 2].uv = { itrx, itry }; //Bot Right
+        cubeVertices[faceIndex * 4 + 3].uv = { itrx, ibly }; //Top Right
+    }
+    block->vertexBuffer.Upload(cubeVertices, arrsize(cubeVertices));
+    block->indexBuffer.Upload(cubeIndices,  arrsize(cubeIndices));
+    g_renderer.textures[Texture::Minecraft]->Bind();
+    g_renderer.programs[+Shader::Simple3D]->UseShader();
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+    glEnableVertexArrayAttrib(g_renderer.vao, 0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+    glEnableVertexArrayAttrib(g_renderer.vao, 1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
+    glEnableVertexArrayAttrib(g_renderer.vao, 2);
+
+    Mat4 perspective;
+    gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.65f, 1000.0f);
+    Mat4 transform;
+    gb_mat4_translate(&transform, block->p);
+
+    ShaderProgram* sp = g_renderer.programs[+Shader::Simple3D];
+    sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
+    sp->UpdateUniformMat4("u_view", 1, false, g_camera.view.e);
+    sp->UpdateUniformMat4("u_model", 1, false, transform.e);
+
+    glDrawElements(GL_TRIANGLES, arrsize(cubeIndices), GL_UNSIGNED_INT, 0);
+}
+
+void OpenGLErrorCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
+                         GLsizei length, const GLchar *message, const void *userParam)
+{
+    std::string _severity;
+    switch (severity) {
+        case GL_DEBUG_SEVERITY_HIGH:
+        _severity = "HIGH";
+        break;
+        case GL_DEBUG_SEVERITY_MEDIUM:
+        _severity = "MEDIUM";
+        break;
+        case GL_DEBUG_SEVERITY_LOW:
+        _severity = "LOW";
+        break;
+        case GL_DEBUG_SEVERITY_NOTIFICATION:
+        _severity = "NOTIFICATION";
+        return;
+        //break;
+        default:
+        _severity = "UNKNOWN";
+        break;
+    }
+
+    DebugPrint("%s severity: %s\n",
+            _severity.c_str(), message);
+    //DebugPrint("%d: %s of %s severity, raised from %s: \n%s\n",
+    //        id, _type.c_str(), _severity.c_str(), _source.c_str(), message);
+    //DebugPrint("vs \n");
+    //DebugPrint("%s\n\n", message);
+
+    AssertOnce(severity != GL_DEBUG_SEVERITY_HIGH);
+}
+
+void InitializeVideo()
+{
+    SDL_Init(SDL_INIT_VIDEO);
+    {
+        SDL_Rect screenSize = {};
+        SDL_GetDisplayBounds(0, &screenSize);
+        float displayRatio = 16 / 9.0f;
+        g_window.size.x = screenSize.w / 2;
+        g_window.size.y = Clamp<int>(int(g_window.size.x / displayRatio), 50, screenSize.h);
+        g_window.pos.x = g_window.size.x / 2;
+        g_window.pos.y = g_window.size.y / 2;
+    }
+
+    uint32 windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI;
+    g_window.SDL_Context = SDL_CreateWindow("TooSquared", g_window.pos.x, g_window.pos.y, g_window.size.x, g_window.size.y, windowFlags);
+    /* Create an OpenGL context associated with the window. */
+
+    {
+        const int32 majorVersionRequest = 4;//3;
+        const int32 minorVersionRequest = 3;//2;
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, majorVersionRequest);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, minorVersionRequest);
+        SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+        g_renderer.GL_Context = SDL_GL_CreateContext(g_window.SDL_Context);
+        SDL_GL_MakeCurrent(g_window.SDL_Context, g_renderer.GL_Context);
+        GLint majorVersionActual = {};
+        GLint minorVersionActual = {};
+        glGetIntegerv(GL_MAJOR_VERSION, &majorVersionActual);
+        glGetIntegerv(GL_MINOR_VERSION, &minorVersionActual);
+
+        if (majorVersionRequest != majorVersionActual && minorVersionRequest != minorVersionActual)
+        {
+            DebugPrint("OpenGL could not set recommended version: %i.%i to %i.%i\n",
+                    majorVersionRequest, minorVersionRequest,
+                    majorVersionActual,  minorVersionActual);
+            FAIL;
+        }
+    }
+
+    /* This makes our buffer swap syncronized with the monitor's vertical refresh */
+    SDL_GL_SetSwapInterval(1);
+    glewExperimental = true;
+    GLenum err = glewInit();
+    if (GLEW_OK != err)
+    {
+        /* Problem: glewInit failed, something is seriously wrong. */
+        DebugPrint("Error: %s\n", glewGetErrorString(err));
+    }
+    DebugPrint("Status: Using GLEW %s\n", glewGetString(GLEW_VERSION));
+
+	stbi_set_flip_vertically_on_load(true);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glClearColor(1.0f, 0.0f, 1.0f, 0.0f);
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_DEBUG_OUTPUT);
+    glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+    glDebugMessageCallback(OpenGLErrorCallback, NULL);
+    //glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, GL_FALSE);
+
+	static_assert(arrsize(cubeVertices) == 24, "");
+
+	glGenVertexArrays(1, &g_renderer.vao);
+	glBindVertexArray(g_renderer.vao);
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+
+	g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png");
+	g_renderer.programs[+Shader::Simple3D] = new ShaderProgram("Source/Shaders/3D.vert", "Source/Shaders/3D.frag");
+
+	for (int face = 0; face < 6; ++face)
+	{
+		int base_index = face * 4;
+		cubeIndices[face * 6 + 0] = base_index + 0;
+		cubeIndices[face * 6 + 1] = base_index + 1;
+		cubeIndices[face * 6 + 2] = base_index + 2;
+		cubeIndices[face * 6 + 3] = base_index + 1;
+		cubeIndices[face * 6 + 4] = base_index + 2;
+		cubeIndices[face * 6 + 5] = base_index + 3;
+	}
 }
