@@ -1,7 +1,6 @@
 #define GB_MATH_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
 //#define _DEBUGPRINT
-//#define _2DRENDERING
 #include "SDL/include/SDL.h"
 #include "Math.h"
 #include "glew.h"
@@ -11,12 +10,6 @@
 
 #include <Windows.h>
 #include <unordered_map>
-
-struct Window {
-    Vec2Int size = {};
-    Vec2Int pos = {};
-    SDL_Window* SDL_Context = nullptr;
-}g_window;
 
 struct Key {
 	bool down;
@@ -32,31 +25,7 @@ struct Mouse {
 
 Vec3 cameraPosition = { 2, 2, 2 };
 
-
-
-#ifdef _2DRENDERING
-class VertexBuffer2 : public GpuBuffer
-{
-public:
-    VertexBuffer2()
-        : GpuBuffer(GL_ARRAY_BUFFER)
-    { }
-
-    void Upload(Vert2d* vertices, size_t count)
-    {
-        UploadData(vertices, sizeof(vertices[0]) * count);
-    }
-};
-#endif
-
-#ifdef _2DRENDERING
-uint32 squareIndexes[] = {
-	0,1,2,1,2,3,
-};
-#endif
 uint32 cubeIndices[36] = {};
-
-
 
 enum class BlockType : uint32 {
     Invalid,
@@ -112,39 +81,36 @@ Rect GetRectFromSprite(uint32 i)
     return result;
 }
 
-float p = 1.0f;
-float tf = 1.0f;
-float te = 0.0f;
 Vertex cubeVertices[] = {
-    { { -p,  p, -p }, { tf, te }, { -1.0f, 0.0f, 0.0f } }, // top right
-    { { -p, -p, -p }, { te, te }, { -1.0f, 0.0f, 0.0f } }, // Top Left
-    { { -p,  p,  p }, { tf, tf }, { -1.0f, 0.0f, 0.0f } }, // bot right
-    { { -p, -p,  p }, { te, tf }, { -1.0f, 0.0f, 0.0f } }, // -x bottom Left
+    { { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // top right
+    { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // Top Left
+    { { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // bot right
+    { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // -x bottom Left
 
-    { {  p,  p, -p }, { tf, te }, {  1.0f, 0.0f, 0.0f } },
-    { {  p, -p, -p }, { te, te }, {  1.0f, 0.0f, 0.0f } },
-    { {  p,  p,  p }, { tf, tf }, {  1.0f, 0.0f, 0.0f } },
-    { {  p, -p,  p }, { te, tf }, {  1.0f, 0.0f, 0.0f } }, // +x
+    { {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
+    { {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
+    { {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
+    { {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } }, // +x
 
-    { { -p, -p,  p }, { te, tf }, { 0.0f, -1.0f, 0.0f } }, // -y
-    { { -p, -p, -p }, { te, te }, { 0.0f, -1.0f, 0.0f } },
-    { {  p, -p,  p }, { tf, tf }, { 0.0f, -1.0f, 0.0f } },
-    { {  p, -p, -p }, { tf, te }, { 0.0f, -1.0f, 0.0f } },
+    { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } }, // -y
+    { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
+    { {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
+    { {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
 
-    { { -p,  p,  p }, { te, tf }, { 0.0f,  1.0f, 0.0f } }, // +y
-    { { -p,  p, -p }, { te, te }, { 0.0f,  1.0f, 0.0f } },
-    { {  p,  p,  p }, { tf, tf }, { 0.0f,  1.0f, 0.0f } },
-    { {  p,  p, -p }, { tf, te }, { 0.0f,  1.0f, 0.0f } },
+    { { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } }, // +y
+    { { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
+    { {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
+    { {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
 
-    { { -p,  p, -p }, { te, tf }, { 0.0f, 0.0f, -1.0f } }, // -z
-    { { -p, -p, -p }, { te, te }, { 0.0f, 0.0f, -1.0f } },
-    { {  p,  p, -p }, { tf, tf }, { 0.0f, 0.0f, -1.0f } },
-    { {  p, -p, -p }, { tf, te }, { 0.0f, 0.0f, -1.0f } },
+    { { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } }, // -z
+    { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
+    { {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
+    { {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
 
-    { { -p,  p,  p }, { te, tf }, { 0.0f, 0.0f,  1.0f } }, // z
-    { { -p, -p,  p }, { te, te }, { 0.0f, 0.0f,  1.0f } },
-    { {  p,  p,  p }, { tf, tf }, { 0.0f, 0.0f,  1.0f } },
-    { {  p, -p,  p }, { tf, te }, { 0.0f, 0.0f,  1.0f } },
+    { { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } }, // z
+    { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
+    { {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
+    { {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
 };
 
 struct Block {
@@ -195,12 +161,12 @@ struct Block {
 		Vec3 a = { 1.0f, 1.0f, 1.0f };
 		gb_mat4_look_at(&view, cameraPosition + a, cameraPosition, { 0,1,0 });
         gbMat4 transform;
-		gb_mat4_identity(&transform);
+        gb_mat4_translate(&transform, p);
 
-        ShaderProgram* p = g_renderer.programs[+Shader::Simple3D];
-        p->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
-        p->UpdateUniformMat4("u_view", 1, false, view.e);
-        p->UpdateUniformMat4("u_model", 1, false, transform.e);
+        ShaderProgram* sp = g_renderer.programs[+Shader::Simple3D];
+        sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
+        sp->UpdateUniformMat4("u_view", 1, false, view.e);
+        sp->UpdateUniformMat4("u_model", 1, false, transform.e);
 
 		glDrawElements(GL_TRIANGLES, arrsize(cubeIndices), GL_UNSIGNED_INT, 0);
 	}
@@ -215,48 +181,6 @@ struct Grass : public Block {
         spriteLocation[+Face::Bot] = 2;
     }
 };
-
-
-
-
-const char* pix3DShaderText = R"term(
-)term";
-
-#ifdef _2DRENDERING
-const char* vertexShaderText = R"term(
-#version 330 core
-layout(location = 0) in vec3 v_position;
-layout(location = 1) in vec2 v_uv;
-
-out vec2 p_uv;
-out vec3 p_normal;
-
-void main()
-{
-    p_uv = v_uv;
-    gl_Position = vec4(v_position, 1.0);
-    //p_normal = vec3(0,0,0);
-}
-)term";
-
-const char* pixelShaderText = R"term(
-#version 330 core
-uniform sampler2D sampler;
-
-in vec2 p_uv;
-in vec3 p_normal;
-
-out vec4 color;
-
-void main()
-{
-
-    color = texture(sampler, p_uv);
-
-}
-)term";
-#endif
-
 
 void OpenGLErrorCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
                          GLsizei length, const GLchar *message, const void *userParam)
@@ -359,16 +283,7 @@ void InitializeVideo()
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_TRUE);
 
-
-#ifdef _2DRENDERING
-	//g_renderer.squareIndexBuffer = new IndexBuffer();
-	//g_renderer.squareIndexBuffer->Upload(squareIndexes, arrsize(squareIndexes));
-#endif
-
 	g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png");
-#ifdef _2DRENDERING
-	//g_renderer.programs[+Shader::Simple2D] = new ShaderProgram(vertexShaderText, pixelShaderText);
-#endif
 	g_renderer.programs[+Shader::Simple3D] = new ShaderProgram("Source/Shaders/3D.vert", "Source/Shaders/3D.frag");
 
 	for (int face = 0; face < 6; ++face)
@@ -383,63 +298,6 @@ void InitializeVideo()
 	}
 }
 
-#ifdef _2DRENDERING
-void Draw2DTexture(Texture t, Rect s, Rect d)
-{
-	glDepthMask(GL_FALSE);
-	float iblx = Clamp(s.botLeft.x  / t.size.x, 0.0f, 1.0f);
-	float ibly = Clamp(s.botLeft.y  / t.size.y, 0.0f, 1.0f);
-	float itrx = Clamp(s.topRight.x / t.size.x, 0.0f, 1.0f);
-	float itry = Clamp(s.topRight.y / t.size.y, 0.0f, 1.0f);
-
-    float dblx = Clamp(d.botLeft.x,  -1.0f, 1.0f);
-    float dbly = Clamp(d.botLeft.y,  -1.0f, 1.0f);
-    float dtrx = Clamp(d.topRight.x, -1.0f, 1.0f);
-    float dtry = Clamp(d.topRight.y, -1.0f, 1.0f);
-
-    Vert3d vertices[] = {
-        { { dblx, dbly, 0}, { iblx, ibly }, {} }, //bot left
-        { { dblx, dtry, 0}, { iblx, itry }, {} }, //top left
-        { { dtrx, dbly, 0}, { itrx, ibly }, {} }, //bot right
-        { { dtrx, dtry, 0}, { itrx, itry }, {} }, //top right
-    };
-    //NOTE: Just for reference if the vertices are messed up:
-    //Vertex vertices[] = {
-    //	{ -1, -1, 0, 0.0f, 0.0f },
-    //	{ -1,  1, 0, 0.0f, 1.0f },
-    //	{  1, -1, 0, 1.0f, 0.0f },
-    //	{  1,  1, 0, 1.0f, 1.0f },
-    //};
-
-    VertexBuffer3 vertexBuffer;
-    vertexBuffer.Upload(vertices, sizeof(vertices));
-    vertexBuffer.Bind();
-
-    //GLint size = 0;
-    //glGetBufferParameteriv(GL_ARRAY_BUFFER, GL_BUFFER_SIZE, &size);
-    //if (size != sizeof(vertices))
-    //{
-    //    DebugPrint("ERROR");
-    //    FAIL;
-    //}
-    //glUseProgram(g_renderer.programs[+program]);
-
-
-    g_renderer.squareIndexBuffer->Bind();
-    //glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, g_renderer.squareIndexBuffer);
-    glBindTexture(GL_TEXTURE_2D, t.gl_handle);
-
-    g_renderer.programs[+Shader::Simple2D]->UseShader();
-    //glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    //glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vert2d), (void*)offsetof(Vert2d, x));
-    //glEnableVertexArrayAttrib(g_renderer.vao, 1);
-    //glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vert2d), (void*)offsetof(Vert2d, u));
-    //glDisableVertexArrayAttrib(g_renderer.vao, 2);
-
-    glDrawElements(GL_TRIANGLES, sizeof(squareIndexes) / sizeof(uint32), GL_UNSIGNED_INT, 0);
-}
-#endif
-
 int main(int argc, char* argv[])
 {
     std::unordered_map<int32, Key> keyStates;
@@ -451,7 +309,23 @@ int main(int argc, char* argv[])
 	double previousTime = totalTime;
     double LastShaderUpdateTime = totalTime;
 
-    Grass* testGrassBlock = new Grass();
+    std::vector<Grass*> grassBlockList;
+    for (float z = -5; z < 6; z++)
+    {
+        for (float x = -5; x < 6; x++)
+        {
+            Grass* temp = new Grass();
+            temp->p = { x, 0.0f, z };
+            grassBlockList.push_back(temp);
+        }
+    }
+
+    //Grass* testGrassBlock1 = new Grass();
+    //testGrassBlock1->p = { 0, 0, 0 };
+    //grassBlockList.push_back(testGrassBlock1);
+    //Grass* testGrassBlock2 = new Grass();
+    //testGrassBlock2->p = { 1.0f, 0, 0 };
+    //grassBlockList.push_back(testGrassBlock2);
 
     while (g_running)
     {
@@ -571,7 +445,11 @@ int main(int argc, char* argv[])
 
 
         RenderUpdate(deltaTime);
-		testGrassBlock->Render();
+        for (Grass* g : grassBlockList)
+        {
+            if (g)
+                g->Render();
+        }
 
         //double renderTotalTime = SDL_GetPerformanceCounter() / freq;
         //std::erase_if(frameTimes, [renderTotalTime](const float& a)

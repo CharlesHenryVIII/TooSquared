@@ -3,6 +3,7 @@
 #include "STB/stb_image.h"
 
 Renderer g_renderer;
+Window g_window;
 
 const SDL_MessageBoxColorScheme colorScheme = {
 	/* .colors (.r, .g, .b) */
@@ -320,4 +321,3 @@ void RenderUpdate(float deltaTime)
 	}
     s_incrimentalTime += deltaTime;
 }
-

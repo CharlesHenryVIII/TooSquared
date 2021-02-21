@@ -7,6 +7,12 @@
 #include <string>
 #include <Windows.h>
 
+struct Window {
+    Vec2Int size = {};
+    Vec2Int pos = {};
+    SDL_Window* SDL_Context = nullptr;
+};
+
 enum class ts_MessageBox {
 	Invalid,
 	Error = SDL_MESSAGEBOX_ERROR,
@@ -117,7 +123,9 @@ struct Renderer {
     IndexBuffer* squareIndexBuffer = nullptr;
     GLuint vao;
 };
+
 extern Renderer g_renderer;
+extern Window g_window;
 
 int32 CreateMessageWindow(SDL_MessageBoxButtonData* buttons, int32 numOfButtons, ts_MessageBox type, const char* title, const char* message);
 void RenderUpdate(float deltaTime);
