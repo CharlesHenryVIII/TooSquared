@@ -64,5 +64,50 @@ public:
     void UpdateUniformMat4(const char* name, GLsizei count, GLboolean transpose, const GLfloat* value);
 };
 
+class GpuBuffer
+{
+    GLuint m_target;
+    size_t m_allocated_size;
+    GLuint m_handle;
+
+    GpuBuffer(const GpuBuffer& rhs) = delete;
+    GpuBuffer& operator=(const GpuBuffer& rhs) = delete;
+
+protected:
+    GpuBuffer(GLuint target)
+        : m_target(target)
+        , m_allocated_size(0)
+	{
+		glGenBuffers(1, &m_handle);
+#ifdef _DEBUGPRINT
+		DebugPrint("GPU Buffer Created %i\n", m_target);
+#endif
+	}
+	void UploadData(void* data, size_t size);
+
+public:
+    virtual ~GpuBuffer();
+    void Bind();
+    GLuint GetGLHandle();
+};
+
+class IndexBuffer : public GpuBuffer
+{
+public:
+
+	IndexBuffer()
+		: GpuBuffer(GL_ELEMENT_ARRAY_BUFFER)
+	{ }
+    void Upload(uint32* indices, size_t count);
+};
+
+class VertexBuffer : public GpuBuffer
+{
+public:
+	VertexBuffer()
+		: GpuBuffer(GL_ARRAY_BUFFER)
+	{ }
+    void Upload(Vertex* vertices, size_t count);
+};
 
 int32 CreateMessageWindow(SDL_MessageBoxButtonData* buttons, int32 numOfButtons, ts_MessageBox type, const char* title, const char* message);

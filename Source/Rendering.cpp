@@ -252,3 +252,52 @@ void ShaderProgram::UpdateUniformMat4(const char* name, GLsizei count, GLboolean
 	DebugPrint("Shader Uniform Updated %s\n", name);
 #endif
 }
+
+void GpuBuffer::UploadData(void* data, size_t size)
+{
+	Bind();
+	size_t required_size = size;
+	if (m_allocated_size < required_size)
+	{
+		glBufferData(m_target, required_size, nullptr, GL_STATIC_DRAW);
+		m_allocated_size = required_size;
+	}
+	glBufferSubData(m_target, 0, required_size, data);
+}
+
+GpuBuffer::~GpuBuffer()
+{
+	glDeleteBuffers(1, &m_handle);
+#ifdef _DEBUGPRINT
+	DebugPrint("GPU Buffer deleted %i, %i\n", m_target, m_handle);
+#endif
+}
+
+void GpuBuffer::Bind()
+{
+	glBindBuffer(m_target, m_handle);
+#ifdef _DEBUGPRINT
+	DebugPrint("GPU Buffer Bound %i, %i\n", m_target, m_handle);
+#endif
+}
+
+GLuint GpuBuffer::GetGLHandle()
+{
+	return m_handle;
+}
+
+void IndexBuffer::Upload(uint32* indices, size_t count)
+{
+	UploadData(indices, sizeof(indices[0]) * count);
+#ifdef _DEBUGPRINT
+	DebugPrint("Index Buffer Upload,size %i\n", count);
+#endif
+}
+
+void VertexBuffer::Upload(Vertex* vertices, size_t count)
+{
+	UploadData(vertices, sizeof(vertices[0]) * count);
+#ifdef _DEBUGPRINT
+	DebugPrint("Vertex Buffer Upload,size %i\n", count);
+#endif
+}
