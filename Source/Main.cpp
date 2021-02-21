@@ -1,17 +1,16 @@
-#include "SDL/include/SDL.h"
 #define GB_MATH_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+//#define _DEBUGPRINT
+//#define _2DRENDERING
+#include "SDL/include/SDL.h"
 #include "Math.h"
 #include "glew.h"
-#define STB_IMAGE_IMPLEMENTATION
 #include "STB/stb_image.h"
 #include "Misc.h"
 #include "Rendering.h"
 
 #include <Windows.h>
 #include <unordered_map>
-#include <type_traits>
-
-bool g_running = true;
 
 struct Window {
     Vec2Int size = {};
@@ -33,70 +32,14 @@ struct Mouse {
 
 Vec3 cameraPosition = { 2, 2, 2 };
 
-//#define _DEBUGPRINT
-//#define _2DRENDERING
-enum class Shader : uint32 {
-    Invalid,
-    Simple2D,
-    Simple3D,
-    Count,
-};
-ENUMOPS(Shader);
-
-
-class Texture {
-public:
-    enum T : uint32 {
-        Invalid,
-        Minecraft,
-        Test,
-        Count,
-    };
-    ENUMOPS(T);
-
-    Vec2Int size = {};
-    int32 n = 0;//bytes per pixel
-    uint8* data = {};
-    GLuint gl_handle = {};
-
-	Texture(const char* fileLocation)
-	{
-		data = stbi_load(fileLocation, &size.x, &size.y, &n, STBI_rgb_alpha);
-
-		glGenTextures(1, &gl_handle);
-        Bind();
-		glBindTexture(GL_TEXTURE_2D, gl_handle);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-#ifdef _DEBUGPRINT
-        DebugPrint("Texture Created\n");
-#endif // _DEBUGPRINT
-
-	}
-
-    inline void Bind()
-    {
-        glBindTexture(GL_TEXTURE_2D, gl_handle);
-#ifdef _DEBUGPRINT
-        DebugPrint("Texture Bound\n");
-#endif
-    }
-};
-
 
 class ShaderProgram
 {
-    //TODO: Hold file handles/names
     GLuint m_handle = 0;
     std::string m_vertexFile;
     std::string m_pixelFile;
 	FILETIME m_vertexLastWriteTime = {};
 	FILETIME m_pixelLastWriteTime = {};
-    //HANDLE m_vertexFileHandle;
-    //HANDLE m_vertexFileHandle;
 
     ShaderProgram(const ShaderProgram& rhs) = delete;
     ShaderProgram& operator=(const ShaderProgram& rhs) = delete;

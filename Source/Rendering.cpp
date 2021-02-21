@@ -1,5 +1,6 @@
 #include "Rendering.h"
 #include "Misc.h"
+#include "STB/stb_image.h"
 
 
 const SDL_MessageBoxColorScheme colorScheme = {
@@ -41,3 +42,28 @@ int32 CreateMessageWindow(SDL_MessageBoxButtonData* buttons, int32 numOfButtons,
 	return buttonID;
 }
 
+Texture::Texture(const char* fileLocation)
+{
+	data = stbi_load(fileLocation, &size.x, &size.y, &n, STBI_rgb_alpha);
+
+	glGenTextures(1, &gl_handle);
+	Bind();
+	glBindTexture(GL_TEXTURE_2D, gl_handle);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+#ifdef _DEBUGPRINT
+	DebugPrint("Texture Created\n");
+#endif
+
+}
+
+inline void Texture::Bind()
+{
+	glBindTexture(GL_TEXTURE_2D, gl_handle);
+#ifdef _DEBUGPRINT
+	DebugPrint("Texture Bound\n");
+#endif
+}

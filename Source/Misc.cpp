@@ -12,3 +12,5 @@ void DebugPrint(const char* fmt, ...)
     OutputDebugStringA(buffer);
     va_end(list);
 }
+
+bool g_running = true;
