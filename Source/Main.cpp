@@ -1,4 +1,5 @@
 #include "SDL/include/SDL.h"
+#define GB_MATH_IMPLEMENTATION
 #include "Math.h"
 #include "glew.h"
 #define STB_IMAGE_IMPLEMENTATION
@@ -18,6 +19,20 @@ struct Window {
     SDL_Window* SDL_Context = nullptr;
 }g_window;
 
+struct Key {
+	bool down;
+	bool downPrevFrame;
+	bool downThisFrame;
+	bool upThisFrame;
+};
+
+struct Mouse {
+	Vec2Int pos;
+	Vec2Int wheel; //Y for vertical rotations, X for Horizontal rotations/movement
+}g_mouse;
+
+Vec3 cameraPosition = { 2, 2, 2 };
+
 //#define _DEBUGPRINT
 //#define _2DRENDERING
 enum class Shader : uint32 {
@@ -28,16 +43,6 @@ enum class Shader : uint32 {
 };
 ENUMOPS(Shader);
 
-
-void DebugPrint(const char* fmt, ...)
-{
-    va_list list;
-    va_start(list, fmt);
-    char buffer[4096];
-    vsnprintf(buffer, sizeof(buffer), fmt, list);
-    OutputDebugStringA(buffer);
-    va_end(list);
-}
 
 class Texture {
 public:
@@ -284,18 +289,6 @@ public:
 
 };
 
-//Usage code:
-//
-//g_renderer.shaders[+Shader::Simple3D] = new ShaderProgram("","");
-//
-//if (time > 100ms)
-//  for (ShaderProgram s : g_renderer.shaders)
-//      {
-//          s.CheckShaderForUpdates();
-//      }
-//
-//
-
 class GpuBuffer
 {
     GLuint m_target;
@@ -414,19 +407,6 @@ uint32 squareIndexes[] = {
 #endif
 uint32 cubeIndices[36] = {};
 
-struct Key {
-	bool down;
-	bool downPrevFrame;
-	bool downThisFrame;
-	bool upThisFrame;
-};
-
-struct Mouse {
-	Vec2Int pos;
-	Vec2Int wheel; //Y for vertical rotations, X for Horizontal rotations/movement
-}g_mouse;
-
-Vec3 cameraPosition = { 2, 2, 2 };
 
 
 enum class BlockType : uint32 {
@@ -973,8 +953,8 @@ int main(int argc, char* argv[])
             g_running = false;
 
 
-		testGrassBlock->Render();
         RenderUpdate(deltaTime);
+		testGrassBlock->Render();
 
         //double renderTotalTime = SDL_GetPerformanceCounter() / freq;
         //std::erase_if(frameTimes, [renderTotalTime](const float& a)

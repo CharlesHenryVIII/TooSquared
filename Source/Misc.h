@@ -18,3 +18,5 @@ do {                                            \
         assert(!#__cond);                       \
     }                                           \
 } while(0)
+
+void DebugPrint(const char* fmt, ...);
