@@ -505,20 +505,22 @@ void InitializeVideo()
 	stbi_set_flip_vertically_on_load(true);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glClearColor(1.0f, 0.0f, 1.0f, 0.0f);
+    //glClearColor(1.0f, 0.0f, 1.0f, 0.0f);
+    glClearColor(0.263f, 0.706f, 0.965f, 0.0f);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_DEBUG_OUTPUT);
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallback(OpenGLErrorCallback, NULL);
     //glDebugMessageControl(GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, GL_DONT_CARE, GL_FALSE);
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_TRUE);
+	glEnable(GL_CULL_FACE);
 
 	static_assert(arrsize(cubeVertices) == 24, "");
 
 	glGenVertexArrays(1, &g_renderer.vao);
 	glBindVertexArray(g_renderer.vao);
 
-	glEnable(GL_DEPTH_TEST);
-	glDepthMask(GL_TRUE);
 
 	g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png");
 	g_renderer.programs[+Shader::Simple3D] = new ShaderProgram("Source/Shaders/3D.vert", "Source/Shaders/3D.frag");
@@ -526,11 +528,25 @@ void InitializeVideo()
 	for (int face = 0; face < 6; ++face)
 	{
 		int base_index = face * 4;
-		cubeIndices[face * 6 + 0] = base_index + 0;
-		cubeIndices[face * 6 + 1] = base_index + 1;
-		cubeIndices[face * 6 + 2] = base_index + 2;
-		cubeIndices[face * 6 + 3] = base_index + 1;
-		cubeIndices[face * 6 + 4] = base_index + 2;
-		cubeIndices[face * 6 + 5] = base_index + 3;
+		//NOTE: This is to fix culling issues where winding order 
+		//is reversed on some of these vertices
+		if (face == 0 || face == 2 || face == 5)
+		{
+			cubeIndices[face * 6 + 0] = base_index + 0;
+			cubeIndices[face * 6 + 1] = base_index + 1;
+			cubeIndices[face * 6 + 2] = base_index + 2;
+			cubeIndices[face * 6 + 3] = base_index + 1;
+			cubeIndices[face * 6 + 4] = base_index + 3;
+			cubeIndices[face * 6 + 5] = base_index + 2;
+		}
+		else
+		{
+			cubeIndices[face * 6 + 0] = base_index + 0;
+			cubeIndices[face * 6 + 1] = base_index + 2;
+			cubeIndices[face * 6 + 2] = base_index + 1;
+			cubeIndices[face * 6 + 3] = base_index + 1;
+			cubeIndices[face * 6 + 4] = base_index + 2;
+			cubeIndices[face * 6 + 5] = base_index + 3;
+		}
 	}
 }
