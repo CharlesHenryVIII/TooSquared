@@ -1,5 +1,6 @@
 #pragma once
 #include <type_traits>
+#include <string>
 
 #define FAIL assert(false);
 #define arrsize(arr__) (sizeof(arr__) / sizeof(arr__[0]))
@@ -21,5 +22,6 @@ do {                                            \
 } while(0)
 
 void DebugPrint(const char* fmt, ...);
+std::string ToString(const char* fmt, ...);
 
 extern bool g_running;

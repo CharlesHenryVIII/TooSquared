@@ -6,6 +6,7 @@
 Renderer g_renderer;
 Window g_window;
 Camera g_camera;
+Vec3 g_light;
 
 const SDL_MessageBoxColorScheme colorScheme = {
 	/* .colors (.r, .g, .b) */
@@ -72,7 +73,7 @@ inline void Texture::Bind()
 #endif
 }
 
-bool ShaderProgram::CompileShader(GLuint handle, const char* text)
+bool ShaderProgram::CompileShader(GLuint handle, const char* name, const char* text)
 {
 	glShaderSource(handle, 1, &text, NULL);
 	glCompileShader(handle);
@@ -93,7 +94,7 @@ bool ShaderProgram::CompileShader(GLuint handle, const char* text)
 			{ SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 1, "Stop" },
 		};
 
-		int32 buttonID = CreateMessageWindow(buttons, arrsize(buttons), ts_MessageBox::Error, "Shader Compilation Error", reinterpret_cast<char*>(info));
+		int32 buttonID = CreateMessageWindow(buttons, arrsize(buttons), ts_MessageBox::Error, name, reinterpret_cast<char*>(info));
 		if (buttons[buttonID].buttonid == 2)//NOTE: Stop button
 		{
 			DebugPrint("stop hit");
@@ -185,8 +186,8 @@ void ShaderProgram::CheckForUpdate()
 		GLuint vhandle = glCreateShader(GL_VERTEX_SHADER);
 		GLuint phandle = glCreateShader(GL_FRAGMENT_SHADER);
 		//Compile shaders and link to program
-		if (!CompileShader(vhandle, reinterpret_cast<char*>(vertexBufferText)) ||
-			!CompileShader(phandle, reinterpret_cast<char*>(pixelBufferText)))
+		if (!CompileShader(vhandle, "Vertex Shader", reinterpret_cast<char*>(vertexBufferText)) ||
+			!CompileShader(phandle, "Pixel Shader", reinterpret_cast<char*>(pixelBufferText)))
 			return;
 
 
@@ -252,6 +253,24 @@ void ShaderProgram::UpdateUniformMat4(const char* name, GLsizei count, GLboolean
 {
 	GLint loc = glGetUniformLocation(m_handle, name);
 	glUniformMatrix4fv(loc, count, transpose, value);
+#ifdef _DEBUGPRINT
+	DebugPrint("Shader Uniform Updated %s\n", name);
+#endif
+}
+
+void ShaderProgram::UpdateUniformVec4(const char* name, GLsizei count, const GLfloat* value)
+{
+	GLint loc = glGetUniformLocation(m_handle, name);
+	glUniform4fv(loc, count, value);
+#ifdef _DEBUGPRINT
+	DebugPrint("Shader Uniform Updated %s\n", name);
+#endif
+}
+
+void ShaderProgram::UpdateUniformVec3(const char* name, GLsizei count, const GLfloat* value)
+{
+	GLint loc = glGetUniformLocation(m_handle, name);
+	glUniform3fv(loc, count, value);
 #ifdef _DEBUGPRINT
 	DebugPrint("Shader Uniform Updated %s\n", name);
 #endif
@@ -416,6 +435,8 @@ void RenderBlock(Block* block)
     sp->UpdateUniformMat4("u_view", 1, false, g_camera.view.e);
     sp->UpdateUniformMat4("u_model", 1, false, transform.e);
 
+	sp->UpdateUniformVec3("lightColor", 1, g_light.e);
+
     glDrawElements(GL_TRIANGLES, arrsize(cubeIndices), GL_UNSIGNED_INT, 0);
 }
 
@@ -549,4 +570,5 @@ void InitializeVideo()
 			cubeIndices[face * 6 + 5] = base_index + 3;
 		}
 	}
+	g_light = { 1.0f, 1.0f, 1.0f };
 }

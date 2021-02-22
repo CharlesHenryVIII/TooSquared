@@ -6,6 +6,8 @@
 
 #include <string>
 #include <Windows.h>
+//TODO: Create a union with a uint64 and FILETIME and
+//get rid of the Windows.h dependency in the header
 
 struct Window {
     Vec2Int size = {};
@@ -14,11 +16,22 @@ struct Window {
     bool hasAttention = true;
 };
 
+#ifdef CAMERA
+struct Camera {
+    Vec3 p      = { 0.0f, 3.0f, 3.0f };
+    Vec3 front  = { 0.0f, 0.0f, -1.0f };
+    Vec3 up     = { 0.0f, 1.0f, 0.0f };
+    Mat4 view;
+    float yaw   = -90.0f;
+    float pitch = 0.0f;
+};
+#else
 struct Camera {
     Vec3 p = { 2, 2, 2 };
     Vec3 r = {};
     Mat4 view;
 };
+#endif
 
 
 enum class ts_MessageBox {
@@ -31,7 +44,6 @@ enum class ts_MessageBox {
 
 enum class Shader : uint32 {
     Invalid,
-    Simple2D,
     Simple3D,
     Count,
 };
@@ -67,7 +79,7 @@ class ShaderProgram
     ShaderProgram(const ShaderProgram& rhs) = delete;
     ShaderProgram& operator=(const ShaderProgram& rhs) = delete;
 
-    bool CompileShader(GLuint handle, const char* text);
+    bool CompileShader(GLuint handle, const char* name, const char* text);
 
 public:
     ShaderProgram(const std::string& vertexFileLocation, const std::string& pixelFileLocation);
@@ -76,6 +88,8 @@ public:
     void CheckForUpdate();
     void UseShader();
     void UpdateUniformMat4(const char* name, GLsizei count, GLboolean transpose, const GLfloat* value);
+    void UpdateUniformVec4(const char* name, GLsizei count, const GLfloat* value);
+    void UpdateUniformVec3(const char* name, GLsizei count, const GLfloat* value);
 };
 
 class GpuBuffer
@@ -135,6 +149,7 @@ struct Renderer {
 extern Renderer g_renderer;
 extern Window g_window;
 extern Camera g_camera;
+extern Vec3 g_light;
 
 struct Block;
 

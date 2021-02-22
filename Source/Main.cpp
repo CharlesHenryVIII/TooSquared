@@ -9,7 +9,6 @@
 #include "Rendering.h"
 #include "Block.h"
 
-#include <Windows.h>
 #include <unordered_map>
 
 struct Key {
@@ -21,7 +20,7 @@ struct Key {
 
 struct Mouse {
 	Vec2Int pos = {};
-    Vec2Int pDelta = {};
+    Vec2 pDelta = {};
 	Vec2Int wheel = {}; //Y for vertical rotations, X for Horizontal rotations/movement
 }g_mouse;
 
@@ -114,9 +113,9 @@ int main(int argc, char* argv[])
 			{
 				if (g_window.hasAttention)
 				{
-					g_mouse.pDelta.x = SDLEvent.motion.x - g_mouse.pos.x;
+					g_mouse.pDelta.x = static_cast<float>(SDLEvent.motion.x) - g_mouse.pos.x;
 					g_mouse.pos.x = SDLEvent.motion.x;
-					g_mouse.pDelta.y = SDLEvent.motion.y - g_mouse.pos.y;
+					g_mouse.pDelta.y = static_cast<float>(SDLEvent.motion.y) - g_mouse.pos.y;// reversed since y-coordinates go from bottom to top
 					g_mouse.pos.y = SDLEvent.motion.y;
 				}
 				break;
@@ -207,6 +206,47 @@ int main(int argc, char* argv[])
         if (keyStates[SDLK_BACKQUOTE].down)
             g_running = false;
 
+#ifdef CAMERA
+
+
+		float cameraSpeed = 3.0f * deltaTime;
+        if (keyStates[SDLK_LSHIFT].down)
+            cameraSpeed *= 3;
+		if (keyStates[SDLK_w].down)
+			g_camera.p += cameraSpeed * g_camera.front;
+		if (keyStates[SDLK_s].down)
+			g_camera.p -= cameraSpeed * g_camera.front;
+		if (keyStates[SDLK_a].down)
+			g_camera.p -= Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed;
+		if (keyStates[SDLK_d].down)
+			g_camera.p += Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed;
+		if (keyStates[SDLK_LCTRL].down)
+			g_camera.p.y -= cameraSpeed;
+		if (keyStates[SDLK_SPACE].down)
+			g_camera.p.y += cameraSpeed;
+
+		float sensitivity = 0.3f; // change this value to your liking
+		g_mouse.pDelta *= sensitivity;
+
+
+		if (keyStates[SDL_BUTTON_LEFT].down)
+		{
+			g_camera.yaw += g_mouse.pDelta.x;
+			g_camera.pitch -= g_mouse.pDelta.y;
+		}
+
+		// make sure that when pitch is out of bounds, screen doesn't get flipped
+		Clamp<float>(g_camera.pitch, -89.0f, 89.0f);
+
+		Vec3 front = {};
+		front.x = cos(DegToRad(g_camera.yaw)) * cos(DegToRad(g_camera.pitch));
+		front.y = sin(DegToRad(g_camera.pitch));
+		front.z = sin(DegToRad(g_camera.yaw)) * cos(DegToRad(g_camera.pitch));
+		g_camera.front = Normalize(front);
+
+		gb_mat4_look_at(&g_camera.view, g_camera.p, g_camera.p + g_camera.front, g_camera.up);
+
+#else
         float cameraMovement = 0.5f;
         if (keyStates[SDLK_LSHIFT].down)
             cameraMovement = 4.0f;
@@ -251,7 +291,7 @@ int main(int argc, char* argv[])
 
 		gb_mat4_translate(&pos, cameraDelta);
 		g_camera.view = xRot * yRot * zRot * pos * g_camera.view;
-
+#endif
 
         RenderUpdate(deltaTime);
         for (Grass* g : grassBlockList)

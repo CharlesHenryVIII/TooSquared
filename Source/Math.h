@@ -75,6 +75,17 @@ struct Vertex {
 struct Rect {
     Vec2 botLeft = {};
     Vec2 topRight = {};
+
+    float Width()
+    {
+        return topRight.x - botLeft.x;
+    }
+
+    float Height()
+    {
+        return topRight.y - botLeft.y;
+    }
+
 };
 
 template<typename T>
@@ -103,29 +114,19 @@ typedef union Vec2Int {
 }Vec2Int;
 
 
-struct Rectangle {
-    Vec2 botLeft;
-    Vec2 topRight;
-
-    float Width()
-    {
-        return topRight.x - botLeft.x;
-    }
-
-    float Height()
-    {
-        return topRight.y - botLeft.y;
-    }
-
-    bool Collision(Vec2Int loc)
-    {
-        bool result = false;
-        if (loc.y > botLeft.x && loc.y < topRight.x)
-            if (loc.x > botLeft.x && loc.x < topRight.x)
-                result = true;
-        return result;
-    }
-};
+//struct Rectangle {
+//    Vec2 botLeft;
+//    Vec2 topRight;
+//
+//    bool Collision(Vec2Int loc)
+//    {
+//        bool result = false;
+//        if (loc.y > botLeft.x && loc.y < topRight.x)
+//            if (loc.x > botLeft.x && loc.x < topRight.x)
+//                result = true;
+//        return result;
+//    }
+//};
 
 struct Rectangle_Int {
     Vec2Int bottomLeft;
@@ -199,6 +200,8 @@ T Clamp(T v, T min, T max)
     return Max(min, Min(max, v));
 }
 
+//MATH AND CONVERSIONS
+
 inline float RadToDeg(float angle)
 {
     return ((angle) / (tau)) * 360;
@@ -209,17 +212,44 @@ inline float DegToRad(float angle)
     return (angle / 360 ) * (tau);
 }
 
+//inline float cos(float t)
+//{
+//    return cosf(t);
+//}
+//
+//inline float sine(float t)
+//{
+//    return sinf(t);
+//}
+//
+//inline float tan(float t)
+//{
+//    return tanf(t);
+//}
+
+inline Vec3 Cross(Vec3 a, Vec3 b)
+{
+    Vec3 result;
+    gb_vec3_cross(&result, a, b);
+	return result;
+}
+
 //inline float Vec2Distance(Vec2 A, Vec2 B)
 //{
 //    return sqrtf(powf(B.x - A.x, 2) + powf(B.y - A.y, 2));
 //}
 
 
-//inline Vec2 Normalize(Vec2 v)
-//{
-//    float hyp = sqrtf(powf(v.x, 2) + powf(v.y, 2));
-//    return { (v.x / hyp), (v.y / hyp) };
-//}
+inline Vec3 Normalize(Vec3 v)
+{
+    float hyp = sqrtf(powf(v.x, 2) + powf(v.y, 2) + powf(v.z, 2));
+    return { (v.x / hyp), (v.y / hyp) , (v.z / hyp)};
+}
+inline Vec2 Normalize(Vec2 v)
+{
+    float hyp = sqrtf(powf(v.x, 2) + powf(v.y, 2));
+    return { (v.x / hyp), (v.y / hyp) };
+}
 //inline Vec2 NormalizeZero(Vec2 v)
 //{
 //    float hyp = sqrtf(powf(v.x, 2) + powf(v.y, 2));
