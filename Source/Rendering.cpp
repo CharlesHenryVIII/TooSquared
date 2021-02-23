@@ -2,11 +2,12 @@
 #include "Misc.h"
 #include "STB/stb_image.h"
 #include "Block.h"
+#include "WinInterop.h"
 
 Renderer g_renderer;
 Window g_window;
 Camera g_camera;
-Vec3 g_light;
+Light g_light;
 
 const SDL_MessageBoxColorScheme colorScheme = {
 	/* .colors (.r, .g, .b) */
@@ -73,9 +74,10 @@ inline void Texture::Bind()
 #endif
 }
 
-bool ShaderProgram::CompileShader(GLuint handle, const char* name, const char* text)
+bool ShaderProgram::CompileShader(GLuint handle, const char* name, std::string text)
 {
-	glShaderSource(handle, 1, &text, NULL);
+	const char* strings[] = { text.c_str() };
+	glShaderSource(handle, 1, strings, NULL);
 	glCompileShader(handle);
 
 	GLint status;
@@ -137,57 +139,19 @@ ShaderProgram::~ShaderProgram()
 #endif
 }
 
-FILETIME ShaderProgram::GetShaderTimeAndText(uint8* buffer, const size_t bufferLength, const std::string& fileLoc)
-{
-	HANDLE bufferHandle = CreateFileA(fileLoc.c_str(), GENERIC_READ, FILE_SHARE_READ,
-		NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	{
-		if (bufferHandle == INVALID_HANDLE_VALUE)
-			FAIL;
-	}//HANDLE should be valid
-
-	uint32 bytesRead;
-	static_assert(sizeof(DWORD) == sizeof(uint32));
-	static_assert(sizeof(LPVOID) == sizeof(void*));
-	if (!ReadFile(bufferHandle, buffer, (DWORD)bufferLength, reinterpret_cast<LPDWORD>(&bytesRead), NULL))
-	{
-		DebugPrint("Read File failed");
-		DWORD error = GetLastError();
-		if (error == ERROR_INSUFFICIENT_BUFFER)
-			FAIL;
-	}
-
-	FILETIME creationTime;
-	FILETIME lastAccessTime;
-	FILETIME lastWriteTime;
-	if (!GetFileTime(bufferHandle, &creationTime, &lastAccessTime, &lastWriteTime))
-	{
-		DebugPrint("GetFileTime failed with %d\n", GetLastError());
-	}
-	CloseHandle(bufferHandle);
-	return lastWriteTime;
-}
-
 void ShaderProgram::CheckForUpdate()
 {
-	const size_t bufferLength = 1024;
-	uint8 vertexBufferText[bufferLength] = {};
-	FILETIME vertexLastWriteFiletime = GetShaderTimeAndText(vertexBufferText, bufferLength, m_vertexFile);
+	FileInfo vertexFileInfo = GetFileInfo(m_vertexFile);
+	FileInfo pixelFileInfo = GetFileInfo(m_pixelFile);
 
-	uint8 pixelBufferText[bufferLength] = {};
-	FILETIME pixelLastWriteFiletime = GetShaderTimeAndText(pixelBufferText, bufferLength, m_pixelFile);
-
-
-	if (m_vertexLastWriteTime.dwLowDateTime < vertexLastWriteFiletime.dwLowDateTime ||
-		m_vertexLastWriteTime.dwHighDateTime < vertexLastWriteFiletime.dwHighDateTime ||
-		m_pixelLastWriteTime.dwLowDateTime < pixelLastWriteFiletime.dwLowDateTime ||
-		m_pixelLastWriteTime.dwHighDateTime < pixelLastWriteFiletime.dwHighDateTime)
+	if (m_vertexLastWriteTime < vertexFileInfo.lastWriteTime ||
+		m_pixelLastWriteTime  < pixelFileInfo.lastWriteTime)
 	{
 		GLuint vhandle = glCreateShader(GL_VERTEX_SHADER);
 		GLuint phandle = glCreateShader(GL_FRAGMENT_SHADER);
 		//Compile shaders and link to program
-		if (!CompileShader(vhandle, "Vertex Shader", reinterpret_cast<char*>(vertexBufferText)) ||
-			!CompileShader(phandle, "Pixel Shader", reinterpret_cast<char*>(pixelBufferText)))
+		if (!CompileShader(vhandle, "Vertex Shader", vertexFileInfo.text) ||
+			!CompileShader(phandle, "Pixel Shader", pixelFileInfo.text))
 			return;
 
 
@@ -233,8 +197,8 @@ void ShaderProgram::CheckForUpdate()
 #ifdef _DEBUGPRINT
 			DebugPrint("Shader Created\n");
 #endif
-			m_vertexLastWriteTime = vertexLastWriteFiletime;
-			m_pixelLastWriteTime = pixelLastWriteFiletime;
+			m_vertexLastWriteTime = vertexFileInfo.lastWriteTime;
+			m_pixelLastWriteTime = pixelFileInfo.lastWriteTime;
 			glDeleteShader(vhandle);
 			glDeleteShader(phandle);
 		}
@@ -271,6 +235,15 @@ void ShaderProgram::UpdateUniformVec3(const char* name, GLsizei count, const GLf
 {
 	GLint loc = glGetUniformLocation(m_handle, name);
 	glUniform3fv(loc, count, value);
+#ifdef _DEBUGPRINT
+	DebugPrint("Shader Uniform Updated %s\n", name);
+#endif
+}
+
+void ShaderProgram::UpdateUniformFloat(const char* name, GLfloat value)
+{
+	GLint loc = glGetUniformLocation(m_handle, name);
+	glUniform1f(loc, value);
 #ifdef _DEBUGPRINT
 	DebugPrint("Shader Uniform Updated %s\n", name);
 #endif
@@ -348,7 +321,7 @@ const uint32 blocksPerRow = 16;
 Rect GetRectFromSprite(uint32 i)
 {
     assert(i <= blocksPerRow * blocksPerRow);
-    i = Clamp<uint32>(i, 0, blocksPerRow);
+    i = Clamp<uint32>(i, 0, blocksPerRow * blocksPerRow);
     uint32 x = i % blocksPerRow;
     uint32 y = i / blocksPerRow;
 
@@ -435,7 +408,10 @@ void RenderBlock(Block* block)
     sp->UpdateUniformMat4("u_view", 1, false, g_camera.view.e);
     sp->UpdateUniformMat4("u_model", 1, false, transform.e);
 
-	sp->UpdateUniformVec3("lightColor", 1, g_light.e);
+	sp->UpdateUniformVec3("u_lightColor",	 1, g_light.c.e);
+	sp->UpdateUniformVec3("u_lightP", 1, g_light.p.e);
+	sp->UpdateUniformVec3("u_cameraP", 1, g_camera.p.e);
+	sp->UpdateUniformFloat("u_reflect", block->reflection);
 
     glDrawElements(GL_TRIANGLES, arrsize(cubeIndices), GL_UNSIGNED_INT, 0);
 }
@@ -570,5 +546,6 @@ void InitializeVideo()
 			cubeIndices[face * 6 + 5] = base_index + 3;
 		}
 	}
-	g_light = { 1.0f, 1.0f, 1.0f };
+	g_light.c = {  1.0f,  1.0f,  1.0f };
+	g_light.p = { 10.0f, 10.0f, 10.0f };
 }

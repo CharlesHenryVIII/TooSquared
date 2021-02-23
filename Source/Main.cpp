@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
 	Vec3 a = { 1.0f, 1.0f, 1.0f };
 	gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
 
-	std::vector<Grass*> grassBlockList;
+	std::vector<Block*> blockList;
     {
 		const int32 cubeSize = 5;
 		for (float z = -cubeSize; z <= cubeSize; z++)
@@ -50,14 +50,27 @@ int main(int argc, char* argv[])
 				{
 					Grass* temp = new Grass();
 					temp->p = { x, y, z };
-					grassBlockList.push_back(temp);
+					blockList.push_back(temp);
 				}
 			}
 		}
 		{
-			Grass* temp = new Grass();
-			temp->p = { 0.0f, 1.0f, 0.0f };
-			grassBlockList.push_back(temp);
+			Grass* grass = new Grass();
+			grass->p = { 0.0f, 1.0f, 0.0f };
+			blockList.push_back(grass);
+
+			Stone* stone = new Stone();
+			stone->p = { 1.0f, 1.0f, 0.0f };
+			blockList.push_back(stone);
+
+			IronBlock* ironBlock = new IronBlock();
+			ironBlock->p = { -1.0f, 1.0f, 0.0f };
+			blockList.push_back(ironBlock);
+
+			FireBlock* fireBlock = new FireBlock();
+			fireBlock->p = { 10.0f, 10.0f, 10.0f };
+			blockList.push_back(fireBlock);
+
 		}
 	}
 
@@ -294,7 +307,7 @@ int main(int argc, char* argv[])
 #endif
 
         RenderUpdate(deltaTime);
-        for (Grass* g : grassBlockList)
+        for (Block* g : blockList)
         {
             if (g)
                 g->Render();

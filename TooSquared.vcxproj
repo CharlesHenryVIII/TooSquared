@@ -158,6 +158,7 @@
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Misc.cpp" />
     <ClCompile Include="Source\Rendering.cpp" />
+    <ClCompile Include="Source\WinInterop.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
@@ -166,6 +167,7 @@
     <ClInclude Include="Source\Block.h" />
     <ClInclude Include="Source\Misc.h" />
     <ClInclude Include="Source\Rendering.h" />
+    <ClInclude Include="Source\WinInterop.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

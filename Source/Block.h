@@ -22,9 +22,9 @@ enum class BlockType : uint32 {
     Gravel,
     Wood,
     Count,
-    Iron_Block,
-    Gold_Block,
-    Diamond_Block,
+    IronBlock,
+    GoldBlock,
+    DiamondBlock,
     Chest,
 };
 ENUMOPS(BlockType);
@@ -42,6 +42,7 @@ ENUMOPS(Face);
 
 struct Block {
     Vec3 p = {};
+    float reflection = 0;
     BlockType t = BlockType::Invalid;
     uint32 defaultSpriteLocation = 254;
     uint32 spriteLocation[static_cast<uint32>(Face::Count)] = {
@@ -54,7 +55,6 @@ struct Block {
 };
 
 struct Grass : public Block {
-
     Grass()
     {
         defaultSpriteLocation = 3;
@@ -63,4 +63,26 @@ struct Grass : public Block {
     }
 };
 
+struct Stone : public Block {
+    Stone()
+    {
+        reflection = 0.5f;
+        defaultSpriteLocation = 1;
+    }
+};
 
+struct IronBlock : public Block {
+    IronBlock()
+    {
+        reflection = 1.0f;
+        defaultSpriteLocation = 22;
+    }
+};
+
+struct FireBlock : public Block {
+    FireBlock()
+    {
+        reflection = 1.0f;
+        defaultSpriteLocation = 252;
+    }
+};

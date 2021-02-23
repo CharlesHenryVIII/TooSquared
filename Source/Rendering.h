@@ -33,6 +33,11 @@ struct Camera {
 };
 #endif
 
+struct Light {
+    Vec3 p;
+    Vec3 c;
+};
+
 
 enum class ts_MessageBox {
 	Invalid,
@@ -73,23 +78,23 @@ class ShaderProgram
     GLuint m_handle = 0;
     std::string m_vertexFile;
     std::string m_pixelFile;
-	FILETIME m_vertexLastWriteTime = {};
-	FILETIME m_pixelLastWriteTime = {};
+	uint64 m_vertexLastWriteTime = {};
+	uint64 m_pixelLastWriteTime = {};
 
     ShaderProgram(const ShaderProgram& rhs) = delete;
     ShaderProgram& operator=(const ShaderProgram& rhs) = delete;
 
-    bool CompileShader(GLuint handle, const char* name, const char* text);
+    bool CompileShader(GLuint handle, const char* name, std::string text);
 
 public:
     ShaderProgram(const std::string& vertexFileLocation, const std::string& pixelFileLocation);
     ~ShaderProgram();
-    FILETIME GetShaderTimeAndText(uint8* buffer, const size_t bufferLength, const std::string& fileLoc);
     void CheckForUpdate();
     void UseShader();
     void UpdateUniformMat4(const char* name, GLsizei count, GLboolean transpose, const GLfloat* value);
     void UpdateUniformVec4(const char* name, GLsizei count, const GLfloat* value);
     void UpdateUniformVec3(const char* name, GLsizei count, const GLfloat* value);
+    void UpdateUniformFloat(const char* name, GLfloat value);
 };
 
 class GpuBuffer
@@ -149,7 +154,7 @@ struct Renderer {
 extern Renderer g_renderer;
 extern Window g_window;
 extern Camera g_camera;
-extern Vec3 g_light;
+extern Light g_light;
 
 struct Block;
 
