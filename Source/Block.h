@@ -42,7 +42,7 @@ ENUMOPS(Face);
 
 struct Block {
     Vec3 p = {};
-    float reflection = 0.1f;
+    Material material;
     BlockType t = BlockType::Invalid;
     uint32 defaultSpriteLocation = 254;
     uint32 spriteLocation[static_cast<uint32>(Face::Count)] = {
@@ -55,8 +55,14 @@ struct Block {
 };
 
 struct Grass : public Block {
+
     Grass()
     {
+        material.ambient = {  0.1f, 0.1f, 0.1f };
+        material.diffuse = {  1.0f, 1.0f, 1.0f };
+        material.specular = {     0,   0,   0  };
+        material.shininess =  32;//0;
+
         defaultSpriteLocation = 3;
         spriteLocation[+Face::Top] = 0;
         spriteLocation[+Face::Bot] = 2;
@@ -66,7 +72,11 @@ struct Grass : public Block {
 struct Stone : public Block {
     Stone()
     {
-        reflection = 0.5f;
+        material.ambient = { 0.02f, 0.02f, 0.02f };
+        material.diffuse = { 1.0f, 1.0f, 1.0f };
+        material.specular = { 0.4f, 0.4f,  0.4f };
+        material.shininess = 32;//0.78125f;
+
         defaultSpriteLocation = 1;
     }
 };
@@ -74,7 +84,11 @@ struct Stone : public Block {
 struct IronBlock : public Block {
     IronBlock()
     {
-        reflection = 1.0f;
+        material.ambient = {0.19225f, 0.19225f, 0.19225f };
+        material.diffuse = {0.50754f, 0.50754f, 0.50754f };
+        material.specular = {0.508273f, 0.508273f, 0.508273f };
+        material.shininess = 32;//0.4f;
+
         defaultSpriteLocation = 22;
     }
 };
@@ -82,7 +96,11 @@ struct IronBlock : public Block {
 struct FireBlock : public Block {
     FireBlock()
     {
-        reflection = 1.0f;
+        material.ambient = { 1.0f, 1.0f, 1.0f };
+        material.diffuse = { 1.0f, 1.0f, 1.0f };
+        material.specular = {   0,    0,    0 };
+        material.shininess = 32;
+
         defaultSpriteLocation = 252;
     }
 };

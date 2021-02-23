@@ -35,6 +35,13 @@ struct Light {
     Vec3 c;
 };
 
+struct Material {
+    Vec3 ambient;
+    Vec3 diffuse;
+    Vec3 specular;
+    float shininess;
+};
+
 enum class ts_MessageBox {
 	Invalid,
 	Error = SDL_MESSAGEBOX_ERROR,

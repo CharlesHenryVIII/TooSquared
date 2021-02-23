@@ -404,14 +404,19 @@ void RenderBlock(Block* block)
     gb_mat4_translate(&transform, block->p);
 
     ShaderProgram* sp = g_renderer.programs[+Shader::Simple3D];
-    sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
-    sp->UpdateUniformMat4("u_view", 1, false, g_camera.view.e);
-    sp->UpdateUniformMat4("u_model", 1, false, transform.e);
+    sp->UpdateUniformMat4( "u_perspective", 1, false, perspective.e);
+    sp->UpdateUniformMat4( "u_view",        1, false, g_camera.view.e);
+    sp->UpdateUniformMat4( "u_model",       1, false, transform.e);
 
-	sp->UpdateUniformVec3("u_lightColor",	 1, g_light.c.e);
-	sp->UpdateUniformVec3("u_lightP", 1, g_light.p.e);
-	sp->UpdateUniformVec3("u_cameraP", 1, g_camera.p.e);
-	sp->UpdateUniformFloat("u_reflect", block->reflection);
+	sp->UpdateUniformVec3( "u_lightColor",	    1,  g_light.c.e);
+	sp->UpdateUniformVec3( "u_lightP",          1,  g_light.p.e);
+	sp->UpdateUniformVec3( "u_cameraP",         1,  g_camera.p.e);
+
+	sp->UpdateUniformVec3( "material.ambient",  1,  block->material.ambient.e);
+	sp->UpdateUniformVec3( "material.diffuse",  1,  block->material.diffuse.e);
+	sp->UpdateUniformVec3( "material.specular", 1,  block->material.specular.e);
+	sp->UpdateUniformFloat("material.shininess",    block->material.shininess);
+
 
     glDrawElements(GL_TRIANGLES, arrsize(cubeIndices), GL_UNSIGNED_INT, 0);
 }
@@ -525,7 +530,7 @@ void InitializeVideo()
 	for (int face = 0; face < 6; ++face)
 	{
 		int base_index = face * 4;
-		//NOTE: This is to fix culling issues where winding order 
+		//NOTE: This is to fix culling issues where winding order
 		//is reversed on some of these vertices
 		if (face == 0 || face == 2 || face == 5)
 		{
