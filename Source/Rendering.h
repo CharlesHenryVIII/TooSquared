@@ -5,9 +5,6 @@
 #include "Misc.h"
 
 #include <string>
-#include <Windows.h>
-//TODO: Create a union with a uint64 and FILETIME and
-//get rid of the Windows.h dependency in the header
 
 struct Window {
     Vec2Int size = {};
@@ -37,7 +34,6 @@ struct Light {
     Vec3 p;
     Vec3 c;
 };
-
 
 enum class ts_MessageBox {
 	Invalid,

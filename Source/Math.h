@@ -3,7 +3,6 @@
 #include "gb_math.h"
 
 #include <cassert>
-#include <cmath>
 #include <cstdint>
 
 #define BIT(num) (1<<(num))
@@ -89,10 +88,7 @@ struct Rect {
 };
 
 template<typename T>
-T Random(const T& min, const T& max)
-{
-    return min + (max - min) * (rand() / T(RAND_MAX));
-}
+T Random(const T& min, const T& max);
 
 struct Range {
     float min, max;
@@ -238,7 +234,6 @@ inline Vec3 Cross(Vec3 a, Vec3 b)
 //{
 //    return sqrtf(powf(B.x - A.x, 2) + powf(B.y - A.y, 2));
 //}
-
 
 inline Vec3 Normalize(Vec3 v)
 {

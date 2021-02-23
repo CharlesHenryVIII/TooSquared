@@ -42,7 +42,7 @@ ENUMOPS(Face);
 
 struct Block {
     Vec3 p = {};
-    float reflection = 0;
+    float reflection = 0.1f;
     BlockType t = BlockType::Invalid;
     uint32 defaultSpriteLocation = 254;
     uint32 spriteLocation[static_cast<uint32>(Face::Count)] = {

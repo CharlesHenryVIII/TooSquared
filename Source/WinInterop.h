@@ -7,3 +7,5 @@ struct FileInfo {
 };
 
 FileInfo GetFileInfo(const std::string& fileLoc);
+void DebugPrint(const char* fmt, ...);
+std::string ToString(const char* fmt, ...);

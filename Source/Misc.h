@@ -21,7 +21,4 @@ do {                                            \
     }                                           \
 } while(0)
 
-void DebugPrint(const char* fmt, ...);
-std::string ToString(const char* fmt, ...);
-
 extern bool g_running;
