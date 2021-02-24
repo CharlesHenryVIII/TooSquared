@@ -3,6 +3,7 @@
 #include "gb_math.h"
 
 #include <cassert>
+#include <cmath>
 #include <cstdint>
 
 #define BIT(num) (1<<(num))
@@ -71,6 +72,18 @@ struct Vertex {
     Vec3 n;
 };
 
+union Vec2Int {
+    struct { int32 x, y; };
+    int32 e[2];
+};
+
+union Vec3Int {
+    struct { int32 x, y, z; };
+
+    Vec2Int xy;
+    int32 e[3];
+};
+
 struct Rect {
     Vec2 botLeft = {};
     Vec2 topRight = {};
@@ -88,7 +101,15 @@ struct Rect {
 };
 
 template<typename T>
-T Random(const T& min, const T& max);
+T Random(const T& min, const T& max)
+{
+    return min + (max - min) * (rand() / T(RAND_MAX));
+}
+
+inline uint32 RandomUI(uint32 min, uint32 max)
+{
+    return rand() % (max - min) + min;
+}
 
 struct Range {
     float min, max;
@@ -103,11 +124,6 @@ struct Range {
         max = angle + range / 2;
     }
 };
-
-typedef union Vec2Int {
-	struct { int32 x, y; };
-	int32 e[2];
-}Vec2Int;
 
 
 //struct Rectangle {

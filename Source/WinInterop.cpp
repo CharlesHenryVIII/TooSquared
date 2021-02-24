@@ -5,43 +5,59 @@
 #include <Windows.h>
 #include <string>
 
-FileInfo GetFileInfo(const std::string& fileLoc)
+
+static HANDLE GetFileHandle(const std::string& fileLoc)
 {
-	FileInfo result;
-	HANDLE bufferHandle = CreateFileA(fileLoc.c_str(), GENERIC_READ, FILE_SHARE_READ,
+	HANDLE handle = CreateFileA(fileLoc.c_str(), GENERIC_READ, FILE_SHARE_READ,
 		NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-	{
-		if (bufferHandle == INVALID_HANDLE_VALUE)
-			FAIL;
-	}//HANDLE should be valid
+	return handle;
+}
+
+bool GetFileText(std::string& result, const std::string& fileLoc)
+{
+	HANDLE handle = GetFileHandle(fileLoc);
+	if (handle == INVALID_HANDLE_VALUE)
+		return false;
+	Defer {
+		CloseHandle(handle);
+	};
 
 	uint32 bytesRead;
 	static_assert(sizeof(DWORD) == sizeof(uint32));
 	static_assert(sizeof(LPVOID) == sizeof(void*));
 	
-	const uint32 fileSize = GetFileSize(bufferHandle, NULL);
-	result.text.resize(fileSize, 0);
-	if (!ReadFile(bufferHandle, (LPVOID)result.text.c_str(), (DWORD)fileSize, reinterpret_cast<LPDWORD>(&bytesRead), NULL))
+	const uint32 fileSize = GetFileSize(handle, NULL);
+	result.resize(fileSize, 0);
+	if (!ReadFile(handle, (LPVOID)result.c_str(), (DWORD)fileSize, reinterpret_cast<LPDWORD>(&bytesRead), NULL))
 	{
-		DebugPrint("Read File failed");
-		DWORD error = GetLastError();
-		if (error == ERROR_INSUFFICIENT_BUFFER)
-			FAIL;
+		assert(false);
+		return false;
 	}
+	return true;
+}
+
+bool GetFileTime(uint64* result, const std::string& fileLoc)
+{
+	HANDLE handle = GetFileHandle(fileLoc);
+	if (handle == INVALID_HANDLE_VALUE)
+		return false;
+	Defer {
+		CloseHandle(handle);
+	};
 
 	FILETIME creationTime;
 	FILETIME lastAccessTime;
 	FILETIME lastWriteTime;
-	if (!GetFileTime(bufferHandle, &creationTime, &lastAccessTime, &lastWriteTime))
+	if (!GetFileTime(handle, &creationTime, &lastAccessTime, &lastWriteTime))
 	{
 		DebugPrint("GetFileTime failed with %d\n", GetLastError());
+		return false;
 	}
-	CloseHandle(bufferHandle);
-
-	result.lastWriteTime = uint64(lastWriteTime.dwHighDateTime) << 32;
-	result.lastWriteTime |= (uint64(lastWriteTime.dwLowDateTime) & 0xffffffff);
-
-	return result;
+	ULARGE_INTEGER actualResult;
+	actualResult.LowPart = lastWriteTime.dwLowDateTime;
+	actualResult.HighPart = lastWriteTime.dwHighDateTime;
+	*result = actualResult.QuadPart;
+	return true;
 }
 
 void DebugPrint(const char* fmt, ...)

@@ -3,47 +3,90 @@
 #include "Misc.h"
 #include "Rendering.h"
 
-enum class BlockType : uint32 {
-    Invalid,
+#include <vector>
+
+enum class BlockType : uint8 {
+    Empty,
     Grass,
     Stone,
     Planks,
     StoneSlab,
     Brick,
     TNT,
-    CobWeb,
-    Flower_Red,
-    Flower_Yellow,
-    Flower_Blue,
-    Sappling,
     Cobblestone,
     Bedrock,
     Sand,
     Gravel,
     Wood,
-    Count,
     IronBlock,
     GoldBlock,
     DiamondBlock,
-    Chest,
+    Count,
 };
 ENUMOPS(BlockType);
 
+//CobWeb,
+//Flower_Red,
+//Flower_Yellow,
+//Flower_Blue,
+//Sappling,
+//Chest,
+
+
+constexpr uint32 CHUNK_X = 16;
+constexpr uint32 CHUNK_Y = 256;
+constexpr uint32 CHUNK_Z = 16;
+
+struct Chunk {
+    BlockType arr[CHUNK_X][CHUNK_Y][CHUNK_Z] = {};
+    Vec3Int p = {};
+	std::vector<Vertex> faceVertices;
+    std::vector<uint32> indices;
+    VertexBuffer vertexBuffer;
+    IndexBuffer indexBuffer;
+
+    void SetBlockTypes()
+    {
+        BlockType options[] = {
+            BlockType::Empty,
+            BlockType::Grass,
+            BlockType::Stone,
+            BlockType::IronBlock,
+        };
+        for (int32 x = 0; x < CHUNK_X; x++)
+        {
+			for (int32 y = 0; y < CHUNK_Y; y++)
+			{
+                for (int32 z = 0; z < CHUNK_Z; z++)
+                {
+                    int32 random = RandomUI(0, arrsize(options));
+                    arr[x][y][z] = options[random];
+				}
+			}
+        }
+    }
+};
+
+void UploadChunk(Chunk* chunk);
+void BuildChunkVertices(Chunk* chunk);
+void RenderChunk(Chunk* chunk);
+
 enum class Face : uint32 {
-	Front,
-	Back,
-	Bot,
-	Top,
 	Right,
 	Left,
+	Top,
+	Bot,
+	Back,
+	Front,
 	Count,
 };
 ENUMOPS(Face);
 
+const uint32 defaultSpriteLocation = 254;
 struct Block {
     Vec3 p = {};
     Material material;
-    BlockType t = BlockType::Invalid;
+    BlockType t = BlockType::Empty;
     uint32 defaultSpriteLocation = 254;
     uint32 spriteLocation[static_cast<uint32>(Face::Count)] = {
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation,
@@ -60,7 +103,7 @@ struct Grass : public Block {
     {
         material.ambient = {  0.1f, 0.1f, 0.1f };
         material.diffuse = {  1.0f, 1.0f, 1.0f };
-        material.specular = {     0,   0,   0  };
+        material.specular = {     0.1f,   0.1f,   0.1f  };
         material.shininess =  32;//0;
 
         defaultSpriteLocation = 3;

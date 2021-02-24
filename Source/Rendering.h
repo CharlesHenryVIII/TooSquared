@@ -159,9 +159,13 @@ extern Window g_window;
 extern Camera g_camera;
 extern Light g_light;
 
+const uint32 pixelsPerBlock = 16;
+const uint32 blocksPerRow = 16;
+
 struct Block;
 
 int32 CreateMessageWindow(SDL_MessageBoxButtonData* buttons, int32 numOfButtons, ts_MessageBox type, const char* title, const char* message);
+Rect GetRectFromSprite(uint32 i);
 void RenderUpdate(float deltaTime);
 void RenderBlock(Block* block);
 void InitializeVideo();

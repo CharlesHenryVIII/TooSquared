@@ -86,9 +86,11 @@ bool ShaderProgram::CompileShader(GLuint handle, const char* name, std::string t
 	{
 		GLint log_length;
 		glGetShaderiv(handle, GL_INFO_LOG_LENGTH, &log_length);
-		GLchar info[4096];
-		glGetShaderInfoLog(handle, log_length, NULL, info);
-		DebugPrint("Vertex Shader compilation error: %s\n", info);
+		std::string infoString;
+		infoString.resize(log_length, 0);
+		//GLchar info[4096] = {};
+		glGetShaderInfoLog(handle, log_length, NULL, (GLchar*)infoString.c_str());
+		DebugPrint("Vertex Shader compilation error: %s\n", infoString.c_str());
 
 		SDL_MessageBoxButtonData buttons[] = {
 			//{ /* .flags, .buttonid, .text */        0, 0, "Continue" },
@@ -96,7 +98,7 @@ bool ShaderProgram::CompileShader(GLuint handle, const char* name, std::string t
 			{ SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 1, "Stop" },
 		};
 
-		int32 buttonID = CreateMessageWindow(buttons, arrsize(buttons), ts_MessageBox::Error, name, reinterpret_cast<char*>(info));
+		int32 buttonID = CreateMessageWindow(buttons, arrsize(buttons), ts_MessageBox::Error, name, infoString.c_str());
 		if (buttons[buttonID].buttonid == 2)//NOTE: Stop button
 		{
 			DebugPrint("stop hit");
@@ -141,17 +143,35 @@ ShaderProgram::~ShaderProgram()
 
 void ShaderProgram::CheckForUpdate()
 {
-	FileInfo vertexFileInfo = GetFileInfo(m_vertexFile);
-	FileInfo pixelFileInfo = GetFileInfo(m_pixelFile);
 
-	if (m_vertexLastWriteTime < vertexFileInfo.lastWriteTime ||
-		m_pixelLastWriteTime  < pixelFileInfo.lastWriteTime)
+	uint64 vertexFileTime = 0;
+	if (!GetFileTime(&vertexFileTime, m_vertexFile))
 	{
+		assert(false);//todo
+		return;
+	}
+
+	uint64 pixelFileTime = 0;
+	if(!GetFileTime(&pixelFileTime, m_pixelFile))
+	{
+		assert(false);//todo
+		return;
+	}
+
+	if (m_vertexLastWriteTime < vertexFileTime ||
+		m_pixelLastWriteTime  < pixelFileTime)
+	{
+		//Compile shaders and link to program
 		GLuint vhandle = glCreateShader(GL_VERTEX_SHADER);
 		GLuint phandle = glCreateShader(GL_FRAGMENT_SHADER);
-		//Compile shaders and link to program
-		if (!CompileShader(vhandle, "Vertex Shader", vertexFileInfo.text) ||
-			!CompileShader(phandle, "Pixel Shader", pixelFileInfo.text))
+
+		std::string vertexText;
+		std::string pixelText;
+		GetFileText(vertexText, m_vertexFile);
+		GetFileText(pixelText, m_pixelFile);
+
+		if (!CompileShader(vhandle, "Vertex Shader", vertexText) ||
+			!CompileShader(phandle, "Pixel Shader", pixelText))
 			return;
 
 
@@ -197,8 +217,8 @@ void ShaderProgram::CheckForUpdate()
 #ifdef _DEBUGPRINT
 			DebugPrint("Shader Created\n");
 #endif
-			m_vertexLastWriteTime = vertexFileInfo.lastWriteTime;
-			m_pixelLastWriteTime = pixelFileInfo.lastWriteTime;
+			m_vertexLastWriteTime = vertexFileTime;
+			m_pixelLastWriteTime = pixelFileTime;
 			glDeleteShader(vhandle);
 			glDeleteShader(phandle);
 		}
@@ -314,10 +334,10 @@ void RenderUpdate(float deltaTime)
 		s_lastShaderUpdateTime = s_incrimentalTime;
 	}
     s_incrimentalTime += deltaTime;
+
+
 }
 
-const uint32 pixelsPerBlock = 16;
-const uint32 blocksPerRow = 16;
 Rect GetRectFromSprite(uint32 i)
 {
     assert(i <= blocksPerRow * blocksPerRow);
@@ -334,35 +354,35 @@ Rect GetRectFromSprite(uint32 i)
 }
 
 Vertex cubeVertices[] = {
-    { { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // top right
-    { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // Top Left
-    { { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // bot right
-    { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // -x bottom Left
-
     { {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
     { {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
     { {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
     { {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } }, // +x
 
-    { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } }, // -y
-    { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
-    { {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
-    { {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
+    { { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // top right
+    { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // Top Left
+    { { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // bot right
+    { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // -x bottom Left
 
     { { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } }, // +y
     { { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
     { {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
     { {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
 
-    { { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } }, // -z
-    { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
-    { {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
-    { {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
+    { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } }, // -y
+    { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
+    { {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
+    { {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
 
     { { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } }, // z
     { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
     { {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
     { {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
+
+    { { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } }, // -z
+    { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
+    { {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
+    { {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
 };
 uint32 cubeIndices[36] = {};
 
@@ -420,6 +440,7 @@ void RenderBlock(Block* block)
 
     glDrawElements(GL_TRIANGLES, arrsize(cubeIndices), GL_UNSIGNED_INT, 0);
 }
+
 
 void OpenGLErrorCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
                          GLsizei length, const GLchar *message, const void *userParam)
@@ -517,6 +538,7 @@ void InitializeVideo()
 	glEnable(GL_DEPTH_TEST);
 	glDepthMask(GL_TRUE);
 	glEnable(GL_CULL_FACE);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	static_assert(arrsize(cubeVertices) == 24, "");
 
@@ -532,7 +554,7 @@ void InitializeVideo()
 		int base_index = face * 4;
 		//NOTE: This is to fix culling issues where winding order
 		//is reversed on some of these vertices
-		if (face == 0 || face == 2 || face == 5)
+		if (face == 1 || face == 3 || face == 4)
 		{
 			cubeIndices[face * 6 + 0] = base_index + 0;
 			cubeIndices[face * 6 + 1] = base_index + 1;

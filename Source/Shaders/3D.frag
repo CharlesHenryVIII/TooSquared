@@ -4,6 +4,7 @@ uniform sampler2D sampler;
 in vec2 p_uv;
 in vec3 p_normal;
 in vec3 p_pixelP;
+in mat4 p_view;
 
 struct Material {
     vec3  ambient;
@@ -30,13 +31,14 @@ void main()
 
     //Diffuse Lighting:
     vec3 norm = normalize(p_normal);
-    vec3 lightDir = normalize(u_lightP- p_pixelP);
+    vec3 lightViewPosition = (p_view * vec4(u_lightP, 1)).xyz;
+    vec3 lightDir = normalize(lightViewPosition - p_pixelP);
     float diff = max(dot(norm, lightDir), 0.0);
     //vec3 diffuse = u_lightColor * (diff * material.diffuse);
     vec3 diffuse = vec3(1.0) * (diff * material.diffuse);
     
     //Specular Lighting:
-    vec3 viewDir = normalize(u_cameraP - p_pixelP);
+    vec3 viewDir = normalize(vec3(0) - p_pixelP);
     vec3 reflectDir = reflect(-lightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
     //vec3 specular = u_lightColor * (spec * material.specular);

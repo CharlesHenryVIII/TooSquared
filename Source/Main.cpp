@@ -27,17 +27,23 @@ struct Mouse {
 int main(int argc, char* argv[])
 {
     std::unordered_map<int32, Key> keyStates;
-
     InitializeVideo();
 
 	double freq = double(SDL_GetPerformanceFrequency()); //HZ
 	double totalTime = SDL_GetPerformanceCounter() / freq; //sec
+	srand(static_cast<uint32>(totalTime));
 	double previousTime = totalTime;
     double LastShaderUpdateTime = totalTime;
 
     g_camera.view;
 	Vec3 a = { 1.0f, 1.0f, 1.0f };
 	gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
+
+	Chunk* chunk = new Chunk;
+	chunk->p.x = 30;
+	chunk->SetBlockTypes();
+	BuildChunkVertices(chunk);
+	UploadChunk(chunk);
 
 	std::vector<Block*> blockList;
     {
@@ -307,11 +313,12 @@ int main(int argc, char* argv[])
 #endif
 
         RenderUpdate(deltaTime);
-        for (Block* g : blockList)
-        {
-            if (g)
-                g->Render();
-        }
+        //for (Block* g : blockList)
+        //{
+        //    if (g)
+        //        g->Render();
+        //}
+		RenderChunk(chunk);
 
 		//gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
 
