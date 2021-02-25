@@ -12,45 +12,45 @@ struct VertexFace {
 static const VertexFace cubeFaces[+Face::Count] = {
 
 	{
-	{ {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
-	{ {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
-	{ {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
-	{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } }, // +x
+	{ {  1.0f,  1.0f,     0 }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
+	{ {  1.0f,     0,     0 }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
+	{ {  1.0f,  1.0f,  1.0f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
+	{ {  1.0f,     0,  1.0f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } }, // +x
 	},
 
 	{
-	{ { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } },    // top right
-	{ { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } },    // Top Left
-	{ { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } },    // bot right
-	{ { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } },    // -x bottom Left
+	{ { 0,  1.0f,     0 }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } },    // top right
+	{ { 0,     0,     0 }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } },    // Top Left
+	{ { 0,  1.0f,  1.0f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } },    // bot right
+	{ { 0,     0,  1.0f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } },    // -x bottom Left
 	},
 
 	{
-	{ { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } }, // +y
-	{ { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
-	{ {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
-	{ {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
+	{ {     0,  1.0f,  1.0f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } }, // +y
+	{ {     0,  1.0f,     0 }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
+	{ {  1.0f,  1.0f,  1.0f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
+	{ {  1.0f,  1.0f,     0 }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
 	},
 
 	{
-	{ { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } }, // -y
-	{ { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
-	{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
-	{ {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
+	{ {     0,     0,  1.0f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } }, // -y
+	{ {     0,     0,     0 }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
+	{ {  1.0f,     0,  1.0f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
+	{ {  1.0f,     0,     0 }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
 	},
 
 	{
-	{ { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } }, // z
-	{ { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
-	{ {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
-	{ {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
+	{ {     0,  1.0f,  1.0f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } }, // z
+	{ {     0,     0,  1.0f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
+	{ {  1.0f,  1.0f,  1.0f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
+	{ {  1.0f,     0,  1.0f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
 	},
 
 	{
-	{ { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } }, // -z
-	{ { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
-	{ {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
-	{ {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
+	{ {     0,  1.0f,     0 }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } }, // -z
+	{ {     0,     0,     0 }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
+	{ {  1.0f,  1.0f,     0 }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
+	{ {  1.0f,     0,     0 }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
 	},
 };
 static uint32 cubeIndices[36] = {};
@@ -95,12 +95,169 @@ Vec3 Vec3IntToVec3(Vec3Int a)
 	return { static_cast<float>(a.x), static_cast<float>(a.y), static_cast<float>(a.z) };
 }
 
-void BuildChunkVertices(Chunk* chunk)
+Vec3Int Chunk::BlockPosition()
+{
+	return { p.x* static_cast<int32>(CHUNK_X), p.y* static_cast<int32>(CHUNK_Y), p.z* static_cast<int32>(CHUNK_Z) };
+}
+
+
+//uint32 GetBlockWeight(BlockType b, uint32 y)
+//{
+//	BlockType bt = BlockType::Empty;
+//	if (y > CHUNK_Y / 2)
+//	{
+//		bt = BlockType::Empty;
+//	}
+//	else
+//	{
+//		if (y > CHUNK_Y / 4)
+//		{
+//			bt = BlockType::Grass;
+//		}
+//		else
+//		{
+//			uint32 random = RandomU32(+BlockType::Stone, static_cast<uint32>(arrsize(options)));
+//			bt = options[random];
+//		}
+//	}
+//
+//	switch (b)
+//	{
+//	case BlockType::Empty:
+//	{
+//		if (y > CHUNK_Y / 2)
+//		{
+//			return 10;
+//		}
+//		else
+//		{
+//			return 1;
+//		}
+//		break;
+//	}
+//
+//	case BlockType::Grass:
+//	{
+//		if (y > CHUNK_Y / 2)
+//		{
+//			return 0;
+//		}
+//		else
+//		{
+//			return 1;
+//		}
+//		break;
+//	}
+//
+//	case BlockType::Stone:
+//	{
+//		if (y > CHUNK_Y / 2)
+//		{
+//			return 0;
+//		}
+//		else if (y > CHUNK_Y / 4)
+//		{
+//			return 1;
+//		}
+//		else
+//		{
+//			return 3;
+//		}
+//		break;
+//	}
+//
+//	case BlockType::IronBlock:
+//	{
+//		if (y > CHUNK_Y / 2)
+//		{
+//			return 0;
+//		}
+//		else if (y > CHUNK_Y / 4)
+//		{
+//			return 1;
+//		}
+//		else
+//		{
+//			return 3;
+//		}
+//		break;
+//	}
+//	default:
+//	{
+//		assert(false);
+//	}
+//	}
+//}
+//
+//BlockType GetBlockType(uint32 y)
+//{
+//	for ()
+//	int sum_of_weight = 0;
+//	for (int i = 0; i < num_choices; i++) {
+//		sum_of_weight += choice_weight[i];
+//	}
+//	int rnd = random(sum_of_weight);
+//	for (int i = 0; i < num_choices; i++) {
+//		if (rnd < choice_weight[i])
+//			return i;
+//		rnd -= choice_weight[i];
+//	}
+//	assert(!"should never get here");
+//}
+
+void Chunk::SetBlocks()
+{
+	BlockType options[] = {
+		BlockType::Empty,
+		BlockType::Grass,
+		BlockType::Stone,
+		BlockType::IronBlock,
+	};
+
+
+
+	for (int32 x = 0; x < CHUNK_X; x++)
+	{
+		for (int32 y = 0; y < CHUNK_Y; y++)
+		{
+			for (int32 z = 0; z < CHUNK_Z; z++)
+			{
+
+				BlockType bt = BlockType::Empty;
+				if (y > CHUNK_Y / 2)
+				{
+					bt = BlockType::Empty;
+				}
+				else
+				{
+					if (y > CHUNK_Y / 3)
+					{
+						bt = BlockType::Grass;
+					}
+					else if (y > CHUNK_Y / 4)
+					{
+						uint32 random = RandomU32(+BlockType::Grass, static_cast<uint32>(arrsize(options)));
+						bt = options[random];
+					}
+					else
+					{
+						uint32 random = RandomU32(+BlockType::Stone, static_cast<uint32>(arrsize(options)));
+						bt = options[random];
+					}
+				}
+				arr[x][y][z] = bt;
+			}
+		}
+	}
+}
+
+void Chunk::BuildChunkVertices()
 {
 	SetBlockSprites();
-	chunk->faceVertices.clear();
-	chunk->indices.clear();
+	faceVertices.clear();
+	indices.clear();
 	uint32 baseIndex = 0;
+	Vec3Int realP = BlockPosition();
 	for (int32 x = 0; x < CHUNK_X; x++)
 	{
 		for (int32 y = 0; y < CHUNK_Y; y++)
@@ -109,7 +266,7 @@ void BuildChunkVertices(Chunk* chunk)
 			{
 				for (uint32 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
 				{
-					BlockType currentBlockType = chunk->arr[x][y][z];
+					BlockType currentBlockType = arr[x][y][z];
 					if (currentBlockType == BlockType::Empty)
 						continue;
 
@@ -121,10 +278,10 @@ void BuildChunkVertices(Chunk* chunk)
 					bool outOfBounds = (xReal >= CHUNK_X || yReal >= CHUNK_Y || zReal >= CHUNK_Z ||
 						xReal < 0 || yReal < 0 || zReal < 0);
 
-					if (outOfBounds || chunk->arr[xReal][yReal][zReal] == BlockType::Empty)
+					if (outOfBounds || arr[xReal][yReal][zReal] == BlockType::Empty)
 					{
 						VertexFace f = cubeFaces[faceIndex];
-						Vec3 offset = { static_cast<float>(x), static_cast<float>(y), static_cast<float>(z) };
+						Vec3 offset = { static_cast<float>(x + realP.x), static_cast<float>(y + realP.y), static_cast<float>(z + realP.z) };
 
 						f.a.p += offset;
 						f.b.p += offset;
@@ -132,41 +289,39 @@ void BuildChunkVertices(Chunk* chunk)
 						f.d.p += offset;
 
 						Rect s = GetRectFromSprite(faceSprites[+currentBlockType].faceSprites[faceIndex]);
-
 						const uint32 size = blocksPerRow * pixelsPerBlock;
-						float iblx = Clamp(s.botLeft.x / size, 0.0f, 1.0f);
-						float ibly = Clamp(s.botLeft.y / size, 0.0f, 1.0f);
+						float iblx = Clamp(s.botLeft.x  / size, 0.0f, 1.0f);
+						float ibly = Clamp(s.botLeft.y  / size, 0.0f, 1.0f);
 						float itrx = Clamp(s.topRight.x / size, 0.0f, 1.0f);
 						float itry = Clamp(s.topRight.y / size, 0.0f, 1.0f);
-
-						
+					
 						f.a.uv = { iblx, itry }; //Bot Left
 						f.b.uv = { iblx, ibly }; //Top Left
 						f.c.uv = { itrx, itry }; //Bot Right
 						f.d.uv = { itrx, ibly }; //Top Right
 
-						chunk->faceVertices.push_back(f.a);
-						chunk->faceVertices.push_back(f.b);
-						chunk->faceVertices.push_back(f.c);
-						chunk->faceVertices.push_back(f.d);
+						faceVertices.push_back(f.a);
+						faceVertices.push_back(f.b);
+						faceVertices.push_back(f.c);
+						faceVertices.push_back(f.d);
 
 						if (faceIndex == 1 || faceIndex == 3 || faceIndex == 4)
 						{
-							chunk->indices.push_back(baseIndex + 0);
-							chunk->indices.push_back(baseIndex + 1);
-							chunk->indices.push_back(baseIndex + 2);
-							chunk->indices.push_back(baseIndex + 1);
-							chunk->indices.push_back(baseIndex + 3);
-							chunk->indices.push_back(baseIndex + 2);
+							indices.push_back(baseIndex + 0);
+							indices.push_back(baseIndex + 1);
+							indices.push_back(baseIndex + 2);
+							indices.push_back(baseIndex + 1);
+							indices.push_back(baseIndex + 3);
+							indices.push_back(baseIndex + 2);
 						}
 						else
 						{
-							chunk->indices.push_back(baseIndex + 0);
-							chunk->indices.push_back(baseIndex + 2);
-							chunk->indices.push_back(baseIndex + 1);
-							chunk->indices.push_back(baseIndex + 1);
-							chunk->indices.push_back(baseIndex + 2);
-							chunk->indices.push_back(baseIndex + 3);
+							indices.push_back(baseIndex + 0);
+							indices.push_back(baseIndex + 2);
+							indices.push_back(baseIndex + 1);
+							indices.push_back(baseIndex + 1);
+							indices.push_back(baseIndex + 2);
+							indices.push_back(baseIndex + 3);
 						}
 						baseIndex += 4; //Amount of vertices
 					}
@@ -174,18 +329,19 @@ void BuildChunkVertices(Chunk* chunk)
 			}
 		}
 	}
+
 }
 
-void UploadChunk(Chunk* chunk)
+void Chunk::UploadChunk()
 {
-	chunk->vertexBuffer.Upload(chunk->faceVertices.data(), chunk->faceVertices.size());
-	chunk->indexBuffer.Upload(chunk->indices.data(), chunk->indices.size());
+	vertexBuffer.Upload(faceVertices.data(), faceVertices.size());
+	indexBuffer.Upload(indices.data(), indices.size());
 }
 
-void RenderChunk(Chunk* chunk)
+void Chunk::RenderChunk()
 {
-	chunk->vertexBuffer.Bind();
-	chunk->indexBuffer.Bind();
+	vertexBuffer.Bind();
+	indexBuffer.Bind();
     g_renderer.textures[Texture::Minecraft]->Bind();
     g_renderer.programs[+Shader::Simple3D]->UseShader();
 
@@ -199,7 +355,8 @@ void RenderChunk(Chunk* chunk)
     Mat4 perspective;
     gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.65f, 1000.0f);
     Mat4 transform;
-    gb_mat4_translate(&transform, Vec3IntToVec3(chunk->p));
+    //gb_mat4_translate(&transform, Vec3IntToVec3(p));
+	gb_mat4_identity(&transform);
 
     ShaderProgram* sp = g_renderer.programs[+Shader::Simple3D];
     sp->UpdateUniformMat4( "u_perspective", 1, false, perspective.e);
@@ -221,5 +378,5 @@ void RenderChunk(Chunk* chunk)
 	sp->UpdateUniformFloat("material.shininess",    material.shininess);
 
 
-    glDrawElements(GL_TRIANGLES, (GLsizei)chunk->indices.size(), GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, (GLsizei)indices.size(), GL_UNSIGNED_INT, 0);
 }

@@ -39,46 +39,57 @@ int main(int argc, char* argv[])
 	Vec3 a = { 1.0f, 1.0f, 1.0f };
 	gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
 
-	Chunk* chunk = new Chunk;
-	chunk->p.x = 30;
-	chunk->SetBlockTypes();
-	BuildChunkVertices(chunk);
-	UploadChunk(chunk);
+	std::vector<Chunk*> chunks;
 
-	std::vector<Block*> blockList;
-    {
-		const int32 cubeSize = 5;
-		for (float z = -cubeSize; z <= cubeSize; z++)
+	const int32 drawDistance = 1;
+	for (int32 z = - drawDistance; z < drawDistance; z++)
+	{
+		for (int32 x = -drawDistance; x < drawDistance; x++)
 		{
-			for (float y = -(2 * cubeSize); y <= 0; y++)
-			{
-				for (float x = -cubeSize; x <= cubeSize; x++)
-				{
-					Grass* temp = new Grass();
-					temp->p = { x, y, z };
-					blockList.push_back(temp);
-				}
-			}
-		}
-		{
-			Grass* grass = new Grass();
-			grass->p = { 0.0f, 1.0f, 0.0f };
-			blockList.push_back(grass);
-
-			Stone* stone = new Stone();
-			stone->p = { 1.0f, 1.0f, 0.0f };
-			blockList.push_back(stone);
-
-			IronBlock* ironBlock = new IronBlock();
-			ironBlock->p = { -1.0f, 1.0f, 0.0f };
-			blockList.push_back(ironBlock);
-
-			FireBlock* fireBlock = new FireBlock();
-			fireBlock->p = { 10.0f, 10.0f, 10.0f };
-			blockList.push_back(fireBlock);
-
+			Chunk* chunk = new Chunk;
+			chunk->p.x = x;
+			chunk->p.z = z;
+			chunk->SetBlocks();
+			chunk->BuildChunkVertices();
+			chunk->UploadChunk();
+			chunks.push_back(chunk);
 		}
 	}
+
+//	std::vector<Block*> blockList;
+//    {
+//		const int32 cubeSize = 5;
+//		for (float z = -cubeSize; z <= cubeSize; z++)
+//		{
+//			for (float y = -(2 * cubeSize); y <= 0; y++)
+//			{
+//				for (float x = -cubeSize; x <= cubeSize; x++)
+//				{
+//					Grass* temp = new Grass();
+//					temp->p = { x, y, z };
+//					blockList.push_back(temp);
+//				}
+//			}
+//		}
+//		{
+//			Grass* grass = new Grass();
+//			grass->p = { 0.0f, 1.0f, 0.0f };
+//			blockList.push_back(grass);
+//
+//			Stone* stone = new Stone();
+//			stone->p = { 1.0f, 1.0f, 0.0f };
+//			blockList.push_back(stone);
+//
+//			IronBlock* ironBlock = new IronBlock();
+//			ironBlock->p = { -1.0f, 1.0f, 0.0f };
+//			blockList.push_back(ironBlock);
+//
+//			FireBlock* fireBlock = new FireBlock();
+//			fireBlock->p = { 10.0f, 10.0f, 10.0f };
+//			blockList.push_back(fireBlock);
+//
+//		}
+//	}
 
 	double testTimer = totalTime;
 
@@ -230,7 +241,7 @@ int main(int argc, char* argv[])
 
 		float cameraSpeed = 3.0f * deltaTime;
         if (keyStates[SDLK_LSHIFT].down)
-            cameraSpeed *= 3;
+            cameraSpeed *= 10;
 		if (keyStates[SDLK_w].down)
 			g_camera.p += cameraSpeed * g_camera.front;
 		if (keyStates[SDLK_s].down)
@@ -318,7 +329,10 @@ int main(int argc, char* argv[])
         //    if (g)
         //        g->Render();
         //}
-		RenderChunk(chunk);
+		for (Chunk* chunk : chunks)
+		{
+			chunk->RenderChunk();
+		}
 
 		//gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
 

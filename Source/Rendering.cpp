@@ -574,5 +574,5 @@ void InitializeVideo()
 		}
 	}
 	g_light.c = {  1.0f,  1.0f,  1.0f };
-	g_light.p = { 10.0f, 10.0f, 10.0f };
+	g_light.p = { 100.0f, 270.0f, 100.0f };
 }

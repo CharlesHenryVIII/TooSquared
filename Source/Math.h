@@ -55,9 +55,9 @@ const uint32 CollisionBot = 2;
 const uint32 CollisionRight = 4;
 const uint32 CollisionLeft = 8;
 
-
 typedef gbVec2 Vec2;
 typedef gbVec3 Vec3;
+typedef gbVec4 Vec4;
 typedef gbMat4 Mat4;
 
 //union Vert2d {
@@ -100,29 +100,19 @@ struct Rect {
 
 };
 
-template<typename T>
-T Random(const T& min, const T& max)
-{
-    return min + (max - min) * (rand() / T(RAND_MAX));
-}
-
-inline uint32 RandomUI(uint32 min, uint32 max)
-{
-    return rand() % (max - min) + min;
-}
 
 struct Range {
     float min, max;
 
-    float RandomInRange()
-    {
-        return Random<float>(min, max);
-    }
-    void AngleSymetric(float angle, float range)
-    {
-        min = angle - range / 2;
-        max = angle + range / 2;
-    }
+//    float RandomInRange()
+//    {
+//        return Random<float>(min, max);
+//    }
+//    void AngleSymetric(float angle, float range)
+//    {
+//        min = angle - range / 2;
+//        max = angle + range / 2;
+//    }
 };
 
 
@@ -304,5 +294,11 @@ inline float Distance(Vec2 a, Vec2 b)
     return Pythags(a - b);
 }
 
-//gbVec3 Vec2TogbVec3(Vec2 v);
-//Vec2 gbMat4ToVec2(gbMat4 m);
+inline uint32 RandomU32(uint32 min, uint32 max)
+{
+    uint32 result = rand();
+    result ^= result << 13;
+    result ^= result >> 17;
+    result ^= result << 5;
+	return (result % (max - min)) + min;
+}
