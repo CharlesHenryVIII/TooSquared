@@ -50,7 +50,8 @@ struct Chunk {
     std::vector<uint32> indices;
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
-    SDL_atomic_t flags = { CHUNK_MODIFIED | CHUNK_NOTUPLOADED };
+    //TODO: Make flags an atomic and use SDL_ATOMIC_SET()?
+    uint32 flags = CHUNK_MODIFIED | CHUNK_NOTUPLOADED;
 
     void SetBlocks();
 	void BuildChunkVertices();

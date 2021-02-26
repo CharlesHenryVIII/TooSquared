@@ -100,9 +100,9 @@ Vec3Int Chunk::BlockPosition()
 
 Vec3Int ToChunkPosition(Vec3 p)
 {
-	 
-	Vec3Int result = { static_cast<int32>(p.x) / static_cast<int32>(CHUNK_X), 
-					   static_cast<int32>(p.y) / static_cast<int32>(CHUNK_Y), 
+
+	Vec3Int result = { static_cast<int32>(p.x) / static_cast<int32>(CHUNK_X),
+					   static_cast<int32>(p.y) / static_cast<int32>(CHUNK_Y),
 					   static_cast<int32>(p.z) / static_cast<int32>(CHUNK_Z) };
 	return result;
 }
@@ -341,8 +341,8 @@ void Chunk::BuildChunkVertices()
 			}
 		}
 	}
-	flags.value ^= (CHUNK_MODIFIED | CHUNK_LOADING);
-	flags.value |= CHUNK_LOADED;
+	flags &= ~(CHUNK_MODIFIED | CHUNK_LOADING);
+	flags |= CHUNK_LOADED;
 }
 
 void Chunk::UploadChunk()
@@ -392,5 +392,5 @@ void Chunk::RenderChunk()
 
 
     glDrawElements(GL_TRIANGLES, (GLsizei)indices.size(), GL_UNSIGNED_INT, 0);
-	flags.value ^= CHUNK_NOTUPLOADED;
+	flags &= ~(CHUNK_NOTUPLOADED);
 }

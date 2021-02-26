@@ -41,7 +41,7 @@ int32 ThreadFunction(void* data)
 
         //Actual Job:
         {
-			job->chunk->flags.value |= CHUNK_LOADING;
+			job->chunk->flags |= CHUNK_LOADING;
 			job->chunk->SetBlocks();
 			job->chunk->BuildChunkVertices();
         }

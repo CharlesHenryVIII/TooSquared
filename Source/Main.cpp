@@ -59,6 +59,16 @@ int main(int argc, char* argv[])
 	std::vector<Chunk*> chunks;
 	std::vector<Chunk*> chunksToLoad;
 
+	//const int32 cubeSize = 10;
+	//for (int32 z = -cubeSize; z <= cubeSize; z++)
+	//{
+	//	for (int32 x = -cubeSize; x <= cubeSize; x++)
+	//	{
+	//		Chunk* chunk = new Chunk();
+	//		chunk->p = {x, 0, z};
+	//		chunksToLoad.push_back(chunk);
+	//	}
+	//}
 
 #if 0
 	std::vector<Block*> blockList;
@@ -242,12 +252,9 @@ int main(int argc, char* argv[])
         if (keyStates[SDLK_BACKQUOTE].down)
             g_running = false;
 
-#ifdef CAMERA
-
-
 		float cameraSpeed = 3.0f * deltaTime;
         if (keyStates[SDLK_LSHIFT].down)
-            cameraSpeed *= 10;
+            cameraSpeed *= 20;
 		if (keyStates[SDLK_w].down)
 			g_camera.p += cameraSpeed * g_camera.front;
 		if (keyStates[SDLK_s].down)
@@ -282,58 +289,11 @@ int main(int argc, char* argv[])
 
 		gb_mat4_look_at(&g_camera.view, g_camera.p, g_camera.p + g_camera.front, g_camera.up);
 
-#else
-        float cameraMovement = 0.5f;
-        if (keyStates[SDLK_LSHIFT].down)
-            cameraMovement = 4.0f;
-		g_camera.r = {};
-        Vec3 cameraDelta = {};
-        if (keyStates[SDLK_w].down)
-            cameraDelta.z += cameraMovement * deltaTime;
-        if (keyStates[SDLK_s].down)
-            cameraDelta.z -= cameraMovement * deltaTime;
-        if (keyStates[SDLK_a].down)
-            cameraDelta.x += cameraMovement * deltaTime;
-        if (keyStates[SDLK_d].down)
-            cameraDelta.x -= cameraMovement * deltaTime;
-        if (keyStates[SDLK_LCTRL].down)
-            cameraDelta.y += cameraMovement * deltaTime;
-        if (keyStates[SDLK_SPACE].down)
-            cameraDelta.y -= cameraMovement * deltaTime;
-        if (keyStates[SDLK_q].down)
-            g_camera.r.z -= 0.5f * deltaTime;
-        if (keyStates[SDLK_e].down)
-            g_camera.r.z += 0.5f * deltaTime;
-
-
-
-        Mat4 xRot;
-        gb_mat4_identity(&xRot);
-        Mat4 yRot;
-        gb_mat4_identity(&yRot);
-        Mat4 zRot;
-		gb_mat4_rotate(&zRot, { 0, 0, 1 }, g_camera.r.z); //mouse y movement spin about the x coordinate
-        Mat4 pos;
-        gb_mat4_identity(&pos);
-
-        if (keyStates[SDL_BUTTON_LEFT].down)
-        {
-			g_camera.r.x += g_mouse.pDelta.x * 0.5f * deltaTime;
-			g_camera.r.y += g_mouse.pDelta.y * 0.5f * deltaTime;
-			gb_mat4_rotate(&xRot, { 0, 1, 0 }, g_camera.r.x); //mouse x movement spin about the Y coordinate
-			gb_mat4_rotate(&yRot, { 1, 0, 0 }, g_camera.r.y); //mouse y movement spin about the x coordinate
-		}
-
-
-		gb_mat4_translate(&pos, cameraDelta);
-		g_camera.view = xRot * yRot * zRot * pos * g_camera.view;
-#endif
-
 		{
 			PROFILE_SCOPE("Camera Position Chunk Update");
 
-			const int32 drawDistance = 1;
-			const int32 fogDistance = 5;
+			const int32 drawDistance = 2;
+			const int32 fogDistance = 0;
 			Vec3Int cam = ToChunkPosition(g_camera.p);
 			for (int32 z = -drawDistance; z <= drawDistance; z++)
 			{
@@ -347,17 +307,19 @@ int main(int argc, char* argv[])
 						{
 							if (chunk->p.z == newBlockP.z && chunk->p.x == newBlockP.x)
 							{
-								if (chunk->flags.value & (CHUNK_LOADED | CHUNK_LOADING | CHUNK_MODIFIED))
+								if (chunk->flags & (CHUNK_LOADED | CHUNK_LOADING | CHUNK_MODIFIED))
 								{
 
 									needCube = false;
 									break;
 								}
 							}
-							else if ((chunk->flags.value & CHUNK_LOADED) && (chunk->p.x > cam.x + fogDistance || chunk->p.z > cam.z + fogDistance))
+							else if (fogDistance && (chunk->flags & CHUNK_LOADED) &&
+								((chunk->p.x > cam.x + fogDistance || chunk->p.z > cam.z + fogDistance) ||
+								 (chunk->p.x < cam.x - fogDistance || chunk->p.z < cam.z - fogDistance)))
 							{
 
-								chunk->flags.value |= CHUNK_TODELTE;
+								chunk->flags |= CHUNK_TODELTE;
 							}
 						}
 					}
@@ -380,7 +342,7 @@ int main(int argc, char* argv[])
 			if (chunksToLoad.size())
 			{
 				SDL_LockMutex(g_jobHandler.mutex);
-				assert(g_jobHandler.jobs.empty());
+				//assert(g_jobHandler.jobs.empty());
 				//const size_t coreCount = g_jobHandler.threads.size();
 				for (Chunk* chunk : chunksToLoad)
 				{
@@ -408,22 +370,28 @@ int main(int argc, char* argv[])
 		{
 			PROFILE_SCOPE("Chunk Upload and Render");
 
+			int32 uploadCount = 0;
 			for (Chunk* chunk : chunks)
 			{
 				if (chunk)
 				{
-					if (chunk->flags.value & CHUNK_LOADED)
+					if (chunk->flags & CHUNK_LOADED)
 					{
-						if (chunk->flags.value & CHUNK_NOTUPLOADED)
+						if (chunk->flags & CHUNK_NOTUPLOADED)
+						{
 							chunk->UploadChunk();
+							uploadCount++;
+						}
 						chunk->RenderChunk();
 					}
 				}
+				if (uploadCount > 10)
+					break;
 			}
 		}
 
 		std::erase_if(chunks, [](Chunk* chunk) {
-			if (chunk->flags.value & CHUNK_TODELTE)
+			if (chunk->flags & CHUNK_TODELTE)
 			{
 				delete chunk;
 				chunk = nullptr;

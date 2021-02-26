@@ -13,7 +13,6 @@ struct Window {
     bool hasAttention = true;
 };
 
-#ifdef CAMERA
 struct Camera {
     Vec3 p      = { 0.0f, 260.0f, 0.0f };
     Vec3 front  = { 0.0f, 0.0f, -1.0f };
@@ -22,13 +21,6 @@ struct Camera {
     float yaw   = -90.0f;
     float pitch = 0.0f;
 };
-#else
-struct Camera {
-    Vec3 p = { 2, 2, 2 };
-    Vec3 r = {};
-    Mat4 view;
-};
-#endif
 
 struct Light {
     Vec3 p;
