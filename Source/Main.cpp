@@ -12,6 +12,7 @@
 #include "WinInterop.h"
 
 #include <unordered_map>
+#include <vector>
 
 struct Key {
 	bool down;
@@ -328,30 +329,44 @@ int main(int argc, char* argv[])
 		g_camera.view = xRot * yRot * zRot * pos * g_camera.view;
 #endif
 
-		const int32 drawDistance = 1;
-		Vec3Int cam = ToChunkPosition(g_camera.p);
-		for (int32 z = -drawDistance; z <= drawDistance; z++)
 		{
-			for (int32 x = -drawDistance; x <= drawDistance; x++)
+			PROFILE_SCOPE("Camera Position Chunk Update");
+
+			const int32 drawDistance = 1;
+			const int32 fogDistance = 5;
+			Vec3Int cam = ToChunkPosition(g_camera.p);
+			for (int32 z = -drawDistance; z <= drawDistance; z++)
 			{
-				bool needCube = true;
-				Vec3Int newBlockP = { cam.x + x, 0, cam.z + z };
-				for (Chunk* chunk : chunks)
+				for (int32 x = -drawDistance; x <= drawDistance; x++)
 				{
-					if (chunk && (chunk->p.z == newBlockP.z && chunk->p.x == newBlockP.x))
+					bool needCube = true;
+					Vec3Int newBlockP = { cam.x + x, 0, cam.z + z };
+					for (Chunk* chunk : chunks)
 					{
-						if (chunk->flags.value & (CHUNK_LOADED | CHUNK_LOADING | CHUNK_MODIFIED))
+						if (chunk)
 						{
-							needCube = false;
-							break;
+							if (chunk->p.z == newBlockP.z && chunk->p.x == newBlockP.x)
+							{
+								if (chunk->flags.value & (CHUNK_LOADED | CHUNK_LOADING | CHUNK_MODIFIED))
+								{
+
+									needCube = false;
+									break;
+								}
+							}
+							else if ((chunk->flags.value & CHUNK_LOADED) && (chunk->p.x > cam.x + fogDistance || chunk->p.z > cam.z + fogDistance))
+							{
+
+								chunk->flags.value |= CHUNK_TODELTE;
+							}
 						}
 					}
-				}
-				if (needCube)
-				{
-					Chunk* chunk = new Chunk;
-					chunk->p = newBlockP;
-					chunksToLoad.push_back(chunk);
+					if (needCube)
+					{
+						Chunk* chunk = new Chunk;
+						chunk->p = newBlockP;
+						chunksToLoad.push_back(chunk);
+					}
 				}
 			}
 		}
@@ -359,28 +374,30 @@ int main(int argc, char* argv[])
 
 		RenderUpdate(deltaTime);
 
-		if (chunksToLoad.size())
 		{
-			SDL_LockMutex(g_jobHandler.mutex);
-			assert(g_jobHandler.jobs.empty());
-			//const size_t coreCount = g_jobHandler.threads.size();
-			for (Chunk* chunk : chunksToLoad)
+			PROFILE_SCOPE("Semaphore Update");
+
+			if (chunksToLoad.size())
 			{
-				if (chunk)
+				SDL_LockMutex(g_jobHandler.mutex);
+				assert(g_jobHandler.jobs.empty());
+				//const size_t coreCount = g_jobHandler.threads.size();
+				for (Chunk* chunk : chunksToLoad)
 				{
+					if (chunk)
+					{
 
-					Job* job = new Job();
-					job->chunk = chunk;
-					chunks.push_back(chunk);
-					g_jobHandler.jobs.push_back(job);
-					SDL_SemPost(g_jobHandler.semaphore);
+						Job* job = new Job();
+						job->chunk = chunk;
+						chunks.push_back(chunk);
+						g_jobHandler.jobs.push_back(job);
+						SDL_SemPost(g_jobHandler.semaphore);
+					}
 				}
-
-				// Gross, let me post multiple
+				chunksToLoad.clear();
+				SDL_UnlockMutex(g_jobHandler.mutex);
+				//SDL_SemWait(g_jobHandler.wait_semaphore);
 			}
-			chunksToLoad.clear();
-			SDL_UnlockMutex(g_jobHandler.mutex);
-			//SDL_SemWait(g_jobHandler.wait_semaphore);
 		}
 
 		//for (Block* g : blockList)
@@ -388,18 +405,32 @@ int main(int argc, char* argv[])
 		//    if (g)
 		//        g->Render();
 		//}
-		for (Chunk* chunk : chunks)
 		{
-			if (chunk)
+			PROFILE_SCOPE("Chunk Upload and Render");
+
+			for (Chunk* chunk : chunks)
 			{
-				if (chunk->flags.value & CHUNK_LOADED)
+				if (chunk)
 				{
-					if (chunk->flags.value & CHUNK_NOTUPLOADED)
-						chunk->UploadChunk();
-					chunk->RenderChunk();
+					if (chunk->flags.value & CHUNK_LOADED)
+					{
+						if (chunk->flags.value & CHUNK_NOTUPLOADED)
+							chunk->UploadChunk();
+						chunk->RenderChunk();
+					}
 				}
 			}
 		}
+
+		std::erase_if(chunks, [](Chunk* chunk) {
+			if (chunk->flags.value & CHUNK_TODELTE)
+			{
+				delete chunk;
+				chunk = nullptr;
+				return true;
+			}
+			return false;
+		});
 
 		//gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
 

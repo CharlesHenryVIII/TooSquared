@@ -545,9 +545,11 @@ void InitializeVideo()
 	glGenVertexArrays(1, &g_renderer.vao);
 	glBindVertexArray(g_renderer.vao);
 
-
-	//g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png");
-	g_renderer.textures[Texture::Minecraft] = new Texture("Assets/TestSpriteSheet.png");
+#if 0
+	//g_renderer.textures[Texture::Minecraft] = new Texture("Assets/TestSpriteSheet.png");
+#else
+	g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png");
+#endif
 	g_renderer.programs[+Shader::Simple3D] = new ShaderProgram("Source/Shaders/3D.vert", "Source/Shaders/3D.frag");
 
 	for (int face = 0; face < 6; ++face)

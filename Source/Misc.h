@@ -42,10 +42,35 @@ struct ExitScopeHelp
     ExitScope<T> operator+(T t) { return t; }
 };
 
-#define _SG_CONCAT(a, b) a ## b
-#define SG_CONCAT(a, b) _SG_CONCAT(a, b)
+#define _TS_CONCAT(a, b) a ## b
+#define TS_CONCAT(a, b) _TS_CONCAT(a, b)
 
-#define Defer auto SG_CONCAT(defer__, __LINE__) = ExitScopeHelp() + [&]()
+#define Defer auto TS_CONCAT(defer__, __LINE__) = ExitScopeHelp() + [&]()
+
+
+#define ENABLE_PROFILE 1
+#if ENABLE_PROFILE
+float GetTimer();
+struct ScopeTimer
+{
+	const char* name;
+	float start;
+
+	ScopeTimer(const char* name_)
+		: name(name_)
+	{
+		start = GetTimer();
+	}
+
+	~ScopeTimer();
+};
+
+#define PROFILE_FUNCTION() ScopeTimer TS_CONCAT(__timer_, __COUNTER__)(__FUNCTION__)
+#define PROFILE_SCOPE(name) ScopeTimer TS_CONCAT(__timer_, __COUNTER__)(name)
+#else
+#define PROFILE_FUNCTION() (void)0
+#define PROFILE_SCOPE(...) (void)0
+#endif
 
 
 extern bool g_running;

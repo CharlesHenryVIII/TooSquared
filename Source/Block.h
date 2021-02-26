@@ -37,6 +37,7 @@ ENUMOPS(BlockType);
 #define CHUNK_LOADED        0x0002
 #define CHUNK_MODIFIED      0x0004
 #define CHUNK_NOTUPLOADED	0x0008
+#define CHUNK_TODELTE	    0x0010
 
 constexpr uint32 CHUNK_X = 16;
 constexpr uint32 CHUNK_Y = 256;
