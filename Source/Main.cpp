@@ -8,6 +8,8 @@
 #include "Misc.h"
 #include "Rendering.h"
 #include "Block.h"
+#include "Computer.h"
+#include "WinInterop.h"
 
 #include <unordered_map>
 
@@ -29,6 +31,20 @@ int main(int argc, char* argv[])
     std::unordered_map<int32, Key> keyStates;
     InitializeVideo();
 
+    g_jobHandler.semaphore = SDL_CreateSemaphore(0);
+	g_jobHandler.mutex = SDL_CreateMutex();
+    g_jobHandler.wait_semaphore = SDL_CreateSemaphore(0);
+    g_computerSpecs.coreCount = SDL_GetCPUCount();
+	g_jobHandler.threads.resize(g_computerSpecs.UsableCores());
+
+    ThreadData passingData;
+    SDL_AtomicSet(&passingData.running, 1);
+    for (uint32 i = 0; i < g_jobHandler.threads.size(); ++i)
+    {
+        g_jobHandler.threads[i] = SDL_CreateThread(ThreadFunction, ("Thread " + std::to_string(i)).c_str(), &passingData);
+		DebugPrint("Created New Thread: %i\n", i);
+    }
+
 	double freq = double(SDL_GetPerformanceFrequency()); //HZ
 	double totalTime = SDL_GetPerformanceCounter() / freq; //sec
 	srand(static_cast<uint32>(totalTime));
@@ -40,56 +56,45 @@ int main(int argc, char* argv[])
 	gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
 
 	std::vector<Chunk*> chunks;
+	std::vector<Chunk*> chunksToLoad;
 
-	const int32 drawDistance = 1;
-	for (int32 z = - drawDistance; z < drawDistance; z++)
-	{
-		for (int32 x = -drawDistance; x < drawDistance; x++)
+
+#if 0
+	std::vector<Block*> blockList;
+    {
+		const int32 cubeSize = 5;
+		for (float z = -cubeSize; z <= cubeSize; z++)
 		{
-			Chunk* chunk = new Chunk;
-			chunk->p.x = x;
-			chunk->p.z = z;
-			chunk->SetBlocks();
-			chunk->BuildChunkVertices();
-			chunk->UploadChunk();
-			chunks.push_back(chunk);
+			for (float y = -(2 * cubeSize); y <= 0; y++)
+			{
+				for (float x = -cubeSize; x <= cubeSize; x++)
+				{
+					Grass* temp = new Grass();
+					temp->p = { x, y, z };
+					blockList.push_back(temp);
+				}
+			}
+		}
+		{
+			Grass* grass = new Grass();
+			grass->p = { 0.0f, 1.0f, 0.0f };
+			blockList.push_back(grass);
+
+			Stone* stone = new Stone();
+			stone->p = { 1.0f, 1.0f, 0.0f };
+			blockList.push_back(stone);
+
+			IronBlock* ironBlock = new IronBlock();
+			ironBlock->p = { -1.0f, 1.0f, 0.0f };
+			blockList.push_back(ironBlock);
+
+			FireBlock* fireBlock = new FireBlock();
+			fireBlock->p = { 10.0f, 10.0f, 10.0f };
+			blockList.push_back(fireBlock);
+
 		}
 	}
-
-//	std::vector<Block*> blockList;
-//    {
-//		const int32 cubeSize = 5;
-//		for (float z = -cubeSize; z <= cubeSize; z++)
-//		{
-//			for (float y = -(2 * cubeSize); y <= 0; y++)
-//			{
-//				for (float x = -cubeSize; x <= cubeSize; x++)
-//				{
-//					Grass* temp = new Grass();
-//					temp->p = { x, y, z };
-//					blockList.push_back(temp);
-//				}
-//			}
-//		}
-//		{
-//			Grass* grass = new Grass();
-//			grass->p = { 0.0f, 1.0f, 0.0f };
-//			blockList.push_back(grass);
-//
-//			Stone* stone = new Stone();
-//			stone->p = { 1.0f, 1.0f, 0.0f };
-//			blockList.push_back(stone);
-//
-//			IronBlock* ironBlock = new IronBlock();
-//			ironBlock->p = { -1.0f, 1.0f, 0.0f };
-//			blockList.push_back(ironBlock);
-//
-//			FireBlock* fireBlock = new FireBlock();
-//			fireBlock->p = { 10.0f, 10.0f, 10.0f };
-//			blockList.push_back(fireBlock);
-//
-//		}
-//	}
+#endif
 
 	double testTimer = totalTime;
 
@@ -266,7 +271,7 @@ int main(int argc, char* argv[])
 		}
 
 		// make sure that when pitch is out of bounds, screen doesn't get flipped
-		Clamp<float>(g_camera.pitch, -89.0f, 89.0f);
+		g_camera.pitch = Clamp<float>(g_camera.pitch, -89.0f, 89.0f);
 
 		Vec3 front = {};
 		front.x = cos(DegToRad(g_camera.yaw)) * cos(DegToRad(g_camera.pitch));
@@ -323,15 +328,77 @@ int main(int argc, char* argv[])
 		g_camera.view = xRot * yRot * zRot * pos * g_camera.view;
 #endif
 
-        RenderUpdate(deltaTime);
-        //for (Block* g : blockList)
-        //{
-        //    if (g)
-        //        g->Render();
-        //}
+		const int32 drawDistance = 1;
+		Vec3Int cam = ToChunkPosition(g_camera.p);
+		for (int32 z = -drawDistance; z <= drawDistance; z++)
+		{
+			for (int32 x = -drawDistance; x <= drawDistance; x++)
+			{
+				bool needCube = true;
+				Vec3Int newBlockP = { cam.x + x, 0, cam.z + z };
+				for (Chunk* chunk : chunks)
+				{
+					if (chunk && (chunk->p.z == newBlockP.z && chunk->p.x == newBlockP.x))
+					{
+						if (chunk->flags.value & (CHUNK_LOADED | CHUNK_LOADING | CHUNK_MODIFIED))
+						{
+							needCube = false;
+							break;
+						}
+					}
+				}
+				if (needCube)
+				{
+					Chunk* chunk = new Chunk;
+					chunk->p = newBlockP;
+					chunksToLoad.push_back(chunk);
+				}
+			}
+		}
+
+
+		RenderUpdate(deltaTime);
+
+		if (chunksToLoad.size())
+		{
+			SDL_LockMutex(g_jobHandler.mutex);
+			assert(g_jobHandler.jobs.empty());
+			//const size_t coreCount = g_jobHandler.threads.size();
+			for (Chunk* chunk : chunksToLoad)
+			{
+				if (chunk)
+				{
+
+					Job* job = new Job();
+					job->chunk = chunk;
+					chunks.push_back(chunk);
+					g_jobHandler.jobs.push_back(job);
+					SDL_SemPost(g_jobHandler.semaphore);
+				}
+
+				// Gross, let me post multiple
+			}
+			chunksToLoad.clear();
+			SDL_UnlockMutex(g_jobHandler.mutex);
+			//SDL_SemWait(g_jobHandler.wait_semaphore);
+		}
+
+		//for (Block* g : blockList)
+		//{
+		//    if (g)
+		//        g->Render();
+		//}
 		for (Chunk* chunk : chunks)
 		{
-			chunk->RenderChunk();
+			if (chunk)
+			{
+				if (chunk->flags.value & CHUNK_LOADED)
+				{
+					if (chunk->flags.value & CHUNK_NOTUPLOADED)
+						chunk->UploadChunk();
+					chunk->RenderChunk();
+				}
+			}
 		}
 
 		//gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });

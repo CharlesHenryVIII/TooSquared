@@ -155,6 +155,7 @@
   <ItemGroup>
     <ClCompile Include="Contrib\Glew\src\glew.c" />
     <ClCompile Include="Source\Block.cpp" />
+    <ClCompile Include="Source\Computer.cpp" />
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Misc.cpp" />
     <ClCompile Include="Source\Rendering.cpp" />
@@ -165,6 +166,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Block.h" />
+    <ClInclude Include="Source\Computer.h" />
     <ClInclude Include="Source\Misc.h" />
     <ClInclude Include="Source\Rendering.h" />
     <ClInclude Include="Source\WinInterop.h" />

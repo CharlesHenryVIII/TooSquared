@@ -8,6 +8,7 @@
 enum class BlockType : uint8 {
     Empty,
     Grass,
+    Dirt,
     Stone,
     Planks,
     StoneSlab,
@@ -32,6 +33,10 @@ ENUMOPS(BlockType);
 //Sappling,
 //Chest,
 
+#define CHUNK_LOADING		0x0001
+#define CHUNK_LOADED        0x0002
+#define CHUNK_MODIFIED      0x0004
+#define CHUNK_NOTUPLOADED	0x0008
 
 constexpr uint32 CHUNK_X = 16;
 constexpr uint32 CHUNK_Y = 256;
@@ -44,6 +49,7 @@ struct Chunk {
     std::vector<uint32> indices;
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
+    SDL_atomic_t flags = { CHUNK_MODIFIED | CHUNK_NOTUPLOADED };
 
     void SetBlocks();
 	void BuildChunkVertices();
@@ -94,6 +100,19 @@ struct Grass : public Block {
     }
 };
 
+struct Dirt : public Block {
+
+    Dirt()
+    {
+        material.ambient = {  0.1f, 0.1f, 0.1f };
+        material.diffuse = {  1.0f, 1.0f, 1.0f };
+        material.specular = {     0.1f,   0.1f,   0.1f  };
+        material.shininess =  32;//0;
+
+        defaultSpriteLocation = 2;
+    }
+};
+
 struct Stone : public Block {
     Stone()
     {
@@ -129,3 +148,5 @@ struct FireBlock : public Block {
         defaultSpriteLocation = 252;
     }
 };
+
+Vec3Int ToChunkPosition(Vec3 p);

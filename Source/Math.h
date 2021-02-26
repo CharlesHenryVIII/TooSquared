@@ -185,31 +185,31 @@ struct Rectangle_Int {
 
 
 template <typename T>
-T Min(T a, T b)
+[[nodiscard]] T Min(T a, T b)
 {
     return a < b ? a : b;
 }
 
-template <typename T>
-T Max(T a, T b)
+ template <typename T>
+[[nodiscard]] T Max(T a, T b)
 {
     return a > b ? a : b;
 }
 
 template <typename T>
-T Clamp(T v, T min, T max)
+[[nodiscard]] T Clamp(T v, T min, T max)
 {
     return Max(min, Min(max, v));
 }
 
 //MATH AND CONVERSIONS
 
-inline float RadToDeg(float angle)
+[[nodiscard]] inline float RadToDeg(float angle)
 {
     return ((angle) / (tau)) * 360;
 }
 
-inline float DegToRad(float angle)
+[[nodiscard]] inline float DegToRad(float angle)
 {
     return (angle / 360 ) * (tau);
 }
@@ -229,7 +229,7 @@ inline float DegToRad(float angle)
 //    return tanf(t);
 //}
 
-inline Vec3 Cross(Vec3 a, Vec3 b)
+[[nodiscard]] inline Vec3 Cross(Vec3 a, Vec3 b)
 {
     Vec3 result;
     gb_vec3_cross(&result, a, b);
@@ -241,12 +241,12 @@ inline Vec3 Cross(Vec3 a, Vec3 b)
 //    return sqrtf(powf(B.x - A.x, 2) + powf(B.y - A.y, 2));
 //}
 
-inline Vec3 Normalize(Vec3 v)
+[[nodiscard]] inline Vec3 Normalize(Vec3 v)
 {
     float hyp = sqrtf(powf(v.x, 2) + powf(v.y, 2) + powf(v.z, 2));
     return { (v.x / hyp), (v.y / hyp) , (v.z / hyp)};
 }
-inline Vec2 Normalize(Vec2 v)
+[[nodiscard]] inline Vec2 Normalize(Vec2 v)
 {
     float hyp = sqrtf(powf(v.x, 2) + powf(v.y, 2));
     return { (v.x / hyp), (v.y / hyp) };
@@ -259,7 +259,7 @@ inline Vec2 Normalize(Vec2 v)
 //	return{ (v.x / hyp), (v.y / hyp) };
 //}
 
-inline float Lerp(float a, float b, float t)
+[[nodiscard]] inline float Lerp(float a, float b, float t)
 {
     return a + (b - a) * t;
 }
@@ -279,22 +279,22 @@ Atan2f return value:
 -3pi/4    -pi/2        pi/4
 */
 
-inline float DotProduct(Vec2 a, Vec2 b)
+[[nodiscard]] inline float DotProduct(Vec2 a, Vec2 b)
 {
     return a.x * b.x + a.y * b.y;
 }
 
-inline float Pythags(Vec2 a)
+[[nodiscard]] inline float Pythags(Vec2 a)
 {
     return sqrtf(powf(a.x, 2) + powf(a.y, 2));
 }
 
-inline float Distance(Vec2 a, Vec2 b)
+[[nodiscard]] inline float Distance(Vec2 a, Vec2 b)
 {
     return Pythags(a - b);
 }
 
-inline uint32 RandomU32(uint32 min, uint32 max)
+[[nodiscard]] inline uint32 RandomU32(uint32 min, uint32 max)
 {
     uint32 result = rand();
     result ^= result << 13;

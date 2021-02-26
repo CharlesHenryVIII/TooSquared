@@ -64,27 +64,25 @@ struct BlockSprites
 
 static BlockSprites faceSprites[+BlockType::Count];
 
-void SetBlockSprites()
+void SetMultipleBlockSprites(BlockType bt, uint32 v)
 {
 	for (uint32 i = 0; i < +Face::Count; i++)
 	{
-		faceSprites[+BlockType::Grass].faceSprites[i] = 3;
+		faceSprites[+bt].faceSprites[i] = v;
 	}
+}
+void SetBlockSprites()
+{
+	SetMultipleBlockSprites(BlockType::Grass, 3);
 	faceSprites[+BlockType::Grass].faceSprites[+Face::Top] = 0;
 	faceSprites[+BlockType::Grass].faceSprites[+Face::Bot] = 2;
 
-	for (uint32 i = 0; i < +Face::Count; i++)
-	{
-		faceSprites[+BlockType::Stone].faceSprites[i] = 1;
-	}
-
-	for (uint32 i = 0; i < +Face::Count; i++)
-	{
-		faceSprites[+BlockType::IronBlock].faceSprites[i] = 22;
-	}
+	SetMultipleBlockSprites(BlockType::Stone, 1);
+	SetMultipleBlockSprites(BlockType::IronBlock, 22);
+	SetMultipleBlockSprites(BlockType::Dirt, 2);
 }
 
-	
+
 Vec3Int Vec3ToVec3Int(Vec3 a)
 {
 	return { static_cast<int32>(a.x), static_cast<int32>(a.y), static_cast<int32>(a.z) };
@@ -98,6 +96,15 @@ Vec3 Vec3IntToVec3(Vec3Int a)
 Vec3Int Chunk::BlockPosition()
 {
 	return { p.x* static_cast<int32>(CHUNK_X), p.y* static_cast<int32>(CHUNK_Y), p.z* static_cast<int32>(CHUNK_Z) };
+}
+
+Vec3Int ToChunkPosition(Vec3 p)
+{
+	 
+	Vec3Int result = { static_cast<int32>(p.x) / static_cast<int32>(CHUNK_X), 
+					   static_cast<int32>(p.y) / static_cast<int32>(CHUNK_Y), 
+					   static_cast<int32>(p.z) / static_cast<int32>(CHUNK_Z) };
+	return result;
 }
 
 
@@ -188,7 +195,7 @@ Vec3Int Chunk::BlockPosition()
 //	}
 //	}
 //}
-//
+
 //BlockType GetBlockType(uint32 y)
 //{
 //	for ()
@@ -210,6 +217,7 @@ void Chunk::SetBlocks()
 	BlockType options[] = {
 		BlockType::Empty,
 		BlockType::Grass,
+		BlockType::Dirt,
 		BlockType::Stone,
 		BlockType::IronBlock,
 	};
@@ -224,24 +232,25 @@ void Chunk::SetBlocks()
 			{
 
 				BlockType bt = BlockType::Empty;
-				if (y > CHUNK_Y / 2)
+				//if (y > CHUNK_Y / 2)
+				//{
+				//	bt = BlockType::Empty;
+				//}
+				//else
 				{
-					bt = BlockType::Empty;
-				}
-				else
-				{
-					if (y > CHUNK_Y / 3)
+					if (y == CHUNK_Y - 1)
 					{
 						bt = BlockType::Grass;
 					}
-					else if (y > CHUNK_Y / 4)
+					else if (y > CHUNK_Y - 4)
 					{
-						uint32 random = RandomU32(+BlockType::Grass, static_cast<uint32>(arrsize(options)));
-						bt = options[random];
+                        bt = BlockType::Dirt;
+						//uint32 random = RandomU32(+BlockType::Grass, static_cast<uint32>(arrsize(options)));
 					}
 					else
 					{
-						uint32 random = RandomU32(+BlockType::Stone, static_cast<uint32>(arrsize(options)));
+						//uint32 random = RandomU32(+BlockType::Stone, static_cast<uint32>(arrsize(options)));
+						uint32 random = RandomU32(0, static_cast<uint32>(arrsize(options)));
 						bt = options[random];
 					}
 				}
@@ -294,7 +303,7 @@ void Chunk::BuildChunkVertices()
 						float ibly = Clamp(s.botLeft.y  / size, 0.0f, 1.0f);
 						float itrx = Clamp(s.topRight.x / size, 0.0f, 1.0f);
 						float itry = Clamp(s.topRight.y / size, 0.0f, 1.0f);
-					
+
 						f.a.uv = { iblx, itry }; //Bot Left
 						f.b.uv = { iblx, ibly }; //Top Left
 						f.c.uv = { itrx, itry }; //Bot Right
@@ -305,6 +314,9 @@ void Chunk::BuildChunkVertices()
 						faceVertices.push_back(f.c);
 						faceVertices.push_back(f.d);
 
+
+                        //TODO: fix indices and Vertices ordering
+                        //so these checks are not needed
 						if (faceIndex == 1 || faceIndex == 3 || faceIndex == 4)
 						{
 							indices.push_back(baseIndex + 0);
@@ -329,7 +341,8 @@ void Chunk::BuildChunkVertices()
 			}
 		}
 	}
-
+	flags.value ^= (CHUNK_MODIFIED | CHUNK_LOADING);
+	flags.value |= CHUNK_LOADED;
 }
 
 void Chunk::UploadChunk()
@@ -379,4 +392,5 @@ void Chunk::RenderChunk()
 
 
     glDrawElements(GL_TRIANGLES, (GLsizei)indices.size(), GL_UNSIGNED_INT, 0);
+	flags.value ^= CHUNK_NOTUPLOADED;
 }
