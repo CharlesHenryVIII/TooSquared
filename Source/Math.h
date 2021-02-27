@@ -6,6 +6,11 @@
 #include <cmath>
 #include <cstdint>
 
+//#define IMPLIMENTATION1
+//#define IMPLIMENTATION2
+//#define IMPLIMENTATION3
+#define IMPLIMENTATION4
+
 #define BIT(num) (1<<(num))
 
 using int8 = int8_t;
@@ -58,6 +63,8 @@ const uint32 CollisionLeft = 8;
 typedef gbVec2 Vec2;
 typedef gbVec3 Vec3;
 typedef gbVec4 Vec4;
+typedef gbMat2 Mat2;
+typedef gbMat3 Mat3;
 typedef gbMat4 Mat4;
 
 //union Vert2d {
@@ -182,6 +189,54 @@ struct Rectangle_Int {
 //    return !(lhs == rhs);
 //}
 
+inline Vec3 operator+(Vec3 a, float b) 
+{ 
+    Vec3 r = {a.x + b, a.y + b, a.z + b}; 
+    return r; 
+}
+
+inline Vec3 operator+(float a, Vec3 b) 
+{ 
+    Vec3 r = { a + b.x, a + b.y, a + b.z };
+    return r; 
+}
+
+inline Vec3 operator-(Vec3 a, float b) 
+{ 
+    Vec3 r = {a.x - b, a.y - b, a.z - b}; 
+    return r; 
+}
+
+inline Vec3 operator-(float a, Vec3 b) 
+{ 
+    Vec3 r = { a - b.x, a - b.y, a - b.z };
+    return r; 
+}
+
+inline Vec2 operator+(Vec2 a, float b) 
+{ 
+    Vec2 r = { a.x + b, a.y + b };
+    return r; 
+}
+
+inline Vec2 operator+(float a, Vec2 b) 
+{ 
+    Vec2 r = { a + b.x, a + b.y };
+    return r; 
+}
+
+inline Vec2 operator-(Vec2 a, float b) 
+{ 
+    Vec2 r = { a.x - b, a.y - b };
+    return r; 
+}
+
+inline Vec2 operator-(float a, Vec2 b) 
+{ 
+    Vec2 r = { a - b.x, a - b.y };
+    return r; 
+}
+
 
 
 template <typename T>
@@ -200,6 +255,41 @@ template <typename T>
 [[nodiscard]] T Clamp(T v, T min, T max)
 {
     return Max(min, Min(max, v));
+}
+
+[[nodiscard]] inline Vec2 Floor(Vec2 v) 
+{
+    return { floorf(v.x), floorf(v.y) };
+}
+
+[[nodiscard]] inline Vec3 Floor(Vec3 v) 
+{
+    return { floorf(v.x), floorf(v.y), floorf(v.z) };
+}
+
+[[nodiscard]] inline Vec4 Floor(Vec4 v) 
+{
+    return { floorf(v.x), floorf(v.y), floorf(v.z), floorf(v.w)  };
+}
+
+[[nodiscard]] inline float Fract(float a)
+{
+    return a - floorf(a);
+}
+
+[[nodiscard]] inline Vec2 Fract(Vec2 a)
+{
+    return a - Floor(a);
+}
+
+[[nodiscard]] inline Vec3 Fract(Vec3 a)
+{
+    return a - Floor(a);
+}
+
+[[nodiscard]] inline Vec4 Fract(Vec4 a)
+{
+    return a - Floor(a);
 }
 
 //MATH AND CONVERSIONS
@@ -259,10 +349,16 @@ template <typename T>
 //	return{ (v.x / hyp), (v.y / hyp) };
 //}
 
-[[nodiscard]] inline float Lerp(float a, float b, float t)
+template <typename T>
+[[nodiscard]] inline T Lerp(T a, T b, T t)
 {
     return a + (b - a) * t;
 }
+
+//[[nodiscard]] inline float Lerp(float a, float b, float t)
+//{
+//    return a + (b - a) * t;
+//}
 
 
 /*
@@ -302,3 +398,18 @@ Atan2f return value:
     result ^= result << 5;
 	return (result % (max - min)) + min;
 }
+
+#ifdef IMPLIMENTATION1
+double Perlin(double x, double y, double z);
+#endif
+#ifdef IMPLIMENTATION2
+float Terrain(Vec2 p);
+float FBM(Vec2 x, float H = 0.5f);
+#endif
+#ifdef IMPLIMENTATION3
+float PerlinNoise(Vec2 v);
+#endif
+#ifdef IMPLIMENTATION4
+void PerlinInit();
+float noise(float x, float y);
+#endif

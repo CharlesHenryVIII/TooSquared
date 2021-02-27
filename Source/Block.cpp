@@ -1,4 +1,6 @@
 #include "Block.h"
+#include "WinInterop.h"
+
 
 void Block::Render()
 {
@@ -226,11 +228,57 @@ void Chunk::SetBlocks()
 
 	for (int32 x = 0; x < CHUNK_X; x++)
 	{
-		for (int32 y = 0; y < CHUNK_Y; y++)
+		for (int32 z = 0; z < CHUNK_Z; z++)
 		{
-			for (int32 z = 0; z < CHUNK_Z; z++)
-			{
 
+#ifdef IMPLIMENTATION4
+
+			Vec3Int chunkBlockP = BlockPosition();
+			Vec2 chunkP = { static_cast<float>(chunkBlockP.x), static_cast<float>(chunkBlockP.z) };
+			Vec2 blockPFract = Vec2({ static_cast<float>(x) / CHUNK_X, static_cast<float>(z) / CHUNK_Z });
+			Vec2 blockP = chunkP + blockPFract;
+			blockP = blockP / 100;
+			float yVal = noise(blockP.x, blockP.y);//FBM(blockP, 0.5f);
+			DebugPrint("yVal for Chunk: %f\n", yVal);
+			yVal = 0.5f * (yVal + 1.0f); // bias and scale to remap from (-1,1) to (0,1)
+			yVal = Clamp(yVal, 0.05f, 1.0f);
+			int32 yTotal = static_cast<int32>(yVal * CHUNK_Y);
+			DebugPrint("yTotal for Chunk: %f\n", yTotal);
+			
+#endif
+
+#ifdef IMPLIMENTATION3
+			Vec3Int chunkBlockP = BlockPosition();
+			Vec2 chunkP = { static_cast<float>(chunkBlockP.x), static_cast<float>(chunkBlockP.z) };
+			Vec2 blockPFract = Vec2({ static_cast<float>(x) / CHUNK_X, static_cast<float>(z) / CHUNK_Z });
+			Vec2 blockP = chunkP + blockPFract;
+			float yVal = PerlinNoise(blockP);//FBM(blockP, 0.5f);
+			DebugPrint("yVal for Chunk: %f\n", yVal);
+			yVal = 0.5f * (yVal + 1.0f); // bias and scale to remap from (-1,1) to (0,1)
+			yVal = Clamp(yVal, 0.05f, 1.0f);
+			int32 yTotal = static_cast<int32>(yVal * CHUNK_Y);
+			DebugPrint("yTotal for Chunk: %f\n", yTotal);
+#endif
+#ifdef IMPLIMENTATION2
+
+
+			Vec3Int chunkBlockP = BlockPosition();
+			Vec2 chunkP = { static_cast<float>(chunkBlockP.x), static_cast<float>(chunkBlockP.z) };
+			Vec2 blockPFract = Vec2({ static_cast<float>(x) / CHUNK_X, static_cast<float>(z) / CHUNK_Z });
+			Vec2 blockP = chunkP + blockPFract;
+			float yVal = Terrain(blockP);//FBM(blockP, 0.5f);
+			DebugPrint("yVal for Chunk: %f\n", yVal);
+			yVal = Clamp(yVal, 0.05f, 1.0f);
+			int32 yTotal = static_cast<int32>(yVal * CHUNK_Y);
+			DebugPrint("yTotal for Chunk: %f\n", yTotal);
+
+#endif
+#if 0
+			int32 yTotal = CHUNK_Y
+
+#endif
+			for (int32 y = 0; y < yTotal; y++)
+			{
 				BlockType bt = BlockType::Empty;
 				//if (y > CHUNK_Y / 2)
 				//{
@@ -238,11 +286,11 @@ void Chunk::SetBlocks()
 				//}
 				//else
 				{
-					if (y == CHUNK_Y - 1)
+					if (y == yTotal - 1)
 					{
 						bt = BlockType::Grass;
 					}
-					else if (y > CHUNK_Y - 4)
+					else if (y > yTotal - 4)
 					{
                         bt = BlockType::Dirt;
 						//uint32 random = RandomU32(+BlockType::Grass, static_cast<uint32>(arrsize(options)));
@@ -250,8 +298,9 @@ void Chunk::SetBlocks()
 					else
 					{
 						//uint32 random = RandomU32(+BlockType::Stone, static_cast<uint32>(arrsize(options)));
-						uint32 random = RandomU32(0, static_cast<uint32>(arrsize(options)));
-						bt = options[random];
+						//uint32 random = RandomU32(0, static_cast<uint32>(arrsize(options)));
+						//bt = options[random];
+						bt = BlockType::Stone;
 					}
 				}
 				arr[x][y][z] = bt;

@@ -58,6 +58,77 @@ int main(int argc, char* argv[])
 
 	std::vector<Chunk*> chunks;
 	std::vector<Chunk*> chunksToLoad;
+	std::vector<double> values;
+	//values.reserve(size_t(2 * (2 / 0.01)));
+#ifdef IMPLIMENTATION4
+	PerlinInit();
+#endif
+
+	//{
+	//float max = -20.0f;
+	//float min =  20.0f;
+	//double totalValue = 0;
+	//uint64 totalNumber = 0;
+
+	//	//for (double z = 0; z <= 1.0f; z += 0.1f)
+	//	//{
+	//		for (float y = 0.1f; y <= 20; y += 0.1f)
+	//		{
+	//			for (float x = 0.1f; x <= 20; x += 0.1f)
+	//			{
+	//				//double a = Perlin(x, y, z);
+	//				//values.push_back(a);
+	//				float a = Terrain({ x, y });
+	//				totalValue += a;
+	//				totalNumber++;
+	//				max = Max(a, max);
+	//				min = Min(a, min);
+	//				DebugPrint("TER{ %.03f, %.03f } = %f\n", x, y, a);
+	//			}
+	//		}
+
+	//	//}
+	//DebugPrint("Total Number of iterations: %i\n", totalNumber);
+	//DebugPrint("Total Value: %f\n", totalValue);
+	//DebugPrint("Min Value: %f\n", min);
+	//DebugPrint("Max Value: %f\n", max);
+	//}
+
+	//{
+	//float max = -20.0f;
+	//float min =  20.0f;
+	//double totalValue = 0;
+	//uint64 totalNumber = 0;
+
+	//	//for (double z = 0; z <= 1.0f; z += 0.1f)
+	//	//{
+	//		for (float y = -20; y <= 20; y += 1)
+	//		{
+	//			for (float x = -20; x <= 20; x += 1)
+	//			{
+	//				//double a = Perlin(x, y, z);
+	//				//values.push_back(a);
+	//				float a = FBM({ x, y }, 0.5f);
+	//				totalValue += a;
+	//				totalNumber++;
+	//				max = Max(a, max);
+	//				min = Min(a, min);
+	//				DebugPrint("FBM{ %.03f, %.03f } = %f\n", x, y, a);
+	//			}
+	//		}
+
+	//	//}
+	//DebugPrint("Total Number of iterations: %i\n", totalNumber);
+	//DebugPrint("Total Value: %f\n", totalValue);
+	//DebugPrint("Min Value: %f\n", min);
+	//DebugPrint("Max Value: %f\n", max);
+	//}
+
+	//double test1 = Perlin(0, 0, 0);
+	//double test2 = Perlin(1, 0, 0);
+	//double test3 = Perlin(-0.12f, -0.12f, -0.12f);
+	//double test4 = Perlin( 0.12f,  0.12f,  0.12f);
+	int32 i = 0;
 
 	//const int32 cubeSize = 10;
 	//for (int32 z = -cubeSize; z <= cubeSize; z++)
@@ -290,9 +361,9 @@ int main(int argc, char* argv[])
 		gb_mat4_look_at(&g_camera.view, g_camera.p, g_camera.p + g_camera.front, g_camera.up);
 
 		{
-			PROFILE_SCOPE("Camera Position Chunk Update");
+			//PROFILE_SCOPE("Camera Position Chunk Update");
 
-			const int32 drawDistance = 2;
+			const int32 drawDistance = 5;
 			const int32 fogDistance = 0;
 			Vec3Int cam = ToChunkPosition(g_camera.p);
 			for (int32 z = -drawDistance; z <= drawDistance; z++)
@@ -337,7 +408,7 @@ int main(int argc, char* argv[])
 		RenderUpdate(deltaTime);
 
 		{
-			PROFILE_SCOPE("Semaphore Update");
+			//PROFILE_SCOPE("Semaphore Update");
 
 			if (chunksToLoad.size())
 			{
@@ -368,7 +439,7 @@ int main(int argc, char* argv[])
 		//        g->Render();
 		//}
 		{
-			PROFILE_SCOPE("Chunk Upload and Render");
+			//PROFILE_SCOPE("Chunk Upload and Render");
 
 			int32 uploadCount = 0;
 			for (Chunk* chunk : chunks)
