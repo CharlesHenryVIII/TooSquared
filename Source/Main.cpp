@@ -53,8 +53,8 @@ int main(int argc, char* argv[])
     double LastShaderUpdateTime = totalTime;
 
     g_camera.view;
-	Vec3 a = { 1.0f, 1.0f, 1.0f };
-	gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
+	Vec3 cOffset = { 1.0f, 1.0f, 1.0f };
+	gb_mat4_look_at(&g_camera.view, g_camera.p + cOffset, g_camera.p, { 0,1,0 });
 
 	std::vector<Chunk*> chunks;
 	std::vector<Chunk*> chunksToLoad;
@@ -128,7 +128,6 @@ int main(int argc, char* argv[])
 	//double test2 = Perlin(1, 0, 0);
 	//double test3 = Perlin(-0.12f, -0.12f, -0.12f);
 	//double test4 = Perlin( 0.12f,  0.12f,  0.12f);
-	int32 i = 0;
 
 	//const int32 cubeSize = 10;
 	//for (int32 z = -cubeSize; z <= cubeSize; z++)
@@ -323,7 +322,7 @@ int main(int argc, char* argv[])
         if (keyStates[SDLK_BACKQUOTE].down)
             g_running = false;
 
-		float cameraSpeed = 3.0f * deltaTime;
+		float cameraSpeed = 5.0f * deltaTime;
         if (keyStates[SDLK_LSHIFT].down)
             cameraSpeed *= 20;
 		if (keyStates[SDLK_w].down)

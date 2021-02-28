@@ -194,52 +194,52 @@ struct Rectangle_Int {
 //    return !(lhs == rhs);
 //}
 
-inline Vec3 operator+(Vec3 a, float b) 
-{ 
-    Vec3 r = {a.x + b, a.y + b, a.z + b}; 
-    return r; 
+inline Vec3 operator+(Vec3 a, float b)
+{
+    Vec3 r = {a.x + b, a.y + b, a.z + b};
+    return r;
 }
 
-inline Vec3 operator+(float a, Vec3 b) 
-{ 
+inline Vec3 operator+(float a, Vec3 b)
+{
     Vec3 r = { a + b.x, a + b.y, a + b.z };
-    return r; 
+    return r;
 }
 
-inline Vec3 operator-(Vec3 a, float b) 
-{ 
-    Vec3 r = {a.x - b, a.y - b, a.z - b}; 
-    return r; 
+inline Vec3 operator-(Vec3 a, float b)
+{
+    Vec3 r = {a.x - b, a.y - b, a.z - b};
+    return r;
 }
 
-inline Vec3 operator-(float a, Vec3 b) 
-{ 
+inline Vec3 operator-(float a, Vec3 b)
+{
     Vec3 r = { a - b.x, a - b.y, a - b.z };
-    return r; 
+    return r;
 }
 
-inline Vec2 operator+(Vec2 a, float b) 
-{ 
+inline Vec2 operator+(Vec2 a, float b)
+{
     Vec2 r = { a.x + b, a.y + b };
-    return r; 
+    return r;
 }
 
-inline Vec2 operator+(float a, Vec2 b) 
-{ 
+inline Vec2 operator+(float a, Vec2 b)
+{
     Vec2 r = { a + b.x, a + b.y };
-    return r; 
+    return r;
 }
 
-inline Vec2 operator-(Vec2 a, float b) 
-{ 
+inline Vec2 operator-(Vec2 a, float b)
+{
     Vec2 r = { a.x - b, a.y - b };
-    return r; 
+    return r;
 }
 
-inline Vec2 operator-(float a, Vec2 b) 
-{ 
+inline Vec2 operator-(float a, Vec2 b)
+{
     Vec2 r = { a - b.x, a - b.y };
-    return r; 
+    return r;
 }
 
 
@@ -262,17 +262,17 @@ template <typename T>
     return Max(min, Min(max, v));
 }
 
-[[nodiscard]] inline Vec2 Floor(Vec2 v) 
+[[nodiscard]] inline Vec2 Floor(Vec2 v)
 {
     return { floorf(v.x), floorf(v.y) };
 }
 
-[[nodiscard]] inline Vec3 Floor(Vec3 v) 
+[[nodiscard]] inline Vec3 Floor(Vec3 v)
 {
     return { floorf(v.x), floorf(v.y), floorf(v.z) };
 }
 
-[[nodiscard]] inline Vec4 Floor(Vec4 v) 
+[[nodiscard]] inline Vec4 Floor(Vec4 v)
 {
     return { floorf(v.x), floorf(v.y), floorf(v.z), floorf(v.w)  };
 }
@@ -365,6 +365,8 @@ template <typename T>
 //    return a + (b - a) * t;
 //}
 
+
+[[nodiscard]] float Bilinear(Vec2 p, Rect loc, float bl, float br, float tl, float tr);
 
 /*
 Atan2f return value:

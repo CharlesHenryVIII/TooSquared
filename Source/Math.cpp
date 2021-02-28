@@ -7,6 +7,29 @@ T Random(const T& min, const T& max)
     return min + (max - min) * (rand() / T(RAND_MAX));
 }
 
+
+static float _BilinearHelper(Vec2 pos, Rect v)
+{
+
+}
+
+[[nodiscard]] float Bilinear(Vec2 p, Rect loc, float bl, float br, float tl, float tr)
+{
+    float denominator = ((loc.topRight.x - loc.botLeft.x) * (loc.topRight.y - loc.botLeft.y));
+
+    float xLeftNum  = (loc.topRight.x - p.x);
+    float xRightNum = (p.x            - loc.botLeft.x);
+    float yBotNum   = (loc.topRight.y - p.y);
+    float yTopNum   = (p.y            - loc.botLeft.y);
+
+    float c1 = bl * ((xLeftNum  * yBotNum) / denominator);
+    float c2 = br * ((xRightNum * yBotNum) / denominator);
+    float c3 = tl * ((xLeftNum  * yTopNum) / denominator);
+    float c4 = tr * ((xRightNum * yTopNum) / denominator);
+
+    return c1 + c2 + c3 + c4;
+}
+
 //static uint32 _RandomU32()
 //{
 //    uint32 result = rand();
@@ -123,7 +146,7 @@ static double Grad(int hash, double x, double y, double z)
         case 0xD: return -y + z;
         case 0xE: return  y - x;
         case 0xF: return -y - z;
-        default: 
+        default:
         {
             assert(false);
             return 0; // never happens
@@ -241,7 +264,7 @@ double Perlin(double x, double y, double z)
 
 #endif
     // For convenience we bind the result to 0 - 1 (theoretical min/max before is [-1, 1])
-    return (Lerp(w, y1, y2)+1)/2;                      
+    return (Lerp(w, y1, y2)+1)/2;
 }
 
 #endif
@@ -347,7 +370,7 @@ float Terrain(Vec2 p)
 }
 
 float FBM(Vec2 x, float H)
-{    
+{
     x = x;// / 10.0f;
     int32 numOfOctaves = 32;
     float G = exp2(-H);
@@ -399,7 +422,7 @@ float SmoothStep(float t)
     return t >= 1.0f ? 0.0f : 1.0f - ( 3.0f - 2.0f * t ) * t * t;
 }
 
-float surflet( float x, float y, float grad_x, float grad_y ) 
+float surflet( float x, float y, float grad_x, float grad_y )
 {
     return SmoothStep(x) * SmoothStep(y) * (grad_x * x + grad_y * y);
 }
@@ -431,9 +454,9 @@ static int32 const size = 256;
 static int32 const mask = size - 1;
 int32 perm[ size ];
 float grads_x[ size ], grads_y[ size ];
-void PerlinInit() 
+void PerlinInit()
 {
-    for ( int32 index = 0; index < size; ++index ) 
+    for ( int32 index = 0; index < size; ++index )
     {
         int32 other = rand() % ( index + 1 );
         if ( index > other )
@@ -450,11 +473,11 @@ float f( float t ) {
     return t >= 1.0f ? 0.0f : 1.0f -
         ( 3.0f - 2.0f * t ) * t * t;
 }
-#else 
+#else
 
 float f( float t ) {
     t = fabsf( t );
-    return t >= 1.0f ? 0.0f : 1 - 
+    return t >= 1.0f ? 0.0f : 1 -
         t * t * t * (t * (t * 6 - 15) + 10);
     //return t * t * t * (t * (t * 6 - 15) + 10);         // 6t^5 - 15t^4 + 10t^3
 }
@@ -463,7 +486,7 @@ float f( float t ) {
 
 
 #endif
-float surflet( float x, float y, float grad_x, float grad_y ) 
+float surflet( float x, float y, float grad_x, float grad_y )
 {
     return f( x ) * f( y ) * ( grad_x * x + grad_y * y );
 }
