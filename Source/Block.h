@@ -3,6 +3,7 @@
 #include "Misc.h"
 #include "Rendering.h"
 
+#include <memory>
 #include <vector>
 
 enum class BlockType : uint8 {
@@ -37,14 +38,18 @@ ENUMOPS(BlockType);
 #define CHUNK_LOADED        0x0002
 #define CHUNK_MODIFIED      0x0004
 #define CHUNK_UPLOADED	    0x0008
-#define CHUNK_TODELTE	    0x0010
+#define CHUNK_TODELETE	    0x0010
 
 constexpr uint32 CHUNK_X = 16;
 constexpr uint32 CHUNK_Y = 256;
 constexpr uint32 CHUNK_Z = 16;
 
+struct ChunkData {
+    BlockType e[CHUNK_X][CHUNK_Y][CHUNK_Z] = {};
+};
+
 struct Chunk {
-    BlockType arr[CHUNK_X][CHUNK_Y][CHUNK_Z] = {};
+    std::unique_ptr<ChunkData> blocks;
     Vec3Int p = {};
 	std::vector<Vertex_Chunk> faceVertices;
     VertexBuffer vertexBuffer;
@@ -58,7 +63,6 @@ struct Chunk {
 	void RenderChunk();
     Vec3Int BlockPosition();
 };
-
 
 enum class Face : uint8 {
 	Right,

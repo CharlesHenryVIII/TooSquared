@@ -56,6 +56,7 @@ int main(int argc, char* argv[])
 	Vec3 cOffset = { 1.0f, 1.0f, 1.0f };
 	gb_mat4_look_at(&g_camera.view, g_camera.p + cOffset, g_camera.p, { 0,1,0 });
 
+	//TODO:Sort chunks based on distance
 	std::vector<Chunk*> chunks;
 	std::vector<Chunk*> chunksToLoad;
 	std::vector<double> values;
@@ -115,21 +116,21 @@ int main(int argc, char* argv[])
 	double testTimer = totalTime;
 
 	while (g_running)
-    {
-        totalTime = SDL_GetPerformanceCounter() / freq;
-        float deltaTime = float(totalTime - previousTime);// / 10;
-        previousTime = totalTime;
+	{
+		totalTime = SDL_GetPerformanceCounter() / freq;
+		float deltaTime = float(totalTime - previousTime);// / 10;
+		previousTime = totalTime;
 
-        /*********************
-         *
-         * Event Queing and handling
-         *
-         ********/
-        Vec2Int originalMouseLocation = {};
-        Vec2Int newMouseLocation = {};
+		/*********************
+		 *
+		 * Event Queing and handling
+		 *
+		 ********/
+		Vec2Int originalMouseLocation = {};
+		Vec2Int newMouseLocation = {};
 
 		g_mouse.pDelta = { 0, 0 };
-	
+
 		SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared Chunks: %u", (uint32)chunks.size()).c_str());
 
 		SDL_Event SDLEvent;
@@ -197,7 +198,7 @@ int main(int argc, char* argv[])
 				case SDL_WINDOWEVENT_FOCUS_GAINED:
 				{
 					g_window.hasAttention = true;
-                    g_mouse.pDelta = {};
+					g_mouse.pDelta = {};
 					SDL_CaptureMouse(SDL_TRUE);
 					break;
 				}
@@ -217,51 +218,52 @@ int main(int argc, char* argv[])
 			}
 		}
 
-        /*********************
-         *
-         * Setting Key States
-         *
-         ********/
+		/*********************
+		 *
+		 * Setting Key States
+		 *
+		 ********/
 
-        for (auto& key : keyStates)
-        {
-            if (key.second.down)
-            {
-                key.second.upThisFrame = false;
-                if (key.second.downPrevFrame)
-                {
-                    //DebugPrint("KeyDown && DownPreviousFrame: %f\n", totalTime);
-                    key.second.downThisFrame = false;
-                }
-                else
-                {
-                    //DebugPrint("Down this frame: %f\n", totalTime);
-                    key.second.downThisFrame = true;
-                }
-            }
-            else
-            {
-                key.second.downThisFrame = false;
-                if (key.second.downPrevFrame)
-                {
-                    //DebugPrint("Up This frame: %f\n", totalTime);
-                    key.second.upThisFrame = true;
-                }
-                else
-                {
-                    //DebugPrint("KeyNOTDown && NotDownPreviousFrame: %f\n", totalTime);
-                    key.second.upThisFrame = false;
-                }
-            }
-            key.second.downPrevFrame = key.second.down;
-        }
+		for (auto& key : keyStates)
+		{
+			if (key.second.down)
+			{
+				key.second.upThisFrame = false;
+				if (key.second.downPrevFrame)
+				{
+					//DebugPrint("KeyDown && DownPreviousFrame: %f\n", totalTime);
+					key.second.downThisFrame = false;
 
-        if (keyStates[SDLK_BACKQUOTE].down)
-            g_running = false;
+				}
+				else
+				{
+					//DebugPrint("Down this frame: %f\n", totalTime);
+					key.second.downThisFrame = true;
+				}
+			}
+			else
+			{
+				key.second.downThisFrame = false;
+				if (key.second.downPrevFrame)
+				{
+					//DebugPrint("Up This frame: %f\n", totalTime);
+					key.second.upThisFrame = true;
+				}
+				else
+				{
+					//DebugPrint("KeyNOTDown && NotDownPreviousFrame: %f\n", totalTime);
+					key.second.upThisFrame = false;
+				}
+			}
+			key.second.downPrevFrame = key.second.down;
+		}
+
+		if (keyStates[SDLK_BACKQUOTE].down)
+			g_running = false;
 
 		float cameraSpeed = 5.0f * deltaTime;
-        if (keyStates[SDLK_LSHIFT].down)
-            cameraSpeed *= 20;
+		if (keyStates[SDLK_LSHIFT].down)
+			cameraSpeed *= 20;
 		if (keyStates[SDLK_w].down)
 			g_camera.p += cameraSpeed * g_camera.front;
 		if (keyStates[SDLK_s].down)
@@ -299,14 +301,14 @@ int main(int argc, char* argv[])
 		gb_mat4_look_at(&g_camera.view, g_camera.p, g_camera.p + g_camera.front, g_camera.up);
 
 		{
-			//PROFILE_SCOPE("Camera Position Chunk Update");
+			PROFILE_SCOPE("Camera Position Chunk Update");
 
 #ifdef _DEBUG
 			const int32 drawDistance = 10;
 #elif NDEBUG
-			const int32 drawDistance = 20;
+			const int32 drawDistance = 30;
 #endif
-			const int32 fogDistance = 0;
+			const int32 fogDistance = 40;
 			Vec3Int cam = ToChunkPosition(g_camera.p);
 			for (int32 z = -drawDistance; z <= drawDistance; z++)
 			{
@@ -316,24 +318,10 @@ int main(int argc, char* argv[])
 					Vec3Int newBlockP = { cam.x + x, 0, cam.z + z };
 					for (Chunk* chunk : chunks)
 					{
-						if (chunk)
+						if (chunk->p.z == newBlockP.z && chunk->p.x == newBlockP.x)
 						{
-							if (chunk->p.z == newBlockP.z && chunk->p.x == newBlockP.x)
-							{
-								if (chunk->flags & (CHUNK_LOADED | CHUNK_LOADING | CHUNK_MODIFIED))
-								{
-
-									needCube = false;
-									break;
-								}
-							}
-							else if (fogDistance && (chunk->flags & CHUNK_LOADED) &&
-								((chunk->p.x > cam.x + fogDistance || chunk->p.z > cam.z + fogDistance) ||
-								 (chunk->p.x < cam.x - fogDistance || chunk->p.z < cam.z - fogDistance)))
-							{
-
-								chunk->flags |= CHUNK_TODELTE;
-							}
+							needCube = false;
+							break;
 						}
 					}
 					if (needCube)
@@ -344,13 +332,24 @@ int main(int argc, char* argv[])
 					}
 				}
 			}
-		}
 
+			if (fogDistance)
+			{
+				for (Chunk* chunk : chunks)
+				{
+					if ((chunk->p.x > cam.x + fogDistance || chunk->p.z > cam.z + fogDistance) ||
+						(chunk->p.x < cam.x - fogDistance || chunk->p.z < cam.z - fogDistance))
+					{
+						chunk->flags |= CHUNK_TODELETE;
+					}
+				}
+			}
+		}
 
 		RenderUpdate(deltaTime);
 
 		{
-			//PROFILE_SCOPE("Semaphore Update");
+			PROFILE_SCOPE("Semaphore Update");
 
 			if (chunksToLoad.size())
 			{
@@ -381,7 +380,7 @@ int main(int argc, char* argv[])
 		//        g->Render();
 		//}
 		{
-			//PROFILE_SCOPE("Chunk Upload and Render");
+			PROFILE_SCOPE("Chunk Upload and Render");
 
 			int32 uploadCount = 0;
 			for (Chunk* chunk : chunks)
@@ -404,7 +403,7 @@ int main(int argc, char* argv[])
 		}
 
 		std::erase_if(chunks, [](Chunk* chunk) {
-			if (chunk->flags & CHUNK_TODELTE)
+			if ((chunk->flags & CHUNK_TODELETE) && (chunk->flags & CHUNK_LOADED))
 			{
 				delete chunk;
 				chunk = nullptr;

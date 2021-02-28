@@ -81,9 +81,10 @@ struct Vertex {
 
 struct Vertex_Chunk {
     Vec3 p;
-    Vec2 uv;
+    uint8 spriteIndex;
     uint8 n;
 };
+
 
 union Vec2Int {
     struct { int32 x, y; };

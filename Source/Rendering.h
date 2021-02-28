@@ -68,6 +68,17 @@ public:
 	inline void Bind();
 };
 
+class TextureArray {
+public:
+
+    Vec2Int size = {};
+    GLuint gl_handle = {};
+
+
+	TextureArray(const char* fileLocation);
+	inline void Bind();
+};
+
 class ShaderProgram
 {
     GLuint m_handle = 0;
@@ -146,6 +157,7 @@ struct Renderer {
     IndexBuffer* squareIndexBuffer = nullptr;
     GLuint vao;
     IndexBuffer* chunkIB;
+    TextureArray* spriteTextArray;
 };
 
 extern Renderer g_renderer;

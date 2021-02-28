@@ -1,7 +1,9 @@
 #version 330 core
-uniform sampler2D sampler;
+#extension GL_EXT_texture_array : enable
+uniform sampler2DArray sampler;
 
 in vec2 p_uv;
+flat in float p_depth;
 in vec3 p_normal;
 in vec3 p_pixelP;
 in mat4 p_view;
@@ -24,7 +26,8 @@ out vec4 color;
 
 void main()
 {
-    vec4 pixel = texture(sampler, p_uv);
+    vec4 pixel = texture2DArray(sampler, vec3(p_uv, p_depth));
+
     //Ambient Lighting:
     vec3 ambient = vec3(1.0) * material.ambient;
     //vec3 ambient = u_lightColor * material.ambient;

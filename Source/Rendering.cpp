@@ -63,7 +63,6 @@ Texture::Texture(const char* fileLocation)
 #ifdef _DEBUGPRINT
 	DebugPrint("Texture Created\n");
 #endif
-
 }
 
 inline void Texture::Bind()
@@ -73,6 +72,66 @@ inline void Texture::Bind()
 	DebugPrint("Texture Bound\n");
 #endif
 }
+
+
+TextureArray::TextureArray(const char* fileLocation)
+{
+	uint8* data = stbi_load(fileLocation, &size.x, &size.y, NULL, STBI_rgb_alpha);
+	Defer{
+		stbi_image_free(data);
+	};
+	assert(data);
+
+	glGenTextures(1, &gl_handle);
+	Bind();
+	glBindTexture(GL_TEXTURE_2D_ARRAY, gl_handle);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	//glTexImage2D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+    uint32 mipMapLevels = 5;
+	uint32 height = 16;
+    uint32 width = 16;
+	uint32 depth = 256;
+
+	glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipMapLevels, GL_RGBA8, width, height, depth);
+
+	//TODO: Fix
+	uint32 colors[16 * 16] = {};
+	uint32 arrayIndex = 0;
+	for (uint32 y = height; y--;)
+	{
+		for (uint32 x = 0; x < width; x++)
+		{
+			for (uint32 xp= 0; xp < 16; xp++)  //Total
+			{
+				for (uint32 yp = 0; yp < 16; yp++)  //Total
+				{
+					uint32 sourceIndex = (y * 16 + yp) * 256 + x * 16 + xp;
+					uint32 destIndex = yp * 16 + xp;
+					colors[destIndex] = reinterpret_cast<uint32*>(data)[sourceIndex];
+				}
+			}
+			glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, arrayIndex, 16, 16, 1, GL_RGBA, GL_UNSIGNED_BYTE, colors);
+			arrayIndex++;
+		}
+	}
+	glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
+#ifdef _DEBUGPRINT
+	DebugPrint("Texture Created\n");
+#endif
+}
+
+inline void TextureArray::Bind()
+{
+	glBindTexture(GL_TEXTURE_2D_ARRAY, gl_handle);
+#ifdef _DEBUGPRINT
+	DebugPrint("Texture Bound\n");
+#endif
+}
+
 
 bool ShaderProgram::CompileShader(GLuint handle, const char* name, std::string text)
 {
@@ -186,9 +245,10 @@ void ShaderProgram::CheckForUpdate()
 		if (status == GL_FALSE)
 		{
 			GLint log_length;
-			glGetProgramiv(m_handle, GL_INFO_LOG_LENGTH, &log_length);
-			GLchar info[4096];
-			glGetProgramInfoLog(m_handle, log_length, NULL, info);
+			glGetProgramiv(handle, GL_INFO_LOG_LENGTH, &log_length);
+			GLchar info[4096] = {};
+			assert(log_length > 0);
+			glGetProgramInfoLog(handle, log_length, NULL, info);
 			DebugPrint("Shader linking error: %s\n", info);
 
 			SDL_MessageBoxButtonData buttons[] = {
@@ -578,6 +638,7 @@ void InitializeVideo()
 	g_renderer.textures[Texture::Minecraft] = new Texture("Assets/TestSpriteSheet.png");
 #else
 	g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png");
+	g_renderer.spriteTextArray = new TextureArray("Assets/MinecraftSpriteSheet20120215.png");
 #endif
 	g_renderer.programs[+Shader::Simple3D] = new ShaderProgram("Source/Shaders/3D.vert", "Source/Shaders/3D.frag");
 
