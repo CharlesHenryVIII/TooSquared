@@ -467,20 +467,23 @@ float surflet( float x, float y, float grad_x, float grad_y )
 {
     return f( x ) * f( y ) * ( grad_x * x + grad_y * y );
 }
-float noise( float x, float y )
+float Noise(Vec2 v)
 {
     float result = 0.0f;
     //const int32 val = 256;
     //x = x / val;
     //y = y / val;
-    int32 cell_x = static_cast<int32>(floorf(x));
-    int32 cell_y = static_cast<int32>(floorf(y));
+    int32 cell_x = static_cast<int32>(floorf(v.x));
+    int32 cell_y = static_cast<int32>(floorf(v.y));
     for ( int32 grid_y = cell_y; grid_y <= cell_y + 1; ++grid_y )
         for ( int32 grid_x = cell_x; grid_x <= cell_x + 1; ++grid_x ) {
             int32 hash = perm[ ( perm[ grid_x & mask ] + grid_y ) & mask ];
-            result += surflet( x - grid_x, y - grid_y,
+            result += surflet( v.x - grid_x, v.y - grid_y,
                                grads_x[ hash ], grads_y[ hash ] );
         }
+
+	result = 0.5f * (result + 1.0f); // bias and scale to remap from (-1,1) to (0,1)
+	result = Clamp(result, 0.05f, 1.0f);
     return result;
 }
 #endif

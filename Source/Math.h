@@ -91,6 +91,11 @@ union Vec3Int {
     int32 e[3];
 };
 
+union Vec2d {
+    struct { double x, y; };
+    double e[2];
+};
+
 struct Rect {
     Vec2 botLeft = {};
     Vec2 topRight = {};
@@ -411,5 +416,9 @@ float PerlinNoise(Vec2 v);
 #endif
 #ifdef IMPLIMENTATION4
 void PerlinInit();
-float noise(float x, float y);
+float Noise(Vec2 v);
+inline float Noise(Vec2d v)
+{
+    return Noise(Vec2({ static_cast<float>(v.x), static_cast<float>(v.y) }));
+}
 #endif

@@ -224,26 +224,46 @@ void Chunk::SetBlocks()
 		BlockType::IronBlock,
 	};
 
+	//Note good divisor numbers:
+	//97
+	//263 rolling hills
+
+
+	Vec3Int chunkBlockP = BlockPosition();
+	const double divisor = static_cast<double>(97);
+	Vec2d chunkPxx = { (chunkBlockP.x + 00) / divisor, (chunkBlockP.z + 00) / divisor };
+	//Vec2d chunkPzx = { (chunkBlockP.x + 16) / divisor, (chunkBlockP.z + 00) / divisor };
+	//Vec2d chunkPxz = { (chunkBlockP.x + 00) / divisor, (chunkBlockP.z + 16) / divisor };
+	Vec2d chunkPzz = { (chunkBlockP.x + 16) / divisor, (chunkBlockP.z + 16) / divisor };
+	float yxx = Noise(chunkPxx);
+	yxx *= float(CHUNK_Y);
+	//float yzx = Noise(chunkPxx);
+	//float yxz = Noise(chunkPxx);
+	float yzz = Noise(chunkPzz);
+	yzz *= float(CHUNK_Y);
+
+	float dTotal = Distance({ 0,0 }, { CHUNK_X, CHUNK_Z });
+
 
 
 	for (int32 x = 0; x < CHUNK_X; x++)
 	{
 		for (int32 z = 0; z < CHUNK_Z; z++)
 		{
-
+			
 #ifdef IMPLIMENTATION4
 
-			Vec3Int chunkBlockP = BlockPosition();
-			Vec2 chunkP = { static_cast<float>(chunkBlockP.x), static_cast<float>(chunkBlockP.z) };
-			Vec2 blockPFract = Vec2({ static_cast<float>(x) / CHUNK_X, static_cast<float>(z) / CHUNK_Z });
-			Vec2 blockP = chunkP + blockPFract;
-			blockP = blockP / 100;
-			float yVal = noise(blockP.x, blockP.y);//FBM(blockP, 0.5f);
-			DebugPrint("yVal for Chunk: %f\n", yVal);
-			yVal = 0.5f * (yVal + 1.0f); // bias and scale to remap from (-1,1) to (0,1)
-			yVal = Clamp(yVal, 0.05f, 1.0f);
-			int32 yTotal = static_cast<int32>(yVal * CHUNK_Y);
-			DebugPrint("yTotal for Chunk: %f\n", yTotal);
+			//Vec3Int chunkBlockP = BlockPosition();
+			//Vec2 chunkP = { static_cast<float>(chunkBlockP.x), static_cast<float>(chunkBlockP.z) };
+			//Vec2 blockPFract = Vec2({ static_cast<float>(x) / CHUNK_X, static_cast<float>(z) / CHUNK_Z });
+			//Vec2 blockP = chunkP + blockPFract;
+			//blockP = blockP / 100;
+			//float yVal = noise(blockP.x, blockP.y);//FBM(blockP, 0.5f);
+			//DebugPrint("yVal for Chunk: %f\n", yVal);
+			//yVal = 0.5f * (yVal + 1.0f); // bias and scale to remap from (-1,1) to (0,1)
+			//yVal = Clamp(yVal, 0.05f, 1.0f);
+			//int32 yTotal = static_cast<int32>(yVal * CHUNK_Y);
+			//DebugPrint("yTotal for Chunk: %f\n", yTotal);
 			
 #endif
 
@@ -277,6 +297,13 @@ void Chunk::SetBlocks()
 			int32 yTotal = CHUNK_Y
 
 #endif
+
+
+			float d = Distance({ 0, 0 }, { static_cast<float>(x), static_cast<float>(z) });
+			int32 yTotal = static_cast<int32>(Lerp<float>(yxx, yzz, d / dTotal));
+			//float temp2 = Lerp<float>(yzx, yxz, float(z) / CHUNK_Z);
+			//float temp1 = Lerp<float>(yxx, yzz, float(x) / CHUNK_X);
+
 			for (int32 y = 0; y < yTotal; y++)
 			{
 				BlockType bt = BlockType::Empty;
