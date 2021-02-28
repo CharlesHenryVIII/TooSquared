@@ -213,7 +213,7 @@ Vec3Int ToChunkPosition(Vec3 p)
 //	}
 //	assert(!"should never get here");
 //}
-
+#define BICUBIC
 void Chunk::SetBlocks()
 {
 	BlockType options[] = {
@@ -228,7 +228,57 @@ void Chunk::SetBlocks()
 	//97
 	//263 rolling hills
 
+#ifdef BICUBIC
 
+	Vec3Int _chunkBlockP = BlockPosition();
+	Vec3 chunkBlockP = { static_cast<float>(_chunkBlockP.x), static_cast<float>(_chunkBlockP.y), static_cast<float>(_chunkBlockP.z) };
+	const float divisor = static_cast<float>(97);
+
+	Vec2 chunk00 = { (chunkBlockP.x - 16.0f) / divisor, (chunkBlockP.z - 16.0f) / divisor };
+	Vec2 chunk01 = { (chunkBlockP.x + 00.0f) / divisor, (chunkBlockP.z - 16.0f) / divisor };
+	Vec2 chunk02 = { (chunkBlockP.x + 16.0f) / divisor, (chunkBlockP.z - 16.0f) / divisor };
+	Vec2 chunk03 = { (chunkBlockP.x + 32.0f) / divisor, (chunkBlockP.z - 16.0f) / divisor };
+
+	Vec2 chunk10 = { (chunkBlockP.x - 16.0f) / divisor, (chunkBlockP.z + 00.0f) / divisor };
+	Vec2 chunk11 = { (chunkBlockP.x + 00.0f) / divisor, (chunkBlockP.z + 00.0f) / divisor };
+	Vec2 chunk12 = { (chunkBlockP.x + 16.0f) / divisor, (chunkBlockP.z + 00.0f) / divisor };
+	Vec2 chunk13 = { (chunkBlockP.x + 32.0f) / divisor, (chunkBlockP.z + 00.0f) / divisor };
+
+	Vec2 chunk20 = { (chunkBlockP.x - 16.0f) / divisor, (chunkBlockP.z + 16.0f) / divisor };
+	Vec2 chunk21 = { (chunkBlockP.x + 00.0f) / divisor, (chunkBlockP.z + 16.0f) / divisor };
+	Vec2 chunk22 = { (chunkBlockP.x + 16.0f) / divisor, (chunkBlockP.z + 16.0f) / divisor };
+	Vec2 chunk23 = { (chunkBlockP.x + 32.0f) / divisor, (chunkBlockP.z + 16.0f) / divisor };
+
+	Vec2 chunk30 = { (chunkBlockP.x - 16.0f) / divisor, (chunkBlockP.z + 32.0f) / divisor };
+	Vec2 chunk31 = { (chunkBlockP.x + 00.0f) / divisor, (chunkBlockP.z + 32.0f) / divisor };
+	Vec2 chunk32 = { (chunkBlockP.x + 16.0f) / divisor, (chunkBlockP.z + 32.0f) / divisor };
+	Vec2 chunk33 = { (chunkBlockP.x + 32.0f) / divisor, (chunkBlockP.z + 32.0f) / divisor };
+
+    Mat4 c;
+	c.e[0] = Noise(chunk00);
+	c.e[1] = Noise(chunk10);
+	c.e[2] = Noise(chunk20);
+	c.e[3] = Noise(chunk30);
+
+	c.e[4] = Noise(chunk01);
+	c.e[5] = Noise(chunk11);
+	c.e[6] = Noise(chunk21);
+	c.e[7] = Noise(chunk31);
+
+	c.e[8] = Noise(chunk02);
+	c.e[9] = Noise(chunk12);
+	c.e[10] = Noise(chunk22);
+	c.e[11] = Noise(chunk32);
+
+	c.e[12] = Noise(chunk03);
+	c.e[13] = Noise(chunk13);
+	c.e[14] = Noise(chunk23);
+	c.e[15] = Noise(chunk33);
+
+    c = c * float(CHUNK_Y);
+
+#endif
+#ifdef BILINEAR
 	Vec3Int chunkBlockP = BlockPosition();
 	const double divisor = static_cast<double>(97);
 	Vec2d chunkPbl = { (chunkBlockP.x + 00) / divisor, (chunkBlockP.z + 00) / divisor };
@@ -246,16 +296,22 @@ void Chunk::SetBlocks()
 	Rect r = {
 		.botLeft = { 0,0 },
 		.topRight = { 16, 16 },
-	};
 
 
+#endif
 	for (int32 x = 0; x < CHUNK_X; x++)
 	{
 		for (int32 z = 0; z < CHUNK_Z; z++)
 		{
-			
-			int32 yTotal = static_cast<int32>(Bilinear({ static_cast<float>(x), static_cast<float>(z) },
+			Vec2 blockP = { static_cast<float>(x), static_cast<float>(z) };
+#ifdef BILINEAR
+			int32 yTotal = static_cast<int32>(Bilinear(blockP,
 									r, bl, br, tl, tr));
+#endif
+#ifdef BICUBIC
+			blockP /= 16;
+			int32 yTotal = static_cast<int32>(Bicubic(c, blockP));
+#endif
 			for (int32 y = 0; y < yTotal; y++)
 			{
 

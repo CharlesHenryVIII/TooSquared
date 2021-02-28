@@ -367,6 +367,8 @@ template <typename T>
 
 
 [[nodiscard]] float Bilinear(Vec2 p, Rect loc, float bl, float br, float tl, float tr);
+[[nodiscard]] float Cubic(Vec4 v, float x);
+[[nodiscard]] float Bicubic(Mat4 p, Vec2 pos);
 
 /*
 Atan2f return value:
