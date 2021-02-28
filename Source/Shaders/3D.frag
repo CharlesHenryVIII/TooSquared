@@ -46,7 +46,9 @@ void main()
 
     vec3 result = (ambient + diffuse + specular) * pixel.xyz;
     color = vec4(result, pixel.a);
+    color = pixel;
 
     //color.xyz = p_normal;
     //color.a = 1;
+    //color.xyz = vec3(p_uv * 16, 0);
 }

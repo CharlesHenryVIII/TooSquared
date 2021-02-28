@@ -317,6 +317,13 @@ void VertexBuffer::Upload(Vertex* vertices, size_t count)
 	DebugPrint("Vertex Buffer Upload,size %i\n", count);
 #endif
 }
+void VertexBuffer::Upload(Vertex_Chunk* vertices, size_t count)
+{
+	UploadData(vertices, sizeof(vertices[0]) * count);
+#ifdef _DEBUGPRINT
+	DebugPrint("Vertex Buffer Upload,size %i\n", count);
+#endif
+}
 
 double s_lastShaderUpdateTime = 0;
 double s_incrimentalTime = 0;
@@ -346,8 +353,8 @@ Rect GetRectFromSprite(uint32 i)
     uint32 y = i / blocksPerRow;
 
     Rect result = {};
-    result.botLeft.x = static_cast<float>(x * pixelsPerBlock);
-    result.botLeft.y = static_cast<float>(pixelsPerBlock * (blocksPerRow - y - 1));
+    result.botLeft.x  = static_cast<float>(x * pixelsPerBlock);
+    result.botLeft.y  = static_cast<float>(pixelsPerBlock * (blocksPerRow - y - 1));
     result.topRight.x = result.botLeft.x + pixelsPerBlock;
     result.topRight.y = result.botLeft.y + pixelsPerBlock;
     return result;
@@ -475,6 +482,28 @@ void OpenGLErrorCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
     AssertOnce(severity != GL_DEBUG_SEVERITY_HIGH);
 }
 
+void FillIndexBuffer(IndexBuffer* ib)
+{
+	std::vector<uint32> arr;
+
+	size_t amount = CHUNK_X * CHUNK_Y * CHUNK_Z * 6 * 6;
+	arr.reserve(amount);
+	int32 baseIndex = 0;
+	for (int32 i = 0; i < amount; i += 6)
+	{
+		arr.push_back(baseIndex + 0);
+		arr.push_back(baseIndex + 1);
+		arr.push_back(baseIndex + 2);
+		arr.push_back(baseIndex + 1);
+		arr.push_back(baseIndex + 3);
+		arr.push_back(baseIndex + 2);
+
+		baseIndex += 4; //Amount of vertices
+	}
+	
+	ib->Upload(arr.data(), amount);
+}
+
 void InitializeVideo()
 {
     SDL_Init(SDL_INIT_VIDEO);
@@ -546,7 +575,7 @@ void InitializeVideo()
 	glBindVertexArray(g_renderer.vao);
 
 #if 0
-	//g_renderer.textures[Texture::Minecraft] = new Texture("Assets/TestSpriteSheet.png");
+	g_renderer.textures[Texture::Minecraft] = new Texture("Assets/TestSpriteSheet.png");
 #else
 	g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png");
 #endif
@@ -578,4 +607,7 @@ void InitializeVideo()
 	}
 	g_light.c = {  1.0f,  1.0f,  1.0f };
 	g_light.p = { 25.0f, 270.0f, 25.0f };
+
+	g_renderer.chunkIB = new IndexBuffer();
+	FillIndexBuffer(g_renderer.chunkIB);
 }

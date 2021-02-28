@@ -129,6 +129,8 @@ int main(int argc, char* argv[])
         Vec2Int newMouseLocation = {};
 
 		g_mouse.pDelta = { 0, 0 };
+	
+		SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared Chunks: %u", (uint32)chunks.size()).c_str());
 
 		SDL_Event SDLEvent;
 		while (SDL_PollEvent(&SDLEvent))
@@ -272,6 +274,8 @@ int main(int argc, char* argv[])
 			g_camera.p.y -= cameraSpeed;
 		if (keyStates[SDLK_SPACE].down)
 			g_camera.p.y += cameraSpeed;
+		if (keyStates[SDLK_z].down)
+			g_camera.p.z += cameraSpeed;
 
 		float sensitivity = 0.3f; // change this value to your liking
 		g_mouse.pDelta *= sensitivity;
@@ -297,7 +301,11 @@ int main(int argc, char* argv[])
 		{
 			//PROFILE_SCOPE("Camera Position Chunk Update");
 
+#ifdef _DEBUG
 			const int32 drawDistance = 10;
+#elif NDEBUG
+			const int32 drawDistance = 20;
+#endif
 			const int32 fogDistance = 0;
 			Vec3Int cam = ToChunkPosition(g_camera.p);
 			for (int32 z = -drawDistance; z <= drawDistance; z++)
@@ -382,16 +390,16 @@ int main(int argc, char* argv[])
 				{
 					if (chunk->flags & CHUNK_LOADED)
 					{
-						if (chunk->flags & CHUNK_NOTUPLOADED)
+						if (!(chunk->flags & CHUNK_UPLOADED))
 						{
+							if (uploadCount > 10)
+								continue;
 							chunk->UploadChunk();
 							uploadCount++;
 						}
 						chunk->RenderChunk();
 					}
 				}
-				if (uploadCount > 10)
-					break;
 			}
 		}
 

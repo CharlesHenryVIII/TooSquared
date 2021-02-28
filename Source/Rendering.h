@@ -136,6 +136,7 @@ public:
 		: GpuBuffer(GL_ARRAY_BUFFER)
 	{ }
     void Upload(Vertex* vertices, size_t count);
+    void Upload(Vertex_Chunk* vertices, size_t count);
 };
 
 struct Renderer {
@@ -144,6 +145,7 @@ struct Renderer {
     Texture* textures[Texture::Count] = {};
     IndexBuffer* squareIndexBuffer = nullptr;
     GLuint vao;
+    IndexBuffer* chunkIB;
 };
 
 extern Renderer g_renderer;

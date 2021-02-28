@@ -36,7 +36,7 @@ ENUMOPS(BlockType);
 #define CHUNK_LOADING		0x0001
 #define CHUNK_LOADED        0x0002
 #define CHUNK_MODIFIED      0x0004
-#define CHUNK_NOTUPLOADED	0x0008
+#define CHUNK_UPLOADED	    0x0008
 #define CHUNK_TODELTE	    0x0010
 
 constexpr uint32 CHUNK_X = 16;
@@ -46,12 +46,11 @@ constexpr uint32 CHUNK_Z = 16;
 struct Chunk {
     BlockType arr[CHUNK_X][CHUNK_Y][CHUNK_Z] = {};
     Vec3Int p = {};
-	std::vector<Vertex> faceVertices;
-    std::vector<uint32> indices;
+	std::vector<Vertex_Chunk> faceVertices;
     VertexBuffer vertexBuffer;
-    IndexBuffer indexBuffer;
-    //TODO: Make flags an atomic and use SDL_ATOMIC_SET()?
-    uint32 flags = CHUNK_MODIFIED | CHUNK_NOTUPLOADED;
+    size_t uploadedIndexCount = 0;
+    //TODO: Make flags an atomic and use SDL_ATOMIC_SET()!!!!!!!
+    uint32 flags = CHUNK_MODIFIED;
 
     void SetBlocks();
 	void BuildChunkVertices();
@@ -61,7 +60,7 @@ struct Chunk {
 };
 
 
-enum class Face : uint32 {
+enum class Face : uint8 {
 	Right,
 	Left,
 	Top,

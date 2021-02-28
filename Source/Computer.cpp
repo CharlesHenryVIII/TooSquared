@@ -31,27 +31,28 @@ int32 ThreadFunction(void* data)
         int32 sem_result = SDL_SemWait(g_jobHandler.semaphore);
         if (sem_result != 0 || SDL_AtomicGet(&passedData->running) == 0)
 			break;
-        DebugPrint("Thread Started\n");
+        //DebugPrint("Thread Started\n");
 
         Job* job = g_jobHandler.AcquireJob();
         assert(job);
         if (job == nullptr)
             continue;
-        DebugPrint("Job Started\n");
+        //DebugPrint("Job Started\n");
 
         //Actual Job:
         {
+			PROFILE_SCOPE("Thread Chunk Load");
 			job->chunk->flags |= CHUNK_LOADING;
 			job->chunk->SetBlocks();
 			job->chunk->BuildChunkVertices();
         }
 
-        DebugPrint("Job Finished\n");
+        //DebugPrint("Job Finished\n");
         int atomic_result = SDL_AtomicAdd(&g_jobHandler.jobs_in_flight, -1);
         if (atomic_result == 1)
             SDL_SemPost(g_jobHandler.wait_semaphore);
         delete job;
-        DebugPrint("Job Deleted\n");
+        //DebugPrint("Job Deleted\n");
     }
     return 0;
 }
