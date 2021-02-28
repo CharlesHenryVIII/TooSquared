@@ -7,12 +7,6 @@ T Random(const T& min, const T& max)
     return min + (max - min) * (rand() / T(RAND_MAX));
 }
 
-
-static float _BilinearHelper(Vec2 pos, Rect v)
-{
-
-}
-
 [[nodiscard]] float Bilinear(Vec2 p, Rect loc, float bl, float br, float tl, float tr)
 {
     float denominator = ((loc.topRight.x - loc.botLeft.x) * (loc.topRight.y - loc.botLeft.y));

@@ -362,7 +362,7 @@ int main(int argc, char* argv[])
 		{
 			//PROFILE_SCOPE("Camera Position Chunk Update");
 
-			const int32 drawDistance = 5;
+			const int32 drawDistance = 10;
 			const int32 fogDistance = 0;
 			Vec3Int cam = ToChunkPosition(g_camera.p);
 			for (int32 z = -drawDistance; z <= drawDistance; z++)

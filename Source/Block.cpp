@@ -245,7 +245,7 @@ void Chunk::SetBlocks()
 	tr *= float(CHUNK_Y);
 	Rect r = {
 		.botLeft = { 0,0 },
-		.topRight = { 15, 15 },
+		.topRight = { 16, 16 },
 	};
 
 
@@ -254,9 +254,8 @@ void Chunk::SetBlocks()
 		for (int32 z = 0; z < CHUNK_Z; z++)
 		{
 			
-			float yTotal = Bilinear({ static_cast<float>(x), static_cast<float>(z) },
-									r, bl, br, tl, tr);
-
+			int32 yTotal = static_cast<int32>(Bilinear({ static_cast<float>(x), static_cast<float>(z) },
+									r, bl, br, tl, tr));
 			for (int32 y = 0; y < yTotal; y++)
 			{
 
