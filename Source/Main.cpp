@@ -341,7 +341,7 @@ int main(int argc, char* argv[])
 
 #if CHUNKMEM == 0
 			{
-				PROFILE_SCOPE("Chunk Delete Check");
+				//PROFILE_SCOPE("Chunk Delete Check");
 				if (g_camera.fogDistance)
 				{
 					for (Chunk* chunk : chunks)
@@ -472,7 +472,7 @@ int main(int argc, char* argv[])
 		});
 #else
 		{
-			PROFILE_SCOPE("Chunk Deletion");
+			//PROFILE_SCOPE("Chunk Deletion");
 			std::erase_if(chunks, [](Chunk* chunk) {
 				if ((chunk->flags & CHUNK_TODELETE) && (chunk->flags & CHUNK_LOADED))
 				{
