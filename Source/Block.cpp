@@ -93,16 +93,6 @@ void SetBlockSprites()
 }
 
 
-Vec3Int Vec3ToVec3Int(Vec3 a)
-{
-	return { static_cast<int32>(a.x), static_cast<int32>(a.y), static_cast<int32>(a.z) };
-}
-
-Vec3 Vec3IntToVec3(Vec3Int a)
-{
-	return { static_cast<float>(a.x), static_cast<float>(a.y), static_cast<float>(a.z) };
-}
-
 Vec3Int Chunk::BlockPosition()
 {
 	return { p.x* static_cast<int32>(CHUNK_X), p.y* static_cast<int32>(CHUNK_Y), p.z* static_cast<int32>(CHUNK_Z) };

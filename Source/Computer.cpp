@@ -41,7 +41,7 @@ int32 ThreadFunction(void* data)
 
         //Actual Job:
         {
-			PROFILE_SCOPE("Thread Chunk Load");
+			//PROFILE_SCOPE("Thread Chunk Load");
 			job->chunk->flags |= CHUNK_LOADING;
 			job->chunk->SetBlocks();
 			job->chunk->BuildChunkVertices();

@@ -6,6 +6,8 @@
 #include <cmath>
 #include <cstdint>
 
+#define CHUNKMEM 0
+
 //#define IMPLIMENTATION1
 //#define IMPLIMENTATION2
 //#define IMPLIMENTATION3
@@ -401,7 +403,17 @@ Atan2f return value:
     return sqrtf(powf(a.x, 2) + powf(a.y, 2));
 }
 
+[[nodiscard]] inline float Pythags(Vec3 a)
+{
+    return sqrtf(a.x * a.x + a.y * a.y + a.z * a.z);
+}
+
 [[nodiscard]] inline float Distance(Vec2 a, Vec2 b)
+{
+    return Pythags(a - b);
+}
+
+[[nodiscard]] inline float Distance(Vec3 a, Vec3 b)
 {
     return Pythags(a - b);
 }
@@ -414,6 +426,17 @@ Atan2f return value:
     result ^= result << 5;
 	return (result % (max - min)) + min;
 }
+
+[[nodiscard]] inline Vec3Int Vec3ToVec3Int(Vec3 a)
+{
+	return { static_cast<int32>(a.x), static_cast<int32>(a.y), static_cast<int32>(a.z) };
+}
+
+[[nodiscard]] inline Vec3 Vec3IntToVec3(Vec3Int a)
+{
+	return { static_cast<float>(a.x), static_cast<float>(a.y), static_cast<float>(a.z) };
+}
+
 
 #ifdef IMPLIMENTATION1
 double Perlin(double x, double y, double z);

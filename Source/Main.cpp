@@ -13,6 +13,7 @@
 
 #include <unordered_map>
 #include <vector>
+#include <algorithm>
 
 struct Key {
 	bool down;
@@ -58,9 +59,12 @@ int main(int argc, char* argv[])
 
 	//TODO: Sort chunks based on distance?
 	//TODO: Use Unordered_map?
+#if CHUNKMEM == 2
+#else
 	std::vector<Chunk*> chunks;
 	std::vector<Chunk*> chunksToLoad;
 	std::vector<double> values;
+#endif
 	//values.reserve(size_t(2 * (2 / 0.01)));
 #ifdef IMPLIMENTATION4
 	PerlinInit();
@@ -303,14 +307,14 @@ int main(int argc, char* argv[])
 		gb_mat4_look_at(&g_camera.view, g_camera.p, g_camera.p + g_camera.front, g_camera.up);
 
 		{
-			PROFILE_SCOPE("Camera Position Chunk Update");
+			//PROFILE_SCOPE("Camera Position Chunk Update");
 
 #ifdef _DEBUG
 			const int32 drawDistance = 10;
 #elif NDEBUG
 			const int32 drawDistance = 30;
 #endif
-			const int32 fogDistance = 40;
+			g_camera.fogDistance = 40;
 			Vec3Int cam = ToChunkPosition(g_camera.p);
 			for (int32 z = -drawDistance; z <= drawDistance; z++)
 			{
@@ -335,17 +339,22 @@ int main(int argc, char* argv[])
 				}
 			}
 
-			if (fogDistance)
+#if CHUNKMEM == 0
 			{
-				for (Chunk* chunk : chunks)
+				PROFILE_SCOPE("Chunk Delete Check");
+				if (g_camera.fogDistance)
 				{
-					if ((chunk->p.x > cam.x + fogDistance || chunk->p.z > cam.z + fogDistance) ||
-						(chunk->p.x < cam.x - fogDistance || chunk->p.z < cam.z - fogDistance))
+					for (Chunk* chunk : chunks)
 					{
-						chunk->flags |= CHUNK_TODELETE;
+						if ((chunk->p.x > cam.x + g_camera.fogDistance || chunk->p.z > cam.z + g_camera.fogDistance) ||
+							(chunk->p.x < cam.x - g_camera.fogDistance || chunk->p.z < cam.z - g_camera.fogDistance))
+						{
+							chunk->flags |= CHUNK_TODELETE;
+						}
 					}
 				}
 			}
+#endif
 		}
 		Vec2Int windowSizeThing = { g_window.size.x * 2, g_window.size.y * 2 };
 		UpdateFrameBuffer(windowSizeThing);
@@ -355,7 +364,7 @@ int main(int argc, char* argv[])
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		{
-			PROFILE_SCOPE("Semaphore Update");
+			//PROFILE_SCOPE("Semaphore Update");
 
 			if (chunksToLoad.size())
 			{
@@ -386,7 +395,7 @@ int main(int argc, char* argv[])
 		//        g->Render();
 		//}
 		{
-			PROFILE_SCOPE("Chunk Upload and Render");
+			//PROFILE_SCOPE("Chunk Upload and Render");
 
 			int32 uploadCount = 0;
 			for (Chunk* chunk : chunks)
@@ -408,6 +417,50 @@ int main(int argc, char* argv[])
 			}
 		}
 
+#if CHUNKMEM == 1
+		{
+			PROFILE_SCOPE("Chunk Sort");
+			//10 to 23 ms
+
+#if 0
+			std::sort(chunks.begin(), chunks.end(), [](const Chunk* a, const Chunk* b) {
+				float aDist = Distance(g_camera.p, Vec3IntToVec3(((Chunk*)a)->BlockPosition()));
+				float bDist = Distance(g_camera.p, Vec3IntToVec3(((Chunk*)b)->BlockPosition()));
+				return aDist < bDist;
+			});
+
+#else
+			std::qsort(chunks.data(), chunks.size(), sizeof(chunks[0]), [](const void* a, const void* b) {
+				float aDist = Distance(g_camera.p, Vec3IntToVec3(((Chunk*)a)->BlockPosition()));
+				float bDist = Distance(g_camera.p, Vec3IntToVec3(((Chunk*)b)->BlockPosition()));
+				return int32(bDist - aDist);
+			});
+#endif
+			uint32 chunkIndexToDelete = 0;
+			if (g_camera.fogDistance)
+			{
+				Vec3Int cam = ToChunkPosition(g_camera.p);
+				for (chunkIndexToDelete; chunkIndexToDelete < chunks.size(); chunkIndexToDelete++)
+				{
+					Chunk* chunk = chunks[chunkIndexToDelete];
+					if ((chunk->p.x > cam.x + g_camera.fogDistance || chunk->p.z > cam.z + g_camera.fogDistance) ||
+						(chunk->p.x < cam.x - g_camera.fogDistance || chunk->p.z < cam.z - g_camera.fogDistance))
+					{
+						break;
+					}
+				}
+			}
+			if (chunkIndexToDelete != chunks.size() - 1)
+			{
+				for (int32 i = chunkIndexToDelete; i < chunks.size(); i++)
+				{
+					delete chunks[i];
+				}
+				chunks.resize(chunkIndexToDelete - 1);
+			}
+		}
+
+
 		std::erase_if(chunks, [](Chunk* chunk) {
 			if ((chunk->flags & CHUNK_TODELETE) && (chunk->flags & CHUNK_LOADED))
 			{
@@ -417,7 +470,20 @@ int main(int argc, char* argv[])
 			}
 			return false;
 		});
-
+#else
+		{
+			PROFILE_SCOPE("Chunk Deletion");
+			std::erase_if(chunks, [](Chunk* chunk) {
+				if ((chunk->flags & CHUNK_TODELETE) && (chunk->flags & CHUNK_LOADED))
+				{
+					delete chunk;
+					chunk = nullptr;
+					return true;
+				}
+				return false;
+			});
+		}
+#endif
 		//gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
 
         //double renderTotalTime = SDL_GetPerformanceCounter() / freq;

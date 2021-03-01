@@ -20,6 +20,7 @@ struct Camera {
     Mat4 view;
     float yaw   = -90.0f;
     float pitch = 0.0f;
+	int32 fogDistance = 40;
 };
 
 struct Light {
