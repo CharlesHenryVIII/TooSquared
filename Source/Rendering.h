@@ -45,6 +45,7 @@ enum class ts_MessageBox {
 enum class Shader : uint32 {
     Invalid,
     Simple3D,
+    BufferCopy,
     Count,
 };
 ENUMOPS(Shader);
@@ -150,6 +151,15 @@ public:
     void Upload(Vertex_Chunk* vertices, size_t count);
 };
 
+
+struct FrameBuffer {
+	GLuint handle;
+	GLuint colorHandle;
+	GLuint depthHandle;
+	Vec2Int size;
+	VertexBuffer vertexBuffer;
+};
+
 struct Renderer {
     SDL_GLContext GL_Context = {};
     ShaderProgram* programs[+Shader::Count] = {};
@@ -158,6 +168,7 @@ struct Renderer {
     GLuint vao;
     IndexBuffer* chunkIB;
     TextureArray* spriteTextArray;
+    FrameBuffer* backBuffer = nullptr;
 };
 
 extern Renderer g_renderer;
@@ -175,3 +186,4 @@ Rect GetRectFromSprite(uint32 i);
 void RenderUpdate(float deltaTime);
 void RenderBlock(Block* block);
 void InitializeVideo();
+void UpdateFrameBuffer(Vec2Int size);

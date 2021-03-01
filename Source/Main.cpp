@@ -56,7 +56,8 @@ int main(int argc, char* argv[])
 	Vec3 cOffset = { 1.0f, 1.0f, 1.0f };
 	gb_mat4_look_at(&g_camera.view, g_camera.p + cOffset, g_camera.p, { 0,1,0 });
 
-	//TODO:Sort chunks based on distance
+	//TODO: Sort chunks based on distance?
+	//TODO: Use Unordered_map?
 	std::vector<Chunk*> chunks;
 	std::vector<Chunk*> chunksToLoad;
 	std::vector<double> values;
@@ -258,6 +259,7 @@ int main(int argc, char* argv[])
 			key.second.downPrevFrame = key.second.down;
 		}
 
+
 		if (keyStates[SDLK_BACKQUOTE].down)
 			g_running = false;
 
@@ -345,8 +347,12 @@ int main(int argc, char* argv[])
 				}
 			}
 		}
-
+		Vec2Int windowSizeThing = { g_window.size.x * 2, g_window.size.y * 2 };
+		UpdateFrameBuffer(windowSizeThing);
 		RenderUpdate(deltaTime);
+		glBindFramebuffer(GL_FRAMEBUFFER, g_renderer.backBuffer->handle);
+		glViewport(0, 0, windowSizeThing.x, windowSizeThing.y);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		{
 			PROFILE_SCOPE("Semaphore Update");
@@ -420,7 +426,23 @@ int main(int argc, char* argv[])
         //    return (static_cast<float>(renderTotalTime) - a> 1.0f);
         //});
         //frameTimes.push_back(static_cast<float>(renderTotalTime));
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+		glDisable(GL_DEPTH_TEST);
+		glViewport(0, 0, g_window.size.x, g_window.size.y);
+		glBindTexture(GL_TEXTURE_2D, g_renderer.backBuffer->colorHandle);
+		g_renderer.programs[+Shader::BufferCopy]->UseShader();
+		g_renderer.backBuffer->vertexBuffer.Bind();
+
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+		glEnableVertexArrayAttrib(g_renderer.vao, 0);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+		glEnableVertexArrayAttrib(g_renderer.vao, 1);
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
+		glEnableVertexArrayAttrib(g_renderer.vao, 2);
+		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
         SDL_GL_SwapWindow(g_window.SDL_Context);
+		glEnable(GL_DEPTH_TEST);
     }
     return 0;
 }

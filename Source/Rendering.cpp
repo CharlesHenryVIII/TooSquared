@@ -564,6 +564,62 @@ void FillIndexBuffer(IndexBuffer* ib)
 	ib->Upload(arr.data(), amount);
 }
 
+void UpdateFrameBuffer(Vec2Int size)
+{
+	if (g_renderer.backBuffer == nullptr)
+	{
+		g_renderer.backBuffer = new FrameBuffer();
+		glGenFramebuffers(1, &g_renderer.backBuffer->handle);
+		glBindFramebuffer(GL_FRAMEBUFFER, g_renderer.backBuffer->handle);
+	}
+	FrameBuffer* fb = g_renderer.backBuffer;
+	if (fb->size.x == size.x && fb->size.y == size.y)
+		return;
+		
+	glBindFramebuffer(GL_FRAMEBUFFER, g_renderer.backBuffer->handle);
+	if (fb->colorHandle)
+		glDeleteTextures(1, &fb->colorHandle);
+	glGenTextures(1, &fb->colorHandle);
+	glBindTexture(GL_TEXTURE_2D, fb->colorHandle);
+	
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+
+	if (fb->depthHandle)
+		glDeleteTextures(1, &fb->depthHandle);
+	glGenTextures(1, &fb->depthHandle);
+	glBindTexture(GL_TEXTURE_2D, fb->depthHandle);
+	
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, size.x, size.y, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, nullptr);
+
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fb->colorHandle, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, fb->depthHandle, 0);
+
+	GLint err = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+	if (err != GL_FRAMEBUFFER_COMPLETE)
+	{
+		fprintf(stderr, "Error: Frame buffer error");
+	}
+
+	Vertex verticees[] = 
+	{
+		{-1.0,  1.0, 0, 0.0f, 1.0f },
+		{-1.0, -1.0, 0, 0.0f, 0.0f },
+		{ 1.0,  1.0, 0, 1.0f, 1.0f },
+		{ 1.0, -1.0, 0, 1.0f, 0.0f },
+	};
+
+	fb->vertexBuffer.Upload(verticees, arrsize(verticees));
+}
+
+
 void InitializeVideo()
 {
     SDL_Init(SDL_INIT_VIDEO);
@@ -619,7 +675,6 @@ void InitializeVideo()
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     //glClearColor(1.0f, 0.0f, 1.0f, 0.0f);
     glClearColor(0.263f, 0.706f, 0.965f, 0.0f);
-    glEnable(GL_DEPTH_TEST);
     glEnable(GL_DEBUG_OUTPUT);
     glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
     glDebugMessageCallback(OpenGLErrorCallback, NULL);
@@ -641,6 +696,7 @@ void InitializeVideo()
 	g_renderer.spriteTextArray = new TextureArray("Assets/MinecraftSpriteSheet20120215.png");
 #endif
 	g_renderer.programs[+Shader::Simple3D] = new ShaderProgram("Source/Shaders/3D.vert", "Source/Shaders/3D.frag");
+	g_renderer.programs[+Shader::BufferCopy] = new ShaderProgram("Source/Shaders/BufferCopy.vert", "Source/Shaders/BufferCopy.frag");
 
 	for (int face = 0; face < 6; ++face)
 	{
@@ -671,4 +727,5 @@ void InitializeVideo()
 
 	g_renderer.chunkIB = new IndexBuffer();
 	FillIndexBuffer(g_renderer.chunkIB);
+
 }

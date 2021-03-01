@@ -42,8 +42,8 @@ void main()
 {
     p_uv = faceUV[gl_VertexID % 4];
     p_depth = v_spriteIndex;
-    p_normal = faceNormals[v_normal];
-    //p_normal = (u_view * u_model * vec4(v_normal, 0)).xyz;
+    //p_normal = faceNormals[v_normal];
+    p_normal = (u_view * u_model * vec4(faceNormals[v_normal], 0)).xyz;
 	gl_Position = u_perspective * u_view * u_model * vec4(v_position, 1.0);
     p_pixelP = vec3(u_view * u_model * vec4(v_position, 1.0));
     p_view = u_view;

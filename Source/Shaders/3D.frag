@@ -47,9 +47,9 @@ void main()
     //vec3 specular = u_lightColor * (spec * material.specular);
     vec3 specular = vec3(1.0) * (spec * material.specular);
 
-    vec3 result = (ambient + diffuse + specular) * pixel.xyz;
+    vec3 result = (max(ambient + diffuse + specular, 0.25)) * pixel.xyz;
     color = vec4(result, pixel.a);
-    color = pixel;
+    //color = pixel;
 
     //color.xyz = p_normal;
     //color.a = 1;

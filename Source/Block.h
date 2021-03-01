@@ -63,7 +63,7 @@ struct Chunk {
 	void RenderChunk();
     Vec3Int BlockPosition();
 };
-
+constexpr size_t sizeOfChunk = sizeof(Chunk);
 enum class Face : uint8 {
 	Right,
 	Left,
