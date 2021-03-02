@@ -103,6 +103,7 @@ public:
     void UpdateUniformVec4(const char* name, GLsizei count, const GLfloat* value);
     void UpdateUniformVec3(const char* name, GLsizei count, const GLfloat* value);
     void UpdateUniformFloat(const char* name, GLfloat value);
+    void UpdateUniformUint8(const char* name, GLuint value);
 };
 
 class GpuBuffer

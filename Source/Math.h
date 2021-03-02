@@ -81,10 +81,12 @@ struct Vertex {
     Vec3 n;
 };
 
+//Originally 32 Bytes
 struct Vertex_Chunk {
-    Vec3 p;
+    uint16 blockIndex;
     uint8 spriteIndex;
     uint8 n;
+    uint8 vertexIndex;
 };
 
 

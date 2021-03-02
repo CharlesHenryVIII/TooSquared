@@ -12,3 +12,7 @@ TODO:
  * Combined Noise
  * Profile GPU Upload
 
+
+ Upload chunk position
+ upload block index in place of the vertex position
+ find the vertex position based on the chunk position and the block index

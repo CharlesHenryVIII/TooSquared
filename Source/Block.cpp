@@ -11,50 +11,6 @@ struct VertexFace {
 	Vertex_Chunk a,b,c,d;
 };
 
-static const VertexFace cubeFaces[+Face::Count] = {
-
-    {
-	{ {  1.0f,  1.0f,  1.0f }, {}, 0 },
-	{ {  1.0f,     0,  1.0f }, {}, 0 }, // +x
-	{ {  1.0f,  1.0f,     0 }, {}, 0 },
-	{ {  1.0f,     0,     0 }, {}, 0 },
-    },
-
-	{
-	{ {     0,  1.0f,     0 }, {}, 1 },    // top right
-	{ {     0,     0,     0 }, {}, 1 },    // Top Left
-	{ {     0,  1.0f,  1.0f }, {}, 1 },    // bot right
-	{ {     0,     0,  1.0f }, {}, 1 },    // -x bottom Left
-	},
-
-    {
-	{ {  1.0f,  1.0f,  1.0f }, {}, 2 },
-	{ {  1.0f,  1.0f,     0 }, {}, 2 },
-	{ {     0,  1.0f,  1.0f }, {}, 2 }, // +y
-	{ {     0,  1.0f,     0 }, {}, 2 },
-    },
-
-	{
-	{ {     0,     0,  1.0f }, {}, 3 }, // -y
-	{ {     0,     0,     0 }, {}, 3 },
-	{ {  1.0f,     0,  1.0f }, {}, 3 },
-	{ {  1.0f,     0,     0 }, {}, 3 },
-	},
-
-	{
-	{ {     0,  1.0f,  1.0f }, {}, 4 }, // z
-	{ {     0,     0,  1.0f }, {}, 4 },
-	{ {  1.0f,  1.0f,  1.0f }, {}, 4 },
-	{ {  1.0f,     0,  1.0f }, {}, 4 },
-	},
-
-    {
-	{ {  1.0f,  1.0f,     0 }, {}, 5 },
-	{ {  1.0f,     0,     0 }, {}, 5 },
-	{ {     0,  1.0f,     0 }, {}, 5 }, // -z
-	{ {     0,     0,     0 }, {}, 5 },
-    },
-};
 Vec3 faceNormals[] = {
 
 {  1.0f,  0.0f,  0.0f },
@@ -192,18 +148,28 @@ void Chunk::BuildChunkVertices()
 
 					if (outOfBounds || blocks->e[xReal][yReal][zReal] == BlockType::Empty)
 					{
-						VertexFace f = cubeFaces[faceIndex];
+						VertexFace f = {};// = cubeFaces[faceIndex];
 						Vec3 offset = { static_cast<float>(x + realP.x), static_cast<float>(y + realP.y), static_cast<float>(z + realP.z) };
 
-						f.a.p += offset;
-						f.b.p += offset;
-						f.c.p += offset;
-						f.d.p += offset;
+						f.a.blockIndex = z * CHUNK_Z + y * CHUNK_Y + x;
+						f.b.blockIndex = z * CHUNK_Z + y * CHUNK_Y + x;
+						f.c.blockIndex = z * CHUNK_Z + y * CHUNK_Y + x;
+						f.d.blockIndex = z * CHUNK_Z + y * CHUNK_Y + x;
 
 						f.a.spriteIndex = faceSprites[+currentBlockType].faceSprites[faceIndex];
 						f.b.spriteIndex = faceSprites[+currentBlockType].faceSprites[faceIndex];
 						f.c.spriteIndex = faceSprites[+currentBlockType].faceSprites[faceIndex];
 						f.d.spriteIndex = faceSprites[+currentBlockType].faceSprites[faceIndex];
+
+						f.a.n = faceIndex;
+						f.b.n = faceIndex;
+						f.c.n = faceIndex;
+						f.d.n = faceIndex;
+
+						f.a.vertexIndex = 0;
+						f.b.vertexIndex = 1;
+						f.c.vertexIndex = 2;
+						f.d.vertexIndex = 3;
 
 						faceVertices.push_back(f.a);
 						faceVertices.push_back(f.b);
@@ -243,12 +209,21 @@ void Chunk::RenderChunk()
     g_renderer.programs[+Shader::Simple3D]->UseShader();
 
 	g_renderer.spriteTextArray->Bind();
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, p));
+
+//jstruct Vertex_Chunk {
+//j    uint16 blockIndex;
+//j    uint8 spriteIndex;
+//j    uint8 n;
+//j    uint8 vertexIndex;
+//j};
+    glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
     glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
+    glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
     glEnableVertexArrayAttrib(g_renderer.vao, 1);
-    glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, n));
+    glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, n));
     glEnableVertexArrayAttrib(g_renderer.vao, 2);
+    glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, vertexIndex));
+    glEnableVertexArrayAttrib(g_renderer.vao, 3);
 
     Mat4 perspective;
     gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.65f, 1000.0f);
@@ -257,20 +232,25 @@ void Chunk::RenderChunk()
 	gb_mat4_identity(&transform);
 
     ShaderProgram* sp = g_renderer.programs[+Shader::Simple3D];
-    sp->UpdateUniformMat4( "u_perspective", 1, false, perspective.e);
-    sp->UpdateUniformMat4( "u_view",        1, false, g_camera.view.e);
-    sp->UpdateUniformMat4( "u_model",       1, false, transform.e);
+    sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
+    sp->UpdateUniformMat4("u_view",        1, false, g_camera.view.e);
+    sp->UpdateUniformMat4("u_model",       1, false, transform.e);
 
-	sp->UpdateUniformVec3( "u_lightColor",	    1,  g_light.c.e);
-	sp->UpdateUniformVec3( "u_lightP",          1,  g_light.p.e);
-	sp->UpdateUniformVec3( "u_cameraP",         1,  g_camera.p.e);
+	sp->UpdateUniformVec3("u_lightColor",  1,  g_light.c.e);
+	sp->UpdateUniformVec3("u_lightP",      1,  g_light.p.e);
+	sp->UpdateUniformVec3("u_cameraP",     1,  g_camera.p.e);
+
+	sp->UpdateUniformVec3("u_chunkP",      1,  Vec3IntToVec3(BlockPosition()).e);
+	sp->UpdateUniformUint8("u_CHUNK_X", CHUNK_X);
+	sp->UpdateUniformUint8("u_CHUNK_Y", CHUNK_Y);
+	sp->UpdateUniformUint8("u_CHUNK_Z", CHUNK_Z);
 
 	Material material;
 	material.ambient = { 0.02f, 0.02f, 0.02f };
 	material.diffuse = { 1.0f, 1.0f, 1.0f };
 	material.specular = { 0.4f, 0.4f,  0.4f };
 	material.shininess = 32;//0.78125f;
-	sp->UpdateUniformVec3("material.ambient", 1,	material.ambient.e);
+	sp->UpdateUniformVec3("material.ambient",   1,	material.ambient.e);
 	sp->UpdateUniformVec3( "material.diffuse",  1,  material.diffuse.e);
 	sp->UpdateUniformVec3( "material.specular", 1,  material.specular.e);
 	sp->UpdateUniformFloat("material.shininess",    material.shininess);
