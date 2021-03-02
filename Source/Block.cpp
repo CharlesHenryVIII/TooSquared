@@ -166,11 +166,6 @@ void Chunk::BuildChunkVertices()
 						f.c.n = faceIndex;
 						f.d.n = faceIndex;
 
-						f.a.vertexIndex = 0;
-						f.b.vertexIndex = 1;
-						f.c.vertexIndex = 2;
-						f.d.vertexIndex = 3;
-
 						faceVertices.push_back(f.a);
 						faceVertices.push_back(f.b);
 						faceVertices.push_back(f.c);
@@ -222,8 +217,6 @@ void Chunk::RenderChunk()
     glEnableVertexArrayAttrib(g_renderer.vao, 1);
     glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, n));
     glEnableVertexArrayAttrib(g_renderer.vao, 2);
-    glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, vertexIndex));
-    glEnableVertexArrayAttrib(g_renderer.vao, 3);
 
     Mat4 perspective;
     gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.65f, 1000.0f);

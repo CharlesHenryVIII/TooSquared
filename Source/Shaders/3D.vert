@@ -2,7 +2,6 @@
 layout(location = 0) in uint v_blockIndex;    //2Byte
 layout(location = 1) in uint v_spriteIndex; //1Byte
 layout(location = 2) in uint v_normal;      //1Byte
-layout(location = 3) in uint v_vertexIndex; //1Byte
 
 uniform mat4 u_perspective;
 uniform mat4 u_view;
@@ -101,7 +100,7 @@ const vec2 faceUV[4] = vec2[4](
 void main()
 {
 
-    vec3 faceP = cubeVertices[v_normal].e[v_vertexIndex];
+    vec3 faceP = cubeVertices[v_normal].e[gl_VertexID % 4];
 
     uint blockY =  v_blockIndex / u_CHUNK_Y;
     uint duplicateMath = (v_blockIndex - blockY * u_CHUNK_Y);

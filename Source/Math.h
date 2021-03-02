@@ -86,7 +86,6 @@ struct Vertex_Chunk {
     uint16 blockIndex;
     uint8 spriteIndex;
     uint8 n;
-    uint8 vertexIndex;
 };
 
 
