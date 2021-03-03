@@ -159,6 +159,7 @@
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Math.cpp" />
     <ClCompile Include="Source\Misc.cpp" />
+    <ClCompile Include="Source\Noise.cpp" />
     <ClCompile Include="Source\Rendering.cpp" />
     <ClCompile Include="Source\WinInterop.cpp" />
   </ItemGroup>
@@ -170,6 +171,7 @@
     <ClInclude Include="Source\Computer.h" />
     <ClInclude Include="Source\Math.h" />
     <ClInclude Include="Source\Misc.h" />
+    <ClInclude Include="Source\Noise.h" />
     <ClInclude Include="Source\Rendering.h" />
     <ClInclude Include="Source\WinInterop.h" />
   </ItemGroup>

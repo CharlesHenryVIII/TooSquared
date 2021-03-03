@@ -7,7 +7,11 @@
 Renderer g_renderer;
 Window g_window;
 Camera g_camera;
-Light g_light;
+#if DIRECTIONALLIGHT == 1
+Light_Direction g_light;
+#else
+Light_Point g_light;
+#endif
 
 const SDL_MessageBoxColorScheme colorScheme = {
 	/* .colors (.r, .g, .b) */
@@ -429,95 +433,6 @@ Rect GetRectFromSprite(uint32 i)
     return result;
 }
 
-Vertex cubeVertices[] = {
-    { {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
-    { {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
-    { {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } },
-    { {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, {  1.0f, 0.0f, 0.0f } }, // +x
-
-    { { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // top right
-    { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // Top Left
-    { { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // bot right
-    { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { -1.0f, 0.0f, 0.0f } }, // -x bottom Left
-
-    { { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } }, // +y
-    { { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
-    { {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
-    { {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f,  1.0f, 0.0f } },
-
-    { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } }, // -y
-    { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
-    { {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
-    { {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, -1.0f, 0.0f } },
-
-    { { -0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } }, // z
-    { { -0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
-    { {  0.5f,  0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
-    { {  0.5f, -0.5f,  0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f,  1.0f } },
-
-    { { -0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } }, // -z
-    { { -0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
-    { {  0.5f,  0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
-    { {  0.5f, -0.5f, -0.5f }, { 0.0f, 0.0f }, { 0.0f, 0.0f, -1.0f } },
-};
-uint32 cubeIndices[36] = {};
-
-void RenderBlock(Block* block)
-{
-    for (uint32 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
-    {
-        uint32 tileIndex = block->spriteLocation[faceIndex];
-        if (tileIndex == 254)
-            tileIndex = block->defaultSpriteLocation;
-        Rect s = GetRectFromSprite(tileIndex);
-
-        const uint32 size = blocksPerRow * pixelsPerBlock;
-        float iblx = Clamp(s.botLeft.x  / size, 0.0f, 1.0f);
-        float ibly = Clamp(s.botLeft.y  / size, 0.0f, 1.0f);
-        float itrx = Clamp(s.topRight.x / size, 0.0f, 1.0f);
-        float itry = Clamp(s.topRight.y / size, 0.0f, 1.0f);
-
-        cubeVertices[faceIndex * 4 + 0].uv = { iblx, itry }; //Bot Left
-        cubeVertices[faceIndex * 4 + 1].uv = { iblx, ibly }; //Top Left
-        cubeVertices[faceIndex * 4 + 2].uv = { itrx, itry }; //Bot Right
-        cubeVertices[faceIndex * 4 + 3].uv = { itrx, ibly }; //Top Right
-    }
-    block->vertexBuffer.Upload(cubeVertices, arrsize(cubeVertices));
-    block->indexBuffer.Upload(cubeIndices,  arrsize(cubeIndices));
-    g_renderer.textures[Texture::Minecraft]->Bind();
-    g_renderer.programs[+Shader::Simple3D]->UseShader();
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
-    glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
-    glEnableVertexArrayAttrib(g_renderer.vao, 1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
-    glEnableVertexArrayAttrib(g_renderer.vao, 2);
-
-    Mat4 perspective;
-    gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.65f, 1000.0f);
-    Mat4 transform;
-    gb_mat4_translate(&transform, block->p);
-
-    ShaderProgram* sp = g_renderer.programs[+Shader::Simple3D];
-    sp->UpdateUniformMat4( "u_perspective", 1, false, perspective.e);
-    sp->UpdateUniformMat4( "u_view",        1, false, g_camera.view.e);
-    sp->UpdateUniformMat4( "u_model",       1, false, transform.e);
-
-	sp->UpdateUniformVec3( "u_lightColor",	    1,  g_light.c.e);
-	sp->UpdateUniformVec3( "u_lightP",          1,  g_light.p.e);
-	sp->UpdateUniformVec3( "u_cameraP",         1,  g_camera.p.e);
-
-	sp->UpdateUniformVec3( "material.ambient",  1,  block->material.ambient.e);
-	sp->UpdateUniformVec3( "material.diffuse",  1,  block->material.diffuse.e);
-	sp->UpdateUniformVec3( "material.specular", 1,  block->material.specular.e);
-	sp->UpdateUniformFloat("material.shininess",    block->material.shininess);
-
-
-    glDrawElements(GL_TRIANGLES, arrsize(cubeIndices), GL_UNSIGNED_INT, 0);
-}
-
-
 void OpenGLErrorCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
                          GLsizei length, const GLchar *message, const void *userParam)
 {
@@ -693,8 +608,6 @@ void InitializeVideo()
 	glEnable(GL_CULL_FACE);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-	static_assert(arrsize(cubeVertices) == 24, "");
-
 	glGenVertexArrays(1, &g_renderer.vao);
 	glBindVertexArray(g_renderer.vao);
 
@@ -707,32 +620,13 @@ void InitializeVideo()
 	g_renderer.programs[+Shader::Simple3D] = new ShaderProgram("Source/Shaders/3D.vert", "Source/Shaders/3D.frag");
 	g_renderer.programs[+Shader::BufferCopy] = new ShaderProgram("Source/Shaders/BufferCopy.vert", "Source/Shaders/BufferCopy.frag");
 
-	for (int face = 0; face < 6; ++face)
-	{
-		int base_index = face * 4;
-		//NOTE: This is to fix culling issues where winding order
-		//is reversed on some of these vertices
-		if (face == 1 || face == 3 || face == 4)
-		{
-			cubeIndices[face * 6 + 0] = base_index + 0;
-			cubeIndices[face * 6 + 1] = base_index + 1;
-			cubeIndices[face * 6 + 2] = base_index + 2;
-			cubeIndices[face * 6 + 3] = base_index + 1;
-			cubeIndices[face * 6 + 4] = base_index + 3;
-			cubeIndices[face * 6 + 5] = base_index + 2;
-		}
-		else
-		{
-			cubeIndices[face * 6 + 0] = base_index + 0;
-			cubeIndices[face * 6 + 1] = base_index + 2;
-			cubeIndices[face * 6 + 2] = base_index + 1;
-			cubeIndices[face * 6 + 3] = base_index + 1;
-			cubeIndices[face * 6 + 4] = base_index + 2;
-			cubeIndices[face * 6 + 5] = base_index + 3;
-		}
-	}
+#if DIRECTIONALLIGHT == 1
+	g_light.d = {  1.0f, -1.0f,  1.0f };
 	g_light.c = {  1.0f,  1.0f,  1.0f };
+#else
 	g_light.p = { 25.0f, 270.0f, 25.0f };
+	g_light.c = {  1.0f,  1.0f,  1.0f };
+#endif
 
 	g_renderer.chunkIB = new IndexBuffer();
 	FillIndexBuffer(g_renderer.chunkIB);

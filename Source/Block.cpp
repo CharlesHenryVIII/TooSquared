@@ -1,11 +1,7 @@
 #include "Block.h"
 #include "WinInterop.h"
+#include "Noise.h"
 
-
-void Block::Render()
-{
-    RenderBlock(this);
-}
 
 struct VertexFace {
 	Vertex_Chunk a,b,c,d;
@@ -83,8 +79,17 @@ void Chunk::SetBlocks()
 			Vec3Int chunkBlockP = BlockPosition();
 
 			Vec2 blockRatio = { chunkBlockP.x + blockP.x, chunkBlockP.z + blockP.y };
+
+#if NOISETYPE == 2
+			blockRatio /= 200;
+			int32 yTotal = Max(static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 10);
+#elif NOISETYPE == 4
 			blockRatio /= 100;
-			int32 yTotal = static_cast<int32>(Noise(blockRatio) * CHUNK_Y) ;
+			int32 yTotal = (static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 80);
+#else
+			static_assert(false, "Need to set noise implimentation variabls in SetBlocks()");
+#endif
+
 
 			for (int32 y = 0; y < yTotal; y++)
 			{
@@ -117,7 +122,7 @@ void Chunk::SetBlocks()
 			}
 		}
 	}
-	//arr[CHUNK_X - 1][CHUNK_Y - 1][CHUNK_Z - 1] = BlockType::Grass;
+	//blocks->e[CHUNK_X - 1][CHUNK_Y - 1][CHUNK_Z - 1] = BlockType::Grass;
 }
 
 void Chunk::BuildChunkVertices()
@@ -229,8 +234,12 @@ void Chunk::RenderChunk()
     sp->UpdateUniformMat4("u_view",        1, false, g_camera.view.e);
     sp->UpdateUniformMat4("u_model",       1, false, transform.e);
 
+#if DIRECTIONALLIGHT == 1
+	sp->UpdateUniformVec3("u_directionalLight_d",  1,  g_light.d.e);
+#else
 	sp->UpdateUniformVec3("u_lightColor",  1,  g_light.c.e);
 	sp->UpdateUniformVec3("u_lightP",      1,  g_light.p.e);
+#endif
 	sp->UpdateUniformVec3("u_cameraP",     1,  g_camera.p.e);
 
 	sp->UpdateUniformVec3("u_chunkP",      1,  Vec3IntToVec3(BlockPosition()).e);

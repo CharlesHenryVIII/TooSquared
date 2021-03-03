@@ -6,6 +6,8 @@
 
 #include <string>
 
+#define DIRECTIONALLIGHT 1
+
 struct Window {
     Vec2Int size = {};
     Vec2Int pos = {};
@@ -23,9 +25,14 @@ struct Camera {
 	int32 fogDistance = 40;
 };
 
-struct Light {
+struct Light_Point {
     Vec3 p;
-    Vec3 c;
+    Vec3 c = {1, 1, 1};
+};
+
+struct Light_Direction{
+    Vec3 d;
+    Vec3 c = {1, 1, 1};
 };
 
 struct Material {
@@ -176,7 +183,11 @@ struct Renderer {
 extern Renderer g_renderer;
 extern Window g_window;
 extern Camera g_camera;
-extern Light g_light;
+#if DIRECTIONALLIGHT == 1
+extern Light_Direction g_light;
+#else
+extern Light_Point g_light;
+#endif
 
 const uint32 pixelsPerBlock = 16;
 const uint32 blocksPerRow = 16;
@@ -186,6 +197,5 @@ struct Block;
 int32 CreateMessageWindow(SDL_MessageBoxButtonData* buttons, int32 numOfButtons, ts_MessageBox type, const char* title, const char* message);
 Rect GetRectFromSprite(uint32 i);
 void RenderUpdate(float deltaTime);
-void RenderBlock(Block* block);
 void InitializeVideo();
 void UpdateFrameBuffer(Vec2Int size);

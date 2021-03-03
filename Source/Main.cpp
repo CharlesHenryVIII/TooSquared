@@ -10,6 +10,7 @@
 #include "Block.h"
 #include "Computer.h"
 #include "WinInterop.h"
+#include "Noise.h"
 
 #include <unordered_map>
 #include <vector>
@@ -49,9 +50,14 @@ int main(int argc, char* argv[])
 
 	double freq = double(SDL_GetPerformanceFrequency()); //HZ
 	double totalTime = SDL_GetPerformanceCounter() / freq; //sec
-	srand(static_cast<uint32>(totalTime));
 	double previousTime = totalTime;
     double LastShaderUpdateTime = totalTime;
+#if 0
+	srand(static_cast<uint32>(totalTime));
+#else
+	srand(14);
+#endif
+	NoiseInit();
 
     g_camera.view;
 	Vec3 cOffset = { 1.0f, 1.0f, 1.0f };
@@ -66,58 +72,6 @@ int main(int argc, char* argv[])
 	std::vector<double> values;
 #endif
 	//values.reserve(size_t(2 * (2 / 0.01)));
-#ifdef IMPLIMENTATION4
-	PerlinInit();
-#endif
-
-	//const int32 cubeSize = 10;
-	//for (int32 z = -cubeSize; z <= cubeSize; z++)
-	//{
-	//	for (int32 x = -cubeSize; x <= cubeSize; x++)
-	//	{
-	//		Chunk* chunk = new Chunk();
-	//		chunk->p = {x, 0, z};
-	//		chunksToLoad.push_back(chunk);
-	//	}
-	//}
-
-#if 0
-	std::vector<Block*> blockList;
-    {
-		const int32 cubeSize = 5;
-		for (float z = -cubeSize; z <= cubeSize; z++)
-		{
-			for (float y = -(2 * cubeSize); y <= 0; y++)
-			{
-				for (float x = -cubeSize; x <= cubeSize; x++)
-				{
-					Grass* temp = new Grass();
-					temp->p = { x, y, z };
-					blockList.push_back(temp);
-				}
-			}
-		}
-		{
-			Grass* grass = new Grass();
-			grass->p = { 0.0f, 1.0f, 0.0f };
-			blockList.push_back(grass);
-
-			Stone* stone = new Stone();
-			stone->p = { 1.0f, 1.0f, 0.0f };
-			blockList.push_back(stone);
-
-			IronBlock* ironBlock = new IronBlock();
-			ironBlock->p = { -1.0f, 1.0f, 0.0f };
-			blockList.push_back(ironBlock);
-
-			FireBlock* fireBlock = new FireBlock();
-			fireBlock->p = { 10.0f, 10.0f, 10.0f };
-			blockList.push_back(fireBlock);
-
-		}
-	}
-#endif
-
 	double testTimer = totalTime;
 
 	while (g_running)
@@ -389,11 +343,6 @@ int main(int argc, char* argv[])
 			}
 		}
 
-		//for (Block* g : blockList)
-		//{
-		//    if (g)
-		//        g->Render();
-		//}
 		{
 			//PROFILE_SCOPE("Chunk Upload and Render");
 

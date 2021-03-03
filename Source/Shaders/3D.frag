@@ -1,5 +1,6 @@
 #version 330 core
 #extension GL_EXT_texture_array : enable
+#define DIRECTIONALLIGHT 1
 uniform sampler2DArray sampler;
 
 in vec2 p_uv;
@@ -15,8 +16,12 @@ struct Material {
     float shininess;
 };
 
+#if DIRECTIONALLIGHT == 1
+uniform vec3 u_directionalLight_d;
+#else
 uniform vec3 u_lightColor;
 uniform vec3 u_lightP;
+#endif
 uniform vec3 u_cameraP;
 uniform float u_reflect;
 uniform Material material;
@@ -34,18 +39,28 @@ void main()
 
     //Diffuse Lighting:
     vec3 norm = normalize(p_normal);
+#if DIRECTIONALLIGHT == 1
+    vec3 lightViewPosition = (p_view * vec4(-u_directionalLight_d, 0)).xyz;
+    //vec3 lightViewPosition = (p_view * vec4(-(vec3(1, -1, 0)), 0)).xyz;
+    vec3 lightDir = normalize(lightViewPosition);
+#else
     vec3 lightViewPosition = (p_view * vec4(u_lightP, 1)).xyz;
     vec3 lightDir = normalize(lightViewPosition - p_pixelP);
+#endif
     float diff = max(dot(norm, lightDir), 0.0);
     //vec3 diffuse = u_lightColor * (diff * material.diffuse);
     vec3 diffuse = vec3(1.0) * (diff * material.diffuse);
     
     //Specular Lighting:
+#if DIRECTIONALLIGHT == 1
+    vec3 specular;
+#else
     vec3 viewDir = normalize(vec3(0) - p_pixelP);
     vec3 reflectDir = reflect(-lightDir, norm);
     float spec = pow(max(dot(viewDir, reflectDir), 0.0), material.shininess);
     //vec3 specular = u_lightColor * (spec * material.specular);
     vec3 specular = vec3(1.0) * (spec * material.specular);
+#endif
 
     vec3 result = (max(ambient + diffuse + specular, 0.25)) * pixel.xyz;
     color = vec4(result, pixel.a);

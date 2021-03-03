@@ -86,8 +86,6 @@ struct Block {
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation };
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
-
-	void Render();
 };
 
 struct Grass : public Block {

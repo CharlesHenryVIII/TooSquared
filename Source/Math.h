@@ -8,11 +8,6 @@
 
 #define CHUNKMEM 0
 
-//#define IMPLIMENTATION1
-//#define IMPLIMENTATION2
-//#define IMPLIMENTATION3
-#define IMPLIMENTATION4
-
 #define BIT(num) (1<<(num))
 
 using int8 = int8_t;
@@ -438,22 +433,3 @@ Atan2f return value:
 	return { static_cast<float>(a.x), static_cast<float>(a.y), static_cast<float>(a.z) };
 }
 
-
-#ifdef IMPLIMENTATION1
-double Perlin(double x, double y, double z);
-#endif
-#ifdef IMPLIMENTATION2
-float Terrain(Vec2 p);
-float FBM(Vec2 x, float H = 0.5f);
-#endif
-#ifdef IMPLIMENTATION3
-float PerlinNoise(Vec2 v);
-#endif
-#ifdef IMPLIMENTATION4
-void PerlinInit();
-float Noise(Vec2 v);
-inline float Noise(Vec2d v)
-{
-    return Noise(Vec2({ static_cast<float>(v.x), static_cast<float>(v.y) }));
-}
-#endif
