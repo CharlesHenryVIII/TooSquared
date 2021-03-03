@@ -84,7 +84,7 @@ void Chunk::SetBlocks()
 			//blockRatio /= 200;
 			//int32 yTotal = Max(static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 10);
 			blockRatio /= 100;
-			int32 yTotal = Clamp<uint32>(static_cast<int32>(Noise(blockRatio, 1.5f) * CHUNK_Y), 10, CHUNK_Y - 1);
+			int32 yTotal = Clamp<uint32>(static_cast<int32>(Noise(blockRatio, 1.0f) * CHUNK_Y), 10, CHUNK_Y - 1);
 #elif NOISETYPE == 4
 			blockRatio /= 100;
 			int32 yTotal = (static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 80);
@@ -199,32 +199,10 @@ void Chunk::UploadChunk()
 	flags |= CHUNK_UPLOADED;
 }
 
-void Chunk::RenderChunk()
+void PreChunkRender()
 {
-	vertexBuffer.Bind();
-
-	assert(g_renderer.chunkIB);
-	if (g_renderer.chunkIB)
-		g_renderer.chunkIB->Bind();
-	else
-		return;
-
     g_renderer.programs[+Shader::Simple3D]->UseShader();
-
 	g_renderer.spriteTextArray->Bind();
-
-//jstruct Vertex_Chunk {
-//j    uint16 blockIndex;
-//j    uint8 spriteIndex;
-//j    uint8 n;
-//j    uint8 vertexIndex;
-//j};
-    glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
-    glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
-    glEnableVertexArrayAttrib(g_renderer.vao, 1);
-    glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, n));
-    glEnableVertexArrayAttrib(g_renderer.vao, 2);
 
     Mat4 perspective;
     gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.65f, 1000.0f);
@@ -245,7 +223,6 @@ void Chunk::RenderChunk()
 #endif
 	sp->UpdateUniformVec3("u_cameraP",     1,  g_camera.p.e);
 
-	sp->UpdateUniformVec3("u_chunkP",      1,  Vec3IntToVec3(BlockPosition()).e);
 	sp->UpdateUniformUint8("u_CHUNK_X", CHUNK_X);
 	sp->UpdateUniformUint8("u_CHUNK_Y", CHUNK_Y);
 	sp->UpdateUniformUint8("u_CHUNK_Z", CHUNK_Z);
@@ -260,6 +237,27 @@ void Chunk::RenderChunk()
 	sp->UpdateUniformVec3( "material.specular", 1,  material.specular.e);
 	sp->UpdateUniformFloat("material.shininess",    material.shininess);
 
+}
+
+void Chunk::RenderChunk()
+{
+	vertexBuffer.Bind();
+
+	assert(g_renderer.chunkIB);
+	if (g_renderer.chunkIB)
+		g_renderer.chunkIB->Bind();
+	else
+		return;
+
+    glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
+    glEnableVertexArrayAttrib(g_renderer.vao, 0);
+    glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
+    glEnableVertexArrayAttrib(g_renderer.vao, 1);
+    glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, n));
+    glEnableVertexArrayAttrib(g_renderer.vao, 2);
+
+    ShaderProgram* sp = g_renderer.programs[+Shader::Simple3D];
+	sp->UpdateUniformVec3("u_chunkP",      1,  Vec3IntToVec3(BlockPosition()).e);
 
     glDrawElements(GL_TRIANGLES, (GLsizei)uploadedIndexCount, GL_UNSIGNED_INT, 0);
 }

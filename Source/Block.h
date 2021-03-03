@@ -60,7 +60,7 @@ struct Chunk {
     void SetBlocks();
 	void BuildChunkVertices();
 	void UploadChunk();
-	void RenderChunk();
+    void RenderChunk();
     Vec3Int BlockPosition();
 };
 constexpr size_t sizeOfChunk = sizeof(Chunk);
@@ -153,3 +153,4 @@ struct FireBlock : public Block {
 };
 
 Vec3Int ToChunkPosition(Vec3 p);
+void PreChunkRender();

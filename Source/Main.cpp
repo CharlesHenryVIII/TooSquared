@@ -353,9 +353,10 @@ int main(int argc, char* argv[])
 		}
 
 		{
-			//PROFILE_SCOPE("Chunk Upload and Render");
+			PROFILE_SCOPE("Chunk Upload and Render");
 
 			int32 uploadCount = 0;
+			PreChunkRender();
 			for (Chunk* chunk : chunks)
 			{
 				if (chunk)
@@ -369,6 +370,7 @@ int main(int argc, char* argv[])
 							chunk->UploadChunk();
 							uploadCount++;
 						}
+						//PreChunkRender();
 						chunk->RenderChunk();
 					}
 				}
