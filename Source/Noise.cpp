@@ -340,19 +340,21 @@ float Terrain(Vec2 p)
 float FBM(Vec2 x, float H)
 {
     x = x;// / 10.0f;
-    int32 numOfOctaves = 32;
+    int32 numOfOctaves = 16;
     float G = exp2(-H);
-    float f = 1.0;
-    float a = 1.0;
-    float t = 0.0;
-    for( int i=0; i < numOfOctaves; i++ )
+    float f = 1.0f;
+    float a = 1.0f;
+    float t = 0.0f;
+    for(int32 i = 0; i < numOfOctaves; i++)
     {
         float tttt = Noise2(f * x).x;
         t += a * tttt;
-        f *= 2.0;
+        f *= 2.0f;
         a *= G;
     }
-    return t;
+    t = -t;
+    t /= 8;
+    return Clamp(t, 0.0f, 1.0f);
 }
 
 
@@ -491,8 +493,8 @@ float Noise(Vec2 a, float H)
 #if NOISETYPE == 1
     return Perlin({a.x, a.y, 0});
 #elif NOISETYPE == 2
-    return Terrain(a);
-	//return FBM(a, H);
+    //return Terrain(a);
+	return FBM(a, H);
 #elif NOISETYPE == 3
 	return PerlinNoise(Vec2 v);
 #elif NOISETYPE == 4

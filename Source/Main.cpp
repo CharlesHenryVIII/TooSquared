@@ -59,6 +59,15 @@ int main(int argc, char* argv[])
 #endif
 	NoiseInit();
 
+	//const float amount = 5.0f;
+	//for (float y = -amount; y < amount; y += 0.1f)
+	//{
+	//	for (float x = -amount; x < amount; x += 0.1f)
+	//	{
+	//		DebugPrint("%f\n", Noise({ x, y }));
+	//	}
+	//}
+
     g_camera.view;
 	Vec3 cOffset = { 1.0f, 1.0f, 1.0f };
 	gb_mat4_look_at(&g_camera.view, g_camera.p + cOffset, g_camera.p, { 0,1,0 });

@@ -81,14 +81,17 @@ void Chunk::SetBlocks()
 			Vec2 blockRatio = { chunkBlockP.x + blockP.x, chunkBlockP.z + blockP.y };
 
 #if NOISETYPE == 2
-			blockRatio /= 200;
-			int32 yTotal = Max(static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 10);
+			//blockRatio /= 200;
+			//int32 yTotal = Max(static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 10);
+			blockRatio /= 100;
+			int32 yTotal = Clamp<uint32>(static_cast<int32>(Noise(blockRatio, 1.5f) * CHUNK_Y), 10, CHUNK_Y - 1);
 #elif NOISETYPE == 4
 			blockRatio /= 100;
 			int32 yTotal = (static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 80);
 #else
 			static_assert(false, "Need to set noise implimentation variabls in SetBlocks()");
 #endif
+			assert(yTotal >= 0 && yTotal < CHUNK_Y);
 
 
 			for (int32 y = 0; y < yTotal; y++)

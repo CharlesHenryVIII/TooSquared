@@ -13,6 +13,16 @@ Light_Direction g_light;
 Light_Point g_light;
 #endif
 
+extern "C" {
+#ifdef _MSC_VER
+    _declspec(dllexport) uint32_t NvOptimusEnablement = 0x00000001;
+    _declspec(dllexport) int AmdPowerXpressRequestHighPerformance = 0x00000001;
+#else
+    __attribute__((dllexport)) uint32_t NvOptimusEnablement = 0x00000001;
+    __attribute__((dllexport)) int AmdPowerXpressRequestHighPerformance = 0x00000001;
+#endif
+}
+
 const SDL_MessageBoxColorScheme colorScheme = {
 	/* .colors (.r, .g, .b) */
 	   /* [SDL_MESSAGEBOX_COLOR_BACKGROUND] */
