@@ -18,6 +18,15 @@ struct ThreadData {
 struct Job
 {
     Chunk* chunk;
+	virtual void DoThing() = 0;
+};
+
+struct SetBlocks : public Job {
+	virtual void DoThing();
+};
+
+struct CreateVertices : public Job {
+	virtual void DoThing();
 };
 
 struct MultiThreading {

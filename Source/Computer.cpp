@@ -20,6 +20,20 @@ uint32 ComputerSpecs::UsableCores()
     return job;
 }
 
+void SetBlocks::DoThing()
+{
+	chunk->SetBlocks();
+	chunk->flags |= CHUNK_BLOCKSSET;
+}
+
+void CreateVertices::DoThing()
+{
+	chunk->flags |= CHUNK_LOADING;
+	chunk->BuildChunkVertices();
+	chunk->flags &= ~(CHUNK_LOADING);
+	chunk->flags |= CHUNK_LOADED;
+}
+
 
 int32 ThreadFunction(void* data)
 {
@@ -42,9 +56,7 @@ int32 ThreadFunction(void* data)
         //Actual Job:
         {
 			//PROFILE_SCOPE("Thread Chunk Load");
-			job->chunk->flags |= CHUNK_LOADING;
-			job->chunk->SetBlocks();
-			job->chunk->BuildChunkVertices();
+            job->DoThing();
         }
 
         //DebugPrint("Job Finished\n");

@@ -35,8 +35,8 @@ ENUMOPS(BlockType);
 //Chest,
 
 #define CHUNK_LOADING		0x0001
-#define CHUNK_LOADED        0x0002
-#define CHUNK_MODIFIED      0x0004
+#define CHUNK_BLOCKSSET     0x0002
+#define CHUNK_LOADED        0x0004
 #define CHUNK_UPLOADED	    0x0008
 #define CHUNK_TODELETE	    0x0010
 
@@ -55,7 +55,7 @@ struct Chunk {
     VertexBuffer vertexBuffer;
     size_t uploadedIndexCount = 0;
     //TODO: Make flags an atomic and use SDL_ATOMIC_SET()!!!!!!!
-    uint32 flags = CHUNK_MODIFIED;
+    uint32 flags = 0;
 
     void SetBlocks();
 	void BuildChunkVertices();

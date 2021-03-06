@@ -227,7 +227,7 @@ int main(int argc, char* argv[])
 		}
 
 
-		if (keyStates[SDLK_BACKQUOTE].down)
+		if (keyStates[SDLK_ESCAPE].down)
 			g_running = false;
 
 		float cameraSpeed = 5.0f * deltaTime;
@@ -340,8 +340,7 @@ int main(int argc, char* argv[])
 				{
 					if (chunk)
 					{
-
-						Job* job = new Job();
+						Job* job = new SetBlocks();
 						job->chunk = chunk;
 						chunks.push_back(chunk);
 						g_jobHandler.jobs.push_back(job);
@@ -352,6 +351,24 @@ int main(int argc, char* argv[])
 				SDL_UnlockMutex(g_jobHandler.mutex);
 				//SDL_SemWait(g_jobHandler.wait_semaphore);
 			}
+		}
+
+		{
+			SDL_LockMutex(g_jobHandler.mutex);
+			for (Chunk* chunk : chunks)
+			{
+				Job* job = nullptr;
+				if (chunk->flags & CHUNK_BLOCKSSET && !(chunk->flags & (CHUNK_LOADING | CHUNK_LOADED)))
+				{
+					job = new CreateVertices();
+					job->chunk = chunk;
+					chunk->flags |= CHUNK_LOADING;
+
+					g_jobHandler.jobs.push_back(job);
+					SDL_SemPost(g_jobHandler.semaphore);
+				}
+			}
+			SDL_UnlockMutex(g_jobHandler.mutex);
 		}
 
 		{
