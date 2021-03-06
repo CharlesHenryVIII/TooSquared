@@ -62,6 +62,7 @@ struct Chunk {
 	void UploadChunk();
     void RenderChunk();
     Vec3Int BlockPosition();
+    BlockType GetBlock(Vec3Int a);
 };
 constexpr size_t sizeOfChunk = sizeof(Chunk);
 enum class Face : uint8 {

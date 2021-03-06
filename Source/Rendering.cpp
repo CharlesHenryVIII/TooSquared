@@ -62,26 +62,52 @@ int32 CreateMessageWindow(SDL_MessageBoxButtonData* buttons, int32 numOfButtons,
 	return buttonID;
 }
 
-Texture::Texture(const char* fileLocation)
+Texture::Texture(TextureParams tp)
 {
-	data = stbi_load(fileLocation, &size.x, &size.y, &n, STBI_rgb_alpha);
-
-	glGenTextures(1, &gl_handle);
+	glGenTextures(1, &m_handle);
 	Bind();
-	glBindTexture(GL_TEXTURE_2D, gl_handle);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+
+	if (tp.minFilter)
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, tp.minFilter);
+	if (tp.magFilter)
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, tp.magFilter);
+	if (tp.wrapS)
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, tp.wrapS);
+	if (tp.wrapT)
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, tp.wrapT);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, tp.internalFormat, tp.size.x, tp.size.y, 0, tp.internalFormat, tp.type, tp.data);
+	m_size = tp.size;
 #ifdef _DEBUGPRINT
 	DebugPrint("Texture Created\n");
 #endif
 }
 
+Texture::Texture(const char* fileLocation)
+{
+	m_data = stbi_load(fileLocation, &m_size.x, &m_size.y, &m_bytesPerPixel, STBI_rgb_alpha);
+
+	glGenTextures(1, &m_handle);
+	Bind();
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_size.x, m_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_data);
+#ifdef _DEBUGPRINT
+	DebugPrint("Texture Created\n");
+#endif
+}
+
+Texture::~Texture()
+{
+	glDeleteTextures(1, &m_handle);
+	stbi_image_free(m_data);
+}
+
 inline void Texture::Bind()
 {
-	glBindTexture(GL_TEXTURE_2D, gl_handle);
+	glBindTexture(GL_TEXTURE_2D, m_handle);
 #ifdef _DEBUGPRINT
 	DebugPrint("Texture Bound\n");
 #endif
@@ -90,15 +116,14 @@ inline void Texture::Bind()
 
 TextureArray::TextureArray(const char* fileLocation)
 {
-	uint8* data = stbi_load(fileLocation, &size.x, &size.y, NULL, STBI_rgb_alpha);
+	uint8* data = stbi_load(fileLocation, &m_size.x, &m_size.y, NULL, STBI_rgb_alpha);
 	Defer{
 		stbi_image_free(data);
 	};
 	assert(data);
 
-	glGenTextures(1, &gl_handle);
+	glGenTextures(1, &m_handle);
 	Bind();
-	glBindTexture(GL_TEXTURE_2D_ARRAY, gl_handle);
 	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
@@ -140,7 +165,7 @@ TextureArray::TextureArray(const char* fileLocation)
 
 inline void TextureArray::Bind()
 {
-	glBindTexture(GL_TEXTURE_2D_ARRAY, gl_handle);
+	glBindTexture(GL_TEXTURE_2D_ARRAY, m_handle);
 #ifdef _DEBUGPRINT
 	DebugPrint("Texture Bound\n");
 #endif
@@ -498,48 +523,111 @@ void FillIndexBuffer(IndexBuffer* ib)
 	ib->Upload(arr.data(), amount);
 }
 
+//void SSOAUpdate()
+//{
+//	Texture::TextureParams tp = {};
+//	tp.minFilter = GL_NEAREST;
+//	tp.magFilter = GL_NEAREST;
+//	tp.wrapS = GL_CLAMP_TO_EDGE;
+//	tp.wrapT = GL_CLAMP_TO_EDGE;
+//	tp.internalFormat = GL_RGBA16F;
+//	Texture* t = new Texture(tp);
+//
+//	//std::uniform_real_distribution<float> randomFloats(0.0, 1.0); // random floats between [0.0, 1.0]
+//	//std::default_random_engine generator;
+//	std::vector<Vec3> ssaoKernel;
+//	for (unsigned int i = 0; i < 64; ++i)
+//	{
+//		Vec3 sample = {
+//			RandomFloat(0.0f, 1.0f) * 2.0f - 1.0f,
+//			RandomFloat(0.0f, 1.0f) * 2.0f - 1.0f,
+//			RandomFloat(0.0f, 1.0f) * 2.0f - 1.0f
+//		};
+//		sample = Normalize(sample);
+//		sample *= RandomFloat(0.0f, 1.0f);
+//		//ssaoKernel.push_back(sample);
+//		float scale = (float)i / 64.0;
+//		scale = Lerp(0.1f, 1.0f, scale * scale);
+//		sample *= scale;
+//		ssaoKernel.push_back(sample);
+//	}
+//
+//	std::vector<Vec3> ssaoNoise;
+//	for (unsigned int i = 0; i < 16; i++)
+//	{
+//		Vec3 noise = {
+//			RandomFloat(0.0f, 1.0f) * 2.0 - 1.0,
+//			RandomFloat(0.0f, 1.0f) * 2.0 - 1.0,
+//			0.0f};
+//		ssaoNoise.push_back(noise);
+//	}
+//	Texture::TextureParams tp2 = {
+//		.size = { 4, 4 },
+//		.minFilter = GL_NEAREST,
+//		.magFilter = GL_NEAREST,
+//		.internalFormat = GL_RGBA16F,
+//		.format = GL_RGB,
+//		.type = GL_FLOAT,
+//		.data = &ssaoNoise[0],
+//	};
+//	Texture* noiseTexture = new Texture(tp2);
+//
+//	FrameBuffer ssaoFBO = FrameBuffer();
+//	Texture::TextureParams tp3 = {
+//		.minFilter = GL_NEAREST,
+//		.magFilter = GL_NEAREST,
+//		.wrapS = 0,
+//		.wrapT = 0,
+//		.internalFormat = GL_RED,
+//		.format = GL_RED,
+//		.type = GL_FLOAT,
+//	};
+//	ssaoFBO.m_color = new Texture(tp3);
+//	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoFBO.m_color->m_handle, 0);
+//
+//	
+//}
+
+inline void FrameBuffer::Bind()
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, m_handle);
+}
+
+FrameBuffer::FrameBuffer()
+{
+	glGenFramebuffers(1, &m_handle);
+	Bind();
+}
+
 void UpdateFrameBuffer(Vec2Int size)
 {
 	if (g_renderer.backBuffer == nullptr)
 	{
 		g_renderer.backBuffer = new FrameBuffer();
-		glGenFramebuffers(1, &g_renderer.backBuffer->handle);
-		glBindFramebuffer(GL_FRAMEBUFFER, g_renderer.backBuffer->handle);
 	}
 	FrameBuffer* fb = g_renderer.backBuffer;
-	if (fb->size.x == size.x && fb->size.y == size.y)
+	if (fb->m_size.x == size.x && fb->m_size.y == size.y)
 		return;
-		
-	glBindFramebuffer(GL_FRAMEBUFFER, g_renderer.backBuffer->handle);
-	if (fb->colorHandle)
-		glDeleteTextures(1, &fb->colorHandle);
-	glGenTextures(1, &fb->colorHandle);
-	glBindTexture(GL_TEXTURE_2D, fb->colorHandle);
-	
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
-	if (fb->depthHandle)
-		glDeleteTextures(1, &fb->depthHandle);
-	glGenTextures(1, &fb->depthHandle);
-	glBindTexture(GL_TEXTURE_2D, fb->depthHandle);
-	
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT, size.x, size.y, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, nullptr);
-
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fb->colorHandle, 0);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, fb->depthHandle, 0);
+	fb->Bind();
+	if (fb->m_color && fb->m_color->m_handle)
+		delete fb->m_color;
+	if (fb->m_depth && fb->m_depth->m_handle)
+		delete fb->m_depth;
+	Texture::TextureParams tp = {};
+	tp.size = size;
+	fb->m_color = new Texture(tp);
+	tp.internalFormat = GL_DEPTH_COMPONENT;
+	tp.format = GL_DEPTH_COMPONENT;
+	fb->m_depth = new Texture(tp);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fb->m_color->m_handle, 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, fb->m_depth->m_handle, 0);
 
 	GLint err = glCheckFramebufferStatus(GL_FRAMEBUFFER);
 	if (err != GL_FRAMEBUFFER_COMPLETE)
 	{
-		fprintf(stderr, "Error: Frame buffer error");
+		DebugPrint("Error: Frame buffer error: %s", stderr);
+		assert(false);
 	}
 
 	Vertex verticees[] = 
@@ -550,7 +638,7 @@ void UpdateFrameBuffer(Vec2Int size)
 		{ 1.0, -1.0, 0, 1.0f, 0.0f },
 	};
 
-	fb->vertexBuffer.Upload(verticees, arrsize(verticees));
+	fb->m_vertexBuffer.Upload(verticees, arrsize(verticees));
 }
 
 

@@ -81,6 +81,7 @@ struct Vertex_Chunk {
     uint16 blockIndex;
     uint8 spriteIndex;
     uint8 n;
+    uint8 connectedVertices = 0;
 };
 
 
@@ -173,11 +174,11 @@ struct Rectangle_Int {
 //}
 
 
-//inline Vec2Int operator*(const Vec2Int& a, const float b)
-//{
-//    return { int(a.x * b),  int(a.y * b) };
-//}
-//
+[[nodiscard]] inline Vec2Int operator*(const Vec2Int& a, const float b)
+{
+    return { int(a.x * b),  int(a.y * b) };
+}
+
 //inline Vec2 operator/(const Vec2& a, const float b)
 //{
 //    return { a.x / b,  a.y / b };
@@ -198,50 +199,77 @@ struct Rectangle_Int {
 //{
 //    return !(lhs == rhs);
 //}
+#define D3PlusFloat(type) \
+[[nodiscard]] inline type operator+(type a, float b)\
+{\
+    type r = {a.x + b, a.y + b, a.z + b};\
+    return r;\
+}
+D3PlusFloat(Vec3)
 
-inline Vec3 operator+(Vec3 a, float b)
+#define D3MinusFloat(type) \
+[[nodiscard]] inline type operator-(type a, float b)\
+{\
+    type r = {a.x - b, a.y - b, a.z - b};\
+    return r;\
+}
+D3MinusFloat(Vec3)
+
+[[nodiscard]] inline Vec3Int operator-(Vec3Int a, Vec3Int b)
 {
-    Vec3 r = {a.x + b, a.y + b, a.z + b};
+    Vec3Int r = {a.x - b.x, a.y - b.y, a.z - b.z};
     return r;
 }
 
-inline Vec3 operator+(float a, Vec3 b)
+[[nodiscard]] inline Vec3Int operator+(Vec3Int a, Vec3Int b)
+{
+    Vec3Int r = {a.x + b.x, a.y + b.y, a.z + b.z};
+    return r;
+}
+
+//[[nodiscard]] inline Vec3 operator+(Vec3 a, float b)
+//{
+//    Vec3 r = {a.x + b, a.y + b, a.z + b};
+//    return r;
+//}
+
+[[nodiscard]] inline Vec3 operator+(float a, Vec3 b)
 {
     Vec3 r = { a + b.x, a + b.y, a + b.z };
     return r;
 }
 
-inline Vec3 operator-(Vec3 a, float b)
-{
-    Vec3 r = {a.x - b, a.y - b, a.z - b};
-    return r;
-}
+//[[nodiscard]] inline Vec3 operator-(Vec3 a, float b)
+//{
+//    Vec3 r = {a.x - b, a.y - b, a.z - b};
+//    return r;
+//}
 
-inline Vec3 operator-(float a, Vec3 b)
+[[nodiscard]] inline Vec3 operator-(float a, Vec3 b)
 {
     Vec3 r = { a - b.x, a - b.y, a - b.z };
     return r;
 }
 
-inline Vec2 operator+(Vec2 a, float b)
+[[nodiscard]] inline Vec2 operator+(Vec2 a, float b)
 {
     Vec2 r = { a.x + b, a.y + b };
     return r;
 }
 
-inline Vec2 operator+(float a, Vec2 b)
+[[nodiscard]] inline Vec2 operator+(float a, Vec2 b)
 {
     Vec2 r = { a + b.x, a + b.y };
     return r;
 }
 
-inline Vec2 operator-(Vec2 a, float b)
+[[nodiscard]] inline Vec2 operator-(Vec2 a, float b)
 {
     Vec2 r = { a.x - b, a.y - b };
     return r;
 }
 
-inline Vec2 operator-(float a, Vec2 b)
+[[nodiscard]] inline Vec2 operator-(float a, Vec2 b)
 {
     Vec2 r = { a - b.x, a - b.y };
     return r;
@@ -300,6 +328,11 @@ template <typename T>
 [[nodiscard]] inline Vec4 Fract(Vec4 a)
 {
     return a - Floor(a);
+}
+
+[[nodiscard]] inline Vec3Int Abs(Vec3Int a)
+{
+    return { abs(a.x), abs(a.y), abs(a.z) };
 }
 
 //MATH AND CONVERSIONS
@@ -394,7 +427,7 @@ Atan2f return value:
     return a.x * b.x + a.y * b.y;
 }
 
-[[nodiscard]] inline float Pythags(Vec2 a)
+[[nodiscard]] inline float Pythags(const Vec2& a)
 {
     return sqrtf(powf(a.x, 2) + powf(a.y, 2));
 }
@@ -409,7 +442,7 @@ Atan2f return value:
     return Pythags(a - b);
 }
 
-[[nodiscard]] inline float Distance(Vec3 a, Vec3 b)
+[[nodiscard]] inline float Distance(const Vec3& a, const Vec3& b)
 {
     return Pythags(a - b);
 }
@@ -423,6 +456,12 @@ Atan2f return value:
 	return (result % (max - min)) + min;
 }
 
+[[nodiscard]] inline float RandomFloat(const float min, const float max)
+{
+    return min + (max - min) * (rand() / float(RAND_MAX));
+}
+
+
 [[nodiscard]] inline Vec3Int Vec3ToVec3Int(Vec3 a)
 {
 	return { static_cast<int32>(a.x), static_cast<int32>(a.y), static_cast<int32>(a.z) };
@@ -431,5 +470,10 @@ Atan2f return value:
 [[nodiscard]] inline Vec3 Vec3IntToVec3(Vec3Int a)
 {
 	return { static_cast<float>(a.x), static_cast<float>(a.y), static_cast<float>(a.z) };
+}
+//Multiplication of two vectors without adding each dimension to get the dot product
+[[nodiscard]] inline Vec3Int HadamardProduct(Vec3Int a, Vec3Int b)
+{
+    return { a.x * b.x, a.y * b.y, a.z * b.z };
 }
 

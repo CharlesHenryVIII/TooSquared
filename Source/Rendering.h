@@ -8,6 +8,21 @@
 
 #define DIRECTIONALLIGHT 1
 
+struct Renderer;
+extern Renderer g_renderer;
+struct Window;
+extern Window g_window;
+struct Camera;
+extern Camera g_camera;
+#if DIRECTIONALLIGHT == 1
+struct Light_Direction;
+extern Light_Direction g_light;
+#else
+struct Light_Point;
+extern Light_Point g_light;
+#endif
+
+
 struct Window {
     Vec2Int size = {};
     Vec2Int pos = {};
@@ -68,20 +83,37 @@ public:
     };
     ENUMOPS(T);
 
-    Vec2Int size = {};
-    int32 n = 0;//bytes per pixel
-    uint8* data = {};
-    GLuint gl_handle = {};
+	struct TextureParams {
+		Vec2Int size = g_window.size;
+		uint32 minFilter = GL_LINEAR;
+		uint32 magFilter = GL_LINEAR;
+		uint32 wrapS = GL_REPEAT;
+		uint32 wrapT = GL_REPEAT;
+        GLint  internalFormat = GL_RGBA;
+        GLenum format = GL_RGBA;
+        GLenum type = GL_UNSIGNED_BYTE;
 
-	Texture(const char* fileLocation);
+        void* data = nullptr;
+	};
+
+
+    Vec2Int m_size = {};
+    int32 m_bytesPerPixel = 0;//bytes per pixel
+    uint8* m_data = {};
+    GLuint m_handle = {};
+
+
+    Texture(Texture::TextureParams tp);
+    Texture(const char* fileLocation);
+    ~Texture();
 	inline void Bind();
 };
 
 class TextureArray {
 public:
 
-    Vec2Int size = {};
-    GLuint gl_handle = {};
+    Vec2Int m_size = {};
+    GLuint m_handle = {};
 
 
 	TextureArray(const char* fileLocation);
@@ -161,12 +193,21 @@ public:
 };
 
 
-struct FrameBuffer {
-	GLuint handle;
-	GLuint colorHandle;
-	GLuint depthHandle;
-	Vec2Int size;
-	VertexBuffer vertexBuffer;
+class FrameBuffer {
+    FrameBuffer(const FrameBuffer& rhs) = delete;
+    FrameBuffer& operator=(const FrameBuffer& rhs) = delete;
+
+public:
+	GLuint m_handle = 0;
+    Texture* m_color = nullptr;
+    Texture* m_depth = nullptr;
+	//GLuint colorHandle;
+	//GLuint depthHandle;
+    Vec2Int m_size = {};
+	VertexBuffer m_vertexBuffer;
+
+    FrameBuffer();
+    void Bind();
 };
 
 struct Renderer {
@@ -179,15 +220,6 @@ struct Renderer {
     TextureArray* spriteTextArray;
     FrameBuffer* backBuffer = nullptr;
 };
-
-extern Renderer g_renderer;
-extern Window g_window;
-extern Camera g_camera;
-#if DIRECTIONALLIGHT == 1
-extern Light_Direction g_light;
-#else
-extern Light_Point g_light;
-#endif
 
 const uint32 pixelsPerBlock = 16;
 const uint32 blocksPerRow = 16;

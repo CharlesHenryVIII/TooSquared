@@ -1,10 +1,9 @@
 #include "Math.h"
 #include "Misc.h"
 
-template<typename T>
-[[nodiscard]] T Random(const T& min, const T& max)
+[[nodiscard]] float Random(const float min, const float max)
 {
-    return min + (max - min) * (rand() / T(RAND_MAX));
+    return min + (max - min) * (rand() / float(RAND_MAX));
 }
 
 //static uint32 _RandomU32()

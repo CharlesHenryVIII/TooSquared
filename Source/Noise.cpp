@@ -340,16 +340,15 @@ float Terrain(Vec2 p)
 float FBM(Vec2 x, float H)
 {
     x = x;// / 10.0f;
-    int32 numOfOctaves = 16;
-    float G = exp2(-H);
-    float f = 1.0f;
+    int32 numOfOctaves = 8;
+    float freq = 0.1f;
     float a = 1.0f;
-    float t = 0.0f;
+    float t = 0;
+    float G = exp2(-H);
     for(int32 i = 0; i < numOfOctaves; i++)
     {
-        float tttt = Noise2(f * x).x;
-        t += a * tttt;
-        f *= 2.0f;
+		t += a * Noise2(freq * x).x;
+        freq *= 2.0f;
         a *= G;
     }
     t = -t;

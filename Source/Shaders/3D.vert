@@ -1,7 +1,8 @@
 #version 330 core
-layout(location = 0) in uint v_blockIndex;    //2Byte
-layout(location = 1) in uint v_spriteIndex; //1Byte
-layout(location = 2) in uint v_normal;      //1Byte
+layout(location = 0) in uint v_blockIndex;          //2Byte
+layout(location = 1) in uint v_spriteIndex;         //1Byte
+layout(location = 2) in uint v_normal;              //1Byte
+layout(location = 3) in uint v_connectedVertices;   //1Byte
 
 uniform mat4 u_perspective;
 uniform mat4 u_view;
@@ -12,12 +13,12 @@ uniform uint u_CHUNK_X;
 uniform uint u_CHUNK_Y;
 uniform uint u_CHUNK_Z;
 
-
 out vec2 p_uv;
 flat out float p_depth;
 out vec3 p_normal;
 out vec3 p_pixelP;
 out mat4 p_view;
+out float p_connectedVertices;
 
 const vec3 faceNormals[6] = vec3[6](
     vec3(  1.0,  0.0,  0.0 ),
@@ -117,6 +118,7 @@ void main()
     p_pixelP = vec3(u_view * u_model * vec4(vertexPosition, 1.0));
     p_view = u_view;
 
+    p_connectedVertices = v_connectedVertices;
 
     //Previous gl_Position assignment
     //gl_Position = u_perspective * u_view * u_model * vec4(v_position, 1.0);

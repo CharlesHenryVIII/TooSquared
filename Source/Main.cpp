@@ -322,7 +322,7 @@ int main(int argc, char* argv[])
 		Vec2Int windowSizeThing = { g_window.size.x * 2, g_window.size.y * 2 };
 		UpdateFrameBuffer(windowSizeThing);
 		RenderUpdate(deltaTime);
-		glBindFramebuffer(GL_FRAMEBUFFER, g_renderer.backBuffer->handle);
+		g_renderer.backBuffer->Bind();
 		glViewport(0, 0, windowSizeThing.x, windowSizeThing.y);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -353,7 +353,7 @@ int main(int argc, char* argv[])
 		}
 
 		{
-			PROFILE_SCOPE("Chunk Upload and Render");
+			//PROFILE_SCOPE("Chunk Upload and Render");
 
 			int32 uploadCount = 0;
 			PreChunkRender();
@@ -455,9 +455,9 @@ int main(int argc, char* argv[])
 		glBindFramebuffer(GL_FRAMEBUFFER, 0);
 		glDisable(GL_DEPTH_TEST);
 		glViewport(0, 0, g_window.size.x, g_window.size.y);
-		glBindTexture(GL_TEXTURE_2D, g_renderer.backBuffer->colorHandle);
+		glBindTexture(GL_TEXTURE_2D, g_renderer.backBuffer->m_color->m_handle);
 		g_renderer.programs[+Shader::BufferCopy]->UseShader();
-		g_renderer.backBuffer->vertexBuffer.Bind();
+		g_renderer.backBuffer->m_vertexBuffer.Bind();
 
 		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
 		glEnableVertexArrayAttrib(g_renderer.vao, 0);

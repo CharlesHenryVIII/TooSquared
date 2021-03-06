@@ -8,6 +8,7 @@ flat in float p_depth;
 in vec3 p_normal;
 in vec3 p_pixelP;
 in mat4 p_view;
+in float p_connectedVertices;
 
 struct Material {
     vec3  ambient;
@@ -53,7 +54,7 @@ void main()
     
     //Specular Lighting:
 #if DIRECTIONALLIGHT == 1
-    vec3 specular;
+    vec3 specular = vec3(0);
 #else
     vec3 viewDir = normalize(vec3(0) - p_pixelP);
     vec3 reflectDir = reflect(-lightDir, norm);
@@ -62,7 +63,19 @@ void main()
     vec3 specular = vec3(1.0) * (spec * material.specular);
 #endif
 
-    vec3 result = (max(ambient + diffuse + specular, 0.25)) * pixel.xyz;
+    float ambientOcclusion = p_connectedVertices / 2.0;
+    vec3 result = (max(ambient + diffuse + specular - ambientOcclusion, 0.25)) * pixel.xyz;
+    #if 0
+    if (p_connectedVertices >= 1.99)
+        result = vec3( 0.5, 0.5, 0 );
+    else if (p_connectedVertices >= 1)
+        result = vec3( 1, 0, 0 );
+    else if (p_connectedVertices >= 0)
+        result = vec3( 0, 1, 0 );
+    else
+        result = vec3( 0, 0, 1 );
+        #endif
+    //result = vec3(p_connectedVertices / 2);
     color = vec4(result, pixel.a);
     //color = pixel;
 

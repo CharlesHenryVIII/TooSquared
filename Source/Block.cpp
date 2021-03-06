@@ -128,6 +128,24 @@ void Chunk::SetBlocks()
 	//blocks->e[CHUNK_X - 1][CHUNK_Y - 1][CHUNK_Z - 1] = BlockType::Grass;
 }
 
+Vec3Int GetBlockPosFromIndex(uint16 index)
+{
+    int32 blockY =  index / CHUNK_Y;
+    int32 duplicateMath = (index - blockY * CHUNK_Y);
+    int32 blockZ = (duplicateMath) / CHUNK_Z;
+    int32 blockX =  duplicateMath - blockZ * CHUNK_Z;
+
+	return { blockX, blockY, blockZ };
+}
+
+BlockType Chunk::GetBlock(Vec3Int a)
+{
+	if (a.x >= CHUNK_X || a.y >= CHUNK_Y || a.z >= CHUNK_Z)
+		return BlockType::Empty;
+
+	return blocks->e[a.x][a.y][a.z];
+}
+
 void Chunk::BuildChunkVertices()
 {
 	SetBlockSprites();
@@ -174,6 +192,11 @@ void Chunk::BuildChunkVertices()
 						f.c.n = faceIndex;
 						f.d.n = faceIndex;
 
+						//f.a.connectedVertices = ;
+						//f.b.connectedVertices = ;
+						//f.c.connectedVertices = ;
+						//f.d.connectedVertices = ;
+
 						faceVertices.push_back(f.a);
 						faceVertices.push_back(f.b);
 						faceVertices.push_back(f.c);
@@ -184,6 +207,212 @@ void Chunk::BuildChunkVertices()
 				}
 			}
 		}
+	}
+	/*
+	This is the solution array taht is just for refernce now
+		//{-1, -1, -1 },
+		{ 0, -1, -1 },
+		//{ 1, -1, -1 },
+		{-1, -1,  0 },
+		//{ 0, -1,  0 },
+		{ 1, -1,  0 },
+		//{-1, -1,  1 },
+		{ 0, -1,  1 },
+		//{ 1, -1,  1 },
+		{-1,  0, -1 },
+		//{ 0,  0, -1 },
+		{ 1,  0, -1 },
+		//{-1,  0,  0 },
+		//{ 0,  0,  0 },
+		//{ 1,  0,  0 },
+		{-1,  0,  1 },
+		//{ 0,  0,  1 },
+		{ 1,  0,  1 },
+		//{-1,  1, -1 },
+		{ 0,  1, -1 },
+		//{ 1,  1, -1 },
+		{-1,  1,  0 },
+		//{ 0,  1,  0 },
+		{ 1,  1,  0 },
+		//{-1,  1,  1 },
+		{ 0,  1,  1 },
+		//{ 1,  1,  1 },
+	*/
+
+	Vec3Int vertexAOBlocks[] = {
+		{ 0, -1, -1 },
+		{-1, -1,  0 },
+		{ 1, -1,  0 },
+		{ 0, -1,  1 },
+		{-1,  0, -1 },
+		{ 1,  0, -1 },
+		{-1,  0,  1 },
+		{ 1,  0,  1 },
+		{ 0,  1, -1 },
+		{-1,  1,  0 },
+		{ 1,  1,  0 },
+		{ 0,  1,  1 },
+	};
+
+#define TESTING 2
+	uint32 i = 0;
+	for (Vertex_Chunk& vert : faceVertices)
+	{
+		i++;
+		i = i % 4;
+		Vec3Int vf = Vec3ToVec3Int(faceNormals[vert.n]); //{0, 1, 0}
+		Vec3Int avf = Abs(vf);
+		Vec3Int blockP = GetBlockPosFromIndex(vert.blockIndex);
+		//blocks->e[x][y][z] = bt;
+		//vert.connectedVertices = 2;
+
+#if TESTING == 2
+
+
+		if (vf.x == -1 || vf.x == 1)
+		{
+
+			if (GetBlock(blockP + avf + Vec3Int({ 0, 1, 0 })) != BlockType::Empty)
+			{
+				if (i == 0 || i == 2)
+				{
+					vert.connectedVertices++;
+				}
+			}
+			else if (GetBlock(blockP + avf + Vec3Int({ 0, 0, 1 })) != BlockType::Empty)
+			{
+				if (i == 2 || i == 3)
+				{
+					vert.connectedVertices++;
+				}
+			}
+
+			else if (GetBlock(blockP + avf + Vec3Int({ 0, -1, 0 })) != BlockType::Empty)
+			{
+				if (i == 3 || i == 1)
+				{
+					vert.connectedVertices++;
+				}
+			}
+			else if (GetBlock(blockP + avf + Vec3Int({ 0, 0, -1 })) != BlockType::Empty)
+			{
+				if (i == 1 || i == 0)
+				{
+					vert.connectedVertices++;
+				}
+			}
+		}
+		else if (vf.y == -1 || vf.y == 1)
+		{
+
+			if (GetBlock(blockP + avf + Vec3Int({ 1, 0, 0 })) != BlockType::Empty)
+			{
+				if (i == 1 || i == 0)
+				{
+					vert.connectedVertices++;
+				}
+			}
+			else if (GetBlock(blockP + avf + Vec3Int({ 0, 0, 1 })) != BlockType::Empty)
+			{
+				if (i == 0 || i == 2)
+				{
+					vert.connectedVertices++;
+				}
+			}
+
+			else if (GetBlock(blockP + avf + Vec3Int({ -1, 0, 0 })) != BlockType::Empty)
+			{
+				if (i == 2 || i == 3)
+				{
+					vert.connectedVertices++;
+				}
+			}
+			else if (GetBlock(blockP + avf + Vec3Int({ 0, 0, -1 })) != BlockType::Empty)
+			{
+				if (i == 1 || i == 3)
+				{
+					vert.connectedVertices++;
+				}
+			}
+		}
+		else if (vf.z == -1 || vf.z == 1)
+		{
+
+			if (GetBlock(blockP + avf + Vec3Int({ 1, 0, 0 })) != BlockType::Empty)
+			{
+				if (i == 0 || i == 2)
+				{
+					vert.connectedVertices++;
+				}
+			}
+			else if (GetBlock(blockP + avf + Vec3Int({ 0, 1, 0 })) != BlockType::Empty)
+			{
+				if (i == 2 || i == 3)
+				{
+					vert.connectedVertices++;
+				}
+			}
+
+			else if (GetBlock(blockP + avf + Vec3Int({ -1, 0, 0 })) != BlockType::Empty)
+			{
+				if (i == 3 || i == 1)
+				{
+					vert.connectedVertices++;
+				}
+			}
+			else if (GetBlock(blockP + avf + Vec3Int({ 0, -1, 0 })) != BlockType::Empty)
+			{
+				if (i == 1 || i == 0)
+				{
+					vert.connectedVertices++;
+				}
+			}
+		}
+
+
+
+
+#elif TESTING == 1
+		uint32 normalDimensionIndex;
+		if (vf.x != 0)
+		{
+			normalDimensionIndex = 0;
+		}
+		else if (vf.y != 0)
+		{
+			normalDimensionIndex = 1;
+		}
+		else if (vf.z != 0)
+		{
+			normalDimensionIndex = 2;
+		}
+		else
+			assert(Distance(Vec3IntToVec3(vf), { 0,0,0 }) != 0);
+
+		for (int32 i = 0; i < arrsize(vertexAOBlock); i++)
+		{
+			if (vertexAOBlocks[i].e[normalDimensionIndex] == vf.e[normalDimensionIndex])
+			{
+				if (vertexAOBlocks)
+			}
+
+		}
+#else
+		for (int32 x = -1; x <= 1; x++)
+		{
+			for (int32 y = -1; y <= 1; y++)
+			{
+				for (int32 z = -1; z <= 1; z++)
+				{
+					Vec3Int newVec = { x, y, z };
+					Vec3Int noNorm = newVec - HadamardProduct(newVec, avf);
+					Vec3Int blockCheckP = blockP + noNorm;
+
+				}
+			}
+		}
+			//vert->connectedVertices++;
+#endif
 	}
 
 	flags &= ~(CHUNK_MODIFIED | CHUNK_LOADING);
@@ -201,6 +430,12 @@ void Chunk::UploadChunk()
 
 void PreChunkRender()
 {
+	assert(g_renderer.chunkIB);
+	if (g_renderer.chunkIB)
+		g_renderer.chunkIB->Bind();
+	else
+		return;
+
     g_renderer.programs[+Shader::Simple3D]->UseShader();
 	g_renderer.spriteTextArray->Bind();
 
@@ -243,18 +478,14 @@ void Chunk::RenderChunk()
 {
 	vertexBuffer.Bind();
 
-	assert(g_renderer.chunkIB);
-	if (g_renderer.chunkIB)
-		g_renderer.chunkIB->Bind();
-	else
-		return;
-
     glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
     glEnableVertexArrayAttrib(g_renderer.vao, 0);
     glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
     glEnableVertexArrayAttrib(g_renderer.vao, 1);
     glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, n));
     glEnableVertexArrayAttrib(g_renderer.vao, 2);
+    glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, connectedVertices));
+    glEnableVertexArrayAttrib(g_renderer.vao, 3);
 
     ShaderProgram* sp = g_renderer.programs[+Shader::Simple3D];
 	sp->UpdateUniformVec3("u_chunkP",      1,  Vec3IntToVec3(BlockPosition()).e);
