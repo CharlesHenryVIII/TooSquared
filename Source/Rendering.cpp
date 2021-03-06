@@ -711,6 +711,7 @@ void InitializeVideo()
 
 #if 0
 	g_renderer.textures[Texture::Minecraft] = new Texture("Assets/TestSpriteSheet.png");
+	g_renderer.spriteTextArray = new TextureArray("Assets/TestSpriteSheet.png");
 #else
 	g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png");
 	g_renderer.spriteTextArray = new TextureArray("Assets/MinecraftSpriteSheet20120215.png");

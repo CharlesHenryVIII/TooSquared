@@ -118,7 +118,7 @@ void main()
     p_pixelP = vec3(u_view * u_model * vec4(vertexPosition, 1.0));
     p_view = u_view;
 
-    p_connectedVertices = v_connectedVertices;
+    p_connectedVertices = min(v_connectedVertices, uint(4));
 
     //Previous gl_Position assignment
     //gl_Position = u_perspective * u_view * u_model * vec4(v_position, 1.0);

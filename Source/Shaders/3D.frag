@@ -62,18 +62,24 @@ void main()
     //vec3 specular = u_lightColor * (spec * material.specular);
     vec3 specular = vec3(1.0) * (spec * material.specular);
 #endif
-
-    float ambientOcclusion = p_connectedVertices / 2.0;
+    
+    float adjustedVertexCount = p_connectedVertices;//min(p_connectedVertices, 4);
+    float ambientOcclusion = adjustedVertexCount / 4.0;
     vec3 result = (max(ambient + diffuse + specular - ambientOcclusion, 0.25)) * pixel.xyz;
+    ambient = vec3(1);
+    result = (max(ambient - ambientOcclusion, 0)) * pixel.xyz;
     #if 0
-    if (p_connectedVertices >= 1.99)
-        result = vec3( 0.5, 0.5, 0 );
-    else if (p_connectedVertices >= 1)
-        result = vec3( 1, 0, 0 );
-    else if (p_connectedVertices >= 0)
-        result = vec3( 0, 1, 0 );
+    const float e0 = 3.99;
+    const float e1 = 2;
+    const float e2 = 1;
+    if (p_connectedVertices > e0)
+        result = vec3( adjustedVertexCount - e0, 0, 0 );
+    else if (p_connectedVertices > e1)
+        result = vec3( 0, adjustedVertexCount - e1, 0 );
+    else if (p_connectedVertices > e2)
+        result = vec3( 0, 0, adjustedVertexCount);
     else
-        result = vec3( 0, 0, 1 );
+        result = vec3( 0, 0, 0 );
         #endif
     //result = vec3(p_connectedVertices / 2);
     color = vec4(result, pixel.a);

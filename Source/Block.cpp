@@ -17,6 +17,85 @@ Vec3 faceNormals[] = {
 {  0.0f,  0.0f, -1.0f },
 };
 
+union VertexBlockCheck {
+	struct { Vec3Int e0, e1, e2, e3, e4, e5, e6, e7; };
+};
+
+static const VertexBlockCheck vertexBlocksToCheck[+Face::Count] = {
+	{//right +X
+		Vec3Int({  0,  1,  0 }),//Vertex 0
+				{  0,  0,  1 },
+
+				{  0,  0,  1 }, //Vertex 1
+				{  0, -1,  0 },
+				{  0,  1,  0 }, //Vertex 2
+				{  0,  0, -1 },
+
+				{  0,  0, -1 }, //Vertex 3
+				{  0, -1,  0 },
+	},
+	{//left -X
+		Vec3Int({  0,  1,  0 }),//Vertex 0
+				{  0,  0, -1 },
+
+				{  0,  0, -1 }, //Vertex 1
+				{  0, -1,  0 },
+				{  0,  1,  0 }, //Vertex 2
+				{  0,  0,  1 },
+
+				{  0,  0,  1 }, //Vertex 3
+				{  0, -1,  0 },
+	},
+	{//Top +Y
+		Vec3Int({  0,  0,  1 }),//Vertex 0
+				{  1,  0,  0 },
+
+				{  1,  0,  0 }, //Vertex 1
+				{  0,  0, -1 },
+				{  0,  0,  1 }, //Vertex 2
+				{ -1,  0,  0 },
+
+				{ -1,  0,  0 }, //Vertex 3
+				{  0,  0, -1 },
+	},
+	{//Bot -Y
+		Vec3Int({  0,  0,  1 }),//Vertex 0
+				{ -1,  0,  0 },
+
+				{ -1,  0,  0 }, //Vertex 1
+				{  0,  0, -1 },
+				{  0,  0,  1 }, //Vertex 2
+				{  1,  0,  0 },
+
+				{  1,  0,  0 }, //Vertex 3
+				{  0,  0, -1 },
+	},
+	{//Front +Z
+		Vec3Int({  0,  1,  0 }),//Vertex 0
+				{ -1,  0,  0 },
+
+				{ -1,  0,  0 }, //Vertex 1
+				{  0, -1,  0 },
+				{  0,  1,  0 }, //Vertex 2
+				{  1,  0,  0 },
+
+				{  1,  0,  0 }, //Vertex 3
+				{  0, -1,  0 },
+	},
+	{//Front -Z
+		Vec3Int({  0,  1,  0 }),//Vertex 0
+				{  1,  0,  0 },
+
+				{  1,  0,  0 }, //Vertex 1
+				{  0, -1,  0 },
+				{  0,  1,  0 }, //Vertex 2
+				{ -1,  0,  0 },
+
+				{ -1,  0,  0 }, //Vertex 3
+				{  0, -1,  0 },
+	},
+};
+
 struct BlockSprites
 {
 	uint8 faceSprites[+Face::Count] = {
@@ -125,7 +204,93 @@ void Chunk::SetBlocks()
 			}
 		}
 	}
-	//blocks->e[CHUNK_X - 1][CHUNK_Y - 1][CHUNK_Z - 1] = BlockType::Grass;
+	//Layer 1 + 2
+	blocks->e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 2] = BlockType::Grass;
+	blocks->e[CHUNK_X - 2][CHUNK_Y - 7][CHUNK_Z - 2] = BlockType::Grass;
+	blocks->e[CHUNK_X - 2][CHUNK_Y - 6][CHUNK_Z - 1] = BlockType::Grass;
+	blocks->e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 1] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 4] = BlockType::Grass;
+	blocks->e[CHUNK_X - 2][CHUNK_Y - 7][CHUNK_Z - 4] = BlockType::Grass;
+	blocks->e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 5] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 6] = BlockType::Grass;
+	blocks->e[CHUNK_X - 2][CHUNK_Y - 7][CHUNK_Z - 6] = BlockType::Grass;
+	blocks->e[CHUNK_X - 2][CHUNK_Y - 6][CHUNK_Z - 7] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 4][CHUNK_Y - 6][CHUNK_Z - 7] = BlockType::Grass;
+	blocks->e[CHUNK_X - 4][CHUNK_Y - 7][CHUNK_Z - 6] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 6][CHUNK_Y - 7][CHUNK_Z - 6] = BlockType::Grass;
+	blocks->e[CHUNK_X - 6][CHUNK_Y - 6][CHUNK_Z - 7] = BlockType::Grass;
+	blocks->e[CHUNK_X - 7][CHUNK_Y - 6][CHUNK_Z - 6] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 7][CHUNK_Y - 6][CHUNK_Z - 4] = BlockType::Grass;
+	blocks->e[CHUNK_X - 6][CHUNK_Y - 7][CHUNK_Z - 4] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 7][CHUNK_Y - 6][CHUNK_Z - 2] = BlockType::Grass;
+	blocks->e[CHUNK_X - 6][CHUNK_Y - 7][CHUNK_Z - 2] = BlockType::Grass;
+	blocks->e[CHUNK_X - 6][CHUNK_Y - 6][CHUNK_Z - 1] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 4][CHUNK_Y - 7][CHUNK_Z - 2] = BlockType::Grass;
+	blocks->e[CHUNK_X - 4][CHUNK_Y - 6][CHUNK_Z - 1] = BlockType::Grass;
+
+
+
+	//Layer 3
+	blocks->e[CHUNK_X - 1][CHUNK_Y - 4][CHUNK_Z - 2] = BlockType::Grass;
+	blocks->e[CHUNK_X - 2][CHUNK_Y - 4][CHUNK_Z - 1] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 1][CHUNK_Y - 4][CHUNK_Z - 4] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 1][CHUNK_Y - 4][CHUNK_Z - 6] = BlockType::Grass;
+	blocks->e[CHUNK_X - 2][CHUNK_Y - 4][CHUNK_Z - 7] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 4][CHUNK_Y - 4][CHUNK_Z - 7] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 6][CHUNK_Y - 4][CHUNK_Z - 7] = BlockType::Grass;
+	blocks->e[CHUNK_X - 7][CHUNK_Y - 4][CHUNK_Z - 6] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 7][CHUNK_Y - 4][CHUNK_Z - 4] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 7][CHUNK_Y - 4][CHUNK_Z - 2] = BlockType::Grass;
+	blocks->e[CHUNK_X - 6][CHUNK_Y - 4][CHUNK_Z - 1] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 4][CHUNK_Y - 4][CHUNK_Z - 1] = BlockType::Grass;
+
+
+
+	//Layer 4 + 5
+	blocks->e[CHUNK_X - 1][CHUNK_Y - 2][CHUNK_Z - 2] = BlockType::Grass;
+	blocks->e[CHUNK_X - 2][CHUNK_Y - 1][CHUNK_Z - 2] = BlockType::Grass;
+	blocks->e[CHUNK_X - 2][CHUNK_Y - 2][CHUNK_Z - 1] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 1][CHUNK_Y - 2][CHUNK_Z - 4] = BlockType::Grass;
+	blocks->e[CHUNK_X - 2][CHUNK_Y - 1][CHUNK_Z - 4] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 1][CHUNK_Y - 2][CHUNK_Z - 6] = BlockType::Grass;
+	blocks->e[CHUNK_X - 2][CHUNK_Y - 1][CHUNK_Z - 6] = BlockType::Grass;
+	blocks->e[CHUNK_X - 2][CHUNK_Y - 2][CHUNK_Z - 7] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 4][CHUNK_Y - 2][CHUNK_Z - 7] = BlockType::Grass;
+	blocks->e[CHUNK_X - 4][CHUNK_Y - 1][CHUNK_Z - 6] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 6][CHUNK_Y - 1][CHUNK_Z - 6] = BlockType::Grass;
+	blocks->e[CHUNK_X - 6][CHUNK_Y - 2][CHUNK_Z - 7] = BlockType::Grass;
+	blocks->e[CHUNK_X - 7][CHUNK_Y - 2][CHUNK_Z - 6] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 7][CHUNK_Y - 2][CHUNK_Z - 4] = BlockType::Grass;
+	blocks->e[CHUNK_X - 6][CHUNK_Y - 1][CHUNK_Z - 4] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 7][CHUNK_Y - 2][CHUNK_Z - 2] = BlockType::Grass;
+	blocks->e[CHUNK_X - 6][CHUNK_Y - 1][CHUNK_Z - 2] = BlockType::Grass;
+	blocks->e[CHUNK_X - 6][CHUNK_Y - 2][CHUNK_Z - 1] = BlockType::Grass;
+
+	blocks->e[CHUNK_X - 4][CHUNK_Y - 1][CHUNK_Z - 2] = BlockType::Grass;
+	blocks->e[CHUNK_X - 4][CHUNK_Y - 2][CHUNK_Z - 1] = BlockType::Grass;
+
+
+
 }
 
 Vec3Int GetBlockPosFromIndex(uint16 index)
@@ -208,211 +373,28 @@ void Chunk::BuildChunkVertices()
 			}
 		}
 	}
-	/*
-	This is the solution array taht is just for refernce now
-		//{-1, -1, -1 },
-		{ 0, -1, -1 },
-		//{ 1, -1, -1 },
-		{-1, -1,  0 },
-		//{ 0, -1,  0 },
-		{ 1, -1,  0 },
-		//{-1, -1,  1 },
-		{ 0, -1,  1 },
-		//{ 1, -1,  1 },
-		{-1,  0, -1 },
-		//{ 0,  0, -1 },
-		{ 1,  0, -1 },
-		//{-1,  0,  0 },
-		//{ 0,  0,  0 },
-		//{ 1,  0,  0 },
-		{-1,  0,  1 },
-		//{ 0,  0,  1 },
-		{ 1,  0,  1 },
-		//{-1,  1, -1 },
-		{ 0,  1, -1 },
-		//{ 1,  1, -1 },
-		{-1,  1,  0 },
-		//{ 0,  1,  0 },
-		{ 1,  1,  0 },
-		//{-1,  1,  1 },
-		{ 0,  1,  1 },
-		//{ 1,  1,  1 },
-	*/
 
-	Vec3Int vertexAOBlocks[] = {
-		{ 0, -1, -1 },
-		{-1, -1,  0 },
-		{ 1, -1,  0 },
-		{ 0, -1,  1 },
-		{-1,  0, -1 },
-		{ 1,  0, -1 },
-		{-1,  0,  1 },
-		{ 1,  0,  1 },
-		{ 0,  1, -1 },
-		{-1,  1,  0 },
-		{ 1,  1,  0 },
-		{ 0,  1,  1 },
-	};
-
-#define TESTING 2
 	uint32 i = 0;
 	for (Vertex_Chunk& vert : faceVertices)
 	{
-		i++;
-		i = i % 4;
-		Vec3Int vf = Vec3ToVec3Int(faceNormals[vert.n]); //{0, 1, 0}
-		Vec3Int avf = Abs(vf);
+		Vec3Int blockN = Vec3ToVec3Int(faceNormals[vert.n]);
 		Vec3Int blockP = GetBlockPosFromIndex(vert.blockIndex);
-		//blocks->e[x][y][z] = bt;
-		//vert.connectedVertices = 2;
 
-#if TESTING == 2
+		uint8 faceIndex = vert.n;
+		Vec3Int a = *(&vertexBlocksToCheck[faceIndex].e0 + (i + 0));
+		Vec3Int b = *(&vertexBlocksToCheck[faceIndex].e0 + (i + 1));
+		Vec3Int c = a + b;
 
-
-		if (vf.x == -1 || vf.x == 1)
-		{
-
-			if (GetBlock(blockP + avf + Vec3Int({ 0, 1, 0 })) != BlockType::Empty)
-			{
-				if (i == 0 || i == 2)
-				{
-					vert.connectedVertices++;
-				}
-			}
-			else if (GetBlock(blockP + avf + Vec3Int({ 0, 0, 1 })) != BlockType::Empty)
-			{
-				if (i == 2 || i == 3)
-				{
-					vert.connectedVertices++;
-				}
-			}
-
-			else if (GetBlock(blockP + avf + Vec3Int({ 0, -1, 0 })) != BlockType::Empty)
-			{
-				if (i == 3 || i == 1)
-				{
-					vert.connectedVertices++;
-				}
-			}
-			else if (GetBlock(blockP + avf + Vec3Int({ 0, 0, -1 })) != BlockType::Empty)
-			{
-				if (i == 1 || i == 0)
-				{
-					vert.connectedVertices++;
-				}
-			}
-		}
-		else if (vf.y == -1 || vf.y == 1)
-		{
-
-			if (GetBlock(blockP + avf + Vec3Int({ 1, 0, 0 })) != BlockType::Empty)
-			{
-				if (i == 1 || i == 0)
-				{
-					vert.connectedVertices++;
-				}
-			}
-			else if (GetBlock(blockP + avf + Vec3Int({ 0, 0, 1 })) != BlockType::Empty)
-			{
-				if (i == 0 || i == 2)
-				{
-					vert.connectedVertices++;
-				}
-			}
-
-			else if (GetBlock(blockP + avf + Vec3Int({ -1, 0, 0 })) != BlockType::Empty)
-			{
-				if (i == 2 || i == 3)
-				{
-					vert.connectedVertices++;
-				}
-			}
-			else if (GetBlock(blockP + avf + Vec3Int({ 0, 0, -1 })) != BlockType::Empty)
-			{
-				if (i == 1 || i == 3)
-				{
-					vert.connectedVertices++;
-				}
-			}
-		}
-		else if (vf.z == -1 || vf.z == 1)
-		{
-
-			if (GetBlock(blockP + avf + Vec3Int({ 1, 0, 0 })) != BlockType::Empty)
-			{
-				if (i == 0 || i == 2)
-				{
-					vert.connectedVertices++;
-				}
-			}
-			else if (GetBlock(blockP + avf + Vec3Int({ 0, 1, 0 })) != BlockType::Empty)
-			{
-				if (i == 2 || i == 3)
-				{
-					vert.connectedVertices++;
-				}
-			}
-
-			else if (GetBlock(blockP + avf + Vec3Int({ -1, 0, 0 })) != BlockType::Empty)
-			{
-				if (i == 3 || i == 1)
-				{
-					vert.connectedVertices++;
-				}
-			}
-			else if (GetBlock(blockP + avf + Vec3Int({ 0, -1, 0 })) != BlockType::Empty)
-			{
-				if (i == 1 || i == 0)
-				{
-					vert.connectedVertices++;
-				}
-			}
-		}
+		if (GetBlock(blockP + blockN + a) != BlockType::Empty)
+			vert.connectedVertices += 2;
+		if (GetBlock(blockP + blockN + b) != BlockType::Empty)
+			vert.connectedVertices += 2;
+		if (GetBlock(blockP + blockN + c) != BlockType::Empty)
+			vert.connectedVertices += 2;
 
 
-
-
-#elif TESTING == 1
-		uint32 normalDimensionIndex;
-		if (vf.x != 0)
-		{
-			normalDimensionIndex = 0;
-		}
-		else if (vf.y != 0)
-		{
-			normalDimensionIndex = 1;
-		}
-		else if (vf.z != 0)
-		{
-			normalDimensionIndex = 2;
-		}
-		else
-			assert(Distance(Vec3IntToVec3(vf), { 0,0,0 }) != 0);
-
-		for (int32 i = 0; i < arrsize(vertexAOBlock); i++)
-		{
-			if (vertexAOBlocks[i].e[normalDimensionIndex] == vf.e[normalDimensionIndex])
-			{
-				if (vertexAOBlocks)
-			}
-
-		}
-#else
-		for (int32 x = -1; x <= 1; x++)
-		{
-			for (int32 y = -1; y <= 1; y++)
-			{
-				for (int32 z = -1; z <= 1; z++)
-				{
-					Vec3Int newVec = { x, y, z };
-					Vec3Int noNorm = newVec - HadamardProduct(newVec, avf);
-					Vec3Int blockCheckP = blockP + noNorm;
-
-				}
-			}
-		}
-			//vert->connectedVertices++;
-#endif
+		i += 2;
+		i = i % 8;
 	}
 
 	flags &= ~(CHUNK_MODIFIED | CHUNK_LOADING);

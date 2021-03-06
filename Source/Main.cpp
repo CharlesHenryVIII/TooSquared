@@ -247,6 +247,8 @@ int main(int argc, char* argv[])
 			g_camera.p.y += cameraSpeed;
 		if (keyStates[SDLK_z].down)
 			g_camera.p.z += cameraSpeed;
+		if (keyStates[SDLK_x].down)
+			g_camera.p.x += cameraSpeed;
 
 		float sensitivity = 0.3f; // change this value to your liking
 		g_mouse.pDelta *= sensitivity;
