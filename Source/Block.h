@@ -36,11 +36,12 @@ ENUMOPS(BlockType);
 //Sappling,
 //Chest,
 
-#define CHUNK_LOADING		0x0001
-#define CHUNK_BLOCKSSET     0x0002
-#define CHUNK_LOADED        0x0004
-#define CHUNK_UPLOADED	    0x0008
-#define CHUNK_TODELETE	    0x0010
+#define CHUNK_LOADING_VERTEX		0x0001
+#define CHUNK_LOADED_BLOCKS     0x0002
+#define CHUNK_LOADING_BLOCKS 0x0004
+#define CHUNK_LOADED_VERTEX        0x0008
+#define CHUNK_UPLOADED	    0x0010
+#define CHUNK_TODELETE	    0x0020
 
 constexpr uint32 CHUNK_X = 16;
 constexpr uint32 CHUNK_Y = 256;

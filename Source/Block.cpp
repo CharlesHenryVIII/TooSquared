@@ -590,7 +590,6 @@ void ChunkArray::BuildChunkVertices(ChunkIndex i)
         if (GetBlock(i, blockP + blockN + c) != BlockType::Empty)
             vert.connectedVertices += 2;
 
-
         vertIndex += 2;
         vertIndex = vertIndex % 8;
     }

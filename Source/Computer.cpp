@@ -25,16 +25,16 @@ void SetBlocks::DoThing()
 {
 	//PROFILE_SCOPE("THREAD: SetBlocks()");
     g_chunks->SetBlocks(chunk);
-    g_chunks->flags[chunk] |= CHUNK_BLOCKSSET;
+    g_chunks->flags[chunk] |= CHUNK_LOADED_BLOCKS;
+	g_chunks->flags[chunk] &= ~(CHUNK_LOADING_BLOCKS);
 }
 
 void CreateVertices::DoThing()
 {
 	//PROFILE_SCOPE("THREAD: CreateVertices()");
-	g_chunks->flags[chunk] |= CHUNK_LOADING;
 	g_chunks->BuildChunkVertices(chunk);
-	g_chunks->flags[chunk] &= ~(CHUNK_LOADING);
-	g_chunks->flags[chunk] |= CHUNK_LOADED;
+	g_chunks->flags[chunk] |= CHUNK_LOADED_VERTEX;
+	g_chunks->flags[chunk] &= ~(CHUNK_LOADING_VERTEX);
 }
 #else
 void SetBlocks::DoThing()

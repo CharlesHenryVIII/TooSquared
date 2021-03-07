@@ -321,6 +321,7 @@ int main(int argc, char* argv[])
 						g_chunks->p[chunki] = newBlockP;
 						//g_chunks->flags[chunki];
 					}
+
 #else
 					for (Chunk* chunk : chunks)
 					{
@@ -354,6 +355,7 @@ int main(int argc, char* argv[])
 								(g_chunks->p[i].x < cam.x - g_camera.fogDistance || g_chunks->p[i].z < cam.z - g_camera.fogDistance))
 							{
 								g_chunks->flags[i] |= CHUNK_TODELETE;
+
 							}
 						}
 					}
@@ -394,11 +396,11 @@ int main(int argc, char* argv[])
 				if (!g_chunks->active[i])
 					continue;
 
-				if (!(g_chunks->flags[i] & CHUNK_BLOCKSSET))
+				if (!(g_chunks->flags[i] & (CHUNK_LOADED_BLOCKS | CHUNK_LOADING_BLOCKS)))
 				{
 					Job* job = new SetBlocks();
 					job->chunk = i;
-                    g_chunks->flags[i] |= CHUNK_BLOCKSSET;
+                    g_chunks->flags[i] |= CHUNK_LOADING_BLOCKS;
 					g_jobHandler.jobs.push_back(job);
 					SDL_SemPost(g_jobHandler.semaphore);
 				}
@@ -415,11 +417,11 @@ int main(int argc, char* argv[])
 			{
 				if (!g_chunks->active[i])
 					continue;
-				if (g_chunks->flags[i] & CHUNK_BLOCKSSET && !(g_chunks->flags[i] & (CHUNK_LOADING | CHUNK_LOADED)))
+				if (g_chunks->flags[i] & CHUNK_LOADED_BLOCKS && !(g_chunks->flags[i] & (CHUNK_LOADING_VERTEX | CHUNK_LOADED_VERTEX)))
 				{
 					job = new CreateVertices();
 					job->chunk = i;
-					g_chunks->flags[i] |= CHUNK_LOADING;
+					g_chunks->flags[i] |= CHUNK_LOADING_VERTEX;
 
 					g_jobHandler.jobs.push_back(job);
 					SDL_SemPost(g_jobHandler.semaphore);
@@ -438,7 +440,7 @@ int main(int argc, char* argv[])
 				if (!g_chunks->active[i])
 					continue;
 
-				if (g_chunks->flags[i] & CHUNK_LOADED)
+				if (g_chunks->flags[i] & CHUNK_LOADED_VERTEX)
 				{
 					if (!(g_chunks->flags[i] & CHUNK_UPLOADED))
 					{
