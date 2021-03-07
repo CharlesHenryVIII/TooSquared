@@ -15,11 +15,19 @@ struct ThreadData {
 
 };
 
+#if SOFA == 1
+struct Job
+{
+    ChunkIndex chunk;
+	virtual void DoThing() = 0;
+};
+#else
 struct Job
 {
     Chunk* chunk;
 	virtual void DoThing() = 0;
 };
+#endif
 
 struct SetBlocks : public Job {
 	virtual void DoThing();

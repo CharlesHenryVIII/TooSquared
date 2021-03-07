@@ -6,6 +6,8 @@
 #include <memory>
 #include <vector>
 
+#define SOFA 1
+
 enum class BlockType : uint8 {
     Empty,
     Grass,
@@ -48,6 +50,8 @@ struct ChunkData {
     BlockType e[CHUNK_X][CHUNK_Y][CHUNK_Z] = {};
 };
 
+#if SOFA == 1
+#else
 struct Chunk {
     std::unique_ptr<ChunkData> blocks;
     Vec3Int p = {};
@@ -65,6 +69,8 @@ struct Chunk {
     BlockType GetBlock(Vec3Int a);
 };
 constexpr size_t sizeOfChunk = sizeof(Chunk);
+#endif
+
 enum class Face : uint8 {
 	Right,
 	Left,
@@ -152,6 +158,32 @@ struct FireBlock : public Block {
         defaultSpriteLocation = 252;
     }
 };
+
+#if SOFA == 1
+constexpr uint32 MAX_CHUNKS = 12000;
+typedef uint32 ChunkIndex;
+struct ChunkArray
+{
+    bool                        active[MAX_CHUNKS];
+    ChunkData                   blocks[MAX_CHUNKS];
+    Vec3Int                     p[MAX_CHUNKS];
+    std::vector<Vertex_Chunk>   faceVertices[MAX_CHUNKS];
+    VertexBuffer                vertexBuffer[MAX_CHUNKS] = {};
+    uint32                      uploadedIndexCount[MAX_CHUNKS];
+    uint32                      flags[MAX_CHUNKS];
+    uint32                      chunkCount = 0;
+
+    void ClearChunk(ChunkIndex index);
+    ChunkIndex AddChunk();
+    void SetBlocks(ChunkIndex i);
+    void BuildChunkVertices(ChunkIndex i);
+	void UploadChunk(ChunkIndex i);
+    void RenderChunk(ChunkIndex i);
+    Vec3Int BlockPosition(ChunkIndex i);
+    BlockType GetBlock(ChunkIndex i,  Vec3Int a);
+};
+extern ChunkArray* g_chunks;
+#endif
 
 Vec3Int ToChunkPosition(Vec3 p);
 void PreChunkRender();

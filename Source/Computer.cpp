@@ -20,20 +20,39 @@ uint32 ComputerSpecs::UsableCores()
     return job;
 }
 
+#if SOFA == 1
 void SetBlocks::DoThing()
 {
+	//PROFILE_SCOPE("THREAD: SetBlocks()");
+    g_chunks->SetBlocks(chunk);
+    g_chunks->flags[chunk] |= CHUNK_BLOCKSSET;
+}
+
+void CreateVertices::DoThing()
+{
+	//PROFILE_SCOPE("THREAD: CreateVertices()");
+	g_chunks->flags[chunk] |= CHUNK_LOADING;
+	g_chunks->BuildChunkVertices(chunk);
+	g_chunks->flags[chunk] &= ~(CHUNK_LOADING);
+	g_chunks->flags[chunk] |= CHUNK_LOADED;
+}
+#else
+void SetBlocks::DoThing()
+{
+	PROFILE_SCOPE("THREAD: SetBlocks()");
 	chunk->SetBlocks();
 	chunk->flags |= CHUNK_BLOCKSSET;
 }
 
 void CreateVertices::DoThing()
 {
+	PROFILE_SCOPE("THREAD: CreateVertices()");
 	chunk->flags |= CHUNK_LOADING;
 	chunk->BuildChunkVertices();
 	chunk->flags &= ~(CHUNK_LOADING);
 	chunk->flags |= CHUNK_LOADED;
 }
-
+#endif
 
 int32 ThreadFunction(void* data)
 {
@@ -45,26 +64,22 @@ int32 ThreadFunction(void* data)
         int32 sem_result = SDL_SemWait(g_jobHandler.semaphore);
         if (sem_result != 0 || SDL_AtomicGet(&passedData->running) == 0)
 			break;
-        //DebugPrint("Thread Started\n");
 
         Job* job = g_jobHandler.AcquireJob();
         assert(job);
         if (job == nullptr)
             continue;
-        //DebugPrint("Job Started\n");
 
         //Actual Job:
         {
-			//PROFILE_SCOPE("Thread Chunk Load");
+			//PROFILE_SCOPE("THREAD JOB: ");
             job->DoThing();
         }
 
-        //DebugPrint("Job Finished\n");
-        int atomic_result = SDL_AtomicAdd(&g_jobHandler.jobs_in_flight, -1);
+        int32 atomic_result = SDL_AtomicAdd(&g_jobHandler.jobs_in_flight, -1);
         if (atomic_result == 1)
             SDL_SemPost(g_jobHandler.wait_semaphore);
         delete job;
-        //DebugPrint("Job Deleted\n");
     }
     return 0;
 }

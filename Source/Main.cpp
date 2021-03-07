@@ -31,27 +31,27 @@ struct Mouse {
 
 int main(int argc, char* argv[])
 {
-    std::unordered_map<int32, Key> keyStates;
-    InitializeVideo();
+	std::unordered_map<int32, Key> keyStates;
+	InitializeVideo();
 
-    g_jobHandler.semaphore = SDL_CreateSemaphore(0);
+	g_jobHandler.semaphore = SDL_CreateSemaphore(0);
 	g_jobHandler.mutex = SDL_CreateMutex();
-    g_jobHandler.wait_semaphore = SDL_CreateSemaphore(0);
-    g_computerSpecs.coreCount = SDL_GetCPUCount();
+	g_jobHandler.wait_semaphore = SDL_CreateSemaphore(0);
+	g_computerSpecs.coreCount = SDL_GetCPUCount();
 	g_jobHandler.threads.resize(g_computerSpecs.UsableCores());
 
-    ThreadData passingData;
-    SDL_AtomicSet(&passingData.running, 1);
-    for (uint32 i = 0; i < g_jobHandler.threads.size(); ++i)
-    {
-        g_jobHandler.threads[i] = SDL_CreateThread(ThreadFunction, ("Thread " + std::to_string(i)).c_str(), &passingData);
+	ThreadData passingData;
+	SDL_AtomicSet(&passingData.running, 1);
+	for (uint32 i = 0; i < g_jobHandler.threads.size(); ++i)
+	{
+		g_jobHandler.threads[i] = SDL_CreateThread(ThreadFunction, ("Thread " + std::to_string(i)).c_str(), &passingData);
 		DebugPrint("Created New Thread: %i\n", i);
-    }
+	}
 
 	double freq = double(SDL_GetPerformanceFrequency()); //HZ
 	double totalTime = SDL_GetPerformanceCounter() / freq; //sec
 	double previousTime = totalTime;
-    double LastShaderUpdateTime = totalTime;
+	double LastShaderUpdateTime = totalTime;
 #if 0
 	srand(static_cast<uint32>(totalTime));
 #else
@@ -68,7 +68,7 @@ int main(int argc, char* argv[])
 	//	}
 	//}
 
-    g_camera.view;
+	g_camera.view;
 	Vec3 cOffset = { 1.0f, 1.0f, 1.0f };
 	gb_mat4_look_at(&g_camera.view, g_camera.p + cOffset, g_camera.p, { 0,1,0 });
 
@@ -76,12 +76,18 @@ int main(int argc, char* argv[])
 	//TODO: Use Unordered_map?
 #if CHUNKMEM == 2
 #else
+#if SOFA == 1
+	g_chunks = new ChunkArray();
+#else
 	std::vector<Chunk*> chunks;
 	std::vector<Chunk*> chunksToLoad;
+#endif
 	std::vector<double> values;
 #endif
 	//values.reserve(size_t(2 * (2 / 0.01)));
 	double testTimer = totalTime;
+	float loadingTimer = 0.0f;
+	bool uploadedLastFrame = false;
 
 	while (g_running)
 	{
@@ -99,7 +105,14 @@ int main(int argc, char* argv[])
 
 		g_mouse.pDelta = { 0, 0 };
 
-		SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared Chunks: %u", (uint32)chunks.size()).c_str());
+		if (SDL_AtomicGet(&g_jobHandler.jobs_in_flight) > 0 || uploadedLastFrame)
+			loadingTimer += deltaTime;
+		uploadedLastFrame = false;
+#if SOFA == 1
+		SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared Chunks: %u, Time: %0.2f", g_chunks->chunkCount, loadingTimer).c_str());
+#else
+		SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared Chunks: %u, Time: %0.2f", (uint32)chunks.size(), loadingTimer).c_str());
+#endif
 
 		SDL_Event SDLEvent;
 		while (SDL_PollEvent(&SDLEvent))
@@ -287,6 +300,25 @@ int main(int argc, char* argv[])
 				{
 					bool needCube = true;
 					Vec3Int newBlockP = { cam.x + x, 0, cam.z + z };
+#if SOFA == 1
+					//for (bool active : g_chunks->active)
+					for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+					{
+						if (!g_chunks->active[i])
+							continue;
+						if (g_chunks->p[i].z == newBlockP.z && g_chunks->p[i].x == newBlockP.x)
+						{
+							needCube = false;
+							break;
+						}
+					}
+					if (needCube)
+					{
+						ChunkIndex chunki = g_chunks->AddChunk();
+						g_chunks->p[chunki] = newBlockP;
+						//g_chunks->flags[chunki];
+					}
+#else
 					for (Chunk* chunk : chunks)
 					{
 						if (chunk->p.z == newBlockP.z && chunk->p.x == newBlockP.x)
@@ -301,10 +333,30 @@ int main(int argc, char* argv[])
 						chunk->p = newBlockP;
 						chunksToLoad.push_back(chunk);
 					}
+#endif
 				}
 			}
 
 #if CHUNKMEM == 0
+#if SOFA == 1
+			{
+				//PROFILE_SCOPE("Chunk Delete Check");
+				if (g_camera.fogDistance)
+				{
+					for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+					{
+						if (g_chunks->active[i])
+						{
+							if ((g_chunks->p[i].x > cam.x + g_camera.fogDistance || g_chunks->p[i].z > cam.z + g_camera.fogDistance) ||
+								(g_chunks->p[i].x < cam.x - g_camera.fogDistance || g_chunks->p[i].z < cam.z - g_camera.fogDistance))
+							{
+								g_chunks->flags[i] |= CHUNK_TODELETE;
+							}
+						}
+					}
+				}
+			}
+#else
 			{
 				//PROFILE_SCOPE("Chunk Delete Check");
 				if (g_camera.fogDistance)
@@ -320,6 +372,7 @@ int main(int argc, char* argv[])
 				}
 			}
 #endif
+#endif
 		}
 		Vec2Int windowSizeThing = { g_window.size.x * 2, g_window.size.y * 2 };
 		UpdateFrameBuffer(windowSizeThing);
@@ -328,6 +381,76 @@ int main(int argc, char* argv[])
 		glViewport(0, 0, windowSizeThing.x, windowSizeThing.y);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+#if SOFA == 1
+		{
+			//PROFILE_SCOPE("Semaphore Update");
+
+			SDL_LockMutex(g_jobHandler.mutex);
+			for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+			{
+				if (!g_chunks->active[i])
+					continue;
+
+				if (!(g_chunks->flags[i] & CHUNK_BLOCKSSET))
+				{
+					Job* job = new SetBlocks();
+					job->chunk = i;
+                    g_chunks->flags[i] |= CHUNK_BLOCKSSET;
+					g_jobHandler.jobs.push_back(job);
+					SDL_SemPost(g_jobHandler.semaphore);
+				}
+			}
+			SDL_UnlockMutex(g_jobHandler.mutex);
+			//SDL_SemWait(g_jobHandler.wait_semaphore);
+		}
+
+		{
+			//PROFILE_SCOPE("Chunk Loading Vertex Loop");
+			SDL_LockMutex(g_jobHandler.mutex);
+			Job* job = nullptr;
+			for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+			{
+				if (!g_chunks->active[i])
+					continue;
+				if (g_chunks->flags[i] & CHUNK_BLOCKSSET && !(g_chunks->flags[i] & (CHUNK_LOADING | CHUNK_LOADED)))
+				{
+					job = new CreateVertices();
+					job->chunk = i;
+					g_chunks->flags[i] |= CHUNK_LOADING;
+
+					g_jobHandler.jobs.push_back(job);
+					SDL_SemPost(g_jobHandler.semaphore);
+				}
+			}
+			SDL_UnlockMutex(g_jobHandler.mutex);
+		}
+
+		{
+			//PROFILE_SCOPE("Chunk Upload and Render");
+
+			int32 uploadCount = 0;
+			PreChunkRender();
+			for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+			{
+				if (!g_chunks->active[i])
+					continue;
+
+				if (g_chunks->flags[i] & CHUNK_LOADED)
+				{
+					if (!(g_chunks->flags[i] & CHUNK_UPLOADED))
+					{
+						if (uploadCount > 10)
+							continue;
+						g_chunks->UploadChunk(i);
+						uploadCount++;
+						uploadedLastFrame = true;
+					}
+					//PreChunkRender();
+					g_chunks->RenderChunk(i);
+				}
+			}
+		}
+#else
 		{
 			//PROFILE_SCOPE("Semaphore Update");
 
@@ -388,6 +511,7 @@ int main(int argc, char* argv[])
 								continue;
 							chunk->UploadChunk();
 							uploadCount++;
+							uploadedLastFrame = true;
 						}
 						//PreChunkRender();
 						chunk->RenderChunk();
@@ -395,6 +519,7 @@ int main(int argc, char* argv[])
 				}
 			}
 		}
+#endif
 
 #if CHUNKMEM == 1
 		{
@@ -450,6 +575,24 @@ int main(int argc, char* argv[])
 			return false;
 		});
 #else
+#if SOFA == 1
+
+		{
+			//PROFILE_SCOPE("Chunk Deletion");
+			for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+			{
+				if (!g_chunks->active[i])
+					continue;
+
+				if (g_chunks->flags[i] & CHUNK_TODELETE)
+				{
+					g_chunks->active[i] = false;
+					g_chunks->chunkCount--;
+					g_chunks->ClearChunk(i);
+				}
+			}
+		}
+#else
 		{
 			//PROFILE_SCOPE("Chunk Deletion");
 			std::erase_if(chunks, [](Chunk* chunk) {
@@ -462,6 +605,7 @@ int main(int argc, char* argv[])
 				return false;
 			});
 		}
+#endif
 #endif
 		//gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
 
