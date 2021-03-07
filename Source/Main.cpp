@@ -58,6 +58,7 @@ int main(int argc, char* argv[])
 	srand(14);
 #endif
 	NoiseInit();
+    SetBlockSprites();
 
 	//const float amount = 5.0f;
 	//for (float y = -amount; y < amount; y += 0.1f)
@@ -115,6 +116,7 @@ int main(int argc, char* argv[])
 #endif
 
 		SDL_Event SDLEvent;
+		g_mouse.pDelta = {};
 		while (SDL_PollEvent(&SDLEvent))
 		{
 			switch (SDLEvent.type)
@@ -148,9 +150,9 @@ int main(int argc, char* argv[])
 			{
 				if (g_window.hasAttention)
 				{
-					g_mouse.pDelta.x = static_cast<float>(SDLEvent.motion.x) - g_mouse.pos.x;
+					g_mouse.pDelta.x += (static_cast<float>(SDLEvent.motion.x) - g_mouse.pos.x);
 					g_mouse.pos.x = SDLEvent.motion.x;
-					g_mouse.pDelta.y = static_cast<float>(SDLEvent.motion.y) - g_mouse.pos.y;// reversed since y-coordinates go from bottom to top
+					g_mouse.pDelta.y += (static_cast<float>(SDLEvent.motion.y) - g_mouse.pos.y);// reversed since y-coordinates go from bottom to top
 					g_mouse.pos.y = SDLEvent.motion.y;
 				}
 				break;
@@ -180,6 +182,7 @@ int main(int argc, char* argv[])
 				{
 					g_window.hasAttention = true;
 					g_mouse.pDelta = {};
+					//g_mouse.pos = {};
 					SDL_CaptureMouse(SDL_TRUE);
 					break;
 				}

@@ -517,7 +517,6 @@ BlockType Chunk::GetBlock(Vec3Int a)
 #if SOFA == 1
 void ChunkArray::BuildChunkVertices(ChunkIndex i)
 {
-    SetBlockSprites();
     faceVertices[i].clear();
     uploadedIndexCount[i] = 0;
     Vec3Int realP = BlockPosition(i);

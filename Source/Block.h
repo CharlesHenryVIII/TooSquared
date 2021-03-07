@@ -185,5 +185,6 @@ struct ChunkArray
 extern ChunkArray* g_chunks;
 #endif
 
+void SetBlockSprites();
 Vec3Int ToChunkPosition(Vec3 p);
 void PreChunkRender();
