@@ -50,12 +50,12 @@
 
 [[nodiscard]] float Bicubic(Mat4 p, Vec2 pos)
 {
-	Vec4 a;
-	a.e[0] = Cubic(p.col[0], pos.y);
-	a.e[1] = Cubic(p.col[1], pos.y);
-	a.e[2] = Cubic(p.col[2], pos.y);
-	a.e[3] = Cubic(p.col[3], pos.y);
-	return Cubic(a, pos.x);
+    Vec4 a;
+    a.e[0] = Cubic(p.col[0], pos.y);
+    a.e[1] = Cubic(p.col[1], pos.y);
+    a.e[2] = Cubic(p.col[2], pos.y);
+    a.e[3] = Cubic(p.col[3], pos.y);
+    return Cubic(a, pos.x);
 }
 
 

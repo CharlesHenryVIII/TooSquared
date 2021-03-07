@@ -37,7 +37,7 @@ struct Camera {
     Mat4 view;
     float yaw   = -90.0f;
     float pitch = 0.0f;
-	int32 fogDistance = 40;
+    int32 fogDistance = 40;
 };
 
 struct Light_Point {
@@ -58,11 +58,11 @@ struct Material {
 };
 
 enum class ts_MessageBox {
-	Invalid,
-	Error = SDL_MESSAGEBOX_ERROR,
-	Warning = SDL_MESSAGEBOX_WARNING,
-	Informative = SDL_MESSAGEBOX_INFORMATION,
-	Count,
+    Invalid,
+    Error = SDL_MESSAGEBOX_ERROR,
+    Warning = SDL_MESSAGEBOX_WARNING,
+    Informative = SDL_MESSAGEBOX_INFORMATION,
+    Count,
 };
 
 enum class Shader : uint32 {
@@ -83,18 +83,18 @@ public:
     };
     ENUMOPS(T);
 
-	struct TextureParams {
-		Vec2Int size = g_window.size;
-		uint32 minFilter = GL_LINEAR;
-		uint32 magFilter = GL_LINEAR;
-		uint32 wrapS = GL_REPEAT;
-		uint32 wrapT = GL_REPEAT;
+    struct TextureParams {
+        Vec2Int size = g_window.size;
+        uint32 minFilter = GL_LINEAR;
+        uint32 magFilter = GL_LINEAR;
+        uint32 wrapS = GL_REPEAT;
+        uint32 wrapT = GL_REPEAT;
         GLint  internalFormat = GL_RGBA;
         GLenum format = GL_RGBA;
         GLenum type = GL_UNSIGNED_BYTE;
 
         void* data = nullptr;
-	};
+    };
 
 
     Vec2Int m_size = {};
@@ -106,7 +106,7 @@ public:
     Texture(Texture::TextureParams tp);
     Texture(const char* fileLocation);
     ~Texture();
-	inline void Bind();
+    inline void Bind();
 };
 
 class TextureArray {
@@ -116,8 +116,8 @@ public:
     GLuint m_handle = {};
 
 
-	TextureArray(const char* fileLocation);
-	inline void Bind();
+    TextureArray(const char* fileLocation);
+    inline void Bind();
 };
 
 class ShaderProgram
@@ -125,8 +125,8 @@ class ShaderProgram
     GLuint m_handle = 0;
     std::string m_vertexFile;
     std::string m_pixelFile;
-	uint64 m_vertexLastWriteTime = {};
-	uint64 m_pixelLastWriteTime = {};
+    uint64 m_vertexLastWriteTime = {};
+    uint64 m_pixelLastWriteTime = {};
 
     ShaderProgram(const ShaderProgram& rhs) = delete;
     ShaderProgram& operator=(const ShaderProgram& rhs) = delete;
@@ -158,13 +158,13 @@ protected:
     GpuBuffer(GLuint target)
         : m_target(target)
         , m_allocated_size(0)
-	{
-		glGenBuffers(1, &m_handle);
+    {
+        glGenBuffers(1, &m_handle);
 #ifdef _DEBUGPRINT
-		DebugPrint("GPU Buffer Created %i\n", m_target);
+        DebugPrint("GPU Buffer Created %i\n", m_target);
 #endif
-	}
-	void UploadData(void* data, size_t size);
+    }
+    void UploadData(void* data, size_t size);
 
 public:
     virtual ~GpuBuffer();
@@ -176,18 +176,18 @@ class IndexBuffer : public GpuBuffer
 {
 public:
 
-	IndexBuffer()
-		: GpuBuffer(GL_ELEMENT_ARRAY_BUFFER)
-	{ }
+    IndexBuffer()
+        : GpuBuffer(GL_ELEMENT_ARRAY_BUFFER)
+    { }
     void Upload(uint32* indices, size_t count);
 };
 
 class VertexBuffer : public GpuBuffer
 {
 public:
-	VertexBuffer()
-		: GpuBuffer(GL_ARRAY_BUFFER)
-	{ }
+    VertexBuffer()
+        : GpuBuffer(GL_ARRAY_BUFFER)
+    { }
     void Upload(Vertex* vertices, size_t count);
     void Upload(Vertex_Chunk* vertices, size_t count);
 };
@@ -198,13 +198,13 @@ class FrameBuffer {
     FrameBuffer& operator=(const FrameBuffer& rhs) = delete;
 
 public:
-	GLuint m_handle = 0;
+    GLuint m_handle = 0;
     Texture* m_color = nullptr;
     Texture* m_depth = nullptr;
-	//GLuint colorHandle;
-	//GLuint depthHandle;
+    //GLuint colorHandle;
+    //GLuint depthHandle;
     Vec2Int m_size = {};
-	VertexBuffer m_vertexBuffer;
+    VertexBuffer m_vertexBuffer;
 
     FrameBuffer();
     void Bind();

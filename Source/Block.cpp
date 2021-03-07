@@ -335,154 +335,154 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
 void Chunk::SetBlocks()
 {
-	BlockType options[] = {
-		BlockType::Empty,
-		BlockType::Grass,
-		BlockType::Dirt,
-		BlockType::Stone,
-		BlockType::IronBlock,
-	};
-	blocks = std::make_unique<ChunkData>();
+    BlockType options[] = {
+        BlockType::Empty,
+        BlockType::Grass,
+        BlockType::Dirt,
+        BlockType::Stone,
+        BlockType::IronBlock,
+    };
+    blocks = std::make_unique<ChunkData>();
 
-	for (int32 x = 0; x < CHUNK_X; x++)
-	{
-		for (int32 z = 0; z < CHUNK_Z; z++)
-		{
-			Vec2 blockP = { static_cast<float>(x), static_cast<float>(z) };
-			Vec3Int chunkBlockP = BlockPosition();
+    for (int32 x = 0; x < CHUNK_X; x++)
+    {
+        for (int32 z = 0; z < CHUNK_Z; z++)
+        {
+            Vec2 blockP = { static_cast<float>(x), static_cast<float>(z) };
+            Vec3Int chunkBlockP = BlockPosition();
 
-			Vec2 blockRatio = { chunkBlockP.x + blockP.x, chunkBlockP.z + blockP.y };
+            Vec2 blockRatio = { chunkBlockP.x + blockP.x, chunkBlockP.z + blockP.y };
 
 #if NOISETYPE == 2
-			//blockRatio /= 200;
-			//int32 yTotal = Max(static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 10);
-			blockRatio /= 100;
-			int32 yTotal = Clamp<uint32>(static_cast<int32>(Noise(blockRatio, 1.0f) * CHUNK_Y), 10, CHUNK_Y - 1);
+            //blockRatio /= 200;
+            //int32 yTotal = Max(static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 10);
+            blockRatio /= 100;
+            int32 yTotal = Clamp<uint32>(static_cast<int32>(Noise(blockRatio, 1.0f) * CHUNK_Y), 10, CHUNK_Y - 1);
 #elif NOISETYPE == 4
-			blockRatio /= 100;
-			int32 yTotal = (static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 80);
+            blockRatio /= 100;
+            int32 yTotal = (static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 80);
 #else
-			static_assert(false, "Need to set noise implimentation variabls in SetBlocks()");
+            static_assert(false, "Need to set noise implimentation variabls in SetBlocks()");
 #endif
-			assert(yTotal >= 0 && yTotal < CHUNK_Y);
+            assert(yTotal >= 0 && yTotal < CHUNK_Y);
 
 
-			for (int32 y = 0; y < yTotal; y++)
-			{
+            for (int32 y = 0; y < yTotal; y++)
+            {
 
-				BlockType bt = BlockType::Empty;
-				//if (y > CHUNK_Y / 2)
-				//{
-				//	bt = BlockType::Empty;
-				//}
-				//else
-				{
-					if (y == yTotal - 1)
-					{
-						bt = BlockType::Grass;
-					}
-					else if (y > yTotal - 4)
-					{
+                BlockType bt = BlockType::Empty;
+                //if (y > CHUNK_Y / 2)
+                //{
+                //	bt = BlockType::Empty;
+                //}
+                //else
+                {
+                    if (y == yTotal - 1)
+                    {
+                        bt = BlockType::Grass;
+                    }
+                    else if (y > yTotal - 4)
+                    {
                         bt = BlockType::Dirt;
-						//uint32 random = RandomU32(+BlockType::Grass, static_cast<uint32>(arrsize(options)));
-					}
-					else
-					{
-						//uint32 random = RandomU32(+BlockType::Stone, static_cast<uint32>(arrsize(options)));
-						//uint32 random = RandomU32(0, static_cast<uint32>(arrsize(options)));
-						//bt = options[random];
-						bt = BlockType::Stone;
-					}
-				}
-				blocks->e[x][y][z] = bt;
-			}
-		}
-	}
+                        //uint32 random = RandomU32(+BlockType::Grass, static_cast<uint32>(arrsize(options)));
+                    }
+                    else
+                    {
+                        //uint32 random = RandomU32(+BlockType::Stone, static_cast<uint32>(arrsize(options)));
+                        //uint32 random = RandomU32(0, static_cast<uint32>(arrsize(options)));
+                        //bt = options[random];
+                        bt = BlockType::Stone;
+                    }
+                }
+                blocks->e[x][y][z] = bt;
+            }
+        }
+    }
 
-	//Layer 1 + 2
-	blocks->e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 2] = BlockType::Grass;
-	blocks->e[CHUNK_X - 2][CHUNK_Y - 7][CHUNK_Z - 2] = BlockType::Grass;
-	blocks->e[CHUNK_X - 2][CHUNK_Y - 6][CHUNK_Z - 1] = BlockType::Grass;
-	blocks->e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 1] = BlockType::Grass;
+    //Layer 1 + 2
+    blocks->e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 2] = BlockType::Grass;
+    blocks->e[CHUNK_X - 2][CHUNK_Y - 7][CHUNK_Z - 2] = BlockType::Grass;
+    blocks->e[CHUNK_X - 2][CHUNK_Y - 6][CHUNK_Z - 1] = BlockType::Grass;
+    blocks->e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 1] = BlockType::Grass;
 //
-	blocks->e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 4] = BlockType::Grass;
-	blocks->e[CHUNK_X - 2][CHUNK_Y - 7][CHUNK_Z - 4] = BlockType::Grass;
-	blocks->e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 5] = BlockType::Grass;
+    blocks->e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 4] = BlockType::Grass;
+    blocks->e[CHUNK_X - 2][CHUNK_Y - 7][CHUNK_Z - 4] = BlockType::Grass;
+    blocks->e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 5] = BlockType::Grass;
 //
-	blocks->e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 6] = BlockType::Grass;
-	blocks->e[CHUNK_X - 2][CHUNK_Y - 7][CHUNK_Z - 6] = BlockType::Grass;
-	blocks->e[CHUNK_X - 2][CHUNK_Y - 6][CHUNK_Z - 7] = BlockType::Grass;
+    blocks->e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 6] = BlockType::Grass;
+    blocks->e[CHUNK_X - 2][CHUNK_Y - 7][CHUNK_Z - 6] = BlockType::Grass;
+    blocks->e[CHUNK_X - 2][CHUNK_Y - 6][CHUNK_Z - 7] = BlockType::Grass;
 //
-	blocks->e[CHUNK_X - 4][CHUNK_Y - 6][CHUNK_Z - 7] = BlockType::Grass;
-	blocks->e[CHUNK_X - 4][CHUNK_Y - 7][CHUNK_Z - 6] = BlockType::Grass;
+    blocks->e[CHUNK_X - 4][CHUNK_Y - 6][CHUNK_Z - 7] = BlockType::Grass;
+    blocks->e[CHUNK_X - 4][CHUNK_Y - 7][CHUNK_Z - 6] = BlockType::Grass;
 //
-	blocks->e[CHUNK_X - 6][CHUNK_Y - 7][CHUNK_Z - 6] = BlockType::Grass;
-	blocks->e[CHUNK_X - 6][CHUNK_Y - 6][CHUNK_Z - 7] = BlockType::Grass;
-	blocks->e[CHUNK_X - 7][CHUNK_Y - 6][CHUNK_Z - 6] = BlockType::Grass;
+    blocks->e[CHUNK_X - 6][CHUNK_Y - 7][CHUNK_Z - 6] = BlockType::Grass;
+    blocks->e[CHUNK_X - 6][CHUNK_Y - 6][CHUNK_Z - 7] = BlockType::Grass;
+    blocks->e[CHUNK_X - 7][CHUNK_Y - 6][CHUNK_Z - 6] = BlockType::Grass;
 //
-	blocks->e[CHUNK_X - 7][CHUNK_Y - 6][CHUNK_Z - 4] = BlockType::Grass;
-	blocks->e[CHUNK_X - 6][CHUNK_Y - 7][CHUNK_Z - 4] = BlockType::Grass;
+    blocks->e[CHUNK_X - 7][CHUNK_Y - 6][CHUNK_Z - 4] = BlockType::Grass;
+    blocks->e[CHUNK_X - 6][CHUNK_Y - 7][CHUNK_Z - 4] = BlockType::Grass;
 //
-	blocks->e[CHUNK_X - 7][CHUNK_Y - 6][CHUNK_Z - 2] = BlockType::Grass;
-	blocks->e[CHUNK_X - 6][CHUNK_Y - 7][CHUNK_Z - 2] = BlockType::Grass;
-	blocks->e[CHUNK_X - 6][CHUNK_Y - 6][CHUNK_Z - 1] = BlockType::Grass;
+    blocks->e[CHUNK_X - 7][CHUNK_Y - 6][CHUNK_Z - 2] = BlockType::Grass;
+    blocks->e[CHUNK_X - 6][CHUNK_Y - 7][CHUNK_Z - 2] = BlockType::Grass;
+    blocks->e[CHUNK_X - 6][CHUNK_Y - 6][CHUNK_Z - 1] = BlockType::Grass;
 //
-	blocks->e[CHUNK_X - 4][CHUNK_Y - 7][CHUNK_Z - 2] = BlockType::Grass;
-	blocks->e[CHUNK_X - 4][CHUNK_Y - 6][CHUNK_Z - 1] = BlockType::Grass;
-
-
-
-	//Layer 3
-	blocks->e[CHUNK_X - 1][CHUNK_Y - 4][CHUNK_Z - 2] = BlockType::Grass;
-	blocks->e[CHUNK_X - 2][CHUNK_Y - 4][CHUNK_Z - 1] = BlockType::Grass;
-//
-	blocks->e[CHUNK_X - 1][CHUNK_Y - 4][CHUNK_Z - 4] = BlockType::Grass;
-//
-	blocks->e[CHUNK_X - 1][CHUNK_Y - 4][CHUNK_Z - 6] = BlockType::Grass;
-	blocks->e[CHUNK_X - 2][CHUNK_Y - 4][CHUNK_Z - 7] = BlockType::Grass;
-//
-	blocks->e[CHUNK_X - 4][CHUNK_Y - 4][CHUNK_Z - 7] = BlockType::Grass;
-//
-	blocks->e[CHUNK_X - 6][CHUNK_Y - 4][CHUNK_Z - 7] = BlockType::Grass;
-	blocks->e[CHUNK_X - 7][CHUNK_Y - 4][CHUNK_Z - 6] = BlockType::Grass;
-//
-	blocks->e[CHUNK_X - 7][CHUNK_Y - 4][CHUNK_Z - 4] = BlockType::Grass;
-//
-	blocks->e[CHUNK_X - 7][CHUNK_Y - 4][CHUNK_Z - 2] = BlockType::Grass;
-	blocks->e[CHUNK_X - 6][CHUNK_Y - 4][CHUNK_Z - 1] = BlockType::Grass;
-//
-	blocks->e[CHUNK_X - 4][CHUNK_Y - 4][CHUNK_Z - 1] = BlockType::Grass;
+    blocks->e[CHUNK_X - 4][CHUNK_Y - 7][CHUNK_Z - 2] = BlockType::Grass;
+    blocks->e[CHUNK_X - 4][CHUNK_Y - 6][CHUNK_Z - 1] = BlockType::Grass;
 
 
 
-	//Layer 4 + 5
-	blocks->e[CHUNK_X - 1][CHUNK_Y - 2][CHUNK_Z - 2] = BlockType::Grass;
-	blocks->e[CHUNK_X - 2][CHUNK_Y - 1][CHUNK_Z - 2] = BlockType::Grass;
-	blocks->e[CHUNK_X - 2][CHUNK_Y - 2][CHUNK_Z - 1] = BlockType::Grass;
+    //Layer 3
+    blocks->e[CHUNK_X - 1][CHUNK_Y - 4][CHUNK_Z - 2] = BlockType::Grass;
+    blocks->e[CHUNK_X - 2][CHUNK_Y - 4][CHUNK_Z - 1] = BlockType::Grass;
 //
-	blocks->e[CHUNK_X - 1][CHUNK_Y - 2][CHUNK_Z - 4] = BlockType::Grass;
-	blocks->e[CHUNK_X - 2][CHUNK_Y - 1][CHUNK_Z - 4] = BlockType::Grass;
+    blocks->e[CHUNK_X - 1][CHUNK_Y - 4][CHUNK_Z - 4] = BlockType::Grass;
 //
-	blocks->e[CHUNK_X - 1][CHUNK_Y - 2][CHUNK_Z - 6] = BlockType::Grass;
-	blocks->e[CHUNK_X - 2][CHUNK_Y - 1][CHUNK_Z - 6] = BlockType::Grass;
-	blocks->e[CHUNK_X - 2][CHUNK_Y - 2][CHUNK_Z - 7] = BlockType::Grass;
+    blocks->e[CHUNK_X - 1][CHUNK_Y - 4][CHUNK_Z - 6] = BlockType::Grass;
+    blocks->e[CHUNK_X - 2][CHUNK_Y - 4][CHUNK_Z - 7] = BlockType::Grass;
 //
-	blocks->e[CHUNK_X - 4][CHUNK_Y - 2][CHUNK_Z - 7] = BlockType::Grass;
-	blocks->e[CHUNK_X - 4][CHUNK_Y - 1][CHUNK_Z - 6] = BlockType::Grass;
+    blocks->e[CHUNK_X - 4][CHUNK_Y - 4][CHUNK_Z - 7] = BlockType::Grass;
 //
-	blocks->e[CHUNK_X - 6][CHUNK_Y - 1][CHUNK_Z - 6] = BlockType::Grass;
-	blocks->e[CHUNK_X - 6][CHUNK_Y - 2][CHUNK_Z - 7] = BlockType::Grass;
-	blocks->e[CHUNK_X - 7][CHUNK_Y - 2][CHUNK_Z - 6] = BlockType::Grass;
+    blocks->e[CHUNK_X - 6][CHUNK_Y - 4][CHUNK_Z - 7] = BlockType::Grass;
+    blocks->e[CHUNK_X - 7][CHUNK_Y - 4][CHUNK_Z - 6] = BlockType::Grass;
 //
-	blocks->e[CHUNK_X - 7][CHUNK_Y - 2][CHUNK_Z - 4] = BlockType::Grass;
-	blocks->e[CHUNK_X - 6][CHUNK_Y - 1][CHUNK_Z - 4] = BlockType::Grass;
+    blocks->e[CHUNK_X - 7][CHUNK_Y - 4][CHUNK_Z - 4] = BlockType::Grass;
 //
-	blocks->e[CHUNK_X - 7][CHUNK_Y - 2][CHUNK_Z - 2] = BlockType::Grass;
-	blocks->e[CHUNK_X - 6][CHUNK_Y - 1][CHUNK_Z - 2] = BlockType::Grass;
-	blocks->e[CHUNK_X - 6][CHUNK_Y - 2][CHUNK_Z - 1] = BlockType::Grass;
+    blocks->e[CHUNK_X - 7][CHUNK_Y - 4][CHUNK_Z - 2] = BlockType::Grass;
+    blocks->e[CHUNK_X - 6][CHUNK_Y - 4][CHUNK_Z - 1] = BlockType::Grass;
 //
-	blocks->e[CHUNK_X - 4][CHUNK_Y - 1][CHUNK_Z - 2] = BlockType::Grass;
-	blocks->e[CHUNK_X - 4][CHUNK_Y - 2][CHUNK_Z - 1] = BlockType::Grass;}
+    blocks->e[CHUNK_X - 4][CHUNK_Y - 4][CHUNK_Z - 1] = BlockType::Grass;
+
+
+
+    //Layer 4 + 5
+    blocks->e[CHUNK_X - 1][CHUNK_Y - 2][CHUNK_Z - 2] = BlockType::Grass;
+    blocks->e[CHUNK_X - 2][CHUNK_Y - 1][CHUNK_Z - 2] = BlockType::Grass;
+    blocks->e[CHUNK_X - 2][CHUNK_Y - 2][CHUNK_Z - 1] = BlockType::Grass;
+//
+    blocks->e[CHUNK_X - 1][CHUNK_Y - 2][CHUNK_Z - 4] = BlockType::Grass;
+    blocks->e[CHUNK_X - 2][CHUNK_Y - 1][CHUNK_Z - 4] = BlockType::Grass;
+//
+    blocks->e[CHUNK_X - 1][CHUNK_Y - 2][CHUNK_Z - 6] = BlockType::Grass;
+    blocks->e[CHUNK_X - 2][CHUNK_Y - 1][CHUNK_Z - 6] = BlockType::Grass;
+    blocks->e[CHUNK_X - 2][CHUNK_Y - 2][CHUNK_Z - 7] = BlockType::Grass;
+//
+    blocks->e[CHUNK_X - 4][CHUNK_Y - 2][CHUNK_Z - 7] = BlockType::Grass;
+    blocks->e[CHUNK_X - 4][CHUNK_Y - 1][CHUNK_Z - 6] = BlockType::Grass;
+//
+    blocks->e[CHUNK_X - 6][CHUNK_Y - 1][CHUNK_Z - 6] = BlockType::Grass;
+    blocks->e[CHUNK_X - 6][CHUNK_Y - 2][CHUNK_Z - 7] = BlockType::Grass;
+    blocks->e[CHUNK_X - 7][CHUNK_Y - 2][CHUNK_Z - 6] = BlockType::Grass;
+//
+    blocks->e[CHUNK_X - 7][CHUNK_Y - 2][CHUNK_Z - 4] = BlockType::Grass;
+    blocks->e[CHUNK_X - 6][CHUNK_Y - 1][CHUNK_Z - 4] = BlockType::Grass;
+//
+    blocks->e[CHUNK_X - 7][CHUNK_Y - 2][CHUNK_Z - 2] = BlockType::Grass;
+    blocks->e[CHUNK_X - 6][CHUNK_Y - 1][CHUNK_Z - 2] = BlockType::Grass;
+    blocks->e[CHUNK_X - 6][CHUNK_Y - 2][CHUNK_Z - 1] = BlockType::Grass;
+//
+    blocks->e[CHUNK_X - 4][CHUNK_Y - 1][CHUNK_Z - 2] = BlockType::Grass;
+    blocks->e[CHUNK_X - 4][CHUNK_Y - 2][CHUNK_Z - 1] = BlockType::Grass;}
 #endif
 
 Vec3Int GetBlockPosFromIndex(uint16 index)

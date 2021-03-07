@@ -366,7 +366,7 @@ template <typename T>
 {
     Vec3 result;
     gb_vec3_cross(&result, a, b);
-	return result;
+    return result;
 }
 
 //inline float Vec2Distance(Vec2 A, Vec2 B)
@@ -453,7 +453,7 @@ Atan2f return value:
     result ^= result << 13;
     result ^= result >> 17;
     result ^= result << 5;
-	return (result % (max - min)) + min;
+    return (result % (max - min)) + min;
 }
 
 [[nodiscard]] inline float RandomFloat(const float min, const float max)
@@ -464,12 +464,12 @@ Atan2f return value:
 
 [[nodiscard]] inline Vec3Int Vec3ToVec3Int(Vec3 a)
 {
-	return { static_cast<int32>(a.x), static_cast<int32>(a.y), static_cast<int32>(a.z) };
+    return { static_cast<int32>(a.x), static_cast<int32>(a.y), static_cast<int32>(a.z) };
 }
 
 [[nodiscard]] inline Vec3 Vec3IntToVec3(Vec3Int a)
 {
-	return { static_cast<float>(a.x), static_cast<float>(a.y), static_cast<float>(a.z) };
+    return { static_cast<float>(a.x), static_cast<float>(a.y), static_cast<float>(a.z) };
 }
 //Multiplication of two vectors without adding each dimension to get the dot product
 [[nodiscard]] inline Vec3Int HadamardProduct(Vec3Int a, Vec3Int b)

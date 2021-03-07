@@ -53,16 +53,16 @@ struct ExitScopeHelp
 float GetTimer();
 struct ScopeTimer
 {
-	const char* name;
-	float start;
+    const char* name;
+    float start;
 
-	ScopeTimer(const char* name_)
-		: name(name_)
-	{
-		start = GetTimer();
-	}
+    ScopeTimer(const char* name_)
+        : name(name_)
+    {
+        start = GetTimer();
+    }
 
-	~ScopeTimer();
+    ~ScopeTimer();
 };
 
 #define PROFILE_FUNCTION() ScopeTimer TS_CONCAT(__timer_, __COUNTER__)(__FUNCTION__)

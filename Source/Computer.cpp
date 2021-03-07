@@ -4,7 +4,7 @@
 
 uint32 ComputerSpecs::UsableCores()
 {
-	return Max<uint32>(1, coreCount - 1);
+    return Max<uint32>(1, coreCount - 1);
 }
 
 [[nodiscard]] Job* MultiThreading::AcquireJob()
@@ -23,34 +23,34 @@ uint32 ComputerSpecs::UsableCores()
 #if SOFA == 1
 void SetBlocks::DoThing()
 {
-	//PROFILE_SCOPE("THREAD: SetBlocks()");
+    //PROFILE_SCOPE("THREAD: SetBlocks()");
     g_chunks->SetBlocks(chunk);
     g_chunks->flags[chunk] |= CHUNK_LOADED_BLOCKS;
-	g_chunks->flags[chunk] &= ~(CHUNK_LOADING_BLOCKS);
+    g_chunks->flags[chunk] &= ~(CHUNK_LOADING_BLOCKS);
 }
 
 void CreateVertices::DoThing()
 {
-	//PROFILE_SCOPE("THREAD: CreateVertices()");
-	g_chunks->BuildChunkVertices(chunk);
-	g_chunks->flags[chunk] |= CHUNK_LOADED_VERTEX;
-	g_chunks->flags[chunk] &= ~(CHUNK_LOADING_VERTEX);
+    //PROFILE_SCOPE("THREAD: CreateVertices()");
+    g_chunks->BuildChunkVertices(chunk);
+    g_chunks->flags[chunk] |= CHUNK_LOADED_VERTEX;
+    g_chunks->flags[chunk] &= ~(CHUNK_LOADING_VERTEX);
 }
 #else
 void SetBlocks::DoThing()
 {
-	PROFILE_SCOPE("THREAD: SetBlocks()");
-	chunk->SetBlocks();
-	chunk->flags |= CHUNK_BLOCKSSET;
+    PROFILE_SCOPE("THREAD: SetBlocks()");
+    chunk->SetBlocks();
+    chunk->flags |= CHUNK_BLOCKSSET;
 }
 
 void CreateVertices::DoThing()
 {
-	PROFILE_SCOPE("THREAD: CreateVertices()");
-	chunk->flags |= CHUNK_LOADING;
-	chunk->BuildChunkVertices();
-	chunk->flags &= ~(CHUNK_LOADING);
-	chunk->flags |= CHUNK_LOADED;
+    PROFILE_SCOPE("THREAD: CreateVertices()");
+    chunk->flags |= CHUNK_LOADING;
+    chunk->BuildChunkVertices();
+    chunk->flags &= ~(CHUNK_LOADING);
+    chunk->flags |= CHUNK_LOADED;
 }
 #endif
 
@@ -63,7 +63,7 @@ int32 ThreadFunction(void* data)
     {
         int32 sem_result = SDL_SemWait(g_jobHandler.semaphore);
         if (sem_result != 0 || SDL_AtomicGet(&passedData->running) == 0)
-			break;
+            break;
 
         Job* job = g_jobHandler.AcquireJob();
         assert(job);
@@ -72,7 +72,7 @@ int32 ThreadFunction(void* data)
 
         //Actual Job:
         {
-			//PROFILE_SCOPE("THREAD JOB: ");
+            //PROFILE_SCOPE("THREAD JOB: ");
             job->DoThing();
         }
 

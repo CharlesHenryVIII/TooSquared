@@ -7,7 +7,7 @@
 
 struct ComputerSpecs {
     uint32 coreCount = 0;
-	uint32 UsableCores();
+    uint32 UsableCores();
 };
 
 struct ThreadData {
@@ -19,33 +19,33 @@ struct ThreadData {
 struct Job
 {
     ChunkIndex chunk;
-	virtual void DoThing() = 0;
+    virtual void DoThing() = 0;
 };
 #else
 struct Job
 {
     Chunk* chunk;
-	virtual void DoThing() = 0;
+    virtual void DoThing() = 0;
 };
 #endif
 
 struct SetBlocks : public Job {
-	virtual void DoThing();
+    virtual void DoThing();
 };
 
 struct CreateVertices : public Job {
-	virtual void DoThing();
+    virtual void DoThing();
 };
 
 struct MultiThreading {
-	SDL_mutex* mutex = nullptr;
-	SDL_sem* semaphore = nullptr;
-	SDL_atomic_t jobs_in_flight = {};
-	SDL_sem* wait_semaphore = nullptr;
-	std::vector<Job*> jobs;
+    SDL_mutex* mutex = nullptr;
+    SDL_sem* semaphore = nullptr;
+    SDL_atomic_t jobs_in_flight = {};
+    SDL_sem* wait_semaphore = nullptr;
+    std::vector<Job*> jobs;
     std::vector<SDL_Thread*> threads;
 
-	Job* AcquireJob();
+    Job* AcquireJob();
 };
 
 int32 ThreadFunction(void* data);

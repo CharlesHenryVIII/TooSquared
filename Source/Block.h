@@ -36,12 +36,12 @@ ENUMOPS(BlockType);
 //Sappling,
 //Chest,
 
-#define CHUNK_LOADING_VERTEX		0x0001
+#define CHUNK_LOADING_VERTEX    0x0001
 #define CHUNK_LOADED_BLOCKS     0x0002
-#define CHUNK_LOADING_BLOCKS 0x0004
-#define CHUNK_LOADED_VERTEX        0x0008
-#define CHUNK_UPLOADED	    0x0010
-#define CHUNK_TODELETE	    0x0020
+#define CHUNK_LOADING_BLOCKS    0x0004
+#define CHUNK_LOADED_VERTEX     0x0008
+#define CHUNK_UPLOADED	        0x0010
+#define CHUNK_TODELETE	        0x0020
 
 constexpr uint32 CHUNK_X = 16;
 constexpr uint32 CHUNK_Y = 256;
@@ -56,15 +56,15 @@ struct ChunkData {
 struct Chunk {
     std::unique_ptr<ChunkData> blocks;
     Vec3Int p = {};
-	std::vector<Vertex_Chunk> faceVertices;
+    std::vector<Vertex_Chunk> faceVertices;
     VertexBuffer vertexBuffer;
     size_t uploadedIndexCount = 0;
     //TODO: Make flags an atomic and use SDL_ATOMIC_SET()!!!!!!!
     uint32 flags = 0;
 
     void SetBlocks();
-	void BuildChunkVertices();
-	void UploadChunk();
+    void BuildChunkVertices();
+    void UploadChunk();
     void RenderChunk();
     Vec3Int BlockPosition();
     BlockType GetBlock(Vec3Int a);
@@ -73,13 +73,13 @@ constexpr size_t sizeOfChunk = sizeof(Chunk);
 #endif
 
 enum class Face : uint8 {
-	Right,
-	Left,
-	Top,
-	Bot,
-	Back,
-	Front,
-	Count,
+    Right,
+    Left,
+    Top,
+    Bot,
+    Back,
+    Front,
+    Count,
 };
 ENUMOPS(Face);
 
@@ -178,7 +178,7 @@ struct ChunkArray
     ChunkIndex AddChunk();
     void SetBlocks(ChunkIndex i);
     void BuildChunkVertices(ChunkIndex i);
-	void UploadChunk(ChunkIndex i);
+    void UploadChunk(ChunkIndex i);
     void RenderChunk(ChunkIndex i);
     Vec3Int BlockPosition(ChunkIndex i);
     BlockType GetBlock(ChunkIndex i,  Vec3Int a);

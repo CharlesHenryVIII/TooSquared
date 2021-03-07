@@ -135,7 +135,7 @@ int32 Inc(int32 num)
 double Perlin(Vec3 a)
 {
 
-	//// If we have any repeat on, change the coordinates to their "local" repetitions
+    //// If we have any repeat on, change the coordinates to their "local" repetitions
     //if(repeat > 0) {
     //    x = x%repeat;
     //    y = y%repeat;
@@ -189,21 +189,21 @@ double Perlin(Vec3 a)
     double v = Fade(yf);
     double w = Fade(zf);
 
-	// The gradient function calculates the dot product between a pseudorandom
-	// gradient vector and the vector from the input coordinate to the 8
-	// surrounding points in its unit cube.
-	// This is all then lerped together as a sort of weighted average based on the faded (u,v,w)
-	// values we made earlier.
+    // The gradient function calculates the dot product between a pseudorandom
+    // gradient vector and the vector from the input coordinate to the 8
+    // surrounding points in its unit cube.
+    // This is all then lerped together as a sort of weighted average based on the faded (u,v,w)
+    // values we made earlier.
     double x1, x2, y1, y2;
 
 #if 0
 
-	x1 = Lerp(u,
-		Grad(a[0], xf, yf, zf),
-		Grad(a[4], xf - 1, yf, zf));
-	x2 = Lerp(u,
-		Grad(a[1], xf, yf - 1, zf),
-		Grad(a[5], xf - 1, yf - 1, zf));
+    x1 = Lerp(u,
+        Grad(a[0], xf, yf, zf),
+        Grad(a[4], xf - 1, yf, zf));
+    x2 = Lerp(u,
+        Grad(a[1], xf, yf - 1, zf),
+        Grad(a[5], xf - 1, yf - 1, zf));
     y1 = Lerp(v, x1, x2);
 
     x1 = Lerp(u,
@@ -215,12 +215,12 @@ double Perlin(Vec3 a)
     y2 = Lerp (v, x1, x2);
 
 #else
-	x1 = Lerp(u,
-		Grad(aaa, xf, yf, zf),
-		Grad(baa, xf - 1, yf, zf));
-	x2 = Lerp(u,
-		Grad(aba, xf, yf - 1, zf),
-		Grad(bba, xf - 1, yf - 1, zf));
+    x1 = Lerp(u,
+        Grad(aaa, xf, yf, zf),
+        Grad(baa, xf - 1, yf, zf));
+    x2 = Lerp(u,
+        Grad(aba, xf, yf - 1, zf),
+        Grad(bba, xf - 1, yf - 1, zf));
     y1 = Lerp(v, x1, x2);
 
     x1 = Lerp(u,
@@ -316,7 +316,7 @@ Vec4 Noise2(Vec2 x)
 
 float Terrain(Vec2 p)
 {
-	static const Mat2 m = { 0.8f, -0.6f, 0.6f, 0.8f };
+    static const Mat2 m = { 0.8f, -0.6f, 0.6f, 0.8f };
     float a = 0.0f;
     float b = 1.0f;
     Vec2  d = {};
@@ -347,7 +347,7 @@ float FBM(Vec2 x, float H)
     float G = exp2(-H);
     for(int32 i = 0; i < numOfOctaves; i++)
     {
-		t += a * Noise2(freq * x).x;
+        t += a * Noise2(freq * x).x;
         freq *= 2.0f;
         a *= G;
     }
@@ -398,20 +398,20 @@ float surflet( float x, float y, float grad_x, float grad_y )
 
 float PerlinNoise(Vec2 v)
 {
-	float result = 0.0f;
-	int32 cell_x = static_cast<int32>(floorf(v.x)); // provide surflet grids
-	int32 cell_y = static_cast<int32>(floorf(v.y)); // provide surflet grids
-	for (int32 grid_y = cell_y; grid_y <= cell_y + 1; ++grid_y)
-	{
-		for (int32 grid_x = cell_x; grid_x <= cell_x + 1; ++grid_x)
-		{
-			// random hash
-			int32 hash = perm[(perm[grid_x & mask] + grid_y) & mask];
-			// grads_x[hash], grads_y[hash] provide random vector
-			result += surflet(v.x - grid_x, v.y - grid_y, grads_x[hash & sizeof(grads_x)], grads_y[hash & sizeof(grads_x)]);
-		}
-	}
-	return result;
+    float result = 0.0f;
+    int32 cell_x = static_cast<int32>(floorf(v.x)); // provide surflet grids
+    int32 cell_y = static_cast<int32>(floorf(v.y)); // provide surflet grids
+    for (int32 grid_y = cell_y; grid_y <= cell_y + 1; ++grid_y)
+    {
+        for (int32 grid_x = cell_x; grid_x <= cell_x + 1; ++grid_x)
+        {
+            // random hash
+            int32 hash = perm[(perm[grid_x & mask] + grid_y) & mask];
+            // grads_x[hash], grads_y[hash] provide random vector
+            result += surflet(v.x - grid_x, v.y - grid_y, grads_x[hash & sizeof(grads_x)], grads_y[hash & sizeof(grads_x)]);
+        }
+    }
+    return result;
 }
 
 #endif
@@ -475,7 +475,7 @@ float Noise4(Vec2 v)
         }
     }
 
-	result = 0.5f * (result + 1.0f); // bias and scale to remap from (-1,1) to (0,1)
+    result = 0.5f * (result + 1.0f); // bias and scale to remap from (-1,1) to (0,1)
     return result;
 }
 #endif
@@ -483,7 +483,7 @@ float Noise4(Vec2 v)
 void NoiseInit()
 {
 #if NOISETYPE == 4
-	PerlinInit();
+    PerlinInit();
 #endif
 }
 
@@ -493,13 +493,13 @@ float Noise(Vec2 a, float H)
     return Perlin({a.x, a.y, 0});
 #elif NOISETYPE == 2
     //return Terrain(a);
-	return FBM(a, H);
+    return FBM(a, H);
 #elif NOISETYPE == 3
-	return PerlinNoise(Vec2 v);
+    return PerlinNoise(Vec2 v);
 #elif NOISETYPE == 4
     return Noise4(a);
 #else
-	static_assert(false, "No noise implimentation selected");
+    static_assert(false, "No noise implimentation selected");
 #endif
 
 }

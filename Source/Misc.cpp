@@ -18,6 +18,6 @@ uint64 ct = SDL_GetPerformanceCounter();
 
 float GetTimer()
 {
-	uint64 c = SDL_GetPerformanceCounter();
-	return float(((c - ct) * 1000) / (double)f);
+    uint64 c = SDL_GetPerformanceCounter();
+    return float(((c - ct) * 1000) / (double)f);
 }
