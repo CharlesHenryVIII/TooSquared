@@ -206,34 +206,47 @@ struct Rectangle_Int {
     type r = {a.x + b, a.y + b, a.z + b};\
     return r;\
 }
-D3PlusFloat(Vec3)
-
 #define D3MinusFloat(type) \
 [[nodiscard]] inline type operator-(type a, float b)\
 {\
     type r = {a.x - b, a.y - b, a.z - b};\
     return r;\
 }
-D3MinusFloat(Vec3)
-
 #define D3EQUAL(type) \
 [[nodiscard]] inline bool operator==(type a, type b)\
 {\
     return ((a.x == b.x) && (a.y == b.y) && (a.z == b.z));\
 }
+#define D3MinusD3(type) \
+[[nodiscard]] inline type operator-(type a, type b)\
+{\
+    type r = {a.x - b.x, a.y - b.y, a.z - b.z};\
+    return r;\
+}
+#define D3PlusD3(type) \
+[[nodiscard]] inline type operator+(type a, type b)\
+{\
+    type r = {a.x + b.x, a.y + b.y, a.z + b.z};\
+    return r;\
+}
+#define D3AddEqualD3(type)\
+ inline type &operator+=(type &a, type b)\
+{\
+    return (a = a + b);\
+}
+#define D3MinusEqualD3(type)\
+inline type &operator-=(type &a, type b)\
+{\
+    return (a = a - b);\
+}
+
+D3PlusFloat(Vec3)
+D3MinusFloat(Vec3)
 D3EQUAL(Vec3Int)
-
-[[nodiscard]] inline Vec3Int operator-(Vec3Int a, Vec3Int b)
-{
-    Vec3Int r = {a.x - b.x, a.y - b.y, a.z - b.z};
-    return r;
-}
-
-[[nodiscard]] inline Vec3Int operator+(Vec3Int a, Vec3Int b)
-{
-    Vec3Int r = {a.x + b.x, a.y + b.y, a.z + b.z};
-    return r;
-}
+D3PlusD3(Vec3Int)
+D3MinusD3(Vec3Int)
+D3AddEqualD3(Vec3Int)
+D3MinusEqualD3(Vec3Int)
 
 //[[nodiscard]] inline Vec3 operator+(Vec3 a, float b)
 //{
@@ -484,4 +497,77 @@ Atan2f return value:
 {
     return { a.x * b.x, a.y * b.y, a.z * b.z };
 }
+
+struct ChunkPos {
+    union {
+        struct { int32 x, y, z; };
+
+        Vec2Int xy;
+        int32 e[3];
+    };
+
+    //void ToChunkPos(ChunkIndex i)
+    //{
+    //    if (g_chunks->active[i])
+    //        return { g_chunks->p[i].x * static_cast<int32>(CHUNK_X), g_chunks->p[i].y * static_cast<int32>(CHUNK_Y), g_chunks->p[i].z * static_cast<int32>(CHUNK_Z) };
+    //    return {};
+    //}
+};
+
+struct GamePos {
+    union {
+        struct { int32 x, y, z; };
+
+        Vec2Int xy;
+        int32 e[3];
+    };
+};
+
+struct WorldPos {
+    union {
+        struct { float x, y, z; };
+
+        Vec2 xy;
+        float e[3];
+    };
+    WorldPos() = default;
+    WorldPos(Vec3 a)
+    {
+        x = a.x;
+        y = a.y;
+        z = a.z;
+    }
+    WorldPos(float a, float b, float c)
+    {
+        x = a;
+        y = b;
+        z = c;
+    }
+};
+
+[[nodiscard]] GamePos ToGame(ChunkPos a);
+[[nodiscard]] ChunkPos ToChunk(GamePos a);
+[[nodiscard]] WorldPos ToWorld(GamePos a);
+[[nodiscard]] GamePos ToGame(WorldPos a);
+[[nodiscard]] ChunkPos ToChunk(WorldPos a);
+
+D3EQUAL(ChunkPos)
+D3EQUAL(GamePos)
+D3EQUAL(WorldPos)
+
+D3PlusD3(ChunkPos)
+D3PlusD3(GamePos)
+D3PlusD3(WorldPos)
+
+D3MinusD3(ChunkPos)
+D3MinusD3(GamePos)
+D3MinusD3(WorldPos)
+
+D3AddEqualD3(ChunkPos)
+D3AddEqualD3(GamePos)
+D3AddEqualD3(WorldPos)
+
+D3MinusEqualD3(ChunkPos)
+D3MinusEqualD3(GamePos)
+D3MinusEqualD3(WorldPos)
 

@@ -3,10 +3,9 @@
 #include "Noise.h"
 #include "Computer.h"
 
-
 ChunkArray* g_chunks;
 
-int64 PositionHash(Vec3Int p)
+int64 PositionHash(ChunkPos p)
 {
     int64 result = {};
     result = static_cast<int64>(p.z) & 0x00000000FFFFFFFFLL;
@@ -14,7 +13,7 @@ int64 PositionHash(Vec3Int p)
     return result;
 }
 
-bool ChunkArray::GetChunkFromPosition(ChunkIndex& result, Vec3Int p)
+bool ChunkArray::GetChunkFromPosition(ChunkIndex& result, ChunkPos p)
 {
     //auto it = g_chunks->chunkPosTable.find(PositionHash(chunkP));
     //if (it != g_chunks->chunkPosTable.end())
@@ -71,7 +70,7 @@ void ChunkArray::ClearChunk(ChunkIndex index)
 
 }
 
-ChunkIndex ChunkArray::AddChunk(Vec3Int position)
+ChunkIndex ChunkArray::AddChunk(ChunkPos position)
 {
     assert(OnMainThread());
     for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
@@ -102,6 +101,7 @@ Vec3 faceNormals[] = {
 {  0.0f,  0.0f, -1.0f },
 };
 
+//TODO: Block Pos?
 union VertexBlockCheck {
     struct { Vec3Int e0, e1, e2, e3, e4, e5, e6, e7; };
 };
@@ -208,7 +208,8 @@ void SetBlockSprites()
     SetMultipleBlockSprites(BlockType::Dirt, 2);
 }
 
-Vec3Int Convert_ChunkIndexToGame(ChunkIndex i)
+//TODO: Move to ChunkPos
+GamePos Convert_ChunkIndexToGame(ChunkIndex i)
 {
     if (g_chunks->active[i])
         return { g_chunks->p[i].x * static_cast<int32>(CHUNK_X), g_chunks->p[i].y * static_cast<int32>(CHUNK_Y), g_chunks->p[i].z * static_cast<int32>(CHUNK_Z) };
@@ -238,10 +239,10 @@ void ChunkArray::SetBlocks(ChunkIndex i)
     {
         for (int32 z = 0; z < CHUNK_Z; z++)
         {
-            Vec2 blockP = { static_cast<float>(x), static_cast<float>(z) };
-            Vec3Int chunkBlockP = Convert_ChunkIndexToGame(i);
+            GamePos blockP = { x, 0, z };
+            GamePos chunkBlockP = Convert_ChunkIndexToGame(i);
 
-            Vec2 blockRatio = { chunkBlockP.x + blockP.x, chunkBlockP.z + blockP.y };
+            Vec2 blockRatio = { static_cast<float>(chunkBlockP.x + blockP.x), static_cast<float>(chunkBlockP.z + blockP.z) };
 
 #if NOISETYPE == 2
             //blockRatio /= 200;
@@ -388,45 +389,31 @@ Vec3Int GetBlockPosFromIndex(uint16 index)
 }
 
 //returns false on failure and true on success/found
-bool ChunkArray::GetChunk(ChunkIndex& result, Vec3Int blockP)
+bool ChunkArray::GetChunk(ChunkIndex& result, GamePos blockP)
 {
     assert(OnMainThread());
-    Vec3Int chunkP = { blockP.x / static_cast<int32>(CHUNK_X), blockP.y / static_cast<int32>(CHUNK_Y), blockP.z / static_cast<int32>(CHUNK_Z) };
-#if 0
-    for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
-    {
-        if ((!g_chunks->active[i]) || (g_chunks->flags[i] & CHUNK_LOADING_BLOCKS))
-            continue;
-        if (g_chunks->p[i] == ChunkP)
-        {
-            result = i;
-            return true;
-        }
-    }
-    return false;
-#else
     ChunkIndex index;
-    if (GetChunkFromPosition(index, chunkP))
+    if (GetChunkFromPosition(index, ToChunk(blockP)))
     {
         result = index;
         return true;
     }
     else
         return false;
-#endif
 }
 
-Vec3Int Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP)
+GamePos Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP)
 {
-    Vec3Int chunkLocation = Convert_ChunkIndexToGame(blockParentIndex);
-    return chunkLocation + blockP;
+    GamePos chunkLocation = Convert_ChunkIndexToGame(blockParentIndex);
+    return { chunkLocation.x + blockP.x, chunkLocation.y + blockP.y, chunkLocation.z + blockP.z };
 }
 
-bool Convert_GameToBlock(ChunkIndex& result, Vec3Int& outputP, Vec3Int inputP)
+bool Convert_GameToBlock(ChunkIndex& result, Vec3Int& outputP, GamePos inputP)
 {
     if (g_chunks->GetChunk(result, inputP))
     {
-        outputP = Abs(Convert_ChunkIndexToGame(result) - inputP);
+        GamePos p = Convert_ChunkIndexToGame(result);
+        outputP = Abs({ p.x - inputP.x, p.y - inputP.y, p.z - inputP.z });
         return true;
     }
     else
@@ -449,7 +436,7 @@ bool ChunkArray::GetBlock(BlockType& result, ChunkIndex blockParentIndex, Vec3In
         }
         else
         {
-            Vec3Int blockSpace_block = Convert_BlockToGame(blockParentIndex, blockRelP);
+            GamePos blockSpace_block = Convert_BlockToGame(blockParentIndex, blockRelP);
             ChunkIndex newChunkIndex = {};
             Vec3Int newRelBlockP = {};
             if (Convert_GameToBlock(newChunkIndex, newRelBlockP, blockSpace_block))
@@ -475,7 +462,7 @@ void ChunkArray::BuildChunkVertices(ChunkIndex i, ChunkIndex* neighbors)
     faceVertices[i].clear();
     faceVertices[i].reserve(10000);
     uploadedIndexCount[i] = 0;
-    Vec3Int realP = Convert_ChunkIndexToGame(i);
+    GamePos realP = Convert_ChunkIndexToGame(i);
     for (int32 x = 0; x < CHUNK_X; x++)
     {
         for (int32 y = 0; y < CHUNK_Y; y++)
@@ -632,7 +619,7 @@ void ChunkArray::RenderChunk(ChunkIndex i)
     glEnableVertexArrayAttrib(g_renderer.vao, 3);
 
     ShaderProgram* sp = g_renderer.programs[+Shader::Chunk];
-    sp->UpdateUniformVec3("u_chunkP",      1,  Vec3IntToVec3(Convert_ChunkIndexToGame(i)).e);
+    sp->UpdateUniformVec3("u_chunkP",      1,  ToWorld(Convert_ChunkIndexToGame(i)).e);
 
     glDrawElements(GL_TRIANGLES, (GLsizei)uploadedIndexCount[i], GL_UNSIGNED_INT, 0);
     g_renderer.numTrianglesDrawn += uploadedIndexCount[i] / 3;
@@ -652,12 +639,12 @@ void CreateVertices::DoThing()
     g_chunks->state[chunk] = ChunkArray::VertexLoaded;
 }
 
-void DrawBlock(Vec3 p, Color color, float scale)
+void DrawBlock(WorldPos p, Color color, float scale)
 {
     DrawBlock(p, color, { scale, scale, scale });
 }
 
-void DrawBlock(Vec3 p, Color color, Vec3 scale)
+void DrawBlock(WorldPos p, Color color, Vec3 scale)
 {
 
     if (g_renderer.cubeVertexBuffer == nullptr)
@@ -718,7 +705,7 @@ void DrawBlock(Vec3 p, Color color, Vec3 scale)
     Mat4 perspective;
     gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.65f, 1000.0f);
     Mat4 transform;
-    gb_mat4_translate(&transform, p);
+    gb_mat4_translate(&transform, { p.x, p.y, p.z });
     //gb_mat4_identity(&transform);
 
     ShaderProgram* sp = g_renderer.programs[+Shader::Cube];

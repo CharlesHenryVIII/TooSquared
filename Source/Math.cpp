@@ -1,5 +1,6 @@
 #include "Math.h"
 #include "Misc.h"
+#include "Block.h"
 
 [[nodiscard]] float Random(const float min, const float max)
 {
@@ -59,4 +60,29 @@
 }
 
 
+[[nodiscard]] GamePos ToGame(ChunkPos a)
+{
+    return { a.x * static_cast<int32>(CHUNK_X), a.y * static_cast<int32>(CHUNK_Y), a.z * static_cast<int32>(CHUNK_Z) };
+}
 
+[[nodiscard]] ChunkPos ToChunk(GamePos a)
+{
+    ChunkPos result = { static_cast<int32>(a.x) / static_cast<int32>(CHUNK_X),
+                        static_cast<int32>(a.y) / static_cast<int32>(CHUNK_Y),
+                        static_cast<int32>(a.z) / static_cast<int32>(CHUNK_Z) };
+    return result;
+}
+[[nodiscard]] WorldPos ToWorld(GamePos a)
+{
+    return { static_cast<float>(a.x), static_cast<float>(a.y), static_cast<float>(a.z) };
+}
+
+[[nodiscard]] GamePos ToGame(WorldPos a)
+{
+    GamePos result = { static_cast<int32>(a.x), static_cast<int32>(a.y), static_cast<int32>(a.z) };
+    return result;
+}
+[[nodiscard]] ChunkPos ToChunk(WorldPos a)
+{
+    return ToChunk(ToGame(a));
+}

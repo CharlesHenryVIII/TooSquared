@@ -12,6 +12,7 @@
  * Raycasts
  * Block wireframe on target
  * Block place and removal
+ * Operator overloads on WorldPos and ChunkPos
  
 
  Upload chunk position

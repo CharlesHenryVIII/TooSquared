@@ -57,8 +57,9 @@ int main(int argc, char* argv[])
     //}
 
     g_camera.view;
-    Vec3 cOffset = { 1.0f, 1.0f, 1.0f };
-    gb_mat4_look_at(&g_camera.view, g_camera.p + cOffset, g_camera.p, { 0,1,0 });
+    WorldPos cOffset = { 1.0f, 1.0f, 1.0f };
+    //Vec3 cameraPlusOffset = ;
+    gb_mat4_look_at(&g_camera.view, { g_camera.p.x + cOffset.x, g_camera.p.y + cOffset.y,g_camera.p.z + cOffset.z }, { g_camera.p.x, g_camera.p.y, g_camera.p.z }, { 0,1,0 });
 
     //TODO: Sort chunks based on distance?
     //TODO: Use Unordered_map?
@@ -228,13 +229,13 @@ int main(int argc, char* argv[])
         if (keyStates[SDLK_LSHIFT].down)
             cameraSpeed *= 20;
         if (keyStates[SDLK_w].down)
-            g_camera.p += cameraSpeed * g_camera.front;
+            g_camera.p += (cameraSpeed * g_camera.front);
         if (keyStates[SDLK_s].down)
-            g_camera.p -= cameraSpeed * g_camera.front;
+            g_camera.p -= (cameraSpeed * g_camera.front);
         if (keyStates[SDLK_a].down)
-            g_camera.p -= Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed;
+            g_camera.p -= (Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed);
         if (keyStates[SDLK_d].down)
-            g_camera.p += Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed;
+            g_camera.p += (Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed);
         if (keyStates[SDLK_LCTRL].down)
             g_camera.p.y -= cameraSpeed;
         if (keyStates[SDLK_SPACE].down)
@@ -263,11 +264,12 @@ int main(int argc, char* argv[])
         front.z = sin(DegToRad(g_camera.yaw)) * cos(DegToRad(g_camera.pitch));
         g_camera.front = Normalize(front);
 
-        gb_mat4_look_at(&g_camera.view, g_camera.p, g_camera.p + g_camera.front, g_camera.up);
-
+        gb_mat4_look_at(&g_camera.view, { g_camera.p.x, g_camera.p.y, g_camera.p.z }, 
+                       { g_camera.p.x + g_camera.front.x, g_camera.p.y + g_camera.front.y, g_camera.p.z + g_camera.front.z }, 
+                         g_camera.up);
 
         {
-            PROFILE_SCOPE("Camera Position Chunk Update");
+            //PROFILE_SCOPE("Camera Position Chunk Update");
 
 #ifdef _DEBUG
             const int32 drawDistance = 10;
@@ -276,37 +278,17 @@ int main(int argc, char* argv[])
 #endif
 
             g_camera.fogDistance = 40;
-            Vec3Int cam = Convert_GameToChunk(g_camera.p);
+            ChunkPos cam = ToChunk(g_camera.p);
             for (int32 z = -drawDistance; z <= drawDistance; z++)
             {
                 for (int32 x = -drawDistance; x <= drawDistance; x++)
                 {
-                    bool needCube = true;
-                    Vec3Int newBlockP = { cam.x + x, 0, cam.z + z };
-                    //for (bool active : g_chunks->active)
-#if 0
-                    for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
-                    {
-                        if (!g_chunks->active[i])
-                            continue;
-                        if (g_chunks->p[i].z == newBlockP.z && g_chunks->p[i].x == newBlockP.x)
-                        {
-                            needCube = false;
-                            break;
-                        }
-                    }
-#else
-                    auto it = g_chunks->chunkPosTable.find(PositionHash(newBlockP));
-                    //ChunkIndex funcResult;
-                    //if (g_chunks->GetChunkFromPosition(funcResult, newBlockP))
-                    if (it != g_chunks->chunkPosTable.end())
-                        needCube = false;
-#endif
-                    if (needCube)
+                    ChunkPos newBlockP = { cam.x + x, 0, cam.z + z };
+                    ChunkIndex funcResult;
+                    if (!g_chunks->GetChunkFromPosition(funcResult, newBlockP))
                     {
                         ChunkIndex chunki = g_chunks->AddChunk(newBlockP);
                     }
-
                 }
             }
 
@@ -322,7 +304,6 @@ int main(int argc, char* argv[])
                                 (g_chunks->p[i].x < cam.x - g_camera.fogDistance || g_chunks->p[i].z < cam.z - g_camera.fogDistance))
                             {
                                 g_chunks->flags[i] |= CHUNK_TODELETE;
-
                             }
                         }
                     }
@@ -364,7 +345,7 @@ int main(int argc, char* argv[])
 
                 if (g_chunks->state[i] == ChunkArray::BlocksLoaded)
                 {
-                    Vec3Int p = Convert_ChunkIndexToGame(i);
+                    GamePos p = Convert_ChunkIndexToGame(i);
                     ChunkIndex indices[8] = {};
 
                     uint32 numIndices = 0;
@@ -375,7 +356,7 @@ int main(int argc, char* argv[])
                             if (x == 0 && z == 0)
                                 continue;
                             ChunkIndex chunkIndex = 0;
-                            if (g_chunks->GetChunk(chunkIndex, p + Vec3Int({ int32(x * CHUNK_X), 0, int32(z * CHUNK_Z) })))
+                            if (g_chunks->GetChunk(chunkIndex, { p.x + x * int32(CHUNK_X), p.y, p.z + z * int32(CHUNK_Z) }))
                             {
                                 if (g_chunks->state[chunkIndex] >= ChunkArray::BlocksLoaded)
                                 {
@@ -445,7 +426,7 @@ int main(int argc, char* argv[])
                         { 1, 1, 1, 0.4f },//White  //Uploaded,
                     };
 
-                    Vec3 chunkP = Vec3IntToVec3(Convert_ChunkIndexToGame(i));
+                    WorldPos chunkP = ToWorld(Convert_ChunkIndexToGame(i));
                     chunkP.x += CHUNK_X / 2.0f;
                     //chunkP.y = CHUNK_Y;
                     chunkP.z += CHUNK_Z / 2.0f;

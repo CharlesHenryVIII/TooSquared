@@ -31,7 +31,7 @@ struct Window {
 };
 
 struct Camera {
-    Vec3 p      = { 0.0f, 260.0f, 0.0f };
+    WorldPos p  = { 0.0f, 260.0f, 0.0f };
     Vec3 front  = { 0.0f, 0.0f, -1.0f };
     Vec3 up     = { 0.0f, 1.0f, 0.0f };
     Mat4 view;

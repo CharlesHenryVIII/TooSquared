@@ -37,11 +37,6 @@ ENUMOPS(BlockType);
 //Sappling,
 //Chest,
 
-//#define CHUNK_LOADING_VERTEX    0x0001
-//#define CHUNK_LOADED_BLOCKS     0x0002
-//#define CHUNK_LOADING_BLOCKS    0x0004
-//#define CHUNK_LOADED_VERTEX     0x0008
-//#define CHUNK_UPLOADED          0x0010
 #define CHUNK_TODELETE          0x0020
 #define CHUNK_RESCAN_BLOCKS     0x0040
 #define CHUNK_RESCANING_BLOCKS  0x0080
@@ -64,6 +59,25 @@ enum class Face : uint8 {
     Count,
 };
 ENUMOPS(Face);
+
+//NOTE: Wrong do later if needed
+//struct BlockPos {
+//    union {
+//        struct { int32 x, y, z; };
+//
+//        Vec2Int xy;
+//        int32 e[3];
+//    };
+//    ChunkPos ToWorld()
+//    {
+//        ChunkPos result = { static_cast<int32>(x) / static_cast<int32>(CHUNK_X),
+//                              static_cast<int32>(y) / static_cast<int32>(CHUNK_Y),
+//                              static_cast<int32>(z) / static_cast<int32>(CHUNK_Z) };
+//        return result;
+//    }
+//
+//};
+
 
 const uint32 defaultSpriteLocation = 254;
 struct Block {
@@ -157,7 +171,7 @@ struct ChunkArray
 
     bool                                    active[MAX_CHUNKS];
     ChunkData                               blocks[MAX_CHUNKS];
-    Vec3Int                                 p[MAX_CHUNKS];
+    ChunkPos                                p[MAX_CHUNKS];
     std::vector<Vertex_Chunk>               faceVertices[MAX_CHUNKS];
     VertexBuffer                            vertexBuffer[MAX_CHUNKS] = {};
     uint32                                  uploadedIndexCount[MAX_CHUNKS];
@@ -166,15 +180,15 @@ struct ChunkArray
     std::atomic<State>                      state[MAX_CHUNKS];
     std::unordered_map<uint64, ChunkIndex>  chunkPosTable;
 
-    bool GetChunkFromPosition(ChunkIndex& result, Vec3Int p);
+    bool GetChunkFromPosition(ChunkIndex& result, ChunkPos p);
     void ClearChunk(ChunkIndex index);
-    ChunkIndex AddChunk(Vec3Int position);
+    ChunkIndex AddChunk(ChunkPos position);
     void SetBlocks(ChunkIndex i);
     void BuildChunkVertices(ChunkIndex i, ChunkIndex* neighbors);
     void UploadChunk(ChunkIndex i);
     void RenderChunk(ChunkIndex i);
     bool GetBlock(BlockType& result, ChunkIndex i, Vec3Int loc, bool crossChunkBoundary);
-    bool GetChunk(ChunkIndex& result, Vec3Int blockP);
+    bool GetChunk(ChunkIndex& result, GamePos blockP);
 
 };
 extern ChunkArray* g_chunks;
@@ -190,14 +204,14 @@ struct CreateVertices : public Job {
     void DoThing() override;
 };
 
-Vec3Int Convert_GameToChunk(Vec3 p);
-Vec3Int Convert_ChunkIndexToGame(ChunkIndex i);
-Vec3Int Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP);
+//Vec3Int Convert_GameToChunk(Vec3 p);
+GamePos Convert_ChunkIndexToGame(ChunkIndex i);
+GamePos Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP);
 bool Convert_GameToBlock(ChunkIndex& result, Vec3Int& outputP, Vec3Int inputP);
 
 void SetBlockSprites();
 void PreChunkRender();
-void DrawBlock(Vec3 p, Color color, Vec3 scale);
-void DrawBlock(Vec3 p, Color color, float scale);
+void DrawBlock(WorldPos p, Color color, Vec3 scale);
+void DrawBlock(WorldPos p, Color color, float scale);
 
-int64 PositionHash(Vec3Int p);
+int64 PositionHash(ChunkPos p);
