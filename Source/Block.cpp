@@ -4,7 +4,6 @@
 #include "Computer.h"
 
 
-#if SOFA == 1
 ChunkArray* g_chunks;
 
 int64 PositionHash(Vec3Int p)
@@ -68,7 +67,6 @@ ChunkIndex ChunkArray::AddChunk(Vec3Int position)
     }
     return uint32(-1);
 }
-#endif
 
 struct VertexFace {
     Vertex_Chunk a,b,c,d;
@@ -190,16 +188,15 @@ void SetBlockSprites()
     SetMultipleBlockSprites(BlockType::Dirt, 2);
 }
 
-Vec3Int ChunkArray::ChunkToBlockPosition(ChunkIndex i)
+Vec3Int Convert_ChunkIndexToGame(ChunkIndex i)
 {
     if (g_chunks->active[i])
         return { g_chunks->p[i].x * static_cast<int32>(CHUNK_X), g_chunks->p[i].y * static_cast<int32>(CHUNK_Y), g_chunks->p[i].z * static_cast<int32>(CHUNK_Z) };
     return {};
 }
 
-Vec3Int ToChunkPosition(Vec3 p)
+Vec3Int Convert_GameToChunk(Vec3 p)
 {
-
     Vec3Int result = { static_cast<int32>(p.x) / static_cast<int32>(CHUNK_X),
                        static_cast<int32>(p.y) / static_cast<int32>(CHUNK_Y),
                        static_cast<int32>(p.z) / static_cast<int32>(CHUNK_Z) };
@@ -222,7 +219,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
         for (int32 z = 0; z < CHUNK_Z; z++)
         {
             Vec2 blockP = { static_cast<float>(x), static_cast<float>(z) };
-            Vec3Int chunkBlockP = ChunkToBlockPosition(i);
+            Vec3Int chunkBlockP = Convert_ChunkIndexToGame(i);
 
             Vec2 blockRatio = { chunkBlockP.x + blockP.x, chunkBlockP.z + blockP.y };
 
@@ -399,17 +396,17 @@ bool ChunkArray::GetChunk(ChunkIndex& result, Vec3Int blockP)
 #endif
 }
 
-Vec3Int ChunkArray::BlockChunkRelToBlockSpace(ChunkIndex blockParentIndex, Vec3Int blockP)
+Vec3Int Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP)
 {
-    Vec3Int chunkLocation = g_chunks->ChunkToBlockPosition(blockParentIndex);
+    Vec3Int chunkLocation = Convert_ChunkIndexToGame(blockParentIndex);
     return chunkLocation + blockP;
 }
 
-bool ChunkArray::BlockSpaceRelToChunkSpace(ChunkIndex& result, Vec3Int& outputP, Vec3Int inputP)
+bool Convert_GameToBlock(ChunkIndex& result, Vec3Int& outputP, Vec3Int inputP)
 {
     if (g_chunks->GetChunk(result, inputP))
     {
-        outputP = Abs(g_chunks->ChunkToBlockPosition(result) - inputP);
+        outputP = Abs(Convert_ChunkIndexToGame(result) - inputP);
         return true;
     }
     else
@@ -432,10 +429,10 @@ bool ChunkArray::GetBlock(BlockType& result, ChunkIndex blockParentIndex, Vec3In
         }
         else
         {
-            Vec3Int blockSpace_block = g_chunks->BlockChunkRelToBlockSpace(blockParentIndex, blockRelP);
+            Vec3Int blockSpace_block = Convert_BlockToGame(blockParentIndex, blockRelP);
             ChunkIndex newChunkIndex = {};
             Vec3Int newRelBlockP = {};
-            if (g_chunks->BlockSpaceRelToChunkSpace(newChunkIndex, newRelBlockP, blockSpace_block))
+            if (Convert_GameToBlock(newChunkIndex, newRelBlockP, blockSpace_block))
             {
                 result = g_chunks->blocks[newChunkIndex].e[newRelBlockP.x][newRelBlockP.y][newRelBlockP.z];
                 return true;
@@ -458,7 +455,7 @@ void ChunkArray::BuildChunkVertices(ChunkIndex i, ChunkIndex* neighbors)
     faceVertices[i].clear();
     faceVertices[i].reserve(10000);
     uploadedIndexCount[i] = 0;
-    Vec3Int realP = ChunkToBlockPosition(i);
+    Vec3Int realP = Convert_ChunkIndexToGame(i);
     for (int32 x = 0; x < CHUNK_X; x++)
     {
         for (int32 y = 0; y < CHUNK_Y; y++)
@@ -615,7 +612,7 @@ void ChunkArray::RenderChunk(ChunkIndex i)
     glEnableVertexArrayAttrib(g_renderer.vao, 3);
 
     ShaderProgram* sp = g_renderer.programs[+Shader::Chunk];
-    sp->UpdateUniformVec3("u_chunkP",      1,  Vec3IntToVec3(ChunkToBlockPosition(i)).e);
+    sp->UpdateUniformVec3("u_chunkP",      1,  Vec3IntToVec3(Convert_ChunkIndexToGame(i)).e);
 
     glDrawElements(GL_TRIANGLES, (GLsizei)uploadedIndexCount[i], GL_UNSIGNED_INT, 0);
     g_renderer.numTrianglesDrawn += uploadedIndexCount[i] / 3;

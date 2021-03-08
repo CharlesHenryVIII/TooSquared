@@ -8,7 +8,6 @@
 #include <vector>
 #include <unordered_map>
 
-#define SOFA 1
 
 enum class BlockType : uint8 {
     Empty,
@@ -54,27 +53,6 @@ constexpr uint32 CHUNK_Z = 16;
 struct ChunkData {
     BlockType e[CHUNK_X][CHUNK_Y][CHUNK_Z] = {};
 };
-
-#if SOFA == 1
-#else
-struct Chunk {
-    std::unique_ptr<ChunkData> blocks;
-    Vec3Int p = {};
-    std::vector<Vertex_Chunk> faceVertices;
-    VertexBuffer vertexBuffer;
-    size_t uploadedIndexCount = 0;
-    //TODO: Make flags an atomic and use SDL_ATOMIC_SET()!!!!!!!
-    uint32 flags = 0;
-
-    void SetBlocks();
-    void BuildChunkVertices();
-    void UploadChunk();
-    void RenderChunk();
-    Vec3Int BlockPosition();
-    BlockType GetBlock(Vec3Int a);
-};
-constexpr size_t sizeOfChunk = sizeof(Chunk);
-#endif
 
 enum class Face : uint8 {
     Right,
@@ -164,7 +142,6 @@ struct FireBlock : public Block {
     }
 };
 
-#if SOFA == 1
 constexpr uint32 MAX_CHUNKS = 12000;
 typedef uint32 ChunkIndex;
 struct ChunkArray
@@ -195,15 +172,11 @@ struct ChunkArray
     void BuildChunkVertices(ChunkIndex i, ChunkIndex* neighbors);
     void UploadChunk(ChunkIndex i);
     void RenderChunk(ChunkIndex i);
-    Vec3Int ChunkToBlockPosition(ChunkIndex i);
     bool GetBlock(BlockType& result, ChunkIndex i, Vec3Int loc, bool crossChunkBoundary);
     bool GetChunk(ChunkIndex& result, Vec3Int blockP);
-    //void SetVertexAO(ChunkIndex i);
-    bool BlockSpaceRelToChunkSpace(ChunkIndex& result, Vec3Int& outputP, Vec3Int inputP);
-    Vec3Int BlockChunkRelToBlockSpace(ChunkIndex blockParentIndex, Vec3Int blockP);
+
 };
 extern ChunkArray* g_chunks;
-#endif
 
 struct SetBlocks : public Job {
     ChunkIndex chunk;
@@ -217,7 +190,12 @@ struct CreateVertices : public Job {
 };
 
 void SetBlockSprites();
-Vec3Int ToChunkPosition(Vec3 p);
+
+Vec3Int Convert_GameToChunk(Vec3 p);
+Vec3Int Convert_ChunkIndexToGame(ChunkIndex i);
+Vec3Int Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP);
+bool Convert_GameToBlock(ChunkIndex& result, Vec3Int& outputP, Vec3Int inputP);
+
 void PreChunkRender();
 void DrawBlock(Vec3 p, Color color, Vec3 scale);
 void DrawBlock(Vec3 p, Color color, float scale);

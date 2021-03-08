@@ -62,12 +62,7 @@ int main(int argc, char* argv[])
 
     //TODO: Sort chunks based on distance?
     //TODO: Use Unordered_map?
-#if SOFA == 1
     g_chunks = new ChunkArray();
-#else
-    std::vector<Chunk*> chunks;
-    std::vector<Chunk*> chunksToLoad;
-#endif
     std::vector<double> values;
     //values.reserve(size_t(2 * (2 / 0.01)));
     double testTimer = totalTime;
@@ -94,11 +89,7 @@ int main(int argc, char* argv[])
         if (multiThreading.GetJobsInFlight() > 0 || uploadedLastFrame)
             loadingTimer += deltaTime;
         uploadedLastFrame = false;
-#if SOFA == 1
         SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared Chunks: %u, Time: %0.2f, Triangles: %u", g_chunks->chunkCount, loadingTimer, g_renderer.numTrianglesDrawn).c_str());
-#else
-        SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared Chunks: %u, Time: %0.2f", (uint32)chunks.size(), loadingTimer).c_str());
-#endif
 
         SDL_Event SDLEvent;
         g_mouse.pDelta = {};
@@ -283,8 +274,8 @@ int main(int argc, char* argv[])
 #elif NDEBUG
             const int32 drawDistance = 40;
 #endif
-            g_camera.fogDistance = 50;
-            Vec3Int cam = ToChunkPosition(g_camera.p);
+            g_camera.fogDistance = 40;
+            Vec3Int cam = Convert_GameToChunk(g_camera.p);
             for (int32 z = -drawDistance; z <= drawDistance; z++)
             {
                 for (int32 x = -drawDistance; x <= drawDistance; x++)
@@ -362,15 +353,9 @@ int main(int argc, char* argv[])
                 if (!g_chunks->active[i])
                     continue;
 
-                //ChunkIndex debugIndex = {};
-                //if (g_chunks->GetChunk(debugIndex, Vec3ToVec3Int(g_camera.p)))
-                //{
-                //    int32 i = 0;
-                //}
-
                 if (g_chunks->state[i] == ChunkArray::BlocksLoaded)
                 {
-                    Vec3Int p = g_chunks->ChunkToBlockPosition(i);
+                    Vec3Int p = Convert_ChunkIndexToGame(i);
                     ChunkIndex indices[8] = {};
 
                     uint32 numIndices = 0;
@@ -446,7 +431,7 @@ int main(int argc, char* argv[])
                         { 1, 1, 1, 0.4f }, //Uploaded,
                     };
 
-                    Vec3 chunkP = Vec3IntToVec3(g_chunks->ChunkToBlockPosition(i));
+                    Vec3 chunkP = Vec3IntToVec3(Convert_ChunkIndexToGame(i));
                     chunkP.x += CHUNK_X / 2.0f;
                     //chunkP.y = CHUNK_Y;
                     chunkP.z += CHUNK_Z / 2.0f;
