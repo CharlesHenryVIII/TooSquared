@@ -277,6 +277,7 @@ int main(int argc, char* argv[])
             const int32 drawDistance = 40;
 #endif
 
+#if 0
             g_camera.fogDistance = 40;
             ChunkPos cam = ToChunk(g_camera.p);
             for (int32 z = -drawDistance; z <= drawDistance; z++)
@@ -291,6 +292,29 @@ int main(int argc, char* argv[])
                     }
                 }
             }
+#else
+            g_camera.fogDistance = 40;
+            ChunkPos cam = ToChunk(g_camera.p);
+            for (int32 _drawDistance = 0; _drawDistance < drawDistance; _drawDistance++)
+            {
+                for (int32 z = -_drawDistance; z <= _drawDistance; z++)
+                {
+                    for (int32 x = -_drawDistance; x <= _drawDistance; x++)
+                    {
+                        if (z == _drawDistance || x ==  _drawDistance ||
+                           z == -_drawDistance || x == -_drawDistance)
+                        {
+                            ChunkPos newBlockP = { cam.x + x, 0, cam.z + z };
+                            ChunkIndex funcResult;
+                            if (!g_chunks->GetChunkFromPosition(funcResult, newBlockP))
+                            {
+                                ChunkIndex chunki = g_chunks->AddChunk(newBlockP);
+                            }
+                        }
+                    }
+                }
+            }
+#endif
 
             {
                 //PROFILE_SCOPE("Chunk Delete Check");
@@ -338,6 +362,11 @@ int main(int argc, char* argv[])
 
         {
             //PROFILE_SCOPE("Chunk Loading Vertex Loop");
+
+            //TODO::Make this two for loops relative to draw distance
+            //and make it so it focuses on chunks closest to camera
+            //like we are doing on the block generation stage
+
             for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
             {
                 if (!g_chunks->active[i])
