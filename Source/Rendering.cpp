@@ -438,7 +438,7 @@ double s_incrimentalTime = 0;
 void RenderUpdate(float deltaTime)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
+    g_renderer.numTrianglesDrawn = 0;
     if (s_lastShaderUpdateTime + 0.1f <= s_incrimentalTime)
     {
         for (ShaderProgram* s : g_renderer.programs)
@@ -716,7 +716,8 @@ void InitializeVideo()
     g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png");
     g_renderer.spriteTextArray = new TextureArray("Assets/MinecraftSpriteSheet20120215.png");
 #endif
-    g_renderer.programs[+Shader::Simple3D] = new ShaderProgram("Source/Shaders/3D.vert", "Source/Shaders/3D.frag");
+    g_renderer.programs[+Shader::Chunk] = new ShaderProgram("Source/Shaders/Chunk.vert", "Source/Shaders/Chunk.frag");
+    g_renderer.programs[+Shader::Cube] = new ShaderProgram("Source/Shaders/Cube.vert", "Source/Shaders/Cube.frag");
     g_renderer.programs[+Shader::BufferCopy] = new ShaderProgram("Source/Shaders/BufferCopy.vert", "Source/Shaders/BufferCopy.frag");
 
 #if DIRECTIONALLIGHT == 1

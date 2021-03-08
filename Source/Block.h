@@ -2,9 +2,11 @@
 #include "Math.h"
 #include "Misc.h"
 #include "Rendering.h"
+#include "Computer.h"
 
 #include <memory>
 #include <vector>
+#include <unordered_map>
 
 #define SOFA 1
 
@@ -36,12 +38,14 @@ ENUMOPS(BlockType);
 //Sappling,
 //Chest,
 
-#define CHUNK_LOADING_VERTEX    0x0001
-#define CHUNK_LOADED_BLOCKS     0x0002
-#define CHUNK_LOADING_BLOCKS    0x0004
-#define CHUNK_LOADED_VERTEX     0x0008
-#define CHUNK_UPLOADED	        0x0010
-#define CHUNK_TODELETE	        0x0020
+//#define CHUNK_LOADING_VERTEX    0x0001
+//#define CHUNK_LOADED_BLOCKS     0x0002
+//#define CHUNK_LOADING_BLOCKS    0x0004
+//#define CHUNK_LOADED_VERTEX     0x0008
+//#define CHUNK_UPLOADED          0x0010
+#define CHUNK_TODELETE          0x0020
+#define CHUNK_RESCAN_BLOCKS     0x0040
+#define CHUNK_RESCANING_BLOCKS  0x0080
 
 constexpr uint32 CHUNK_X = 16;
 constexpr uint32 CHUNK_Y = 256;
@@ -165,27 +169,55 @@ constexpr uint32 MAX_CHUNKS = 12000;
 typedef uint32 ChunkIndex;
 struct ChunkArray
 {
-    bool                        active[MAX_CHUNKS];
-    ChunkData                   blocks[MAX_CHUNKS];
-    Vec3Int                     p[MAX_CHUNKS];
-    std::vector<Vertex_Chunk>   faceVertices[MAX_CHUNKS];
-    VertexBuffer                vertexBuffer[MAX_CHUNKS] = {};
-    uint32                      uploadedIndexCount[MAX_CHUNKS];
-    uint32                      flags[MAX_CHUNKS];
-    uint32                      chunkCount = 0;
+    enum State {
+        Unloaded,
+        BlocksLoading,
+        BlocksLoaded,
+        VertexLoading,
+        VertexLoaded,
+        Uploaded,
+    };
+
+    bool                                    active[MAX_CHUNKS];
+    ChunkData                               blocks[MAX_CHUNKS];
+    Vec3Int                                 p[MAX_CHUNKS];
+    std::vector<Vertex_Chunk>               faceVertices[MAX_CHUNKS];
+    VertexBuffer                            vertexBuffer[MAX_CHUNKS] = {};
+    uint32                                  uploadedIndexCount[MAX_CHUNKS];
+    uint16                                  flags[MAX_CHUNKS];
+    uint32                                  chunkCount = 0;
+    std::atomic<State>                      state[MAX_CHUNKS];
+    std::unordered_map<uint64, ChunkIndex>  chunkPosTable;
 
     void ClearChunk(ChunkIndex index);
-    ChunkIndex AddChunk();
+    ChunkIndex AddChunk(Vec3Int position);
     void SetBlocks(ChunkIndex i);
-    void BuildChunkVertices(ChunkIndex i);
+    void BuildChunkVertices(ChunkIndex i, ChunkIndex* neighbors);
     void UploadChunk(ChunkIndex i);
     void RenderChunk(ChunkIndex i);
-    Vec3Int BlockPosition(ChunkIndex i);
-    BlockType GetBlock(ChunkIndex i,  Vec3Int a);
+    Vec3Int ChunkToBlockPosition(ChunkIndex i);
+    bool GetBlock(BlockType& result, ChunkIndex i, Vec3Int loc, bool crossChunkBoundary);
+    bool GetChunk(ChunkIndex& result, Vec3Int blockP);
+    //void SetVertexAO(ChunkIndex i);
+    bool BlockSpaceRelToChunkSpace(ChunkIndex& result, Vec3Int& outputP, Vec3Int inputP);
+    Vec3Int BlockChunkRelToBlockSpace(ChunkIndex blockParentIndex, Vec3Int blockP);
 };
 extern ChunkArray* g_chunks;
 #endif
 
+struct SetBlocks : public Job {
+    ChunkIndex chunk;
+    void DoThing() override;
+};
+
+struct CreateVertices : public Job {
+    ChunkIndex chunk;
+    ChunkIndex neighbors[8];
+    void DoThing() override;
+};
+
 void SetBlockSprites();
 Vec3Int ToChunkPosition(Vec3 p);
 void PreChunkRender();
+void DrawBlock(Vec3 p, Color color, Vec3 scale);
+void DrawBlock(Vec3 p, Color color, float scale);

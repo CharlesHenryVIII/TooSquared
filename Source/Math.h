@@ -6,8 +6,6 @@
 #include <cmath>
 #include <cstdint>
 
-#define CHUNKMEM 0
-
 #define BIT(num) (1<<(num))
 
 using int8 = int8_t;
@@ -77,12 +75,15 @@ struct Vertex {
 };
 
 //Originally 32 Bytes
+//TODO: convert to 4 bytes by slaming connected vertices and n together
+#pragma pack(push, 1)
 struct Vertex_Chunk {
     uint16 blockIndex;
     uint8 spriteIndex;
     uint8 n;
     uint8 connectedVertices = 0;
 };
+#pragma pack(pop)
 
 
 union Vec2Int {
@@ -214,6 +215,13 @@ D3PlusFloat(Vec3)
     return r;\
 }
 D3MinusFloat(Vec3)
+
+#define D3EQUAL(type) \
+[[nodiscard]] inline bool operator==(type a, type b)\
+{\
+    return ((a.x == b.x) && (a.y == b.y) && (a.z == b.z));\
+}
+D3EQUAL(Vec3Int)
 
 [[nodiscard]] inline Vec3Int operator-(Vec3Int a, Vec3Int b)
 {

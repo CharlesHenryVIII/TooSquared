@@ -2,70 +2,60 @@
 #include "Math.h"
 #include "WinInterop.h"
 
-uint32 ComputerSpecs::UsableCores()
+#include <thread>
+
+uint32 UsableCores()
 {
-    return Max<uint32>(1, coreCount - 1);
+    return Max<uint32>(1, SDL_GetCPUCount() - 1);
+}
+
+MultiThreading::MultiThreading()
+{
+    m_semaphore = SDL_CreateSemaphore(0);
+    m_jobVectorMutex = SDL_CreateMutex();
+    m_wait_semaphore = SDL_CreateSemaphore(0);
+
+    SDL_AtomicSet(&running, 1);
+    uint32 usableCores = UsableCores();
+    for (uint32 i = 0; i < usableCores; ++i)
+    {
+        m_threads.push_back(SDL_CreateThread(ThreadFunction, ("Thread " + std::to_string(i)).c_str(), nullptr));
+        DebugPrint("Created New Thread: %i\n", i);
+    }
 }
 
 [[nodiscard]] Job* MultiThreading::AcquireJob()
 {
-    SDL_LockMutex(mutex);
-    if (jobs.empty())
+    SDL_LockMutex(m_jobVectorMutex);
+    if (m_jobs.empty())
         return nullptr;
-    SDL_AtomicAdd(&g_jobHandler.jobs_in_flight, 1);
+    SDL_AtomicAdd(&m_jobs_in_flight, 1);
 
-    Job* job = jobs[0];
-    jobs.erase(jobs.begin());
-    SDL_UnlockMutex(mutex);
+    Job* job = m_jobs[0];
+    m_jobs.erase(m_jobs.begin());
+    SDL_UnlockMutex(m_jobVectorMutex);
     return job;
 }
 
-#if SOFA == 1
-void SetBlocks::DoThing()
+void MultiThreading::SubmitJob(Job* job)
 {
-    //PROFILE_SCOPE("THREAD: SetBlocks()");
-    g_chunks->SetBlocks(chunk);
-    g_chunks->flags[chunk] |= CHUNK_LOADED_BLOCKS;
-    g_chunks->flags[chunk] &= ~(CHUNK_LOADING_BLOCKS);
+    SDL_LockMutex(m_jobVectorMutex);
+    m_jobs.push_back(job);
+    SDL_SemPost(m_semaphore);
+    SDL_UnlockMutex(m_jobVectorMutex);
 }
 
-void CreateVertices::DoThing()
+int32 MultiThreading::ThreadFunction(void* data)
 {
-    //PROFILE_SCOPE("THREAD: CreateVertices()");
-    g_chunks->BuildChunkVertices(chunk);
-    g_chunks->flags[chunk] |= CHUNK_LOADED_VERTEX;
-    g_chunks->flags[chunk] &= ~(CHUNK_LOADING_VERTEX);
-}
-#else
-void SetBlocks::DoThing()
-{
-    PROFILE_SCOPE("THREAD: SetBlocks()");
-    chunk->SetBlocks();
-    chunk->flags |= CHUNK_BLOCKSSET;
-}
-
-void CreateVertices::DoThing()
-{
-    PROFILE_SCOPE("THREAD: CreateVertices()");
-    chunk->flags |= CHUNK_LOADING;
-    chunk->BuildChunkVertices();
-    chunk->flags &= ~(CHUNK_LOADING);
-    chunk->flags |= CHUNK_LOADED;
-}
-#endif
-
-int32 ThreadFunction(void* data)
-{
-    ThreadData* passedData = (ThreadData*)data;
-    //const char* threadName = SDL_GetThreadName(this);
+    MultiThreading& MT = GetInstance();
 
     while (true)
     {
-        int32 sem_result = SDL_SemWait(g_jobHandler.semaphore);
-        if (sem_result != 0 || SDL_AtomicGet(&passedData->running) == 0)
+        int32 sem_result = SDL_SemWait(MT.m_semaphore);
+        if (sem_result != 0 || SDL_AtomicGet(&MT.running) == 0)
             break;
 
-        Job* job = g_jobHandler.AcquireJob();
+        Job* job = MT.AcquireJob();
         assert(job);
         if (job == nullptr)
             continue;
@@ -76,14 +66,19 @@ int32 ThreadFunction(void* data)
             job->DoThing();
         }
 
-        int32 atomic_result = SDL_AtomicAdd(&g_jobHandler.jobs_in_flight, -1);
+        int32 atomic_result = SDL_AtomicAdd(&MT.m_jobs_in_flight, -1);
         if (atomic_result == 1)
-            SDL_SemPost(g_jobHandler.wait_semaphore);
+            SDL_SemPost(MT.m_wait_semaphore);
         delete job;
     }
     return 0;
 }
 
+std::thread::id mainThreadID = std::this_thread::get_id();
 
-ComputerSpecs g_computerSpecs;
-MultiThreading g_jobHandler;
+bool OnMainThread()
+{
+    return mainThreadID == std::this_thread::get_id();
+}
+
+

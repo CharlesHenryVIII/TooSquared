@@ -67,7 +67,8 @@ enum class ts_MessageBox {
 
 enum class Shader : uint32 {
     Invalid,
-    Simple3D,
+    Chunk,
+    Cube,
     BufferCopy,
     Count,
 };
@@ -219,6 +220,8 @@ struct Renderer {
     IndexBuffer* chunkIB;
     TextureArray* spriteTextArray;
     FrameBuffer* backBuffer = nullptr;
+    VertexBuffer* cubeVertexBuffer;
+    uint32 numTrianglesDrawn = 0;
 };
 
 const uint32 pixelsPerBlock = 16;
