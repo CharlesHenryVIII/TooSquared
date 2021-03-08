@@ -267,13 +267,14 @@ int main(int argc, char* argv[])
 
 
         {
-            //PROFILE_SCOPE("Camera Position Chunk Update");
+            PROFILE_SCOPE("Camera Position Chunk Update");
 
 #ifdef _DEBUG
             const int32 drawDistance = 10;
 #elif NDEBUG
             const int32 drawDistance = 40;
 #endif
+
             g_camera.fogDistance = 40;
             Vec3Int cam = Convert_GameToChunk(g_camera.p);
             for (int32 z = -drawDistance; z <= drawDistance; z++)
@@ -283,6 +284,7 @@ int main(int argc, char* argv[])
                     bool needCube = true;
                     Vec3Int newBlockP = { cam.x + x, 0, cam.z + z };
                     //for (bool active : g_chunks->active)
+#if 0
                     for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
                     {
                         if (!g_chunks->active[i])
@@ -293,6 +295,13 @@ int main(int argc, char* argv[])
                             break;
                         }
                     }
+#else
+                    auto it = g_chunks->chunkPosTable.find(PositionHash(newBlockP));
+                    //ChunkIndex funcResult;
+                    //if (g_chunks->GetChunkFromPosition(funcResult, newBlockP))
+                    if (it != g_chunks->chunkPosTable.end())
+                        needCube = false;
+#endif
                     if (needCube)
                     {
                         ChunkIndex chunki = g_chunks->AddChunk(newBlockP);
@@ -392,6 +401,11 @@ int main(int argc, char* argv[])
         {
             //PROFILE_SCOPE("Chunk Upload and Render");
 
+#ifdef _DEBUG
+            const int32 uploadMax = 10;
+#elif NDEBUG
+            const int32 uploadMax = 20;
+#endif
             int32 uploadCount = 0;
             PreChunkRender();
             for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
@@ -401,7 +415,7 @@ int main(int argc, char* argv[])
 
                 if (g_chunks->state[i] == ChunkArray::VertexLoaded)
                 {
-                    if (uploadCount > 30)
+                    if (uploadCount > uploadMax)
                         continue;
                     g_chunks->UploadChunk(i);
                     uploadCount++;
@@ -423,12 +437,12 @@ int main(int argc, char* argv[])
                         continue;
 
                     Color colors[] = {
-                        { 1, 0, 0, 0.4f }, //Unloaded,
-                        { 0, 1, 0, 0.4f }, //BlocksLoading,
-                        { 0, 0, 1, 0.4f }, //BlocksLoaded,
-                        { 1, 1, 0, 0.4f }, //VertexLoading,
-                        { 1, 0, 1, 0.4f }, //VertexLoaded,
-                        { 1, 1, 1, 0.4f }, //Uploaded,
+                        { 1, 0, 0, 0.4f },//Red    //Unloaded,
+                        { 0, 1, 0, 0.4f },//Green  //BlocksLoading,
+                        { 0, 0, 1, 0.4f },//Blue   //BlocksLoaded,
+                        { 1, 1, 0, 0.4f },//Yellow //VertexLoading,
+                        { 1, 0, 1, 0.4f },//Purple //VertexLoaded,
+                        { 1, 1, 1, 0.4f },//White  //Uploaded,
                     };
 
                     Vec3 chunkP = Vec3IntToVec3(Convert_ChunkIndexToGame(i));

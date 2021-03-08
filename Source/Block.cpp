@@ -14,6 +14,26 @@ int64 PositionHash(Vec3Int p)
     return result;
 }
 
+bool ChunkArray::GetChunkFromPosition(ChunkIndex& result, Vec3Int p)
+{
+    //auto it = g_chunks->chunkPosTable.find(PositionHash(chunkP));
+    //if (it != g_chunks->chunkPosTable.end())
+    //{
+    //    //result = index;
+    //    result = it->second;
+    //    return true;
+    //}
+    //else
+    //    return false;
+
+    auto it = chunkPosTable.find(PositionHash(p));
+    if (it != chunkPosTable.end())
+    {
+        result = it->second;
+        return true;
+    }
+    return false;
+}
 
     //bool                                    active[MAX_CHUNKS];
     //ChunkData                               blocks[MAX_CHUNKS];
@@ -205,7 +225,7 @@ Vec3Int Convert_GameToChunk(Vec3 p)
 
 void ChunkArray::SetBlocks(ChunkIndex i)
 {
-    PROFILE_SCOPE("SetBlocks() ");
+    //PROFILE_SCOPE("SetBlocks() ");
     BlockType options[] = {
         BlockType::Empty,
         BlockType::Grass,
@@ -371,7 +391,7 @@ Vec3Int GetBlockPosFromIndex(uint16 index)
 bool ChunkArray::GetChunk(ChunkIndex& result, Vec3Int blockP)
 {
     assert(OnMainThread());
-    Vec3Int ChunkP = { blockP.x / static_cast<int32>(CHUNK_X), blockP.y / static_cast<int32>(CHUNK_Y), blockP.z / static_cast<int32>(CHUNK_Z) };
+    Vec3Int chunkP = { blockP.x / static_cast<int32>(CHUNK_X), blockP.y / static_cast<int32>(CHUNK_Y), blockP.z / static_cast<int32>(CHUNK_Z) };
 #if 0
     for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
     {
@@ -385,10 +405,10 @@ bool ChunkArray::GetChunk(ChunkIndex& result, Vec3Int blockP)
     }
     return false;
 #else
-    auto it = chunkPosTable.find(PositionHash(ChunkP));
-    if (it != chunkPosTable.end())
+    ChunkIndex index;
+    if (GetChunkFromPosition(index, chunkP))
     {
-        result = it->second;
+        result = index;
         return true;
     }
     else

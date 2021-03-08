@@ -166,6 +166,7 @@ struct ChunkArray
     std::atomic<State>                      state[MAX_CHUNKS];
     std::unordered_map<uint64, ChunkIndex>  chunkPosTable;
 
+    bool GetChunkFromPosition(ChunkIndex& result, Vec3Int p);
     void ClearChunk(ChunkIndex index);
     ChunkIndex AddChunk(Vec3Int position);
     void SetBlocks(ChunkIndex i);
@@ -189,13 +190,14 @@ struct CreateVertices : public Job {
     void DoThing() override;
 };
 
-void SetBlockSprites();
-
 Vec3Int Convert_GameToChunk(Vec3 p);
 Vec3Int Convert_ChunkIndexToGame(ChunkIndex i);
 Vec3Int Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP);
 bool Convert_GameToBlock(ChunkIndex& result, Vec3Int& outputP, Vec3Int inputP);
 
+void SetBlockSprites();
 void PreChunkRender();
 void DrawBlock(Vec3 p, Color color, Vec3 scale);
 void DrawBlock(Vec3 p, Color color, float scale);
+
+int64 PositionHash(Vec3Int p);
