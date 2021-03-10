@@ -15,16 +15,6 @@ int64 PositionHash(ChunkPos p)
 
 bool ChunkArray::GetChunkFromPosition(ChunkIndex& result, ChunkPos p)
 {
-    //auto it = g_chunks->chunkPosTable.find(PositionHash(chunkP));
-    //if (it != g_chunks->chunkPosTable.end())
-    //{
-    //    //result = index;
-    //    result = it->second;
-    //    return true;
-    //}
-    //else
-    //    return false;
-
     auto it = chunkPosTable.find(PositionHash(p));
     if (it != chunkPosTable.end())
     {

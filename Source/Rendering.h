@@ -38,6 +38,7 @@ struct Camera {
     float yaw   = -90.0f;
     float pitch = 0.0f;
     int32 fogDistance = 40;
+    int32 drawDistance = 10;
 };
 
 struct Light_Point {

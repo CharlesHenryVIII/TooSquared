@@ -264,23 +264,23 @@ int main(int argc, char* argv[])
         front.z = sin(DegToRad(g_camera.yaw)) * cos(DegToRad(g_camera.pitch));
         g_camera.front = Normalize(front);
 
-        gb_mat4_look_at(&g_camera.view, { g_camera.p.x, g_camera.p.y, g_camera.p.z }, 
-                       { g_camera.p.x + g_camera.front.x, g_camera.p.y + g_camera.front.y, g_camera.p.z + g_camera.front.z }, 
+        gb_mat4_look_at(&g_camera.view, { g_camera.p.x, g_camera.p.y, g_camera.p.z },
+                       { g_camera.p.x + g_camera.front.x, g_camera.p.y + g_camera.front.y, g_camera.p.z + g_camera.front.z },
                          g_camera.up);
 
         {
             //PROFILE_SCOPE("Camera Position Chunk Update");
 
 #ifdef _DEBUG
-            const int32 drawDistance = 10;
+            g_camera.drawDistance = 10;
 #elif NDEBUG
-            const int32 drawDistance = 40;
+            g_camera.drawDistance = 40;
 #endif
 
 #if 0
             g_camera.fogDistance = 40;
             ChunkPos cam = ToChunk(g_camera.p);
-            for (int32 z = -drawDistance; z <= drawDistance; z++)
+            for (int32 z = -drawDistance; z <= g_camera.drawDistance; z++)
             {
                 for (int32 x = -drawDistance; x <= drawDistance; x++)
                 {
@@ -295,7 +295,7 @@ int main(int argc, char* argv[])
 #else
             g_camera.fogDistance = 40;
             ChunkPos cam = ToChunk(g_camera.p);
-            for (int32 _drawDistance = 0; _drawDistance < drawDistance; _drawDistance++)
+            for (int32 _drawDistance = 0; _drawDistance < g_camera.drawDistance; _drawDistance++)
             {
                 for (int32 z = -_drawDistance; z <= _drawDistance; z++)
                 {
@@ -366,7 +366,60 @@ int main(int argc, char* argv[])
             //TODO::Make this two for loops relative to draw distance
             //and make it so it focuses on chunks closest to camera
             //like we are doing on the block generation stage
+#if 1
+            for (int32 _drawDistance = 0; _drawDistance < g_camera.drawDistance; _drawDistance++)
+            {
+                for (int32 drawZ = -_drawDistance; drawZ <= _drawDistance; drawZ++)
+                {
+                    for (int32 drawX = -_drawDistance; drawX <= _drawDistance; drawX++)
+                    {
+                        if ((drawX < _drawDistance && drawX > -_drawDistance) &&
+                            (drawZ < _drawDistance && drawZ > -_drawDistance))
+                            continue;
 
+                        ChunkPos cameraChunkP = ToChunk(g_camera.p);
+                        ChunkIndex originChunk = 0;
+                        ChunkPos drawDistanceChunk = { cameraChunkP.x + drawX, 0, cameraChunkP.z + drawZ };
+                        if (!g_chunks->GetChunkFromPosition(originChunk, drawDistanceChunk))
+                            continue;
+                        if (g_chunks->state[originChunk] != ChunkArray::BlocksLoaded)
+                            continue;
+
+                        ChunkIndex indices[8] = {};
+                        uint32 numIndices = 0;
+                        for (int32 z = -1; z <= 1; z++)
+                        {
+                            for (int32 x = -1; x <= 1; x++)
+                            {
+                                if (x == 0 && z == 0)
+                                    continue;
+                                ChunkIndex chunkIndex = 0;
+                                ChunkPos newBlockP = { cameraChunkP.x + drawX + x, 0, cameraChunkP.z + drawZ + z };
+                                if (g_chunks->GetChunkFromPosition(chunkIndex, newBlockP))
+                                {
+                                    if (g_chunks->state[chunkIndex] >= ChunkArray::BlocksLoaded)
+                                    {
+                                        indices[numIndices++] = chunkIndex;
+                                    }
+                                }
+                            }
+                        }
+
+                        if (numIndices == arrsize(indices))
+                        {
+                            CreateVertices* job = new CreateVertices();
+                            static_assert(sizeof(job->neighbors) == sizeof(indices));
+
+                            job->chunk = originChunk;
+                            memcpy(job->neighbors, indices, sizeof(indices));
+                            g_chunks->state[originChunk] = ChunkArray::VertexLoading;
+                            multiThreading.SubmitJob(job);
+                        }
+                    }
+                }
+            }
+
+#else
             for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
             {
                 if (!g_chunks->active[i])
@@ -406,6 +459,7 @@ int main(int argc, char* argv[])
                     }
                 }
             }
+#endif
         }
 
         {
@@ -416,6 +470,45 @@ int main(int argc, char* argv[])
 #elif NDEBUG
             const int32 uploadMax = 20;
 #endif
+#if 1
+            int32 uploadCount = 0;
+            PreChunkRender();
+            for (int32 _drawDistance = 0; _drawDistance < g_camera.drawDistance; _drawDistance++)
+            {
+                for (int32 drawZ = -_drawDistance; drawZ <= _drawDistance; drawZ++)
+                {
+                    for (int32 drawX = -_drawDistance; drawX <= _drawDistance; drawX++)
+                    {
+                        if ((drawX < _drawDistance && drawX > -_drawDistance) &&
+                            (drawZ < _drawDistance && drawZ > -_drawDistance))
+                            continue;
+
+                        ChunkPos cameraChunkP = ToChunk(g_camera.p);
+                        ChunkIndex chunkIndex = 0;
+                        ChunkPos drawDistanceChunk = { cameraChunkP.x + drawX, 0, cameraChunkP.z + drawZ };
+                        if (!g_chunks->GetChunkFromPosition(chunkIndex, drawDistanceChunk))
+                            continue;
+
+                        if (!g_chunks->active[chunkIndex])
+                            continue;
+
+                        if (g_chunks->state[chunkIndex] == ChunkArray::VertexLoaded)
+                        {
+                            if (uploadCount > uploadMax)
+                                continue;
+                            g_chunks->UploadChunk(chunkIndex);
+                            uploadCount++;
+                            uploadedLastFrame = true;
+                        }
+                        if (g_chunks->state[chunkIndex] == ChunkArray::Uploaded)
+                        {
+                            g_chunks->RenderChunk(chunkIndex);
+                        }
+                    }
+                }
+            }
+
+#else
             int32 uploadCount = 0;
             PreChunkRender();
             for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
@@ -436,6 +529,7 @@ int main(int argc, char* argv[])
                     g_chunks->RenderChunk(i);
                 }
             }
+#endif
         }
 
         {
