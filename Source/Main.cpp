@@ -47,26 +47,11 @@ int main(int argc, char* argv[])
     NoiseInit();
     SetBlockSprites();
 
-    //const float amount = 5.0f;
-    //for (float y = -amount; y < amount; y += 0.1f)
-    //{
-    //  for (float x = -amount; x < amount; x += 0.1f)
-    //  {
-    //    DebugPrint("%f\n", Noise({ x, y }));
-    //  }
-    //}
-
     g_camera.view;
     WorldPos cOffset = { 1.0f, 1.0f, 1.0f };
-    //Vec3 cameraPlusOffset = ;
     gb_mat4_look_at(&g_camera.view, { g_camera.p.x + cOffset.x, g_camera.p.y + cOffset.y,g_camera.p.z + cOffset.z }, { g_camera.p.x, g_camera.p.y, g_camera.p.z }, { 0,1,0 });
 
-    //TODO: Sort chunks based on distance?
-    //TODO: Use Unordered_map?
     g_chunks = new ChunkArray();
-    std::vector<double> values;
-    //values.reserve(size_t(2 * (2 / 0.01)));
-    double testTimer = totalTime;
     float loadingTimer = 0.0f;
     bool uploadedLastFrame = false;
     bool debugDraw = true;
@@ -269,7 +254,7 @@ int main(int argc, char* argv[])
                          g_camera.up);
 
         {
-            //PROFILE_SCOPE("Camera Position Chunk Update");
+            PROFILE_SCOPE("Camera Position Chunk Update");
 
 #ifdef _DEBUG
             g_camera.drawDistance = 10;
@@ -280,9 +265,9 @@ int main(int argc, char* argv[])
 #if 0
             g_camera.fogDistance = 40;
             ChunkPos cam = ToChunk(g_camera.p);
-            for (int32 z = -drawDistance; z <= g_camera.drawDistance; z++)
+            for (int32 z = -g_camera.drawDistance; z <= g_camera.drawDistance; z++)
             {
-                for (int32 x = -drawDistance; x <= drawDistance; x++)
+                for (int32 x = -g_camera.drawDistance; x <= g_camera.drawDistance; x++)
                 {
                     ChunkPos newBlockP = { cam.x + x, 0, cam.z + z };
                     ChunkIndex funcResult;
@@ -367,6 +352,7 @@ int main(int argc, char* argv[])
             //and make it so it focuses on chunks closest to camera
             //like we are doing on the block generation stage
 #if 1
+            //slower but starts from the center
             for (int32 _drawDistance = 0; _drawDistance < g_camera.drawDistance; _drawDistance++)
             {
                 for (int32 drawZ = -_drawDistance; drawZ <= _drawDistance; drawZ++)

@@ -67,9 +67,9 @@
 
 [[nodiscard]] ChunkPos ToChunk(GamePos a)
 {
-    ChunkPos result = { static_cast<int32>(a.x) / static_cast<int32>(CHUNK_X),
-                        static_cast<int32>(a.y) / static_cast<int32>(CHUNK_Y),
-                        static_cast<int32>(a.z) / static_cast<int32>(CHUNK_Z) };
+    ChunkPos result = { static_cast<int32>(floorf(static_cast<float>(a.x) / static_cast<float>(CHUNK_X))),
+                        static_cast<int32>(floorf(static_cast<float>(a.y) / static_cast<float>(CHUNK_Y))),
+                        static_cast<int32>(floorf(static_cast<float>(a.z) / static_cast<float>(CHUNK_Z))) };
     return result;
 }
 [[nodiscard]] WorldPos ToWorld(GamePos a)

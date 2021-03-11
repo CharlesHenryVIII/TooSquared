@@ -15,7 +15,8 @@ int64 PositionHash(ChunkPos p)
 
 bool ChunkArray::GetChunkFromPosition(ChunkIndex& result, ChunkPos p)
 {
-    auto it = chunkPosTable.find(PositionHash(p));
+    int64 hash = PositionHash(p);
+    auto it = chunkPosTable.find(hash);
     if (it != chunkPosTable.end())
     {
         result = it->second;
@@ -122,49 +123,49 @@ static const VertexBlockCheck vertexBlocksToCheck[+Face::Count] = {
                 {  0, -1,  0 },
     },
     {//Top +Y
-        Vec3Int({  0,  0,  1 }),//Vertex 0
-                {  1,  0,  0 },
+        Vec3Int({  1,  0,  0 }),//Vertex 0
+                {  0,  0,  1 },
 
                 {  1,  0,  0 }, //Vertex 1
                 {  0,  0, -1 },
-                {  0,  0,  1 }, //Vertex 2
-                { -1,  0,  0 },
+                { -1,  0,  0 }, //Vertex 2
+                {  0,  0,  1 },
 
                 { -1,  0,  0 }, //Vertex 3
                 {  0,  0, -1 },
     },
     {//Bot -Y
-        Vec3Int({  0,  0,  1 }),//Vertex 0
-                { -1,  0,  0 },
+        Vec3Int({ -1,  0,  0 }),//Vertex 0
+                {  0,  0,  1 },
 
                 { -1,  0,  0 }, //Vertex 1
                 {  0,  0, -1 },
-                {  0,  0,  1 }, //Vertex 2
-                {  1,  0,  0 },
+                {  1,  0,  0 }, //Vertex 2
+                {  0,  0,  1 },
 
                 {  1,  0,  0 }, //Vertex 3
                 {  0,  0, -1 },
     },
     {//Front +Z
-        Vec3Int({  0,  1,  0 }),//Vertex 0
-                { -1,  0,  0 },
+        Vec3Int({ -1,  0,  0 }),//Vertex 0
+                {  0,  1,  0 },
 
                 { -1,  0,  0 }, //Vertex 1
                 {  0, -1,  0 },
-                {  0,  1,  0 }, //Vertex 2
-                {  1,  0,  0 },
+                {  1,  0,  0 }, //Vertex 2
+                {  0,  1,  0 },
 
                 {  1,  0,  0 }, //Vertex 3
                 {  0, -1,  0 },
     },
     {//Front -Z
-        Vec3Int({  0,  1,  0 }),//Vertex 0
-                {  1,  0,  0 },
+        Vec3Int({  1,  0,  0 }),//Vertex 0
+                {  0,  1,  0 },
 
                 {  1,  0,  0 }, //Vertex 1
                 {  0, -1,  0 },
-                {  0,  1,  0 }, //Vertex 2
-                { -1,  0,  0 },
+                { -1,  0,  0 }, //Vertex 2
+                {  0,  1,  0 },
 
                 { -1,  0,  0 }, //Vertex 3
                 {  0, -1,  0 },
@@ -202,7 +203,7 @@ void SetBlockSprites()
 GamePos Convert_ChunkIndexToGame(ChunkIndex i)
 {
     if (g_chunks->active[i])
-        return { g_chunks->p[i].x * static_cast<int32>(CHUNK_X), g_chunks->p[i].y * static_cast<int32>(CHUNK_Y), g_chunks->p[i].z * static_cast<int32>(CHUNK_Z) };
+        return ToGame(g_chunks->p[i]);
     return {};
 }
 
@@ -394,23 +395,18 @@ bool ChunkArray::GetChunk(ChunkIndex& result, GamePos blockP)
 
 GamePos Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP)
 {
-    GamePos chunkLocation = Convert_ChunkIndexToGame(blockParentIndex);
+    GamePos chunkLocation = ToGame(g_chunks->p[blockParentIndex]);
     return { chunkLocation.x + blockP.x, chunkLocation.y + blockP.y, chunkLocation.z + blockP.z };
 }
 
-bool Convert_GameToBlock(ChunkIndex& result, Vec3Int& outputP, GamePos inputP)
+Vec3Int Convert_GameToBlock(ChunkPos& result, GamePos inputP)
 {
-    if (g_chunks->GetChunk(result, inputP))
-    {
-        GamePos p = Convert_ChunkIndexToGame(result);
-        outputP = Abs({ p.x - inputP.x, p.y - inputP.y, p.z - inputP.z });
-        return true;
-    }
-    else
-        return false;
+    result = ToChunk(inputP);
+    GamePos chunkP = ToGame(result);
+    return Abs({ inputP.x - chunkP.x, inputP.y - chunkP.y, inputP.z - chunkP.z });
 }
 
-bool ChunkArray::GetBlock(BlockType& result, ChunkIndex blockParentIndex, Vec3Int blockRelP, bool crossChunkBoundary)
+bool ChunkArray::GetBlock(BlockType& result, ChunkIndex blockParentIndex, Vec3Int blockRelP, ChunkIndex* neighbors)
 {
     if (blockRelP.y >= CHUNK_Y || blockRelP.y < 0)
     {
@@ -419,26 +415,43 @@ bool ChunkArray::GetBlock(BlockType& result, ChunkIndex blockParentIndex, Vec3In
     }
     else if ((blockRelP.x >= CHUNK_X || blockRelP.z >= CHUNK_Z) || (blockRelP.x < 0 ||  blockRelP.z < 0))
     {
-        if (!crossChunkBoundary)
+        if (!neighbors)
         {
             result = BlockType::Empty;
             return false;
         }
         else
         {
+#if 0
+            //crashes in debug but not release
             GamePos blockSpace_block = Convert_BlockToGame(blockParentIndex, blockRelP);
-            ChunkIndex newChunkIndex = {};
-            Vec3Int newRelBlockP = {};
-            if (Convert_GameToBlock(newChunkIndex, newRelBlockP, blockSpace_block))
+            ChunkPos newChunkPos = {};
+            Vec3Int newRelBlockP = Convert_GameToBlock(newChunkPos, blockSpace_block);
+            ChunkIndex chunkIndex;
+            if (g_chunks->GetChunkFromPosition(chunkIndex, newChunkPos))
             {
-                result = g_chunks->blocks[newChunkIndex].e[newRelBlockP.x][newRelBlockP.y][newRelBlockP.z];
+                result = g_chunks->blocks[chunkIndex].e[newRelBlockP.x][newRelBlockP.y][newRelBlockP.z];
                 return true;
             }
             else
-            {
-                result = BlockType::Empty;
                 return false;
+#else
+            const int32 neighborCount = 8;
+
+            GamePos blockSpace_block = Convert_BlockToGame(blockParentIndex, blockRelP);
+            ChunkPos newChunkPos = {};
+            Vec3Int newRelBlockP = Convert_GameToBlock(newChunkPos, blockSpace_block);
+            for (int32 i = 0; i < neighborCount; i++)
+            {
+
+                if (g_chunks->p[neighbors[i]] == newChunkPos)
+                {
+                    result = g_chunks->blocks[neighbors[i]].e[newRelBlockP.x][newRelBlockP.y][newRelBlockP.z];
+                    return true;
+                }
             }
+            return false;
+#endif
         }
     }
 
@@ -506,6 +519,7 @@ void ChunkArray::BuildChunkVertices(ChunkIndex i, ChunkIndex* neighbors)
     }
 
     uint32 vertIndex = 0;
+    //-X and -Z
     for (Vertex_Chunk& vert : faceVertices[i])
     {
         Vec3Int blockN = Vec3ToVec3Int(faceNormals[vert.n]);
@@ -520,21 +534,23 @@ void ChunkArray::BuildChunkVertices(ChunkIndex i, ChunkIndex* neighbors)
         BlockType bt = BlockType::Empty;
         BlockType ct = BlockType::Empty;
 
-        const bool checkAcrossChunkBoundary = false;
-        if (GetBlock(at, i, blockP + blockN + a, checkAcrossChunkBoundary) == false || GetBlock(bt, i, blockP + blockN + b, checkAcrossChunkBoundary) == false ||
-            GetBlock(ct, i, blockP + blockN + c, checkAcrossChunkBoundary) == false)
+
+        //ChunkIndex neighbors[8];  This is what neighbors is 
+        if (!GetBlock(at, i, blockP + blockN + a, neighbors) || !GetBlock(bt, i, blockP + blockN + b, neighbors) ||
+            !GetBlock(ct, i, blockP + blockN + c, neighbors))
         {
             //failed to get block needs to be redone;
             g_chunks->flags[i] |= CHUNK_RESCAN_BLOCKS;
+            assert(false);
         }
         else
             g_chunks->flags[i] &= ~(CHUNK_RESCAN_BLOCKS);
         if (at != BlockType::Empty)
-            vert.connectedVertices += 2;
+            vert.connectedVertices += 1;
         if (bt != BlockType::Empty)
-            vert.connectedVertices += 2;
+            vert.connectedVertices += 1;
         if (ct != BlockType::Empty)
-            vert.connectedVertices += 2;
+            vert.connectedVertices += 1;
 
         vertIndex += 2;
         vertIndex = vertIndex % 8;

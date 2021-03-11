@@ -34,15 +34,22 @@ void main()
 {
     vec4 pixel = texture2DArray(sampler, vec3(p_uv, p_depth));
 
-    //Ambient Lighting:
+
+    //
+    //AMBIENT Lighting:
+    //
     vec3 ambient = vec3(1.0) * material.ambient;
     //vec3 ambient = u_lightColor * material.ambient;
 
-    //Diffuse Lighting:
+
+    //
+    //DIFFUSE Lighting:
+    //
     vec3 norm = normalize(p_normal);
 #if DIRECTIONALLIGHT == 1
-    vec3 lightViewPosition = (p_view * vec4(-u_directionalLight_d, 0)).xyz;
-    //vec3 lightViewPosition = (p_view * vec4(-(vec3(1, -1, 0)), 0)).xyz;
+    vec3 constLightDir = vec3(0.2, -.9, 0.1);
+    //vec3 lightViewPosition = (p_view * vec4(-u_directionalLight_d, 0)).xyz;
+    vec3 lightViewPosition = (p_view * vec4(-constLightDir, 0)).xyz;
     vec3 lightDir = normalize(lightViewPosition);
 #else
     vec3 lightViewPosition = (p_view * vec4(u_lightP, 1)).xyz;
@@ -52,7 +59,10 @@ void main()
     //vec3 diffuse = u_lightColor * (diff * material.diffuse);
     vec3 diffuse = vec3(1.0) * (diff * material.diffuse);
     
-    //Specular Lighting:
+
+    //
+    //SPECULAR Lighting:
+    //
 #if DIRECTIONALLIGHT == 1
     vec3 specular = vec3(0);
 #else
@@ -63,24 +73,44 @@ void main()
     vec3 specular = vec3(1.0) * (spec * material.specular);
 #endif
     
-    float adjustedVertexCount = p_connectedVertices;//min(p_connectedVertices, 4);
-    float ambientOcclusion = adjustedVertexCount / 4.0;
+
+    //
+    //OCCLUSION:
+    //
+    //float adjustedVertexCount = p_connectedVertices;
+    float adjustedVertexCount = min(p_connectedVertices, 2);
+    float ambientOcclusion = adjustedVertexCount / 3.0;
+    //ambientOcclusion = ambientOcclusion * ambientOcclusion;
+
+
+    //
+    //RESULT:
+    //
     vec3 result = (max(ambient + diffuse + specular - ambientOcclusion, 0.25)) * pixel.xyz;
-    ambient = vec3(1);
-    result = (max(ambient - ambientOcclusion, 0)) * pixel.xyz;
-    #if 0
-    const float e0 = 3.99;
-    const float e1 = 2;
-    const float e2 = 1;
+    //ambient = vec3(1);
+    //result = (max(ambient - ambientOcclusion, 0)) * pixel.xyz;
+
+
+    //
+    //DEBUG:
+    //
+#if 0
+    if (ambientOcclusion > 0)
+    {
+        result = vec3(1) - vec3(ambientOcclusion, ambientOcclusion, ambientOcclusion);
+    }
+#endif
+#if 0
+    const float e0 = 2.99;
+    const float e1 = 1;
+    const float e2 = 0;
     if (p_connectedVertices > e0)
         result = vec3( adjustedVertexCount - e0, 0, 0 );
     else if (p_connectedVertices > e1)
         result = vec3( 0, adjustedVertexCount - e1, 0 );
     else if (p_connectedVertices > e2)
         result = vec3( 0, 0, adjustedVertexCount);
-    else
-        result = vec3( 0, 0, 0 );
-        #endif
+#endif
     //result = vec3(p_connectedVertices / 2);
     color = vec4(result, pixel.a);
     //color = pixel;

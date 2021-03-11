@@ -571,3 +571,7 @@ D3MinusEqualD3(ChunkPos)
 D3MinusEqualD3(GamePos)
 D3MinusEqualD3(WorldPos)
 
+[[nodiscard]] inline WorldPos Floor(WorldPos v)
+{
+    return { floorf(v.x), floorf(v.y), floorf(v.z) };
+}

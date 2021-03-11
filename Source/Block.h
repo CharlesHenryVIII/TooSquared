@@ -187,7 +187,7 @@ struct ChunkArray
     void BuildChunkVertices(ChunkIndex i, ChunkIndex* neighbors);
     void UploadChunk(ChunkIndex i);
     void RenderChunk(ChunkIndex i);
-    bool GetBlock(BlockType& result, ChunkIndex i, Vec3Int loc, bool crossChunkBoundary);
+    bool GetBlock(BlockType& result, ChunkIndex blockParentIndex, Vec3Int blockRelP, ChunkIndex* neighbors = nullptr);
     bool GetChunk(ChunkIndex& result, GamePos blockP);
 
 };
@@ -207,7 +207,7 @@ struct CreateVertices : public Job {
 //Vec3Int Convert_GameToChunk(Vec3 p);
 GamePos Convert_ChunkIndexToGame(ChunkIndex i);
 GamePos Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP);
-bool Convert_GameToBlock(ChunkIndex& result, Vec3Int& outputP, Vec3Int inputP);
+Vec3Int Convert_GameToBlock(ChunkPos& result, GamePos inputP);
 
 void SetBlockSprites();
 void PreChunkRender();
