@@ -252,7 +252,7 @@ float Hash(Vec2 p)  // replace this by something better
     return -1.0f + 2.0f * Fract(p2.x * p2.y * (p2.x + p2.y) );
 }
 
-Vec4 Noise2(Vec3 x)
+Vec4 _Noise(Vec3 x)
  {
     Vec3 p = Floor(x);
     Vec3 w = Fract(x);
@@ -288,7 +288,7 @@ Vec4 Noise2(Vec3 x)
                  2.0f * du.z * test.z };
 }
 
-Vec4 Noise2(Vec2 x)
+Vec4 _Noise(Vec2 x)
  {
     Vec2 p = Floor(x);
     Vec2 w = Fract(x);
@@ -301,17 +301,17 @@ Vec4 Noise2(Vec2 x)
     float c = Hash(p + Vec2({ 0, 1 }) );
     float d = Hash(p + Vec2({ 1, 1 }) );
 
-    float k0 =   a;
-    float k1 =   b - a;
-    float k2 =   c - a;
-    float k4 =   a - b - c + d;
+    float k0 = a;
+    float k1 = b - a;
+    float k2 = c - a;
+    float k4 = a - b - c + d;
 
     Vec2 test = { k1 + k4 * u.y,
                   k2 + k4 * u.x };
 
     return { -1.0f + 2.0f * (k0 + k1 * u.x + k2 * u.y + k4 * u.x * u.y),
-                 2.0f * du.x * test.x,
-                 2.0f * du.y * test.y };
+              2.0f * du.x * test.x,
+              2.0f * du.y * test.y };
 }
 
 float Terrain(Vec2 p)
@@ -323,7 +323,7 @@ float Terrain(Vec2 p)
     const int32 octaves = 16;
     for (int32 i = 0; i < octaves - 1; i++)
     {
-        Vec3 n = Noise2(Vec3({ p.x, p.y, 0.0f })).xyz;
+        Vec3 n = _Noise(Vec3({ p.x, p.y, 0.0f })).xyz;
         d += { n.y, n.z };
         a += b * n.x / (1.0f + DotProduct(d, d));
         b *= 0.5f;
@@ -337,25 +337,83 @@ float Terrain(Vec2 p)
     return ca;
 }
 
-float FBM(Vec2 x, float H)
+//struct NoiseData {
+//    int32 numOfOctaves = 8;
+//    float freq = 0.1f;
+//    float a = 1.0f;
+//    float t = 0;
+//    float gainFactor; //"H" 0.5 to 1.0 Generally 0.5
+//};
+
+float FBM(Vec2 x, NoiseParams params)
 {
+#if 0
     x = x;// / 10.0f;
     int32 numOfOctaves = 8;
-    float freq = 0.1f;
-    float a = 1.0f;
-    float t = 0;
+    float freq = 0.1f;   //originally f
+    float weight = 1.0f; //originally a
+    Vec3 noiseSum = {};  //originally t
     float G = exp2(-H);
     for(int32 i = 0; i < numOfOctaves; i++)
     {
-        t += a * Noise2(freq * x).x;
+        noiseSum += weight * _Noise(freq * x).xyz;
         freq *= 2.0f;
-        a *= G;
+        weight *= G;
     }
-    t = -t;
-    t /= 8;
-    return Clamp(t, 0.0f, 1.0f);
+    noiseSum = -noiseSum;
+    noiseSum /= 8;
+    return Clamp(noiseSum.x * (1 + noiseSum.y) * (1 + noiseSum.z), 0.0f, 1.0f);
+#else
+    x = x;// / 10.0f;
+    //int32 numOfOctaves = 8;
+    float freq = params.freq;//0.2f;   //originally f
+    float weight = params.weight; //1.0f; //originally a
+    float noiseSum = 0;  //originally t
+    float G = exp2(-params.gainFactor);
+    for(int32 i = 0; i < params.numOfOctaves; i++)
+    {
+        noiseSum += weight * _Noise(freq * x).x;
+        freq *= 2.0f;
+        weight *= G;
+    }
+    noiseSum = -noiseSum;
+    noiseSum /= 8;
+    return Clamp(noiseSum, 0.0f, 1.0f);
+#endif
 }
 
+float smoothstep(float edge0, float edge1, float x)
+{
+    x = Clamp<float>((x - edge0) / (edge1 - edge0), 0.0f, 1.0f);
+    return x * x * (3 - 2 * x);
+}
+
+float Voronoi(Vec2 x, float u = 1, float v = 0)
+{
+    //u = Grid Control
+    //v = Metric Controler
+    Vec2 p = { floorf(x.x), floorf(x.y) };
+    Vec2 f = Fract(x);
+
+    float k = 1.0f + 63.0f * powf(1.0f - v, 4.0f);
+    float va = 0.0f;
+    float wt = 0.0f;
+    for (int32 j = -2; j <= 2; j++)
+    {
+        for (int32 i = -2; i <= 2; i++)
+        {
+            Vec2  g = Vec2(float(i), float(j));
+            Vec3  o = Hash(p + g) * Vec3(u, u, 1.0f);
+            Vec2  r = g - f + o.xy;
+            float d = DotProduct(r, r);
+            float w = pow(1.0f - smoothstep(0.0f, 1.414f, sqrt(d)), k);
+            va += w * o.z;
+            wt += w;
+        }
+    }
+
+    return va/wt;
+}
 
 
 
@@ -416,92 +474,85 @@ float PerlinNoise(Vec2 v)
 
 #endif
 
-#if NOISETYPE == 4
-
-
-static int32 const size = 256;
-static int32 const mask = size - 1;
-int32 perm[ size ];
-float grads_x[ size ], grads_y[ size ];
-void PerlinInit()
-{
-    for ( int32 index = 0; index < size; ++index )
-    {
-        int32 other = rand() % ( index + 1 );
-        if ( index > other )
-            perm[ index ] = perm[ other ];
-        perm[ other ] = index;
-        grads_x[ index ] = cosf( 2.0f * pi * index / size );
-        grads_y[ index ] = sinf( 2.0f * pi * index / size );
-    }
-}
-
-#if 1
-float f( float t ) {
-    t = fabsf( t );
-    return t >= 1.0f ? 0.0f : 1.0f -
-        ( 3.0f - 2.0f * t ) * t * t;
-}
-#else
-
-float f( float t ) {
-    t = fabsf( t );
-    return t >= 1.0f ? 0.0f : 1 -
-        t * t * t * (t * (t * 6 - 15) + 10);
-    //return t * t * t * (t * (t * 6 - 15) + 10);         // 6t^5 - 15t^4 + 10t^3
-}
-
-
-
-
-#endif
-float surflet( float x, float y, float grad_x, float grad_y )
-{
-    return f( x ) * f( y ) * ( grad_x * x + grad_y * y );
-}
-float Noise4(Vec2 v)
-{
-    float result = 0.0f;
-    int32 cell_x = static_cast<int32>(floorf(v.x));
-    int32 cell_y = static_cast<int32>(floorf(v.y));
-
-    for (int32 grid_y = cell_y; grid_y <= cell_y + 1; ++grid_y)
-    {
-        for ( int32 grid_x = cell_x; grid_x <= cell_x + 1; ++grid_x ) 
-        {
-            int32 hash = perm[(perm[grid_x & mask] + grid_y) & mask];
-            result += surflet(v.x - grid_x, v.y - grid_y,
-                               grads_x[hash], grads_y[hash]);
-        }
-    }
-
-    result = 0.5f * (result + 1.0f); // bias and scale to remap from (-1,1) to (0,1)
-    return result;
-}
-#endif
 
 void NoiseInit()
 {
-#if NOISETYPE == 4
-    PerlinInit();
+
+}
+
+float VoronoiNoise(Vec2 x, float u, float v)
+{
+#if NOISETYPE == 2
+    return Voronoi(x, u, v);
+#else
+    static_assert(false, "No Voronoi implimentation selected");
 #endif
 }
 
-float Noise(Vec2 a, float H)
+float PerlinNoise(Vec2 a, NoiseParams np)
 {
 #if NOISETYPE == 1
     return Perlin({a.x, a.y, 0});
 #elif NOISETYPE == 2
     //return Terrain(a);
-    return FBM(a, H);
+    return FBM(a, np);
 #elif NOISETYPE == 3
     return PerlinNoise(Vec2 v);
-#elif NOISETYPE == 4
-    return Noise4(a);
 #else
     static_assert(false, "No noise implimentation selected");
 #endif
 
+}
+
+int32 GenerateTerrainHeight(int32 min, int32 max, Vec2 input)
+{
+#if 1
+    float vor = (VoronoiNoise(input, 1.0f, 0.5f) + 1.0f) / 2;
+    NoiseParams mountainParams = {
+        .numOfOctaves = 8,
+        .freq = 0.2f,
+        .weight = 1.0f,
+        .gainFactor = 1.0f,
+    };
+    NoiseParams plainParams = {
+        .numOfOctaves = 7,
+        .freq = 0.1f,
+        .weight = 1.0f,
+        .gainFactor = 0.5f,
+    };
+
+    NoiseParams noiseParams = {
+        .numOfOctaves   = static_cast<int32>(Lerp<float>(static_cast<float>(mountainParams.numOfOctaves),   
+                                                         static_cast<float>(plainParams.numOfOctaves),   vor)),
+        .freq           =         Lerp<float>(mountainParams.freq,           plainParams.freq,           vor),
+        .weight         =         Lerp<float>(mountainParams.weight,         plainParams.weight,         vor),
+        .gainFactor     =         Lerp<float>(mountainParams.gainFactor,     plainParams.gainFactor,     vor),
+    };
+
+    return Clamp<uint32>(static_cast<int32>(PerlinNoise(input, noiseParams) * max), min, max - 1);
+#else
+    float vor = VoronoiNoise(input, 1.0f, 0.5f);
+    NoiseParams noiseParams;
+    if (vor >= 0)
+    {//Mountains
+        noiseParams = {
+            .numOfOctaves = 16,
+            .freq = 0.2f,
+            .weight = 1.0f,
+            .gainFactor = 1.0f,
+        };
+    }
+    else// if (vor >= 0)
+    {//Plains
+        noiseParams = {
+            .numOfOctaves = 8,
+            .freq = 0.2f,
+            .weight = 1.0f,
+            .gainFactor = 0.5f,
+        };
+    }
+    return Clamp<uint32>(static_cast<int32>(PerlinNoise(input, noiseParams) * max), min, max - 1);
+#endif
 }
 
 //float Noise(Vec3 a) 

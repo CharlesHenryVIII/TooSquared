@@ -236,10 +236,9 @@ void ChunkArray::SetBlocks(ChunkIndex i)
             Vec2 blockRatio = { static_cast<float>(chunkBlockP.x + blockP.x), static_cast<float>(chunkBlockP.z + blockP.z) };
 
 #if NOISETYPE == 2
-            //blockRatio /= 200;
             //int32 yTotal = Max(static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 10);
             blockRatio /= 100;
-            int32 yTotal = Clamp<uint32>(static_cast<int32>(Noise(blockRatio, 1.0f) * CHUNK_Y), 10, CHUNK_Y - 1);
+            int32 yTotal = GenerateTerrainHeight(10, CHUNK_Y, blockRatio);
 #elif NOISETYPE == 4
             blockRatio /= 100;
             int32 yTotal = (static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 80);

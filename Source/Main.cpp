@@ -56,6 +56,16 @@ int main(int argc, char* argv[])
     bool uploadedLastFrame = false;
     bool debugDraw = true;
 
+
+    //const float testSize = 10.0f;
+    //for (float x = -testSize; x <= testSize; x += 0.1f)
+    //{
+    //    for (float y = -testSize; y <= testSize; y += 0.1f)
+    //    {
+    //        DebugPrint("VoronoiNoise at %+05.1f, %+05.1f: %+05.4f\n", x, y, VoronoiNoise({ x, y }, 1.0f, 0.0f));
+    //    }
+    //}
+
     while (g_running)
     {
         totalTime = SDL_GetPerformanceCounter() / freq;
