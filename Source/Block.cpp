@@ -215,6 +215,33 @@ Vec3Int Convert_GameToChunk(Vec3 p)
     return result;
 }
 
+
+enum class ChunkType : Uint32 {
+    None,
+    Plains,
+    Mountain,
+    Desert,
+    Count,
+};
+ENUMOPS(ChunkType);
+
+ChunkType RandomBiome(ChunkPos v)
+{
+    uint32 first = *(uint32*)(&v.x);
+    first ^= first << 13;
+    first ^= first >> 17;
+    first ^= first << 5;
+
+    uint32 second = *(uint32*)(&v.y);
+    second ^= second << 13;
+    second ^= second >> 17;
+    second ^= second << 5;
+    ChunkType result = static_cast<ChunkType>(((first ^ second) * (+ChunkType::Count - 1)) / UINT_MAX);
+    return static_cast<ChunkType>((+result) + 1);
+}
+
+uint32 chunkTypes[+ChunkType::Count] = {};
+
 void ChunkArray::SetBlocks(ChunkIndex i)
 {
     //PROFILE_SCOPE("SetBlocks() ");
@@ -236,12 +263,69 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
             Vec2 blockRatio = { static_cast<float>(chunkBlockP.x + blockP.x), static_cast<float>(chunkBlockP.z + blockP.z) };
 
-#define VORONOI 4
+#define VORONOI 5
             blockRatio /= 100;
             int32 yTotal = 0;
 
+#if VORONOI == 5
 
-#if VORONOI == 4
+            Vec2 blockPosScaled = blockRatio;
+            ChunkPos chunkP = ToChunk(chunkBlockP);
+
+            ChunkPos biomeIndices = chunkP / 10;
+            ChunkType chunkType = RandomBiome(biomeIndices);
+            chunkTypes[+chunkType]++;
+            NoiseParams noiseParams = {};
+            
+            switch (chunkType)
+            {
+            case ChunkType::Plains:
+			{
+				noiseParams = {
+					.numOfOctaves = 4,
+					.freq = 0.75f,
+					.weight = 1.0f,
+					.gainFactor = 1.0f,
+				};
+				topBlockType = BlockType::Grass;
+
+                break;
+            }
+            case ChunkType::Mountain:
+            {
+				noiseParams = {
+					.numOfOctaves = 8,
+					.freq = 0.4f,
+					.weight = 1.5f,
+					.gainFactor = 0.9f,
+				};
+				topBlockType = BlockType::Stone;
+
+                break;
+            }
+            case ChunkType::Desert:
+            {
+
+				noiseParams = {
+					.numOfOctaves = 1,
+					.freq = 1.0f,
+					.weight = 1.0f,
+					.gainFactor = 0.5f,
+				};
+				topBlockType = BlockType::Sand;
+
+                break;
+            }
+            default:
+            {
+                assert((+chunkType) > +ChunkType::None && (+chunkType) < +ChunkType::Count);
+                break;
+            }
+            }
+			yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, noiseParams) * CHUNK_Y), 10, CHUNK_Y - 1);
+
+
+#elif VORONOI == 4
 
             blockRatio /= 2;
 

@@ -239,6 +239,17 @@ inline type &operator-=(type &a, type b)\
 {\
     return (a = a - b);\
 }
+#define D3DivideD1(type1, type2) \
+[[nodiscard]] inline type1 operator/(type1 a, type2 b)\
+{\
+    type1 r = {a.x / b, a.y / b, a.z / b };\
+    return r;\
+}
+#define D3DivideEqualD1(type1, type2) \
+[[nodiscard]] inline type1 operator/=(type1& a, type2 b)\
+{\
+    a = {a.x / b, a.y / b, a.z / b };\
+}
 
 D3PlusFloat(Vec3)
 D3MinusFloat(Vec3)
@@ -247,6 +258,8 @@ D3PlusD3(Vec3Int)
 D3MinusD3(Vec3Int)
 D3AddEqualD3(Vec3Int)
 D3MinusEqualD3(Vec3Int)
+D3DivideD1(Vec3Int, int32)
+D3DivideEqualD1(Vec3Int, int32)
 
 #define D2EQUAL(type) \
 [[nodiscard]] inline bool operator==(type a, type b)\
@@ -616,6 +629,14 @@ D3AddEqualD3(WorldPos)
 D3MinusEqualD3(ChunkPos)
 D3MinusEqualD3(GamePos)
 D3MinusEqualD3(WorldPos)
+
+D3DivideD1(ChunkPos, int32)
+D3DivideD1(GamePos, int32)
+D3DivideD1(WorldPos, float)
+
+D3DivideEqualD1(ChunkPos, int32)
+D3DivideEqualD1(GamePos, int32)
+D3DivideEqualD1(WorldPos, float)
 
 [[nodiscard]] inline WorldPos Floor(WorldPos v)
 {

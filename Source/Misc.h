@@ -7,7 +7,7 @@
 
 #define ENUMOPS(T) \
 constexpr auto operator+(T a)\
-{                       \
+{\
     return static_cast<typename std::underlying_type<T>::type>(a);\
 }
 
