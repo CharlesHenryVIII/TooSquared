@@ -248,6 +248,40 @@ D3MinusD3(Vec3Int)
 D3AddEqualD3(Vec3Int)
 D3MinusEqualD3(Vec3Int)
 
+#define D2EQUAL(type) \
+[[nodiscard]] inline bool operator==(type a, type b)\
+{\
+    return ((a.x == b.x) && (a.y == b.y));\
+}
+#define D2MinusD3(type) \
+[[nodiscard]] inline type operator-(type a, type b)\
+{\
+    type r = {a.x - b.x, a.y - b.y };\
+    return r;\
+}
+#define D2PlusD3(type) \
+[[nodiscard]] inline type operator+(type a, type b)\
+{\
+    type r = {a.x + b.x, a.y + b.y };\
+    return r;\
+}
+#define D2AddEqualD3(type)\
+ inline type &operator+=(type &a, type b)\
+{\
+    return (a = a + b);\
+}
+#define D2MinusEqualD3(type)\
+inline type &operator-=(type &a, type b)\
+{\
+    return (a = a - b);\
+}
+
+D2EQUAL(Vec2Int);
+D2MinusD3(Vec2Int);
+D2PlusD3(Vec2Int);
+D2AddEqualD3(Vec2Int);
+D2MinusEqualD3(Vec2Int);
+
 //[[nodiscard]] inline Vec3 operator+(Vec3 a, float b)
 //{
 //    Vec3 r = {a.x + b, a.y + b, a.z + b};
@@ -354,6 +388,18 @@ template <typename T>
 [[nodiscard]] inline Vec3Int Abs(Vec3Int a)
 {
     return { abs(a.x), abs(a.y), abs(a.z) };
+}
+
+[[nodiscard]] inline Vec2 Sine(Vec2 v)
+{
+    Vec2 r = { sinf(v.x), sinf(v.y) };
+    return r;
+}
+
+[[nodiscard]] inline Vec3 Sine(Vec3 v)
+{
+    Vec3 r = { sinf(v.x), sinf(v.y), sinf(v.z) };
+    return r;
 }
 
 //MATH AND CONVERSIONS

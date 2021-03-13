@@ -1,5 +1,6 @@
 #include "Noise.h"
 #include "Math.h"
+#include "WinInterop.h"
 
 //____________________
 //
@@ -411,8 +412,56 @@ float Voronoi(Vec2 x, float u = 1, float v = 0)
             wt += w;
         }
     }
+    float result = va / wt;//-1 to 1
+    return (result + 1) / 2;
+}
 
-    return va/wt;
+Vec2 Random2F(Vec2 p) 
+{
+    Vec2 dotResult = { DotProduct(p,Vec2(127.1f, 311.7f)),DotProduct(p,Vec2(269.5f, 183.3f)) };
+    return Fract(Sine(dotResult) * 43758.5453f);
+}
+
+float voronoiDistance(Vec2 x )
+{
+    Vec2Int p = { static_cast<int32>(floorf(x.x)), static_cast<int32>(floorf(x.y)) };
+    Vec2  f = Fract( x );
+
+    Vec2Int mb;
+    Vec2 mr;
+
+    float res = 8.0;
+    for (int j = -1; j <= 1; j++)
+    {
+        for (int i = -1; i <= 1; i++)
+        {
+            Vec2Int b = Vec2Int(i, j);
+            Vec2  r = Vec2({ float(b.x), float(b.y) }) + Random2F(Vec2({ float(p.x + b.x), float(p.y + b.y) })) - f;
+            float d = DotProduct(r, r);
+
+            if (d < res)
+            {
+                res = d;
+                mr = r;
+                mb = b;
+            }
+        }
+    }
+
+    res = 8.0;
+    for (int j = -2; j <= 2; j++)
+    {
+        for (int i = -2; i <= 2; i++)
+        {
+            Vec2Int b = mb + Vec2Int({ i, j });
+            Vec2  r = Vec2({ float(b.x), float(b.y) }) + Random2F(Vec2({ float(p.x + b.x), float(p.y + b.y) })) - f;
+            float d = DotProduct(0.5 * (mr + r), Normalize(r - mr));
+
+            res = Min(res, d);
+        }
+    }
+
+    return res;
 }
 
 
@@ -483,7 +532,11 @@ void NoiseInit()
 float VoronoiNoise(Vec2 x, float u, float v)
 {
 #if NOISETYPE == 2
-    return Voronoi(x, u, v);
+    //x /= 10;
+    float result = Voronoi(x, u, v);//voronoiDistance(x);
+    //DebugPrint("voronoi val: %f0.5\n", result);
+    return result;
+    //return Voronoi(x, u, v);
 #else
     static_assert(false, "No Voronoi implimentation selected");
 #endif
@@ -504,30 +557,98 @@ float PerlinNoise(Vec2 a, NoiseParams np)
 
 }
 
+#define VORONOI 2
+
 int32 GenerateTerrainHeight(int32 min, int32 max, Vec2 input)
 {
-#if 1
-    float vor = (VoronoiNoise(input, 1.0f, 0.5f) + 1.0f) / 2;
+
+#if VORONOI == 2
+    float vor = (VoronoiNoise(input / 10, 1.0f, 0.0f) + 1.0f) / 2;
     NoiseParams mountainParams = {
         .numOfOctaves = 8,
-        .freq = 0.2f,
+        .freq = 0.4f,
         .weight = 1.0f,
         .gainFactor = 1.0f,
     };
     NoiseParams plainParams = {
-        .numOfOctaves = 7,
+        .numOfOctaves = 8,
         .freq = 0.1f,
         .weight = 1.0f,
         .gainFactor = 0.5f,
     };
+    NoiseParams noiseParams = {};
 
-    NoiseParams noiseParams = {
-        .numOfOctaves   = static_cast<int32>(Lerp<float>(static_cast<float>(mountainParams.numOfOctaves),   
-                                                         static_cast<float>(plainParams.numOfOctaves),   vor)),
-        .freq           =         Lerp<float>(mountainParams.freq,           plainParams.freq,           vor),
-        .weight         =         Lerp<float>(mountainParams.weight,         plainParams.weight,         vor),
-        .gainFactor     =         Lerp<float>(mountainParams.gainFactor,     plainParams.gainFactor,     vor),
+    float mountainSetpoint = 0.6f;
+    float plainsSetpoint = 0.4f;
+
+    if (vor > mountainSetpoint)
+    {
+        noiseParams = mountainParams;
+    }
+    else if (vor < plainsSetpoint)
+    {
+        noiseParams = plainParams;
+    }
+    else
+    {
+        //DebugPrint("B Vor: %f\n", vor);
+        vor = (vor - plainsSetpoint) / (mountainSetpoint - plainsSetpoint);
+        vor = 0.5f;
+        //DebugPrint("A Vor: %f\n", vor);//only getting 0.566 to 1.0
+        //noiseParams = {
+        //.numOfOctaves = static_cast<int32>(Lerp<float>(static_cast<float>(mountainParams.numOfOctaves),
+        //                                                 static_cast<float>(plainParams.numOfOctaves),   vor)),
+        //.freq = Lerp<float>(mountainParams.freq,           plainParams.freq,           vor),
+        //.weight = Lerp<float>(mountainParams.weight,         plainParams.weight,         vor),
+        //.gainFactor = Lerp<float>(mountainParams.gainFactor,     plainParams.gainFactor,     vor),
+        //};
+        uint32 mountainHeight = Clamp<uint32>(static_cast<int32>(PerlinNoise(input, mountainParams) * max), min, max - 1);
+        uint32 plainsHeight   = Clamp<uint32>(static_cast<int32>(PerlinNoise(input, plainParams)    * max), min, max - 1);
+        return static_cast<uint32>(Lerp<float>(static_cast<float>(plainsHeight), static_cast<float>(mountainHeight), vor));
+    }
+
+    return Clamp<uint32>(static_cast<int32>(PerlinNoise(input, noiseParams) * max), min, max - 1);
+
+#elif VORONOI == 1
+    float vor = (VoronoiNoise(input / 10, 1.0f, 0.0f) + 1.0f) / 2;
+    NoiseParams mountainParams = {
+        .numOfOctaves = 8,
+        .freq = 0.4f,
+        .weight = 1.0f,
+        .gainFactor = 1.0f,
     };
+    NoiseParams plainParams = {
+        .numOfOctaves = 8,
+        .freq = 0.1f,
+        .weight = 1.0f,
+        .gainFactor = 0.5f,
+    };
+    NoiseParams noiseParams = {};
+
+    float mountainSetpoint = 0.6f;
+    float plainsSetpoint = 0.4f;
+
+    if (vor > mountainSetpoint)
+    {
+        noiseParams = mountainParams;
+    }
+    else if (vor < plainsSetpoint)
+    {
+        noiseParams = plainParams;
+    }
+    else
+    {
+        //DebugPrint("B Vor: %f\n", vor);
+        vor = (vor - plainsSetpoint) / (mountainSetpoint - plainsSetpoint);
+        //DebugPrint("A Vor: %f\n", vor);//only getting 0.566 to 1.0
+        noiseParams = {
+        .numOfOctaves = static_cast<int32>(Lerp<float>(static_cast<float>(mountainParams.numOfOctaves),
+                                                         static_cast<float>(plainParams.numOfOctaves),   vor)),
+        .freq = Lerp<float>(mountainParams.freq,           plainParams.freq,           vor),
+        .weight = Lerp<float>(mountainParams.weight,         plainParams.weight,         vor),
+        .gainFactor = Lerp<float>(mountainParams.gainFactor,     plainParams.gainFactor,     vor),
+        };
+    }
 
     return Clamp<uint32>(static_cast<int32>(PerlinNoise(input, noiseParams) * max), min, max - 1);
 #else

@@ -220,9 +220,9 @@ int main(int argc, char* argv[])
         if (keyStates[SDLK_BACKQUOTE].downThisFrame)
             debugDraw = !debugDraw;
 
-        float cameraSpeed = 5.0f * deltaTime;
+        float cameraSpeed = 10.0f * deltaTime;
         if (keyStates[SDLK_LSHIFT].down)
-            cameraSpeed *= 20;
+            cameraSpeed *= 30;
         if (keyStates[SDLK_w].down)
             g_camera.p += (cameraSpeed * g_camera.front);
         if (keyStates[SDLK_s].down)
@@ -264,7 +264,7 @@ int main(int argc, char* argv[])
                          g_camera.up);
 
         {
-            PROFILE_SCOPE("Camera Position Chunk Update");
+            //PROFILE_SCOPE("Camera Position Chunk Update");
 
 #ifdef _DEBUG
             g_camera.drawDistance = 10;

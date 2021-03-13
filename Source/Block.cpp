@@ -225,6 +225,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
         BlockType::Stone,
         BlockType::IronBlock,
     };
+    BlockType topBlockType = BlockType::Empty;
 
     for (int32 x = 0; x < CHUNK_X; x++)
     {
@@ -235,16 +236,190 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
             Vec2 blockRatio = { static_cast<float>(chunkBlockP.x + blockP.x), static_cast<float>(chunkBlockP.z + blockP.z) };
 
-#if NOISETYPE == 2
-            //int32 yTotal = Max(static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 10);
+#define VORONOI 4
             blockRatio /= 100;
-            int32 yTotal = GenerateTerrainHeight(10, CHUNK_Y, blockRatio);
-#elif NOISETYPE == 4
-            blockRatio /= 100;
-            int32 yTotal = (static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 80);
+            int32 yTotal = 0;
+
+
+#if VORONOI == 4
+
+            blockRatio /= 2;
+
+            //float vor = (VoronoiNoise(blockRatio, 1.0f, 0.0f) + 1.0f) / 2;
+            float vor = VoronoiNoise(blockRatio / 4, 1.0f, 1.0f);
+            NoiseParams mountainParams = {
+                .numOfOctaves = 8,
+                .freq = 0.4f,
+                .weight = 1.5f,
+                .gainFactor = 0.9f,
+            };
+            NoiseParams plainParams = {
+                .numOfOctaves = 4,
+                .freq = 0.75f,
+                .weight = 1.0f,
+                .gainFactor = 1.0f,
+            };
+
+            float mountainSetpoint = 0.575f;
+            float plainsSetpoint = 0.475f;
+
+            if (vor > mountainSetpoint)
+            {
+                yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, mountainParams) * CHUNK_Y), 10, CHUNK_Y - 1);
+                topBlockType = BlockType::Stone;
+            }
+            else if (vor < plainsSetpoint)
+            {
+                yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, plainParams) * CHUNK_Y), 10, CHUNK_Y - 1);
+                topBlockType = BlockType::Grass;
+            }
+            else
+            {
+                vor = ((vor - plainsSetpoint) / (mountainSetpoint - plainsSetpoint));
+                //DebugPrint("B Vor: %f\n", vor);
+                //vor = (vor - plainsSetpoint) / (mountainSetpoint - plainsSetpoint);
+                if (RandomFloat(-1.0f, 1.0f) > 0)
+                    topBlockType = BlockType::Grass;
+                else
+                    topBlockType = BlockType::Stone;
+
+                float mountainHeight = static_cast<float>(Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, mountainParams) * CHUNK_Y), 10, CHUNK_Y - 1));
+                float plainsHeight = static_cast<float>(Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, plainParams) * CHUNK_Y), 10, CHUNK_Y - 1));
+                yTotal = static_cast<uint32>(Lerp<float>(plainsHeight, mountainHeight, vor));
+            }
+
+#elif VORONOI == 3
+
+            NoiseParams plainParams = {
+                .numOfOctaves = 8,
+                .freq = 0.1f,
+                .weight = 1.0f,
+                .gainFactor = 0.5f,
+            };
+            yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, plainParams) * CHUNK_Y), 10, CHUNK_Y - 1);
+            topBlockType = BlockType::Grass;
+
+#elif VORONOI == 2
+            //float vor = (VoronoiNoise(blockRatio, 1.0f, 0.0f) + 1.0f) / 2;
+            float vor = VoronoiNoise(blockRatio / 2, 1.0f, 1.0f);
+            NoiseParams mountainParams = {
+                .numOfOctaves = 8,
+                .freq = 0.4f,
+                .weight = 1.0f,
+                .gainFactor = 1.0f,
+            };
+            NoiseParams plainParams = {
+                .numOfOctaves = 8,
+                .freq = 0.1f,
+                .weight = 1.0f,
+                .gainFactor = 0.5f,
+            };
+
+            float dupe = 0.1f;
+            float mountainSetpoint = dupe;
+            float plainsSetpoint = dupe;
+
+            if (vor > mountainSetpoint)
+            {
+                yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, mountainParams) * CHUNK_Y), 10, CHUNK_Y - 1);
+                topBlockType = BlockType::Stone;
+            }
+            else if (vor < plainsSetpoint)
+            {
+                yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, plainParams) * CHUNK_Y), 10, CHUNK_Y - 1);
+                topBlockType = BlockType::Grass;
+            }
+            else
+            {
+                //DebugPrint("B Vor: %f\n", vor);
+                //vor = (vor - plainsSetpoint) / (mountainSetpoint - plainsSetpoint);
+                if (RandomFloat(-1.0f, 1.0f) > 0)
+                    topBlockType = BlockType::Grass;
+                else
+                    topBlockType = BlockType::Stone;
+
+                float mountainHeight = static_cast<float>(Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, mountainParams) * CHUNK_Y), 10, CHUNK_Y - 1));
+                float plainsHeight = static_cast<float>(Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, plainParams) * CHUNK_Y), 10, CHUNK_Y - 1));
+                yTotal = static_cast<uint32>(Lerp<float>(plainsHeight, mountainHeight, vor));
+            }
+
+
+#elif VORONOI == 1
+            float vor = (VoronoiNoise(blockRatio / 10, 1.0f, 0.0f) + 1.0f) / 2;
+            NoiseParams mountainParams = {
+                .numOfOctaves = 8,
+                .freq = 0.4f,
+                .weight = 1.0f,
+                .gainFactor = 1.0f,
+            };
+            NoiseParams plainParams = {
+                .numOfOctaves = 8,
+                .freq = 0.1f,
+                .weight = 1.0f,
+                .gainFactor = 0.5f,
+            };
+            NoiseParams noiseParams = {};
+
+            float mountainSetpoint = 0.6f;
+            float plainsSetpoint = 0.4f;
+
+            if (vor > mountainSetpoint)
+            {
+                noiseParams = mountainParams;
+            }
+            else if (vor < plainsSetpoint)
+            {
+                noiseParams = plainParams;
+            }
+            else
+            {
+                //DebugPrint("B Vor: %f\n", vor);
+                vor = (vor - plainsSetpoint) / (mountainSetpoint - plainsSetpoint);
+                //DebugPrint("A Vor: %f\n", vor);//only getting 0.566 to 1.0
+                noiseParams = {
+                .numOfOctaves = static_cast<int32>(Lerp<float>(static_cast<float>(mountainParams.numOfOctaves),
+                                                                 static_cast<float>(plainParams.numOfOctaves),   vor)),
+                .freq = Lerp<float>(mountainParams.freq,           plainParams.freq,           vor),
+                .weight = Lerp<float>(mountainParams.weight,         plainParams.weight,         vor),
+                .gainFactor = Lerp<float>(mountainParams.gainFactor,     plainParams.gainFactor,     vor),
+                };
+            }
+
+            yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, noiseParams) * CHUNK_Y), min, CHUNK_Y - 1);
 #else
-            static_assert(false, "Need to set noise implimentation variabls in SetBlocks()");
+            float vor = VoronoiNoise(blockRatio, 1.0f, 0.5f);
+            NoiseParams noiseParams;
+            if (vor >= 0)
+            {//Mountains
+                noiseParams = {
+                    .numOfOctaves = 16,
+                    .freq = 0.2f,
+                    .weight = 1.0f,
+                    .gainFactor = 1.0f,
+                };
+            }
+            else// if (vor >= 0)
+            {//Plains
+                noiseParams = {
+                    .numOfOctaves = 8,
+                    .freq = 0.2f,
+                    .weight = 1.0f,
+                    .gainFactor = 0.5f,
+                };
+            }
+            yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, noiseParams) * CHUNK_Y), 10, CHUNK_Y - 1);
 #endif
+
+            //#if NOISETYPE == 2
+            //            //int32 yTotal = Max(static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 10);
+            //            blockRatio /= 100;
+            //            int32 yTotal = GenerateTerrainHeight(10, CHUNK_Y, blockRatio);
+            //#elif NOISETYPE == 4
+            //            blockRatio /= 100;
+            //            int32 yTotal = (static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 80);
+            //#else
+            //            static_assert(false, "Need to set noise implimentation variabls in SetBlocks()");
+            //#endif
             assert(yTotal >= 0 && yTotal < CHUNK_Y);
 
 
@@ -260,7 +435,8 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                 {
                     if (y == yTotal - 1)
                     {
-                        bt = BlockType::Grass;
+                        //bt = BlockType::Grass;
+                        bt = topBlockType;
                     }
                     else if (y > yTotal - 4)
                     {
@@ -286,29 +462,29 @@ void ChunkArray::SetBlocks(ChunkIndex i)
     blocks[i].e[CHUNK_X - 2][CHUNK_Y - 7][CHUNK_Z - 2] = BlockType::Grass;
     blocks[i].e[CHUNK_X - 2][CHUNK_Y - 6][CHUNK_Z - 1] = BlockType::Grass;
     blocks[i].e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 1] = BlockType::Grass;
-//
+    //
     blocks[i].e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 4] = BlockType::Grass;
     blocks[i].e[CHUNK_X - 2][CHUNK_Y - 7][CHUNK_Z - 4] = BlockType::Grass;
     blocks[i].e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 5] = BlockType::Grass;
-//
+    //
     blocks[i].e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 6] = BlockType::Grass;
     blocks[i].e[CHUNK_X - 2][CHUNK_Y - 7][CHUNK_Z - 6] = BlockType::Grass;
     blocks[i].e[CHUNK_X - 2][CHUNK_Y - 6][CHUNK_Z - 7] = BlockType::Grass;
-//
+    //
     blocks[i].e[CHUNK_X - 4][CHUNK_Y - 6][CHUNK_Z - 7] = BlockType::Grass;
     blocks[i].e[CHUNK_X - 4][CHUNK_Y - 7][CHUNK_Z - 6] = BlockType::Grass;
-//
+    //
     blocks[i].e[CHUNK_X - 6][CHUNK_Y - 7][CHUNK_Z - 6] = BlockType::Grass;
     blocks[i].e[CHUNK_X - 6][CHUNK_Y - 6][CHUNK_Z - 7] = BlockType::Grass;
     blocks[i].e[CHUNK_X - 7][CHUNK_Y - 6][CHUNK_Z - 6] = BlockType::Grass;
-//
+    //
     blocks[i].e[CHUNK_X - 7][CHUNK_Y - 6][CHUNK_Z - 4] = BlockType::Grass;
     blocks[i].e[CHUNK_X - 6][CHUNK_Y - 7][CHUNK_Z - 4] = BlockType::Grass;
-//
+    //
     blocks[i].e[CHUNK_X - 7][CHUNK_Y - 6][CHUNK_Z - 2] = BlockType::Grass;
     blocks[i].e[CHUNK_X - 6][CHUNK_Y - 7][CHUNK_Z - 2] = BlockType::Grass;
     blocks[i].e[CHUNK_X - 6][CHUNK_Y - 6][CHUNK_Z - 1] = BlockType::Grass;
-//
+    //
     blocks[i].e[CHUNK_X - 4][CHUNK_Y - 7][CHUNK_Z - 2] = BlockType::Grass;
     blocks[i].e[CHUNK_X - 4][CHUNK_Y - 6][CHUNK_Z - 1] = BlockType::Grass;
 
