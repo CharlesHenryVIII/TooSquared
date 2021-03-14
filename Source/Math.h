@@ -559,13 +559,6 @@ Atan2f return value:
 
 struct ChunkPos {
     Vec3Int p;
-
-    //void ToChunkPos(ChunkIndex i)
-    //{
-    //    if (g_chunks->active[i])
-    //        return { g_chunks->p[i].x * static_cast<int32>(CHUNK_X), g_chunks->p[i].y * static_cast<int32>(CHUNK_Y), g_chunks->p[i].z * static_cast<int32>(CHUNK_Z) };
-    //    return {};
-    //}
 };
 
 struct GamePos {

@@ -39,10 +39,15 @@ MultiThreading::MultiThreading()
 
 void MultiThreading::SubmitJob(Job* job)
 {
+#if 1
     SDL_LockMutex(m_jobVectorMutex);
     m_jobs.push_back(job);
     SDL_SemPost(m_semaphore);
     SDL_UnlockMutex(m_jobVectorMutex);
+#else
+    job->DoThing();
+    delete job;
+#endif
 }
 
 int32 MultiThreading::ThreadFunction(void* data)

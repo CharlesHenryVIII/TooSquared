@@ -21,10 +21,8 @@
  find the vertex position based on the chunk position and the block index
 
 
- //1. Frustum culling
- 2. Renderable sorting
- 3. neighbor sampling
- 4.? Sun???
+ SUN
+ Ref Count Indices;
 
 
 

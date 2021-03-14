@@ -156,8 +156,18 @@ struct FireBlock : public Block {
     }
 };
 
-constexpr uint32 MAX_CHUNKS = 12000;
+constexpr uint32 MAX_CHUNKS = 20000;
 typedef uint32 ChunkIndex;
+
+struct RegionSampler {
+
+    ChunkIndex neighbors[8] = {};
+    ChunkIndex center = 0;
+
+    bool GetBlock(BlockType& result, Vec3Int blockRelP);
+    bool RegionGather(ChunkIndex i);
+};
+
 struct ChunkArray
 {
     enum State {
@@ -171,23 +181,22 @@ struct ChunkArray
 
     bool                                    active[MAX_CHUNKS];
     ChunkData                               blocks[MAX_CHUNKS];
-    ChunkPos                                p[MAX_CHUNKS];
-    std::vector<Vertex_Chunk>               faceVertices[MAX_CHUNKS];
+    ChunkPos                                p[MAX_CHUNKS] = {};
+    std::vector<Vertex_Chunk>               faceVertices[MAX_CHUNKS] = {};
     VertexBuffer                            vertexBuffer[MAX_CHUNKS] = {};
-    uint32                                  uploadedIndexCount[MAX_CHUNKS];
-    uint16                                  flags[MAX_CHUNKS];
+    uint32                                  uploadedIndexCount[MAX_CHUNKS] = {};
+    uint16                                  flags[MAX_CHUNKS] = {};
     uint32                                  chunkCount = 0;
-    std::atomic<State>                      state[MAX_CHUNKS];
+    std::atomic<State>                      state[MAX_CHUNKS] = {};
     std::unordered_map<uint64, ChunkIndex>  chunkPosTable;
 
     bool GetChunkFromPosition(ChunkIndex& result, ChunkPos p);
     void ClearChunk(ChunkIndex index);
     ChunkIndex AddChunk(ChunkPos position);
     void SetBlocks(ChunkIndex i);
-    void BuildChunkVertices(ChunkIndex i, ChunkIndex* neighbors);
+    void BuildChunkVertices(RegionSampler region);
     void UploadChunk(ChunkIndex i);
     void RenderChunk(ChunkIndex i);
-    bool GetBlock(BlockType& result, ChunkIndex blockParentIndex, Vec3Int blockRelP, ChunkIndex* neighbors = nullptr);
     bool GetChunk(ChunkIndex& result, GamePos blockP);
 
 };
@@ -199,10 +208,10 @@ struct SetBlocks : public Job {
 };
 
 struct CreateVertices : public Job {
-    ChunkIndex chunk;
-    ChunkIndex neighbors[8];
+    RegionSampler region;
     void DoThing() override;
 };
+
 
 //Vec3Int Convert_GameToChunk(Vec3 p);
 GamePos Convert_ChunkIndexToGame(ChunkIndex i);

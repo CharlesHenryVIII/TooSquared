@@ -5,16 +5,27 @@
 
 ChunkArray* g_chunks;
 
+
 int64 PositionHash(ChunkPos p)
 {
-    int64 result = {};
-    result = static_cast<int64>(p.p.z) & 0x00000000FFFFFFFFLL;
-    result |= static_cast<int64>(p.p.x) << (8 * sizeof(int32));
-    return result;
+    union {
+        struct {
+            int x, z;
+        };
+        int64 r;
+    };
+    x = p.p.x;
+    z = p.p.z;
+    return r;
+    //int64 result = {};
+    //result = static_cast<int64>(p.p.z) & 0x00000000FFFFFFFFLL;
+    //result |= static_cast<int64>(p.p.x) << (8 * sizeof(int32));
+    //return result;
 }
 
 bool ChunkArray::GetChunkFromPosition(ChunkIndex& result, ChunkPos p)
 {
+    assert(OnMainThread());
     int64 hash = PositionHash(p);
     auto it = chunkPosTable.find(hash);
     if (it != chunkPosTable.end())
@@ -730,62 +741,67 @@ Vec3Int Convert_GameToBlock(ChunkPos& result, GamePos inputP)
     return Abs({ inputP.p.x - chunkP.p.x, inputP.p.y - chunkP.p.y, inputP.p.z - chunkP.p.z });
 }
 
-bool ChunkArray::GetBlock(BlockType& result, ChunkIndex blockParentIndex, Vec3Int blockRelP, ChunkIndex* neighbors)
+bool RegionSampler::GetBlock(BlockType& result, Vec3Int blockRelP)
 {
     if (blockRelP.y >= CHUNK_Y || blockRelP.y < 0)
     {
         result = BlockType::Empty;
-        return true;
+        return false;
     }
-    else if ((blockRelP.x >= CHUNK_X || blockRelP.z >= CHUNK_Z) || (blockRelP.x < 0 ||  blockRelP.z < 0))
+    else
     {
-        if (!neighbors)
+        GamePos gameSpace_block = Convert_BlockToGame(center, blockRelP);
+        ChunkPos newChunkPos = {};
+        Vec3Int newRelBlockP = Convert_GameToBlock(newChunkPos, gameSpace_block);
+        if (g_chunks->p[center].p == newChunkPos.p)
         {
-            result = BlockType::Empty;
-            return false;
+            assert(newRelBlockP == blockRelP);
+            result = g_chunks->blocks[center].e[newRelBlockP.x][newRelBlockP.y][newRelBlockP.z];
+            return true;
         }
-        else
+        for (int32 i = 0; i < arrsize(neighbors); i++)
         {
-#if 0
-            //crashes in debug but not release
-            GamePos blockSpace_block = Convert_BlockToGame(blockParentIndex, blockRelP);
-            ChunkPos newChunkPos = {};
-            Vec3Int newRelBlockP = Convert_GameToBlock(newChunkPos, blockSpace_block);
-            ChunkIndex chunkIndex;
-            if (g_chunks->GetChunkFromPosition(chunkIndex, newChunkPos))
+
+            if (g_chunks->p[neighbors[i]].p == newChunkPos.p)
             {
-                result = g_chunks->blocks[chunkIndex].e[newRelBlockP.x][newRelBlockP.y][newRelBlockP.z];
+                result = g_chunks->blocks[neighbors[i]].e[newRelBlockP.x][newRelBlockP.y][newRelBlockP.z];
                 return true;
             }
-            else
-                return false;
-#else
-            const int32 neighborCount = 8;
-
-            GamePos blockSpace_block = Convert_BlockToGame(blockParentIndex, blockRelP);
-            ChunkPos newChunkPos = {};
-            Vec3Int newRelBlockP = Convert_GameToBlock(newChunkPos, blockSpace_block);
-            for (int32 i = 0; i < neighborCount; i++)
-            {
-
-                if (g_chunks->p[neighbors[i]].p == newChunkPos.p)
-                {
-                    result = g_chunks->blocks[neighbors[i]].e[newRelBlockP.x][newRelBlockP.y][newRelBlockP.z];
-                    return true;
-                }
-            }
-            return false;
-#endif
         }
+        return false;
     }
-
-    result = blocks[blockParentIndex].e[blockRelP.x][blockRelP.y][blockRelP.z];
-    return true;
 }
 
-
-void ChunkArray::BuildChunkVertices(ChunkIndex i, ChunkIndex* neighbors)
+bool RegionSampler::RegionGather(ChunkIndex i)
 {
+    center = i;
+
+    int32 numIndices = 0;
+    ChunkPos centerChunk = g_chunks->p[i];
+    for (int32 z = -1; z <= 1; z++)
+    {
+        for (int32 x = -1; x <= 1; x++)
+        {
+            if (x == 0 && z == 0)
+                continue;
+            ChunkIndex chunkIndex = 0;
+            ChunkPos newChunkP = { centerChunk.p.x + x, 0, centerChunk.p.z + z };
+            int64 tesHash = PositionHash(newChunkP);
+            if (g_chunks->GetChunkFromPosition(chunkIndex, newChunkP))
+            {
+                if (g_chunks->state[chunkIndex] >= ChunkArray::BlocksLoaded)
+                {
+                    neighbors[numIndices++] = chunkIndex;
+                }
+            }
+        }
+    }
+    return numIndices == arrsize(neighbors);
+}
+
+void ChunkArray::BuildChunkVertices(RegionSampler region)
+{
+    ChunkIndex i = region.center;
     faceVertices[i].clear();
     faceVertices[i].reserve(10000);
     uploadedIndexCount[i] = 0;
@@ -810,7 +826,8 @@ void ChunkArray::BuildChunkVertices(ChunkIndex i, ChunkIndex* neighbors)
                     bool outOfBounds = (xReal >= CHUNK_X || yReal >= CHUNK_Y || zReal >= CHUNK_Z ||
                         xReal < 0 || yReal < 0 || zReal < 0);
 
-                    if (outOfBounds || blocks[i].e[xReal][yReal][zReal] == BlockType::Empty)
+                    BlockType type;
+                    if (region.GetBlock(type, {xReal, yReal, zReal}) && type == BlockType::Empty)
                     {
                         VertexFace f = {};// = cubeFaces[faceIndex];
                         Vec3 offset = { static_cast<float>(x + realP.p.x), static_cast<float>(y + realP.p.y), static_cast<float>(z + realP.p.z) };
@@ -854,14 +871,14 @@ void ChunkArray::BuildChunkVertices(ChunkIndex i, ChunkIndex* neighbors)
         Vec3Int b = *(&vertexBlocksToCheck[faceIndex].e0 + (vertIndex + 1));
         Vec3Int c = a + b;
 
-        BlockType at = BlockType::Empty;
-        BlockType bt = BlockType::Empty;
-        BlockType ct = BlockType::Empty;
+        BlockType at = BlockType::Grass;
+        BlockType bt = BlockType::Grass;
+        BlockType ct = BlockType::Grass;
 
 
         //ChunkIndex neighbors[8];  This is what neighbors is 
-        if (!GetBlock(at, i, blockP + blockN + a, neighbors) || !GetBlock(bt, i, blockP + blockN + b, neighbors) ||
-            !GetBlock(ct, i, blockP + blockN + c, neighbors))
+        if (!region.GetBlock(at, blockP + blockN + a) || !region.GetBlock(bt, blockP + blockN + b) ||
+            !region.GetBlock(ct, blockP + blockN + c))
         {
             //failed to get block needs to be redone;
             g_chunks->flags[i] |= CHUNK_RESCAN_BLOCKS;
@@ -958,8 +975,8 @@ void SetBlocks::DoThing()
 void CreateVertices::DoThing()
 {
     //PROFILE_SCOPE("THREAD: CreateVertices()");
-    g_chunks->BuildChunkVertices(chunk, neighbors);
-    g_chunks->state[chunk] = ChunkArray::VertexLoaded;
+    g_chunks->BuildChunkVertices(region);
+    g_chunks->state[region.center] = ChunkArray::VertexLoaded;
 }
 
 void DrawBlock(WorldPos p, Color color, float scale, const Mat4& perspective)

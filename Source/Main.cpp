@@ -277,7 +277,7 @@ int main(int argc, char* argv[])
         //gb_mat4_look_at(&testCamera.view, testCamera.p.p, lookatPosition, { 0, 1, 0 });
 
         Mat4 perspective;
-        gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.65f, 1000.0f);
+        gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.65f, 2000.0f);
         Mat4 viewProj = perspective * g_camera.view;//testCamera.view;
 
 
@@ -288,7 +288,7 @@ int main(int argc, char* argv[])
 #ifdef _DEBUG
             g_camera.drawDistance = 10;
 #elif NDEBUG
-            g_camera.drawDistance = 40;
+            g_camera.drawDistance = 60;
 #endif
 
 #if 0
@@ -307,7 +307,7 @@ int main(int argc, char* argv[])
                 }
             }
 #else
-            g_camera.fogDistance = 40;
+            g_camera.fogDistance = g_camera.drawDistance + 10;
             ChunkPos cam = ToChunk(g_camera.p);
             for (int32 _drawDistance = 0; _drawDistance < g_camera.drawDistance; _drawDistance++)
             {
@@ -377,11 +377,7 @@ int main(int argc, char* argv[])
         {
             //PROFILE_SCOPE("Chunk Loading Vertex Loop");
 
-            //TODO::Make this two for loops relative to draw distance
-            //and make it so it focuses on chunks closest to camera
-            //like we are doing on the block generation stage
 #if 1
-            //slower but starts from the center
             for (int32 _drawDistance = 0; _drawDistance < g_camera.drawDistance; _drawDistance++)
             {
                 for (int32 drawZ = -_drawDistance; drawZ <= _drawDistance; drawZ++)
@@ -400,33 +396,13 @@ int main(int argc, char* argv[])
                         if (g_chunks->state[originChunk] != ChunkArray::BlocksLoaded)
                             continue;
 
-                        ChunkIndex indices[8] = {};
-                        uint32 numIndices = 0;
-                        for (int32 z = -1; z <= 1; z++)
-                        {
-                            for (int32 x = -1; x <= 1; x++)
-                            {
-                                if (x == 0 && z == 0)
-                                    continue;
-                                ChunkIndex chunkIndex = 0;
-                                ChunkPos newBlockP = { cameraChunkP.p.x + drawX + x, 0, cameraChunkP.p.z + drawZ + z };
-                                if (g_chunks->GetChunkFromPosition(chunkIndex, newBlockP))
-                                {
-                                    if (g_chunks->state[chunkIndex] >= ChunkArray::BlocksLoaded)
-                                    {
-                                        indices[numIndices++] = chunkIndex;
-                                    }
-                                }
-                            }
-                        }
+                        RegionSampler regionSampler;
 
-                        if (numIndices == arrsize(indices))
+                        if (regionSampler.RegionGather(originChunk))
                         {
                             CreateVertices* job = new CreateVertices();
-                            static_assert(sizeof(job->neighbors) == sizeof(indices));
+                            job->region = regionSampler;
 
-                            job->chunk = originChunk;
-                            memcpy(job->neighbors, indices, sizeof(indices));
                             g_chunks->state[originChunk] = ChunkArray::VertexLoading;
                             multiThreading.SubmitJob(job);
                         }
@@ -435,6 +411,7 @@ int main(int argc, char* argv[])
             }
 
 #else
+            //slower but starts from the center
             for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
             {
                 if (!g_chunks->active[i])
@@ -483,7 +460,7 @@ int main(int argc, char* argv[])
 #ifdef _DEBUG
             const int32 uploadMax = 10;
 #elif NDEBUG
-            const int32 uploadMax = 20;
+            const int32 uploadMax = 40;
 #endif
 #if 1
 #if 1
