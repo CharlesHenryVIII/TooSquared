@@ -63,19 +63,19 @@
 
 [[nodiscard]] GamePos ToGame(ChunkPos a)
 {
-    return { a.x * static_cast<int32>(CHUNK_X), a.y * static_cast<int32>(CHUNK_Y), a.z * static_cast<int32>(CHUNK_Z) };
+    return { a.p.x * static_cast<int32>(CHUNK_X), a.p.y * static_cast<int32>(CHUNK_Y), a.p.z * static_cast<int32>(CHUNK_Z) };
 }
 
 [[nodiscard]] ChunkPos ToChunk(GamePos a)
 {
-    ChunkPos result = { static_cast<int32>(floorf(static_cast<float>(a.x) / static_cast<float>(CHUNK_X))),
-                        static_cast<int32>(floorf(static_cast<float>(a.y) / static_cast<float>(CHUNK_Y))),
-                        static_cast<int32>(floorf(static_cast<float>(a.z) / static_cast<float>(CHUNK_Z))) };
+    ChunkPos result = { static_cast<int32>(floorf(static_cast<float>(a.p.x) / static_cast<float>(CHUNK_X))),
+                        static_cast<int32>(floorf(static_cast<float>(a.p.y) / static_cast<float>(CHUNK_Y))),
+                        static_cast<int32>(floorf(static_cast<float>(a.p.z) / static_cast<float>(CHUNK_Z))) };
     return result;
 }
 [[nodiscard]] WorldPos ToWorld(GamePos a)
 {
-    return { static_cast<float>(a.x), static_cast<float>(a.y), static_cast<float>(a.z) };
+    return { static_cast<float>(a.p.x), static_cast<float>(a.p.y), static_cast<float>(a.p.z) };
 }
 
 [[nodiscard]] GamePos ToGame(WorldPos a)
@@ -156,3 +156,7 @@ bool IsBoxInFrustum(const Frustum& f, float *bmin, float *bmax)
    return 1;
 }
 
+int32 ManhattanDistance(Vec3Int a, Vec3Int b)
+{
+    return abs(a.x - b.x) + abs(a.y - b.y) + abs(a.z - b.z);
+}

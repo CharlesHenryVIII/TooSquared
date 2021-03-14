@@ -558,12 +558,7 @@ Atan2f return value:
 }
 
 struct ChunkPos {
-    union {
-        struct { int32 x, y, z; };
-
-        Vec2Int xy;
-        int32 e[3];
-    };
+    Vec3Int p;
 
     //void ToChunkPos(ChunkIndex i)
     //{
@@ -574,12 +569,7 @@ struct ChunkPos {
 };
 
 struct GamePos {
-    union {
-        struct { int32 x, y, z; };
-
-        Vec2Int xy;
-        int32 e[3];
-    };
+    Vec3Int p;
 };
 
 struct WorldPos {
@@ -605,27 +595,6 @@ struct WorldPos {
 [[nodiscard]] GamePos ToGame(WorldPos a);
 [[nodiscard]] ChunkPos ToChunk(WorldPos a);
 
-D3EQUAL(ChunkPos)
-D3EQUAL(GamePos)
-
-D3PlusD3(ChunkPos)
-D3PlusD3(GamePos)
-
-D3MinusD3(ChunkPos)
-D3MinusD3(GamePos)
-
-D3AddEqualD3(ChunkPos)
-D3AddEqualD3(GamePos)
-
-D3MinusEqualD3(ChunkPos)
-D3MinusEqualD3(GamePos)
-
-D3DivideD1(ChunkPos, int32)
-D3DivideD1(GamePos,  int32)
-
-D3DivideEqualD1(ChunkPos, int32)
-D3DivideEqualD1(GamePos, int32)
-
 [[nodiscard]] inline WorldPos Floor(WorldPos v)
 {
     return { floorf(v.p.x), floorf(v.p.y), floorf(v.p.z) };
@@ -642,3 +611,4 @@ struct Frustum {
 
 Frustum ComputeFrustum(const Mat4& mvProj);
 bool IsBoxInFrustum(const Frustum& f, float* bmin, float* bmax);
+int32 ManhattanDistance(Vec3Int a, Vec3Int b);

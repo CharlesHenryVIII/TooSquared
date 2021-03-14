@@ -8,8 +8,8 @@ ChunkArray* g_chunks;
 int64 PositionHash(ChunkPos p)
 {
     int64 result = {};
-    result = static_cast<int64>(p.z) & 0x00000000FFFFFFFFLL;
-    result |= static_cast<int64>(p.x) << (8 * sizeof(int32));
+    result = static_cast<int64>(p.p.z) & 0x00000000FFFFFFFFLL;
+    result |= static_cast<int64>(p.p.x) << (8 * sizeof(int32));
     return result;
 }
 
@@ -228,12 +228,12 @@ ENUMOPS(ChunkType);
 
 ChunkType RandomBiome(ChunkPos v)
 {
-    uint32 first = *(uint32*)(&v.x);
+    uint32 first = *(uint32*)(&v.p.x);
     first ^= first << 13;
     first ^= first >> 17;
     first ^= first << 5;
 
-    uint32 second = *(uint32*)(&v.y);
+    uint32 second = *(uint32*)(&v.p.y);
     second ^= second << 13;
     second ^= second >> 17;
     second ^= second << 5;
@@ -262,7 +262,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
             GamePos blockP = { x, 0, z };
             GamePos chunkBlockP = Convert_ChunkIndexToGame(i);
 
-            Vec2 blockRatio = { static_cast<float>(chunkBlockP.x + blockP.x), static_cast<float>(chunkBlockP.z + blockP.z) };
+            Vec2 blockRatio = { static_cast<float>(chunkBlockP.p.x + blockP.p.x), static_cast<float>(chunkBlockP.p.z + blockP.p.z) };
 
 #define VORONOI 4
             blockRatio /= 100;
@@ -720,14 +720,14 @@ bool ChunkArray::GetChunk(ChunkIndex& result, GamePos blockP)
 GamePos Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP)
 {
     GamePos chunkLocation = ToGame(g_chunks->p[blockParentIndex]);
-    return { chunkLocation.x + blockP.x, chunkLocation.y + blockP.y, chunkLocation.z + blockP.z };
+    return { chunkLocation.p.x + blockP.x, chunkLocation.p.y + blockP.y, chunkLocation.p.z + blockP.z };
 }
 
 Vec3Int Convert_GameToBlock(ChunkPos& result, GamePos inputP)
 {
     result = ToChunk(inputP);
     GamePos chunkP = ToGame(result);
-    return Abs({ inputP.x - chunkP.x, inputP.y - chunkP.y, inputP.z - chunkP.z });
+    return Abs({ inputP.p.x - chunkP.p.x, inputP.p.y - chunkP.p.y, inputP.p.z - chunkP.p.z });
 }
 
 bool ChunkArray::GetBlock(BlockType& result, ChunkIndex blockParentIndex, Vec3Int blockRelP, ChunkIndex* neighbors)
@@ -768,7 +768,7 @@ bool ChunkArray::GetBlock(BlockType& result, ChunkIndex blockParentIndex, Vec3In
             for (int32 i = 0; i < neighborCount; i++)
             {
 
-                if (g_chunks->p[neighbors[i]] == newChunkPos)
+                if (g_chunks->p[neighbors[i]].p == newChunkPos.p)
                 {
                     result = g_chunks->blocks[neighbors[i]].e[newRelBlockP.x][newRelBlockP.y][newRelBlockP.z];
                     return true;
@@ -813,7 +813,7 @@ void ChunkArray::BuildChunkVertices(ChunkIndex i, ChunkIndex* neighbors)
                     if (outOfBounds || blocks[i].e[xReal][yReal][zReal] == BlockType::Empty)
                     {
                         VertexFace f = {};// = cubeFaces[faceIndex];
-                        Vec3 offset = { static_cast<float>(x + realP.x), static_cast<float>(y + realP.y), static_cast<float>(z + realP.z) };
+                        Vec3 offset = { static_cast<float>(x + realP.p.x), static_cast<float>(y + realP.p.y), static_cast<float>(z + realP.p.z) };
 
                         f.a.blockIndex = z * CHUNK_Z + y * CHUNK_Y + x;
                         f.b.blockIndex = z * CHUNK_Z + y * CHUNK_Y + x;

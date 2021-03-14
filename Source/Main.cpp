@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
         {
             ChunkPos cameraChunk = ToChunk(g_camera.p);
             SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared P: %i, %i, %i; C: %i, %i; Chunks: %u; Time: %0.2f; Triangles: %u",
-                (int32)g_camera.p.p.x, (int32)g_camera.p.p.y, (int32)g_camera.p.p.z, cameraChunk.x, cameraChunk.z, g_chunks->chunkCount, loadingTimer, g_renderer.numTrianglesDrawn).c_str());
+                (int32)g_camera.p.p.x, (int32)g_camera.p.p.y, (int32)g_camera.p.p.z, cameraChunk.p.x, cameraChunk.p.z, g_chunks->chunkCount, loadingTimer, g_renderer.numTrianglesDrawn).c_str());
         }
 
         SDL_Event SDLEvent;
@@ -318,7 +318,7 @@ int main(int argc, char* argv[])
                         if (z == _drawDistance || x ==  _drawDistance ||
                            z == -_drawDistance || x == -_drawDistance)
                         {
-                            ChunkPos newBlockP = { cam.x + x, 0, cam.z + z };
+                            ChunkPos newBlockP = { cam.p.x + x, 0, cam.p.z + z };
                             ChunkIndex funcResult;
                             if (!g_chunks->GetChunkFromPosition(funcResult, newBlockP))
                             {
@@ -338,8 +338,8 @@ int main(int argc, char* argv[])
                     {
                         if (g_chunks->active[i])
                         {
-                            if ((g_chunks->p[i].x > cam.x + g_camera.fogDistance || g_chunks->p[i].z > cam.z + g_camera.fogDistance) ||
-                                (g_chunks->p[i].x < cam.x - g_camera.fogDistance || g_chunks->p[i].z < cam.z - g_camera.fogDistance))
+                            if ((g_chunks->p[i].p.x > cam.p.x + g_camera.fogDistance || g_chunks->p[i].p.z > cam.p.z + g_camera.fogDistance) ||
+                                (g_chunks->p[i].p.x < cam.p.x - g_camera.fogDistance || g_chunks->p[i].p.z < cam.p.z - g_camera.fogDistance))
                             {
                                 g_chunks->flags[i] |= CHUNK_TODELETE;
                             }
@@ -394,7 +394,7 @@ int main(int argc, char* argv[])
 
                         ChunkPos cameraChunkP = ToChunk(g_camera.p);
                         ChunkIndex originChunk = 0;
-                        ChunkPos drawDistanceChunk = { cameraChunkP.x + drawX, 0, cameraChunkP.z + drawZ };
+                        ChunkPos drawDistanceChunk = { cameraChunkP.p.x + drawX, 0, cameraChunkP.p.z + drawZ };
                         if (!g_chunks->GetChunkFromPosition(originChunk, drawDistanceChunk))
                             continue;
                         if (g_chunks->state[originChunk] != ChunkArray::BlocksLoaded)
@@ -409,7 +409,7 @@ int main(int argc, char* argv[])
                                 if (x == 0 && z == 0)
                                     continue;
                                 ChunkIndex chunkIndex = 0;
-                                ChunkPos newBlockP = { cameraChunkP.x + drawX + x, 0, cameraChunkP.z + drawZ + z };
+                                ChunkPos newBlockP = { cameraChunkP.p.x + drawX + x, 0, cameraChunkP.p.z + drawZ + z };
                                 if (g_chunks->GetChunkFromPosition(chunkIndex, newBlockP))
                                 {
                                     if (g_chunks->state[chunkIndex] >= ChunkArray::BlocksLoaded)
@@ -486,9 +486,52 @@ int main(int argc, char* argv[])
             const int32 uploadMax = 20;
 #endif
 #if 1
+#if 1
+            struct Renderable {
+                ChunkIndex r;
+                int32 d;
+            };
+            Renderable renderables[MAX_CHUNKS];
+            int32 numRenderables = 0;
             Frustum frustum = ComputeFrustum(viewProj);
             int32 uploadCount = 0;
             PreChunkRender(perspective);
+            for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+            {
+                if (!g_chunks->active[i])
+                    continue;
+
+                ChunkPos chunkP = g_chunks->p[i];
+                GamePos min = ToGame(chunkP);
+                GamePos max = { min.p.x + (int32)CHUNK_X, min.p.y + (int32)CHUNK_Y, min.p.z + (int32)CHUNK_Z };
+                if (IsBoxInFrustum(frustum, ToWorld(min).p.e, ToWorld(max).p.e))
+                {
+                    renderables[numRenderables].d = ManhattanDistance(ToChunk(g_camera.p.p).p, chunkP.p);
+                    renderables[numRenderables++].r = i;
+                }
+            }
+
+            std::sort(std::begin(renderables), std::begin(renderables) + numRenderables, [](Renderable a, Renderable b) {
+                return a.d < b.d;
+            });
+            for (int32 i = 0; i < numRenderables; i++)
+            {
+                ChunkIndex renderChunk = renderables[i].r;
+                if (g_chunks->state[renderChunk] == ChunkArray::VertexLoaded)
+                {
+                    if (uploadCount > uploadMax)
+                        continue;
+                    g_chunks->UploadChunk(renderChunk);
+                    uploadCount++;
+                    uploadedLastFrame = true;
+                }
+                if (g_chunks->state[renderChunk] == ChunkArray::Uploaded)
+                {
+                    g_chunks->RenderChunk(renderChunk);
+                }
+            }
+
+#else
             for (int32 _drawDistance = 0; _drawDistance < g_camera.drawDistance; _drawDistance++)
             {
                 for (int32 drawZ = -_drawDistance; drawZ <= _drawDistance; drawZ++)
@@ -501,7 +544,7 @@ int main(int argc, char* argv[])
 
                         ChunkPos cameraChunkP = ToChunk(g_camera.p);
                         ChunkIndex chunkIndex = 0;
-                        ChunkPos drawDistanceChunk = { cameraChunkP.x + drawX, 0, cameraChunkP.z + drawZ };
+                        ChunkPos drawDistanceChunk = { cameraChunkP.p.x + drawX, 0, cameraChunkP.p.z + drawZ };
                         if (!g_chunks->GetChunkFromPosition(chunkIndex, drawDistanceChunk))
                             continue;
 
@@ -509,7 +552,7 @@ int main(int argc, char* argv[])
                             continue;
 
                         GamePos min = ToGame(drawDistanceChunk);
-                        GamePos max = { min.x + (int32)CHUNK_X, min.y + (int32)CHUNK_Y, min.z + (int32)CHUNK_Z };
+                        GamePos max = { min.p.x + (int32)CHUNK_X, min.p.y + (int32)CHUNK_Y, min.p.z + (int32)CHUNK_Z };
                         if (bool inFrustum = IsBoxInFrustum(frustum, ToWorld(min).p.e, ToWorld(max).p.e))
                         {
                             if (g_chunks->state[chunkIndex] == ChunkArray::VertexLoaded)
@@ -528,6 +571,7 @@ int main(int argc, char* argv[])
                     }
                 }
             }
+#endif
 
 #else
             int32 uploadCount = 0;
