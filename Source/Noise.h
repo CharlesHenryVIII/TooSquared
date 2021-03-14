@@ -14,4 +14,5 @@ void NoiseInit();
 float PerlinNoise(Vec2 a, NoiseParams np);
 float VoronoiNoise(Vec2 x, float u, float v);
 int32 GenerateTerrainHeight(int32 min, int32 max, Vec2 input);
+uint8 GetRandomUint8(uint8 a);
 //float Noise(Vec3 a);

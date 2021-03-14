@@ -197,6 +197,7 @@ void SetBlockSprites()
     SetMultipleBlockSprites(BlockType::Stone, 1);
     SetMultipleBlockSprites(BlockType::IronBlock, 22);
     SetMultipleBlockSprites(BlockType::Dirt, 2);
+    SetMultipleBlockSprites(BlockType::Sand, 18);
 }
 
 //TODO: Move to ChunkPos
@@ -216,8 +217,8 @@ Vec3Int Convert_GameToChunk(Vec3 p)
 }
 
 
-enum class ChunkType : Uint32 {
-    None,
+enum class ChunkType : Uint8 {
+    //None,
     Plains,
     Mountain,
     Desert,
@@ -263,17 +264,81 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
             Vec2 blockRatio = { static_cast<float>(chunkBlockP.x + blockP.x), static_cast<float>(chunkBlockP.z + blockP.z) };
 
-#define VORONOI 5
+#define VORONOI 4
             blockRatio /= 100;
             int32 yTotal = 0;
 
-#if VORONOI == 5
+#if VORONOI == 6
+
+            //blockRatio /= 2;
+
+            //float vor = (VoronoiNoise(blockRatio, 1.0f, 0.0f) + 1.0f) / 2;
+            float vor = VoronoiNoise(blockRatio, 1.0f, 0);
+            NoiseParams mountainParams = {
+                .numOfOctaves = 8,
+                .freq = 0.4f,
+                .weight = 1.5f,
+                .gainFactor = 0.9f,
+            };
+            NoiseParams plainParams = {
+                .numOfOctaves = 4,
+                .freq = 0.75f,
+                .weight = 1.0f,
+                .gainFactor = 1.0f,
+            };
+
+            float dupe = 0.5f;
+            float mountainSetpoint = dupe;
+            float plainsSetpoint = dupe;
+
+            if (vor > mountainSetpoint)
+            {
+                yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, mountainParams) * CHUNK_Y), 10, CHUNK_Y - 1);
+                topBlockType = BlockType::Stone;
+            }
+            else// if (vor < plainsSetpoint)
+            {
+                yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, plainParams) * CHUNK_Y), 10, CHUNK_Y - 1);
+                topBlockType = BlockType::Grass;
+            }
+            //else
+            //{
+            //    vor = ((vor - plainsSetpoint) / (mountainSetpoint - plainsSetpoint));
+            //    //DebugPrint("B Vor: %f\n", vor);
+            //    //vor = (vor - plainsSetpoint) / (mountainSetpoint - plainsSetpoint);
+            //    if (RandomFloat(-1.0f, 1.0f) > 0)
+            //        topBlockType = BlockType::Grass;
+            //    else
+            //        topBlockType = BlockType::Stone;
+
+            //    float mountainHeight = static_cast<float>(Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, mountainParams) * CHUNK_Y), 10, CHUNK_Y - 1));
+            //    float plainsHeight = static_cast<float>(Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, plainParams) * CHUNK_Y), 10, CHUNK_Y - 1));
+            //    yTotal = static_cast<uint32>(Lerp<float>(plainsHeight, mountainHeight, vor));
+            //}
+
+#elif VORONOI == 5
 
             Vec2 blockPosScaled = blockRatio;
             ChunkPos chunkP = ToChunk(chunkBlockP);
 
             ChunkPos biomeIndices = chunkP / 10;
-            ChunkType chunkType = RandomBiome(biomeIndices);
+            //ChunkType chunkType = RandomBiome(biomeIndices);
+            ChunkType chunkType;// = ChunkType::None;
+#if 0
+            //chunkType = static_cast<ChunkType>((static_cast<uint32>(fabsf(static_cast<float>(biomeIndices.x + biomeIndices.y + biomeIndices.z))) % (+ChunkType::Count - 1)) + 1);
+            uint8 a = (biomeIndices.x % CHAR_MAX) + CHAR_MAX;
+            uint8 b = (biomeIndices.z % CHAR_MAX) + CHAR_MAX;
+            chunkType = static_cast<ChunkType>(static_cast<uint8>(GetRandomUint8(a) +
+                                                                  GetRandomUint8(b)) % +ChunkType::Count);
+#endif
+            int64 _hash = PositionHash(biomeIndices);
+            uint64 hash = *(uint64*)(&_hash);
+            hash ^= hash << 13;
+            hash ^= hash >> 17;
+            hash ^= hash << 5;
+
+            chunkType = static_cast<ChunkType>(hash % +ChunkType::Count);
+
             chunkTypes[+chunkType]++;
             NoiseParams noiseParams = {};
             
@@ -318,11 +383,11 @@ void ChunkArray::SetBlocks(ChunkIndex i)
             }
             default:
             {
-                assert((+chunkType) > +ChunkType::None && (+chunkType) < +ChunkType::Count);
+                assert(false);//(+chunkType) > +ChunkType::None && (+chunkType) < +ChunkType::Count);
                 break;
             }
             }
-			yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, noiseParams) * CHUNK_Y), 10, CHUNK_Y - 1);
+			yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio / 2, noiseParams) * CHUNK_Y), 10, CHUNK_Y - 1);
 
 
 #elif VORONOI == 4
@@ -469,7 +534,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                 };
             }
 
-            yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, noiseParams) * CHUNK_Y), min, CHUNK_Y - 1);
+            yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, noiseParams) * CHUNK_Y), 10, CHUNK_Y - 1);
 #else
             float vor = VoronoiNoise(blockRatio, 1.0f, 0.5f);
             NoiseParams noiseParams;
@@ -824,7 +889,7 @@ void ChunkArray::UploadChunk(ChunkIndex i)
     g_chunks->state[i] = ChunkArray::Uploaded;
 }
 
-void PreChunkRender()
+void PreChunkRender(const Mat4& perspective)
 {
     assert(g_renderer.chunkIB);
     if (g_renderer.chunkIB)
@@ -835,16 +900,9 @@ void PreChunkRender()
     g_renderer.programs[+Shader::Chunk]->UseShader();
     g_renderer.spriteTextArray->Bind();
 
-    Mat4 perspective;
-    gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.65f, 1000.0f);
-    Mat4 transform;
-    //gb_mat4_translate(&transform, Vec3IntToVec3(p));
-    gb_mat4_identity(&transform);
-
     ShaderProgram* sp = g_renderer.programs[+Shader::Chunk];
     sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
     sp->UpdateUniformMat4("u_view",        1, false, g_camera.view.e);
-    sp->UpdateUniformMat4("u_model",       1, false, transform.e);
 
 #if DIRECTIONALLIGHT == 1
     sp->UpdateUniformVec3("u_directionalLight_d",  1,  g_light.d.e);
@@ -852,7 +910,7 @@ void PreChunkRender()
     sp->UpdateUniformVec3("u_lightColor",  1,  g_light.c.e);
     sp->UpdateUniformVec3("u_lightP",      1,  g_light.p.e);
 #endif
-    sp->UpdateUniformVec3("u_cameraP",     1,  g_camera.p.e);
+    sp->UpdateUniformVec3("u_cameraP",     1,  g_camera.p.p.e);
 
     sp->UpdateUniformUint8("u_CHUNK_X", CHUNK_X);
     sp->UpdateUniformUint8("u_CHUNK_Y", CHUNK_Y);
@@ -884,7 +942,7 @@ void ChunkArray::RenderChunk(ChunkIndex i)
     glEnableVertexArrayAttrib(g_renderer.vao, 3);
 
     ShaderProgram* sp = g_renderer.programs[+Shader::Chunk];
-    sp->UpdateUniformVec3("u_chunkP",      1,  ToWorld(Convert_ChunkIndexToGame(i)).e);
+    sp->UpdateUniformVec3("u_chunkP",      1,  ToWorld(Convert_ChunkIndexToGame(i)).p.e);
 
     glDrawElements(GL_TRIANGLES, (GLsizei)uploadedIndexCount[i], GL_UNSIGNED_INT, 0);
     g_renderer.numTrianglesDrawn += uploadedIndexCount[i] / 3;
@@ -904,12 +962,12 @@ void CreateVertices::DoThing()
     g_chunks->state[chunk] = ChunkArray::VertexLoaded;
 }
 
-void DrawBlock(WorldPos p, Color color, float scale)
+void DrawBlock(WorldPos p, Color color, float scale, const Mat4& perspective)
 {
-    DrawBlock(p, color, { scale, scale, scale });
+    DrawBlock(p, color, { scale, scale, scale }, perspective);
 }
 
-void DrawBlock(WorldPos p, Color color, Vec3 scale)
+void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective)
 {
 
     if (g_renderer.cubeVertexBuffer == nullptr)
@@ -967,11 +1025,8 @@ void DrawBlock(WorldPos p, Color color, Vec3 scale)
     g_renderer.cubeVertexBuffer->Bind();
     g_renderer.chunkIB->Bind();
 
-    Mat4 perspective;
-    gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.65f, 1000.0f);
     Mat4 transform;
-    gb_mat4_translate(&transform, { p.x, p.y, p.z });
-    //gb_mat4_identity(&transform);
+    gb_mat4_translate(&transform, { p.p.x, p.p.y, p.p.z });
 
     ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
     sp->UseShader();

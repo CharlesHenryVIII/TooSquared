@@ -583,24 +583,19 @@ struct GamePos {
 };
 
 struct WorldPos {
-    union {
-        struct { float x, y, z; };
-
-        Vec2 xy;
-        float e[3];
-    };
+    Vec3 p;
     WorldPos() = default;
     WorldPos(Vec3 a)
     {
-        x = a.x;
-        y = a.y;
-        z = a.z;
+        p.x = a.x;
+        p.y = a.y;
+        p.z = a.z;
     }
     WorldPos(float a, float b, float c)
     {
-        x = a;
-        y = b;
-        z = c;
+        p.x = a;
+        p.y = b;
+        p.z = c;
     }
 };
 
@@ -612,33 +607,38 @@ struct WorldPos {
 
 D3EQUAL(ChunkPos)
 D3EQUAL(GamePos)
-D3EQUAL(WorldPos)
 
 D3PlusD3(ChunkPos)
 D3PlusD3(GamePos)
-D3PlusD3(WorldPos)
 
 D3MinusD3(ChunkPos)
 D3MinusD3(GamePos)
-D3MinusD3(WorldPos)
 
 D3AddEqualD3(ChunkPos)
 D3AddEqualD3(GamePos)
-D3AddEqualD3(WorldPos)
 
 D3MinusEqualD3(ChunkPos)
 D3MinusEqualD3(GamePos)
-D3MinusEqualD3(WorldPos)
 
 D3DivideD1(ChunkPos, int32)
-D3DivideD1(GamePos, int32)
-D3DivideD1(WorldPos, float)
+D3DivideD1(GamePos,  int32)
 
 D3DivideEqualD1(ChunkPos, int32)
 D3DivideEqualD1(GamePos, int32)
-D3DivideEqualD1(WorldPos, float)
 
 [[nodiscard]] inline WorldPos Floor(WorldPos v)
 {
-    return { floorf(v.x), floorf(v.y), floorf(v.z) };
+    return { floorf(v.p.x), floorf(v.p.y), floorf(v.p.z) };
 }
+
+struct Plane
+{
+   float x,y,z,w;
+};
+
+struct Frustum {
+    Plane e[6];
+};
+
+Frustum ComputeFrustum(const Mat4& mvProj);
+bool IsBoxInFrustum(const Frustum& f, float* bmin, float* bmax);

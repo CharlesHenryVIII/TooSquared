@@ -23,6 +23,11 @@ static const uint8 permutationSet[] = {
      67, 29, 24, 72,243,141,128,195, 78, 66,215, 61,156,180,
 };
 
+uint8 GetRandomUint8(uint8 a)
+{
+    return permutationSet[a];
+}
+
 #if NOISETYPE == 1
 //// Below are 4 influence values in the arrangement:
 //// [g1] | [g2]

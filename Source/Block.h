@@ -210,8 +210,8 @@ GamePos Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP);
 Vec3Int Convert_GameToBlock(ChunkPos& result, GamePos inputP);
 
 void SetBlockSprites();
-void PreChunkRender();
-void DrawBlock(WorldPos p, Color color, Vec3 scale);
-void DrawBlock(WorldPos p, Color color, float scale);
+void PreChunkRender(const Mat4& perspective);
+void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective);
+void DrawBlock(WorldPos p, Color color, float scale, const Mat4& perspective);
 
 int64 PositionHash(ChunkPos p);

@@ -6,7 +6,6 @@ layout(location = 3) in uint v_connectedVertices;   //1Byte
 
 uniform mat4 u_perspective;
 uniform mat4 u_view;
-uniform mat4 u_model;
 
 uniform vec3 u_chunkP;
 uniform uint u_CHUNK_X;
@@ -109,18 +108,18 @@ void main()
     uint blockX =  duplicateMath - blockZ * u_CHUNK_Z;
 
     vec3 vertexPosition = u_chunkP + vec3(blockX, blockY, blockZ) + faceP;
-    gl_Position = u_perspective * u_view * u_model * vec4(vertexPosition, 1.0);
+    gl_Position = u_perspective * u_view  * vec4(vertexPosition, 1.0);
 
     p_uv = faceUV[gl_VertexID % 4];
     p_depth = v_spriteIndex;
     //p_normal = faceNormals[v_normal];
-    p_normal = (u_view * u_model * vec4(faceNormals[v_normal], 0)).xyz;
-    p_pixelP = vec3(u_view * u_model * vec4(vertexPosition, 1.0));
+    p_normal = (u_view * vec4(faceNormals[v_normal], 0)).xyz;
+    p_pixelP = vec3(u_view * vec4(vertexPosition, 1.0));
     p_view = u_view;
 
     p_connectedVertices = min(v_connectedVertices, uint(4));
 
     //Previous gl_Position assignment
-    //gl_Position = u_perspective * u_view * u_model * vec4(v_position, 1.0);
-    //p_pixelP = vec3(u_view * u_model * vec4(v_position, 1.0));
+    //gl_Position = u_perspective * u_view * vec4(v_position, 1.0);
+    //p_pixelP = vec3(u_view * vec4(v_position, 1.0));
 }

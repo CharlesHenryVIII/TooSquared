@@ -34,6 +34,8 @@ int main(int argc, char* argv[])
     std::unordered_map<int32, Key> keyStates;
     InitializeVideo();
     MultiThreading& multiThreading = MultiThreading::GetInstance();
+    Camera testCamera;
+
 
     double freq = double(SDL_GetPerformanceFrequency()); //HZ
     double totalTime = SDL_GetPerformanceCounter() / freq; //sec
@@ -49,7 +51,7 @@ int main(int argc, char* argv[])
 
     g_camera.view;
     WorldPos cOffset = { 1.0f, 1.0f, 1.0f };
-    gb_mat4_look_at(&g_camera.view, { g_camera.p.x + cOffset.x, g_camera.p.y + cOffset.y,g_camera.p.z + cOffset.z }, { g_camera.p.x, g_camera.p.y, g_camera.p.z }, { 0,1,0 });
+    gb_mat4_look_at(&g_camera.view, { g_camera.p.p.x + cOffset.p.x, g_camera.p.p.y + cOffset.p.y,g_camera.p.p.z + cOffset.p.z }, { g_camera.p.p.x, g_camera.p.p.y, g_camera.p.p.z }, { 0,1,0 });
 
     g_chunks = new ChunkArray();
     float loadingTimer = 0.0f;
@@ -80,12 +82,17 @@ int main(int argc, char* argv[])
         Vec2Int originalMouseLocation = {};
         Vec2Int newMouseLocation = {};
 
+
         g_mouse.pDelta = { 0, 0 };
 
         if (multiThreading.GetJobsInFlight() > 0 || uploadedLastFrame)
             loadingTimer += deltaTime;
         uploadedLastFrame = false;
-        SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared Chunks: %u, Time: %0.2f, Triangles: %u", g_chunks->chunkCount, loadingTimer, g_renderer.numTrianglesDrawn).c_str());
+        {
+            ChunkPos cameraChunk = ToChunk(g_camera.p);
+            SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared P: %i, %i, %i; C: %i, %i; Chunks: %u; Time: %0.2f; Triangles: %u",
+                (int32)g_camera.p.p.x, (int32)g_camera.p.p.y, (int32)g_camera.p.p.z, cameraChunk.x, cameraChunk.z, g_chunks->chunkCount, loadingTimer, g_renderer.numTrianglesDrawn).c_str());
+        }
 
         SDL_Event SDLEvent;
         g_mouse.pDelta = {};
@@ -224,21 +231,21 @@ int main(int argc, char* argv[])
         if (keyStates[SDLK_LSHIFT].down)
             cameraSpeed *= 30;
         if (keyStates[SDLK_w].down)
-            g_camera.p += (cameraSpeed * g_camera.front);
+            g_camera.p.p += (cameraSpeed * g_camera.front);
         if (keyStates[SDLK_s].down)
-            g_camera.p -= (cameraSpeed * g_camera.front);
+            g_camera.p.p -= (cameraSpeed * g_camera.front);
         if (keyStates[SDLK_a].down)
-            g_camera.p -= (Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed);
+            g_camera.p.p -= (Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed);
         if (keyStates[SDLK_d].down)
-            g_camera.p += (Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed);
+            g_camera.p.p += (Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed);
         if (keyStates[SDLK_LCTRL].down)
-            g_camera.p.y -= cameraSpeed;
+            g_camera.p.p.y -= cameraSpeed;
         if (keyStates[SDLK_SPACE].down)
-            g_camera.p.y += cameraSpeed;
+            g_camera.p.p.y += cameraSpeed;
         if (keyStates[SDLK_z].down)
-            g_camera.p.z += cameraSpeed;
+            g_camera.p.p.z += cameraSpeed;
         if (keyStates[SDLK_x].down)
-            g_camera.p.x += cameraSpeed;
+            g_camera.p.p.x += cameraSpeed;
 
         float sensitivity = 0.3f; // change this value to your liking
         g_mouse.pDelta *= sensitivity;
@@ -259,9 +266,21 @@ int main(int argc, char* argv[])
         front.z = sin(DegToRad(g_camera.yaw)) * cos(DegToRad(g_camera.pitch));
         g_camera.front = Normalize(front);
 
-        gb_mat4_look_at(&g_camera.view, { g_camera.p.x, g_camera.p.y, g_camera.p.z },
-                       { g_camera.p.x + g_camera.front.x, g_camera.p.y + g_camera.front.y, g_camera.p.z + g_camera.front.z },
+        gb_mat4_look_at(&g_camera.view, { g_camera.p.p.x, g_camera.p.p.y, g_camera.p.p.z },
+                       { g_camera.p.p.x + g_camera.front.x, g_camera.p.p.y + g_camera.front.y, g_camera.p.p.z + g_camera.front.z },
                          g_camera.up);
+
+        //testCamera.p = { 0, 100, 0 };
+        //gb_mat4_look_at(&g_camera.view, g_camera.p.p, testCamera.p.p, {0, 1, 0});
+
+        //Vec3 lookatPosition = { (float)sin(totalTime / 10) * 100, 100, (float)cos(totalTime / 10) * 100};
+        //gb_mat4_look_at(&testCamera.view, testCamera.p.p, lookatPosition, { 0, 1, 0 });
+
+        Mat4 perspective;
+        gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.65f, 1000.0f);
+        Mat4 viewProj = perspective * g_camera.view;//testCamera.view;
+
+
 
         {
             //PROFILE_SCOPE("Camera Position Chunk Update");
@@ -467,8 +486,9 @@ int main(int argc, char* argv[])
             const int32 uploadMax = 20;
 #endif
 #if 1
+            Frustum frustum = ComputeFrustum(viewProj);
             int32 uploadCount = 0;
-            PreChunkRender();
+            PreChunkRender(perspective);
             for (int32 _drawDistance = 0; _drawDistance < g_camera.drawDistance; _drawDistance++)
             {
                 for (int32 drawZ = -_drawDistance; drawZ <= _drawDistance; drawZ++)
@@ -488,17 +508,22 @@ int main(int argc, char* argv[])
                         if (!g_chunks->active[chunkIndex])
                             continue;
 
-                        if (g_chunks->state[chunkIndex] == ChunkArray::VertexLoaded)
+                        GamePos min = ToGame(drawDistanceChunk);
+                        GamePos max = { min.x + (int32)CHUNK_X, min.y + (int32)CHUNK_Y, min.z + (int32)CHUNK_Z };
+                        if (bool inFrustum = IsBoxInFrustum(frustum, ToWorld(min).p.e, ToWorld(max).p.e))
                         {
-                            if (uploadCount > uploadMax)
-                                continue;
-                            g_chunks->UploadChunk(chunkIndex);
-                            uploadCount++;
-                            uploadedLastFrame = true;
-                        }
-                        if (g_chunks->state[chunkIndex] == ChunkArray::Uploaded)
-                        {
-                            g_chunks->RenderChunk(chunkIndex);
+                            if (g_chunks->state[chunkIndex] == ChunkArray::VertexLoaded)
+                            {
+                                if (uploadCount > uploadMax)
+                                    continue;
+                                g_chunks->UploadChunk(chunkIndex);
+                                uploadCount++;
+                                uploadedLastFrame = true;
+                            }
+                            if (g_chunks->state[chunkIndex] == ChunkArray::Uploaded)
+                            {
+                                g_chunks->RenderChunk(chunkIndex);
+                            }
                         }
                     }
                 }
@@ -529,6 +554,8 @@ int main(int argc, char* argv[])
         }
 
         {
+            //DrawBlock(testCamera.p.p, { 0, 1, 0, 1 }, 5.0f, perspective);
+            //DrawBlock(lookatPosition, { 1, 0, 0, 1 }, 5.0f, perspective);
             if (debugDraw)
             {
                 for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
@@ -546,12 +573,12 @@ int main(int argc, char* argv[])
                     };
 
                     WorldPos chunkP = ToWorld(Convert_ChunkIndexToGame(i));
-                    chunkP.x += CHUNK_X / 2.0f;
+                    chunkP.p.x += CHUNK_X / 2.0f;
                     //chunkP.y = CHUNK_Y;
-                    chunkP.z += CHUNK_Z / 2.0f;
+                    chunkP.p.z += CHUNK_Z / 2.0f;
                     Vec3 size = { CHUNK_X, CHUNK_Y, CHUNK_Z };
 
-                    DrawBlock(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size);
+                    DrawBlock(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, perspective);
                 }
             }
         }
@@ -581,6 +608,7 @@ int main(int argc, char* argv[])
         //    return (static_cast<float>(renderTotalTime) - a> 1.0f);
         //});
         //frameTimes.push_back(static_cast<float>(renderTotalTime));
+
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glDisable(GL_DEPTH_TEST);
         glViewport(0, 0, g_window.size.x, g_window.size.y);
