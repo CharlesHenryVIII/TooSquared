@@ -1,8 +1,8 @@
 #version 330 core
-layout(location = 0) in uint v_blockIndex;          //2Byte
-layout(location = 1) in uint v_spriteIndex;         //1Byte
-layout(location = 2) in uint v_normal;              //1Byte
-layout(location = 3) in uint v_connectedVertices;   //1Byte
+layout(location = 0) in uint v_blockIndex;                  //2Byte
+layout(location = 1) in uint v_spriteIndex;                 //1Byte
+layout(location = 2) in uint v_normalAndConnectedVertices;  //1Byte
+//layout(location = 3) in uint v_connectedVertices;         //1Byte
 
 uniform mat4 u_perspective;
 uniform mat4 u_view;
@@ -99,8 +99,10 @@ const vec2 faceUV[4] = vec2[4](
 
 void main()
 {
+    uint normalIndex = uint(v_normalAndConnectedVertices & uint(0xF0)) >> 4;
+    uint connectedVertices = uint(v_normalAndConnectedVertices & uint(0x0F));
 
-    vec3 faceP = cubeVertices[v_normal].e[gl_VertexID % 4];
+    vec3 faceP = cubeVertices[normalIndex].e[gl_VertexID % 4];
 
     uint blockY =  v_blockIndex / u_CHUNK_Y;
     uint duplicateMath = (v_blockIndex - blockY * u_CHUNK_Y);
@@ -112,12 +114,12 @@ void main()
 
     p_uv = faceUV[gl_VertexID % 4];
     p_depth = v_spriteIndex;
-    //p_normal = faceNormals[v_normal];
-    p_normal = (u_view * vec4(faceNormals[v_normal], 0)).xyz;
+    //p_normal = faceNormals[normalIndex];
+    p_normal = (u_view * vec4(faceNormals[normalIndex], 0)).xyz;
     p_pixelP = vec3(u_view * vec4(vertexPosition, 1.0));
     p_view = u_view;
 
-    p_connectedVertices = min(v_connectedVertices, uint(4));
+    p_connectedVertices = min(connectedVertices, uint(4));
 
     //Previous gl_Position assignment
     //gl_Position = u_perspective * u_view * vec4(v_position, 1.0);

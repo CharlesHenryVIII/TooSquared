@@ -80,8 +80,8 @@ struct Vertex {
 struct Vertex_Chunk {
     uint16 blockIndex;
     uint8 spriteIndex;
-    uint8 n;
-    uint8 connectedVertices = 0;
+    uint8 nAndConnectedVertices = 0;
+    //uint8 connectedVertices = 0;
 };
 #pragma pack(pop)
 

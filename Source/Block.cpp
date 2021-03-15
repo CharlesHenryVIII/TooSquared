@@ -1027,10 +1027,10 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                         f.c.spriteIndex = faceSprites[+currentBlockType].faceSprites[faceIndex];
                         f.d.spriteIndex = faceSprites[+currentBlockType].faceSprites[faceIndex];
 
-                        f.a.n = faceIndex;
-                        f.b.n = faceIndex;
-                        f.c.n = faceIndex;
-                        f.d.n = faceIndex;
+                        f.a.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
+                        f.b.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
+                        f.c.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
+                        f.d.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
 
                         faceVertices[i].push_back(f.a);
                         faceVertices[i].push_back(f.b);
@@ -1048,10 +1048,11 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
     //-X and -Z
     for (Vertex_Chunk& vert : faceVertices[i])
     {
-        Vec3Int blockN = Vec3ToVec3Int(faceNormals[vert.n]);
+        uint8 normal = (vert.nAndConnectedVertices & 0xF0) >> 4;
+        Vec3Int blockN = Vec3ToVec3Int(faceNormals[normal]);
         Vec3Int blockP = GetBlockPosFromIndex(vert.blockIndex);
 
-        uint8 faceIndex = vert.n;
+        uint8 faceIndex = normal;
         Vec3Int a = *(&vertexBlocksToCheck[faceIndex].e0 + (vertIndex + 0));
         Vec3Int b = *(&vertexBlocksToCheck[faceIndex].e0 + (vertIndex + 1));
         Vec3Int c = a + b;
@@ -1071,11 +1072,11 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
         else
             g_chunks->flags[i] &= ~(CHUNK_RESCAN_BLOCKS);
         if (at != BlockType::Empty)
-            vert.connectedVertices += 1;
+            vert.nAndConnectedVertices += 1;
         if (bt != BlockType::Empty)
-            vert.connectedVertices += 1;
+            vert.nAndConnectedVertices += 1;
         if (ct != BlockType::Empty)
-            vert.connectedVertices += 1;
+            vert.nAndConnectedVertices += 1;
 
         vertIndex += 2;
         vertIndex = vertIndex % 8;
@@ -1137,10 +1138,10 @@ void ChunkArray::RenderChunk(ChunkIndex i)
     glEnableVertexArrayAttrib(g_renderer.vao, 0);
     glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
     glEnableVertexArrayAttrib(g_renderer.vao, 1);
-    glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, n));
+    glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, nAndConnectedVertices));
     glEnableVertexArrayAttrib(g_renderer.vao, 2);
-    glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, connectedVertices));
-    glEnableVertexArrayAttrib(g_renderer.vao, 3);
+    //glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, connectedVertices));
+    //glEnableVertexArrayAttrib(g_renderer.vao, 3);
 
     ShaderProgram* sp = g_renderer.programs[+Shader::Chunk];
     sp->UpdateUniformVec3("u_chunkP",      1,  ToWorld(Convert_ChunkIndexToGame(i)).p.e);
