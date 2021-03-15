@@ -200,100 +200,72 @@ struct Rectangle_Int {
 //{
 //    return !(lhs == rhs);
 //}
-#define D3PlusFloat(type) \
-[[nodiscard]] inline type operator+(type a, float b)\
-{\
-    type r = {a.x + b, a.y + b, a.z + b};\
-    return r;\
+[[nodiscard]] inline Vec3 operator+(Vec3 a, float b)
+{
+    Vec3 r = {a.x + b, a.y + b, a.z + b};
+    return r;
 }
-#define D3MinusFloat(type) \
-[[nodiscard]] inline type operator-(type a, float b)\
-{\
-    type r = {a.x - b, a.y - b, a.z - b};\
-    return r;\
+[[nodiscard]] inline Vec3 operator-(Vec3 a, float b)
+{
+    Vec3 r = {a.x - b, a.y - b, a.z - b};
+    return r;
 }
-#define D3EQUAL(type) \
-[[nodiscard]] inline bool operator==(type a, type b)\
-{\
-    return ((a.x == b.x) && (a.y == b.y) && (a.z == b.z));\
+[[nodiscard]] inline bool operator==(Vec3Int a, Vec3Int b)
+{
+    return ((a.x == b.x) && (a.y == b.y) && (a.z == b.z));
 }
-#define D3MinusD3(type) \
-[[nodiscard]] inline type operator-(type a, type b)\
-{\
-    type r = {a.x - b.x, a.y - b.y, a.z - b.z};\
-    return r;\
+[[nodiscard]] inline Vec3Int operator-(Vec3Int a, Vec3Int b)
+{
+    Vec3Int r = {a.x - b.x, a.y - b.y, a.z - b.z};
+    return r;
 }
-#define D3PlusD3(type) \
-[[nodiscard]] inline type operator+(type a, type b)\
-{\
-    type r = {a.x + b.x, a.y + b.y, a.z + b.z};\
-    return r;\
+[[nodiscard]] inline Vec3Int operator+(Vec3Int a, Vec3Int b)
+{
+    Vec3Int r = {a.x + b.x, a.y + b.y, a.z + b.z};
+    return r;
 }
-#define D3AddEqualD3(type)\
- inline type &operator+=(type &a, type b)\
-{\
-    return (a = a + b);\
+ inline Vec3Int& operator+=(Vec3Int &a, Vec3Int b)
+{
+    return (a = a + b);
 }
-#define D3MinusEqualD3(type)\
-inline type &operator-=(type &a, type b)\
-{\
-    return (a = a - b);\
+inline Vec3Int& operator-=(Vec3Int &a, Vec3Int b)
+{
+    return (a = a - b);
 }
-#define D3DivideD1(type1, type2) \
-[[nodiscard]] inline type1 operator/(type1 a, type2 b)\
-{\
-    type1 r = {a.x / b, a.y / b, a.z / b };\
-    return r;\
+[[nodiscard]] inline Vec3Int operator/(Vec3Int a, int32 b)
+{
+    Vec3Int r = {a.x / b, a.y / b, a.z / b };
+    return r;
 }
-#define D3DivideEqualD1(type1, type2) \
-[[nodiscard]] inline type1 operator/=(type1& a, type2 b)\
-{\
-    a = {a.x / b, a.y / b, a.z / b };\
+[[nodiscard]] inline Vec3Int operator/=(Vec3Int& a, int32 b)
+{
+    a = {a.x / b, a.y / b, a.z / b };
 }
 
-D3PlusFloat(Vec3)
-D3MinusFloat(Vec3)
-D3EQUAL(Vec3Int)
-D3PlusD3(Vec3Int)
-D3MinusD3(Vec3Int)
-D3AddEqualD3(Vec3Int)
-D3MinusEqualD3(Vec3Int)
-D3DivideD1(Vec3Int, int32)
-D3DivideEqualD1(Vec3Int, int32)
 
-#define D2EQUAL(type) \
-[[nodiscard]] inline bool operator==(type a, type b)\
-{\
-    return ((a.x == b.x) && (a.y == b.y));\
+[[nodiscard]] inline bool operator==(Vec2Int a, Vec2Int b)
+{
+    return ((a.x == b.x) && (a.y == b.y));
 }
-#define D2MinusD3(type) \
-[[nodiscard]] inline type operator-(type a, type b)\
-{\
-    type r = {a.x - b.x, a.y - b.y };\
-    return r;\
+[[nodiscard]] inline Vec2Int operator-(Vec2Int a, Vec2Int b)
+{
+    Vec2Int r = {a.x - b.x, a.y - b.y };
+    return r;
 }
-#define D2PlusD3(type) \
-[[nodiscard]] inline type operator+(type a, type b)\
-{\
-    type r = {a.x + b.x, a.y + b.y };\
-    return r;\
+[[nodiscard]] inline Vec2Int operator+(Vec2Int a, Vec2Int b)
+{
+    Vec2Int r = {a.x + b.x, a.y + b.y };
+    return r;
 }
-#define D2AddEqualD3(type)\
- inline type &operator+=(type &a, type b)\
-{\
-    return (a = a + b);\
+ inline Vec2Int &operator+=(Vec2Int &a, Vec2Int b)
+{
+    return (a = a + b);
 }
-#define D2MinusEqualD3(type)\
-inline type &operator-=(type &a, type b)\
-{\
-    return (a = a - b);\
+inline Vec2Int &operator-=(Vec2Int &a, Vec2Int b)
+{
+    return (a = a - b);
 }
 
-D2EQUAL(Vec2Int);
-D2MinusD3(Vec2Int);
-D2PlusD3(Vec2Int);
-D2AddEqualD3(Vec2Int);
-D2MinusEqualD3(Vec2Int);
 
 //[[nodiscard]] inline Vec3 operator+(Vec3 a, float b)
 //{
