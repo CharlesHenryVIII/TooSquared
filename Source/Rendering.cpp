@@ -609,6 +609,8 @@ void UpdateFrameBuffer(Vec2Int size)
     if (fb->m_size.x == size.x && fb->m_size.y == size.y)
         return;
 
+    fb->m_size = size;
+
     fb->Bind();
     if (fb->m_color && fb->m_color->m_handle)
         delete fb->m_color;
