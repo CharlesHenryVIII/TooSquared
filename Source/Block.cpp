@@ -63,6 +63,7 @@ void ChunkArray::ClearChunk(ChunkIndex index)
     state[index] = {};
     uploadedIndexCount[index] = {};
     flags[index] = {};
+    refs[index] = {};
 
     g_chunks->chunkCount--;
 
@@ -702,6 +703,8 @@ void ChunkArray::SetBlocks(ChunkIndex i)
     blocks[i].e[CHUNK_X - 4][CHUNK_Y - 1][CHUNK_Z - 2] = BlockType::Grass;
     blocks[i].e[CHUNK_X - 4][CHUNK_Y - 2][CHUNK_Z - 1] = BlockType::Grass;
 #endif
+
+
 }
 
 Vec3Int GetBlockPosFromIndex(uint16 index)
@@ -796,7 +799,23 @@ bool RegionSampler::RegionGather(ChunkIndex i)
             }
         }
     }
-    return numIndices == arrsize(neighbors);
+
+    bool valid = numIndices == arrsize(neighbors);
+        
+    return valid;
+}
+void RegionSampler::DecrimentRefCount()
+{
+    g_chunks->refs[center]--;
+    for (int32 i = 0; i < arrsize(neighbors); i++)
+        g_chunks->refs[i]--;
+}
+
+void RegionSampler::IncrimentRefCount()
+{
+    g_chunks->refs[center]++;
+    for (int32 i = 0; i < arrsize(neighbors); i++)
+        g_chunks->refs[i]++;
 }
 
 void ChunkArray::BuildChunkVertices(RegionSampler region)
@@ -882,7 +901,6 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
         {
             //failed to get block needs to be redone;
             g_chunks->flags[i] |= CHUNK_RESCAN_BLOCKS;
-            assert(false);
         }
         else
             g_chunks->flags[i] &= ~(CHUNK_RESCAN_BLOCKS);
@@ -968,15 +986,19 @@ void ChunkArray::RenderChunk(ChunkIndex i)
 void SetBlocks::DoThing()
 {
     //PROFILE_SCOPE("THREAD: SetBlocks()");
+    g_chunks->refs[chunk]++;
     g_chunks->SetBlocks(chunk);
     g_chunks->state[chunk] = ChunkArray::BlocksLoaded;
+    g_chunks->refs[chunk]--;
 }
 
 void CreateVertices::DoThing()
 {
     //PROFILE_SCOPE("THREAD: CreateVertices()");
+    region.IncrimentRefCount();
     g_chunks->BuildChunkVertices(region);
     g_chunks->state[region.center] = ChunkArray::VertexLoaded;
+    region.DecrimentRefCount();
 }
 
 void DrawBlock(WorldPos p, Color color, float scale, const Mat4& perspective)

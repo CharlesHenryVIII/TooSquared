@@ -396,7 +396,7 @@ int main(int argc, char* argv[])
                         if (g_chunks->state[originChunk] != ChunkArray::BlocksLoaded)
                             continue;
 
-                        RegionSampler regionSampler;
+                        RegionSampler regionSampler = {};
 
                         if (regionSampler.RegionGather(originChunk))
                         {
@@ -608,6 +608,7 @@ int main(int argc, char* argv[])
             //PROFILE_SCOPE("Chunk Deletion");
             for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
             {
+                assert(g_chunks->refs[i] >= 0);
                 if (!g_chunks->active[i])
                     continue;
                 if (g_chunks->state[i] == ChunkArray::VertexLoading)
@@ -615,7 +616,7 @@ int main(int argc, char* argv[])
                 if (g_chunks->state[i] == ChunkArray::BlocksLoading)
                     continue;
 
-                if (g_chunks->flags[i] & CHUNK_TODELETE)
+                if ((g_chunks->flags[i] & CHUNK_TODELETE) && (g_chunks->refs[i] == 0))
                 {
                     g_chunks->ClearChunk(i);
                 }

@@ -166,6 +166,8 @@ struct RegionSampler {
 
     bool GetBlock(BlockType& result, Vec3Int blockRelP);
     bool RegionGather(ChunkIndex i);
+    void DecrimentRefCount();
+    void IncrimentRefCount();
 };
 
 struct ChunkArray
@@ -189,6 +191,7 @@ struct ChunkArray
     uint32                                  chunkCount = 0;
     std::atomic<State>                      state[MAX_CHUNKS] = {};
     std::unordered_map<uint64, ChunkIndex>  chunkPosTable;
+    int32                                   refs[MAX_CHUNKS] = {};
 
     bool GetChunkFromPosition(ChunkIndex& result, ChunkPos p);
     void ClearChunk(ChunkIndex index);
