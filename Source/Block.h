@@ -26,6 +26,7 @@ enum class BlockType : uint8 {
     IronBlock,
     GoldBlock,
     DiamondBlock,
+    Snow,
     Count,
 };
 ENUMOPS(BlockType);

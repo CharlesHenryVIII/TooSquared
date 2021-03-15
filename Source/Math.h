@@ -267,23 +267,11 @@ inline Vec2Int &operator-=(Vec2Int &a, Vec2Int b)
 }
 
 
-//[[nodiscard]] inline Vec3 operator+(Vec3 a, float b)
-//{
-//    Vec3 r = {a.x + b, a.y + b, a.z + b};
-//    return r;
-//}
-
 [[nodiscard]] inline Vec3 operator+(float a, Vec3 b)
 {
     Vec3 r = { a + b.x, a + b.y, a + b.z };
     return r;
 }
-
-//[[nodiscard]] inline Vec3 operator-(Vec3 a, float b)
-//{
-//    Vec3 r = {a.x - b, a.y - b, a.z - b};
-//    return r;
-//}
 
 [[nodiscard]] inline Vec3 operator-(float a, Vec3 b)
 {

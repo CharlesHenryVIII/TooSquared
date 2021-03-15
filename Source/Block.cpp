@@ -3,6 +3,8 @@
 #include "Noise.h"
 #include "Computer.h"
 
+#include <unordered_map>
+
 ChunkArray* g_chunks;
 
 
@@ -210,6 +212,7 @@ void SetBlockSprites()
     SetMultipleBlockSprites(BlockType::IronBlock, 22);
     SetMultipleBlockSprites(BlockType::Dirt, 2);
     SetMultipleBlockSprites(BlockType::Sand, 18);
+    SetMultipleBlockSprites(BlockType::Snow, 66);
 }
 
 //TODO: Move to ChunkPos
@@ -229,16 +232,17 @@ Vec3Int Convert_GameToChunk(Vec3 p)
 }
 
 
-enum class ChunkType : Uint8 {
+enum class Biome : Uint8 {
     //None,
     Plains,
     Mountain,
     Desert,
+    Tundra,
     Count,
 };
-ENUMOPS(ChunkType);
+ENUMOPS(Biome);
 
-ChunkType RandomBiome(ChunkPos v)
+Biome RandomBiome(ChunkPos v)
 {
     uint32 first = *(uint32*)(&v.p.x);
     first ^= first << 13;
@@ -249,11 +253,44 @@ ChunkType RandomBiome(ChunkPos v)
     second ^= second << 13;
     second ^= second >> 17;
     second ^= second << 5;
-    ChunkType result = static_cast<ChunkType>(((first ^ second) * (+ChunkType::Count - 1)) / UINT_MAX);
-    return static_cast<ChunkType>((+result) + 1);
+    Biome result = static_cast<Biome>(((first ^ second) * (+Biome::Count - 1)) / UINT_MAX);
+    return static_cast<Biome>((+result) + 1);
 }
 
-uint32 chunkTypes[+ChunkType::Count] = {};
+uint32 chunkTypes[+Biome::Count] = {};
+std::unordered_map<int64, Biome> s_biomePoints;
+struct BiomePoints {
+    ChunkPos pos;
+    Biome biome;
+};
+//std::vector<BiomePoints> s_biomePoints;
+
+//SRAND IS NOT THREAD SAFE
+void UpdateBiomePoints()
+{
+    ChunkPos cameraP = ToChunk(g_camera.p);
+    float biLinearThreshold = 0.05f;
+
+    for (int32 z = -g_camera.drawDistance + cameraP.p.z; z <= g_camera.drawDistance + cameraP.p.z; z++)
+    {
+        for (int32 x = -g_camera.drawDistance + cameraP.p.x; z <= g_camera.drawDistance + cameraP.p.x; x++)
+        {
+            //float vor = VoronoiNoise({ x, z }, 1.0f, -2.0f);
+            //if ((vor > 0.5f - biLinearThreshold) && (vor < 0.5f + biLinearThreshold))
+
+            float vor = VoronoiNoise({ float(x), float(z) }, 1.0f, -3.0f);
+            if (vor)
+            {
+                int64 hash = PositionHash({ x, 0, z });
+                if (s_biomePoints.find(hash) == s_biomePoints.end())
+                {
+                    srand(uint32(hash));
+                    s_biomePoints[hash] = Biome(rand() % +Biome::Count);
+                }
+            }
+        }
+    }
+}
 
 void ChunkArray::SetBlocks(ChunkIndex i)
 {
@@ -276,11 +313,103 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
             Vec2 blockRatio = { static_cast<float>(chunkBlockP.p.x + blockP.p.x), static_cast<float>(chunkBlockP.p.z + blockP.p.z) };
 
-#define VORONOI 4
+#define VORONOI 7
             blockRatio /= 100;
             int32 yTotal = 0;
 
-#if VORONOI == 6
+#if VORONOI == 8
+    
+            //Loop over every s_biomePoint and look for the closest one to the block/chunk,
+            //if there are multiple that are within 2 chunks then interpolate
+            for ()
+
+
+
+
+#elif VORONOI == 7
+
+            blockRatio /= 2;
+
+            float vor = VoronoiNoise(blockRatio, 1.0f, 1.0f);
+            NoiseParams np;
+            Biome biome = Biome(int32(vor * 10) % +Biome::Count);
+            switch (biome)
+            {
+            case Biome::Plains:
+			{
+                np = {
+                    .numOfOctaves = 4,
+                    .freq = 0.75f,
+                    .weight = 1.0f,
+                    .gainFactor = 1.0f,
+                };
+
+				topBlockType = BlockType::Grass;
+
+                break;
+            }
+            case Biome::Mountain:
+            {
+                np = {
+                    .numOfOctaves = 8,
+                    .freq = 0.4f,
+                    .weight = 1.5f,
+                    .gainFactor = 0.9f,
+                };
+				topBlockType = BlockType::Stone;
+
+                break;
+            }
+            case Biome::Desert:
+            {
+				np = {
+					.numOfOctaves = 1,
+					.freq = 1.0f,
+					.weight = 1.0f,
+					.gainFactor = 0.5f,
+				};
+				topBlockType = BlockType::Sand;
+
+                break;
+            }
+            case Biome::Tundra:
+            {
+				np = {
+					.numOfOctaves = 1,
+					.freq = 2.0f,
+					.weight = 1.0f,
+					.gainFactor = 0.5f,
+				};
+				topBlockType = BlockType::Snow;
+
+                break;
+            }
+            default:
+            {
+                assert(false);//(+chunkType) > +ChunkType::None && (+chunkType) < +ChunkType::Count);
+                break;
+            }
+            }
+
+            yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, np) * CHUNK_Y), 10, CHUNK_Y - 1);
+
+            //else
+            //{
+            //    vor = ((vor - plainsSetpoint) / (mountainSetpoint - plainsSetpoint));
+            //    //DebugPrint("B Vor: %f\n", vor);
+            //    //vor = (vor - plainsSetpoint) / (mountainSetpoint - plainsSetpoint);
+            //    if (RandomFloat(-1.0f, 1.0f) > 0)
+            //        topBlockType = BlockType::Grass;
+            //    else
+            //        topBlockType = BlockType::Stone;
+
+            //    float mountainHeight = static_cast<float>(Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, mountainParams) * CHUNK_Y), 10, CHUNK_Y - 1));
+            //    float plainsHeight = static_cast<float>(Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, plainParams) * CHUNK_Y), 10, CHUNK_Y - 1));
+            //    yTotal = static_cast<uint32>(Lerp<float>(plainsHeight, mountainHeight, vor));
+            //}
+
+
+#elif VORONOI == 6
 
             //blockRatio /= 2;
 
@@ -406,30 +535,67 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
             blockRatio /= 2;
 
-            //float vor = (VoronoiNoise(blockRatio, 1.0f, 0.0f) + 1.0f) / 2;
-            float vor = VoronoiNoise(blockRatio / 4, 1.0f, 1.0f);
-            NoiseParams mountainParams = {
-                .numOfOctaves = 8,
-                .freq = 0.4f,
-                .weight = 1.5f,
-                .gainFactor = 0.9f,
-            };
-            NoiseParams plainParams = {
-                .numOfOctaves = 4,
-                .freq = 0.75f,
-                .weight = 1.0f,
-                .gainFactor = 1.0f,
-            };
+            float vor = VoronoiNoise(blockRatio, 1.0f, 1.0f);
+            NoiseParams np;
+            switch (chunkType)
+            {
+            case ChunkType::Plains:
+			{
 
-            float mountainSetpoint = 0.575f;
+                np = {
+                    .numOfOctaves = 4,
+                    .freq = 0.75f,
+                    .weight = 1.0f,
+                    .gainFactor = 1.0f,
+                };
+
+				topBlockType = BlockType::Grass;
+
+                break;
+            }
+            case ChunkType::Mountain:
+            {
+                np = {
+                    .numOfOctaves = 8,
+                    .freq = 0.4f,
+                    .weight = 1.5f,
+                    .gainFactor = 0.9f,
+                };
+				topBlockType = BlockType::Stone;
+
+                break;
+            }
+            case ChunkType::Desert:
+            {
+
+				np = {
+					.numOfOctaves = 1,
+					.freq = 1.0f,
+					.weight = 1.0f,
+					.gainFactor = 0.5f,
+				};
+				topBlockType = BlockType::Sand;
+
+                break;
+            }
+            default:
+            {
+                assert(false);//(+chunkType) > +ChunkType::None && (+chunkType) < +ChunkType::Count);
+                break;
+            }
+            }
+
+
+            float mountainSetpoint = 0.525f;
             float plainsSetpoint = 0.475f;
+            ChunkType biome = int32(vor * 10) % +ChunkType::Count;
 
             if (vor > mountainSetpoint)
             {
                 yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, mountainParams) * CHUNK_Y), 10, CHUNK_Y - 1);
                 topBlockType = BlockType::Stone;
             }
-            else if (vor < plainsSetpoint)
+            else if (vor <= plainsSetpoint)
             {
                 yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, plainParams) * CHUNK_Y), 10, CHUNK_Y - 1);
                 topBlockType = BlockType::Grass;
