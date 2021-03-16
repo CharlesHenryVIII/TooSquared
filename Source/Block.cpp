@@ -7,6 +7,23 @@
 
 ChunkArray* g_chunks;
 
+//
+BiomeType BiomeTable[+BiomeMoist::Count][+BiomeTemp::Count] = {
+    //COLDEST        //COLDER            //COLD                   //HOT                           //HOTTER                        //HOTTEST
+    { BiomeType::Ice, BiomeType::Tundra, BiomeType::Grassland,    BiomeType::Desert,              BiomeType::Desert,              BiomeType::Desert },              //DRYEST
+    { BiomeType::Ice, BiomeType::Tundra, BiomeType::Grassland,    BiomeType::Desert,              BiomeType::Desert,              BiomeType::Desert },              //DRYER
+    { BiomeType::Ice, BiomeType::Tundra, BiomeType::Woodland,     BiomeType::Woodland,            BiomeType::Savanna,             BiomeType::Savanna },             //DRY
+    { BiomeType::Ice, BiomeType::Tundra, BiomeType::BorealForest, BiomeType::Woodland,            BiomeType::Savanna,             BiomeType::Savanna },             //WET
+    { BiomeType::Ice, BiomeType::Tundra, BiomeType::BorealForest, BiomeType::SeasonalForest,      BiomeType::TropicalRainforest,  BiomeType::TropicalRainforest },  //WETTER
+    { BiomeType::Ice, BiomeType::Tundra, BiomeType::BorealForest, BiomeType::TemperateRainforest, BiomeType::TropicalRainforest,  BiomeType::TropicalRainforest },  //WETTEST
+};
+
+BiomeType GetBiomeType(BiomeTemp temp, BiomeMoist moist)
+{
+    return BiomeTable[+moist][+temp];
+}
+//
+
 
 int64 PositionHash(ChunkPos p)
 {
@@ -37,17 +54,6 @@ bool ChunkArray::GetChunkFromPosition(ChunkIndex& result, ChunkPos p)
     }
     return false;
 }
-
-    //bool                                    active[MAX_CHUNKS];
-    //ChunkData                               blocks[MAX_CHUNKS];
-    //Vec3Int                                 p[MAX_CHUNKS];
-    //std::vector<Vertex_Chunk>               faceVertices[MAX_CHUNKS];
-    //VertexBuffer                            vertexBuffer[MAX_CHUNKS] = {};
-    //uint32                                  uploadedIndexCount[MAX_CHUNKS];
-    //uint16                                  flags[MAX_CHUNKS];
-    //uint32                                  chunkCount = 0;
-    //State                                   state[MAX_CHUNKS];
-    //std::unordered_map<uint64, ChunkIndex>  chunkPosTable;
 
 void ChunkArray::ClearChunk(ChunkIndex index)
 {
@@ -213,6 +219,11 @@ void SetBlockSprites()
     SetMultipleBlockSprites(BlockType::Dirt, 2);
     SetMultipleBlockSprites(BlockType::Sand, 18);
     SetMultipleBlockSprites(BlockType::Snow, 66);
+    SetMultipleBlockSprites(BlockType::Wood, 20);
+    SetMultipleBlockSprites(BlockType::Ice, 67);
+    SetMultipleBlockSprites(BlockType::Obsidian, 37);
+    SetMultipleBlockSprites(BlockType::Leaves, 53);
+    SetMultipleBlockSprites(BlockType::MossyCobblestone, 36);
 }
 
 //TODO: Move to ChunkPos
@@ -232,17 +243,7 @@ Vec3Int Convert_GameToChunk(Vec3 p)
 }
 
 
-enum class Biome : Uint8 {
-    //None,
-    Plains,
-    Mountain,
-    Desert,
-    Tundra,
-    Count,
-};
-ENUMOPS(Biome);
-
-Biome RandomBiome(ChunkPos v)
+BiomeType RandomBiome(ChunkPos v)
 {
     uint32 first = *(uint32*)(&v.p.x);
     first ^= first << 13;
@@ -253,15 +254,15 @@ Biome RandomBiome(ChunkPos v)
     second ^= second << 13;
     second ^= second >> 17;
     second ^= second << 5;
-    Biome result = static_cast<Biome>(((first ^ second) * (+Biome::Count - 1)) / UINT_MAX);
-    return static_cast<Biome>((+result) + 1);
+    BiomeType result = static_cast<BiomeType>(((first ^ second) * (+BiomeType::Count - 1)) / UINT_MAX);
+    return static_cast<BiomeType>((+result) + 1);
 }
 
-uint32 chunkTypes[+Biome::Count] = {};
-std::unordered_map<int64, Biome> s_biomePoints;
+uint32 chunkTypes[+BiomeType::Count] = {};
+std::unordered_map<int64, BiomeType> s_biomePoints;
 struct BiomePoints {
     ChunkPos pos;
-    Biome biome;
+    BiomeType biome;
 };
 //std::vector<BiomePoints> s_biomePoints;
 
@@ -285,7 +286,7 @@ void UpdateBiomePoints()
                 if (s_biomePoints.find(hash) == s_biomePoints.end())
                 {
                     srand(uint32(hash));
-                    s_biomePoints[hash] = Biome(rand() % +Biome::Count);
+                    s_biomePoints[hash] = BiomeType(rand() % +BiomeType::Count);
                 }
             }
         }
@@ -294,6 +295,36 @@ void UpdateBiomePoints()
 
 void ChunkArray::SetBlocks(ChunkIndex i)
 {
+#define VORONOI 9
+
+#if VORONOI == 9
+
+    //Reference article:
+    //https://www.gamasutra.com/blogs/JonGallant/20160211/264591/Procedurally_Generating_Wrapping_World_Maps_in_Unity_C__Part_4.php
+    //
+
+    float tempVal = {};
+    float moistVal = {};
+    BiomeTemp temp;
+    BiomeMoist moist;
+#if 1
+    Vec2 chunkPForNoise = { float(g_chunks->p[i].p.x), float(g_chunks->p[i].p.z) };
+    tempVal  = VoronoiNoise(chunkPForNoise / 180, 1.0f, 0.0f);
+    moistVal = VoronoiNoise(chunkPForNoise / 60, 1.0f, 0.0f);
+    temp  = BiomeTemp(Clamp<float>(tempVal   * +BiomeTemp::Count,  0.0f, 5.9f));
+    moist = BiomeMoist(Clamp<float>(moistVal * +BiomeMoist::Count, 0.0f, 5.9f));
+    BiomeType biome = GetBiomeType(temp, moist);
+#else
+            NoiseParams tempParams = {
+
+        };
+            NoiseParams moistParams = {
+                
+            };
+            tempVal = PerlinNoise(blockRatio, tempParams);
+            moistVal = PerlinNoise(blockRatio, moistParams);
+#endif
+#endif
     //PROFILE_SCOPE("SetBlocks() ");
     BlockType options[] = {
         BlockType::Empty,
@@ -313,11 +344,115 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
             Vec2 blockRatio = { static_cast<float>(chunkBlockP.p.x + blockP.p.x), static_cast<float>(chunkBlockP.p.z + blockP.p.z) };
 
-#define VORONOI 7
             blockRatio /= 100;
             int32 yTotal = 0;
 
-#if VORONOI == 8
+#if VORONOI == 9
+            
+            NoiseParams np;
+            switch (biome)
+            {
+            case BiomeType::Woodland:
+            {
+                np = {
+                    .numOfOctaves = 4,
+                    .freq = 0.75f,
+                    .weight = 1.0f,
+                    .gainFactor = 1.0f,
+                };
+
+                topBlockType = BlockType::Wood;
+
+                break;
+            }
+            case BiomeType::TropicalRainforest:
+            case BiomeType::Grassland:
+			{
+                np = {
+                    .numOfOctaves = 4,
+                    .freq = 0.75f,
+                    .weight = 1.0f,
+                    .gainFactor = 1.0f,
+                };
+
+				topBlockType = BlockType::Grass;
+
+                break;
+            }
+            case BiomeType::SeasonalForest:
+            case BiomeType::TemperateRainforest:
+            {
+                np = {
+                    .numOfOctaves = 8,
+                    .freq = 0.4f,
+                    .weight = 1.5f,
+                    .gainFactor = 0.9f,
+                };
+				topBlockType = BlockType::MossyCobblestone;
+
+                break;
+            }
+            case BiomeType::BorealForest:
+            //case BiomeType::Mountain:
+            {
+                np = {
+                    .numOfOctaves = 8,
+                    .freq = 0.4f,
+                    .weight = 1.5f,
+                    .gainFactor = 0.9f,
+                };
+				topBlockType = BlockType::Leaves;
+
+                break;
+            }
+            case BiomeType::Savanna:
+            case BiomeType::Desert:
+            {
+				np = {
+					.numOfOctaves = 1,
+					.freq = 1.0f,
+					.weight = 1.0f,
+					.gainFactor = 0.5f,
+				};
+				topBlockType = BlockType::Sand;
+
+                break;
+            }
+            case BiomeType::Ice:
+            {
+				np = {
+					.numOfOctaves = 1,
+					.freq = 2.0f,
+					.weight = 1.0f,
+					.gainFactor = 0.5f,
+				};
+				topBlockType = BlockType::Ice;
+
+                break;
+            }
+            case BiomeType::Tundra:
+            {
+				np = {
+					.numOfOctaves = 1,
+					.freq = 2.0f,
+					.weight = 1.0f,
+					.gainFactor = 0.5f,
+				};
+				topBlockType = BlockType::Snow;
+
+                break;
+            }
+            default:
+            {
+                assert(false);//(+chunkType) > +ChunkType::None && (+chunkType) < +ChunkType::Count);
+                break;
+            }
+            }
+
+            yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, np) * CHUNK_Y), 10, CHUNK_Y - 1);
+
+
+#elif VORONOI == 8
     
             //Loop over every s_biomePoint and look for the closest one to the block/chunk,
             //if there are multiple that are within 2 chunks then interpolate
@@ -332,10 +467,10 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
             float vor = VoronoiNoise(blockRatio, 1.0f, 1.0f);
             NoiseParams np;
-            Biome biome = Biome(int32(vor * 10) % +Biome::Count);
+            BiomeType biome = BiomeType(int32(vor * 10) % +BiomeType::Count);
             switch (biome)
             {
-            case Biome::Plains:
+            case BiomeType::Plains:
 			{
                 np = {
                     .numOfOctaves = 4,
@@ -348,7 +483,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
                 break;
             }
-            case Biome::Mountain:
+            case BiomeType::Mountain:
             {
                 np = {
                     .numOfOctaves = 8,
@@ -360,7 +495,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
                 break;
             }
-            case Biome::Desert:
+            case BiomeType::Desert:
             {
 				np = {
 					.numOfOctaves = 1,
@@ -372,7 +507,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
                 break;
             }
-            case Biome::Tundra:
+            case BiomeType::Tundra:
             {
 				np = {
 					.numOfOctaves = 1,

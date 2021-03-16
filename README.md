@@ -1,8 +1,5 @@
 # TooSquared
 
-* Flat Vertex Attribute
-* singertons/simpletons/simplexingtons????
-
 ###TODO: 
  * Properly handle chunk location
  * Moving Lighting/Sun
@@ -14,14 +11,7 @@
  * Block place and removal
  * Operator overloads on WorldPos and ChunkPos
  * Move main loops into a single loop that switches on chunk state?
- 
-
- Upload chunk position
- upload block index in place of the vertex position
- find the vertex position based on the chunk position and the block index
-
-
- SUN
+ * SUN
 
 
 

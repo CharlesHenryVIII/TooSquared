@@ -27,16 +27,58 @@ enum class BlockType : uint8 {
     GoldBlock,
     DiamondBlock,
     Snow,
+    Ice,
+    Obsidian,
+    Leaves,
+    MossyCobblestone,
     Count,
-};
-ENUMOPS(BlockType);
-
 //CobWeb,
 //Flower_Red,
 //Flower_Yellow,
 //Flower_Blue,
 //Sappling,
 //Chest,
+
+};
+ENUMOPS(BlockType);
+
+enum class BiomeType : Uint8 {
+    //None,
+    Grassland,
+    Desert,
+    Savanna,
+    TropicalRainforest,
+    Woodland,
+    SeasonalForest,
+    TemperateRainforest,
+    BorealForest,
+    Tundra,
+    Ice,
+    Count
+};
+ENUMOPS(BiomeType);
+
+enum class BiomeTemp : Uint8 {
+    Coldest,
+    Colder,
+    Cold,
+    Hot,
+    Hotter,
+    Hottest,
+    Count,
+};
+ENUMOPS(BiomeTemp);
+
+enum class BiomeMoist : Uint8 {
+    Dryest,
+    Dryer,
+    Dry,
+    Wet,
+    Wetter,
+    Wettest,
+    Count,
+};
+ENUMOPS(BiomeMoist);
 
 #define CHUNK_TODELETE          0x0020
 #define CHUNK_RESCAN_BLOCKS     0x0040
