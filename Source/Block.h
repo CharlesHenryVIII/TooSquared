@@ -80,6 +80,14 @@ enum class BiomeMoist : Uint8 {
 };
 ENUMOPS(BiomeMoist);
 
+enum class TerrainType : Uint8 {
+    Plains,
+    Hills,
+    Mountains,
+    Count,
+};
+ENUMOPS(TerrainType);
+
 #define CHUNK_TODELETE          0x0020
 #define CHUNK_RESCAN_BLOCKS     0x0040
 #define CHUNK_RESCANING_BLOCKS  0x0080

@@ -443,8 +443,11 @@ template <typename T>
 //    return a + (b - a) * t;
 //}
 
-
+#if 1
+float Bilinear(float p00, float p10, float p01, float p11, float x, float y);
+#else
 [[nodiscard]] float Bilinear(Vec2 p, Rect loc, float bl, float br, float tl, float tr);
+#endif
 [[nodiscard]] float Cubic(Vec4 v, float x);
 [[nodiscard]] float Bicubic(Mat4 p, Vec2 pos);
 
@@ -487,9 +490,11 @@ Atan2f return value:
     return Pythags(a - b);
 }
 
-[[nodiscard]] inline uint32 RandomU32(uint32 min, uint32 max)
+[[nodiscard]] uint32 PCG_Random(uint64 state);
+[[nodiscard]] inline uint32 RandomU32(uint64 state, uint32 min, uint32 max)
 {
-    uint32 result = rand();
+    uint32 result = PCG_Random(state);
+    //uint32 result = state;
     result ^= result << 13;
     result ^= result >> 17;
     result ^= result << 5;

@@ -1,9 +1,13 @@
 #include "Noise.h"
 #include "Math.h"
 #include "WinInterop.h"
-#include "SimplexNoise.h"
 
 #include "Block.h"
+#define STB_PERLIN_IMPLEMENTATION
+#include "STB\stb_perlin.h"
+
+#define STB_Define
+#include "STB\stb.h"
 
 //____________________
 //
@@ -248,6 +252,12 @@ double Perlin(Vec3 a)
 #endif
 
 #if NOISETYPE == 2
+
+
+float Perlin3D(Vec3 in, Vec3Int wrap)
+{
+    return stb_perlin_noise3(in.x, in.y, in.z, wrap.x, wrap.y, wrap.z);
+}
 
 float Hash(Vec3 p)  // replace this by something better
 {
@@ -682,6 +692,74 @@ int32 GenerateTerrainHeight(int32 min, int32 max, Vec2 input)
     }
     return Clamp<uint32>(static_cast<int32>(PerlinNoise(input, noiseParams) * max), min, max - 1);
 #endif
+}
+
+int stb_BigNoise(int32 x, int32 y, int32 s, uint32 seed)
+{
+   int r0,r1,r00,r01,r10,r11,x0,y0,x1,y1,r;
+   int bx0,by0,bx1,by1;
+   //int temp = (seed=0);
+   int seed1 = seed & 255;
+   int seed2 = (seed >> 4) & 255;
+   int seed3 = (seed >> 8) & 255;
+   int seed4 = (seed >> 12) & 255;
+   int ix = x >> s;
+   int iy = y >> s;
+   int m = (1 << s)-1;
+   x &= m;
+   y &= m;
+   x0 = (ix & 255);
+   y0 = (iy & 255);
+
+   x1 = ix+1;
+   y1 = iy+1;
+   bx0 = (ix >> 8) & 255;
+   by0 = (iy >> 8) & 255;
+   bx1 = (x1 >> 8) & 255;
+   by1 = (y1 >> 8) & 255;
+   x1 &= 255;
+   y1 &= 255;
+
+   // it would be "more random" to run these throught the permutation table, but this should be ok
+   x0 ^= seed1;
+   x1 ^= seed1;
+   bx0 ^= seed2;
+   bx1 ^= seed2;
+   y0 ^= seed3;
+   y1 ^= seed3;
+   by0 ^= seed4;
+   by1 ^= seed4;
+
+   r0 = stb__perlin_randtab[x0];
+   r1 = stb__perlin_randtab[x1];
+   r0 = stb__perlin_randtab[r0+bx0];
+   r1 = stb__perlin_randtab[r1+bx1];
+
+   r00 = stb__perlin_randtab[r0 + y0];
+   r01 = stb__perlin_randtab[r0 + y1];
+   r10 = stb__perlin_randtab[r1 + y0];
+   r11 = stb__perlin_randtab[r1 + y1];
+
+   r00 = stb__perlin_randtab[r00 + by0];
+   r01 = stb__perlin_randtab[r01 + by1];
+   r10 = stb__perlin_randtab[r10 + by0];
+   r11 = stb__perlin_randtab[r11 + by1];
+
+   // weight factor is from 0..2^10-1
+   if (s <= 10) {
+      x <<= (10-s);
+      y <<= (10-s);
+   } else {
+      x >>= (s-10);
+      y >>= (s-10);
+   }
+
+   r0 = (r00<<10) + (r01-r00)*y;
+   r1 = (r10<<10) + (r11-r10)*y;
+
+   r  = (r0 <<10) + (r1 -r0 )*x;
+
+   return r>>12;
 }
 
 //float Noise(Vec3 a) 

@@ -1,20 +1,86 @@
-
 #include "Math.h"
 #include "Misc.h"
 #include "Block.h"
 
-[[nodiscard]] float Random(const float min, const float max)
+
+//uint32 PCG32_Random_R(uint64& state, uint64& inc)
+//{
+//    uint64 oldstate = state;
+//    state = oldstate * 6364136223846793005ULL + inc;
+//    uint32 xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
+//    uint32 rot = oldstate >> 59u;
+//    return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+//}
+//
+//void PCG32_SRandom_R(uint64 initstate, uint64 initseq)
+//{
+//    uint64 state = 0U;
+//    uint64 inc = (initseq << 1u) | 1u;
+//    PCG32_Random_R(state, inc);
+//    state += initstate;
+//    PCG32_Random_R(state, inc);
+//}
+//
+//void PCG32_SRandom(uint64 seed, uint64 seq)
+//{
+//    PCG32_SRandom_R(seed, seq);
+//}
+//
+//uint32 PCG32_BoundedRand_R(uint64 seed, uint64 seq, uint32 bound)
+//{
+//    // To avoid bias, we need to make the range of the RNG a multiple of
+//    // bound, which we do by dropping output less than a threshold.
+//    // A naive scheme to calculate the threshold would be to do
+//    //
+//    //     uint32_t threshold = 0x100000000ull % bound;
+//    //
+//    // but 64-bit div/mod is slower than 32-bit div/mod (especially on
+//    // 32-bit platforms).  In essence, we do
+//    //
+//    //     uint32_t threshold = (0x100000000ull-bound) % bound;
+//    //
+//    // because this version will calculate the same modulus, but the LHS
+//    // value is less than 2^32.
+//
+//    uint32_t threshold = -bound % bound;
+//
+//    // Uniformity guarantees that this loop will terminate.  In practice, it
+//    // should usually terminate quickly; on average (assuming all bounds are
+//    // equally likely), 82.25% of the time, we can expect it to require just
+//    // one iteration.  In the worst case, someone passes a bound of 2^31 + 1
+//    // (i.e., 2147483649), which invalidates almost 50% of the range.  In 
+//    // practice, bounds are typically small and only a tiny amount of the range
+//    // is eliminated.
+//    for (;;) {
+//        uint32 r = PCG32_Random_R(seed, seq);
+//        if (r >= threshold)
+//            return r % bound;
+//    }
+//}
+//
+//uint32 PCG32_BoundedRand(uint64 seed, uint64 seq, uint32 bound)
+//{
+//    return PCG32_BoundedRand_R(seed, seq, bound);
+//}
+//
+//
+////uint64 random(uint128 state)
+////{
+////    uint64 result = rotate64(uint64(state ^ (state >> 64)), state >> 122);
+////    return result;
+////}
+//
+
+uint32 PCG_Random(uint64 state)
 {
-    return min + (max - min) * (rand() / float(RAND_MAX));
+    uint32 result = static_cast<uint32>((state ^ (state >> 22)) >> (22 + (state >> 61)));
+    return result;
 }
 
-//static uint32 _RandomU32()
+
+//[[nodiscard]] float Random(const float min, const float max)
 //{
-//    uint32 result = rand();
-//    result ^= result << 13;
-//    result ^= result >> 17;
-//    result ^= result << 5;
-//    return result;
+//    return min + (max - min) * (rand() / float(RAND_MAX));
 //}
 
 //uint32 RandomU32(uint32 min, uint32 max)
@@ -22,7 +88,15 @@
 //	return (_RandomU32() % (max - min)) + min;
 //}
 
+#if 1
 
+float Bilinear(float p00, float p10, float p01, float p11, float x, float y)
+{
+   float p0 = Lerp(y, p00, p01);
+   float p1 = Lerp(y, p10, p11);
+   return Lerp(x, p0, p1);
+}
+#else
 [[nodiscard]] float Bilinear(Vec2 p, Rect loc, float bl, float br, float tl, float tr)
 {
     float denominator = ((loc.topRight.x - loc.botLeft.x) * (loc.topRight.y - loc.botLeft.y));
@@ -39,6 +113,7 @@
 
     return c1 + c2 + c3 + c4;
 }
+#endif
 
 [[nodiscard]] float Cubic( Vec4 v, float x )
 {

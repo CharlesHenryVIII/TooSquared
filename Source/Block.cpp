@@ -18,6 +18,8 @@ BiomeType BiomeTable[+BiomeMoist::Count][+BiomeTemp::Count] = {
     { BiomeType::Ice, BiomeType::Tundra, BiomeType::BorealForest, BiomeType::TemperateRainforest, BiomeType::TropicalRainforest,  BiomeType::TropicalRainforest },  //WETTEST
 };
 
+
+
 BiomeType GetBiomeType(BiomeTemp temp, BiomeMoist moist)
 {
     return BiomeTable[+moist][+temp];
@@ -216,14 +218,21 @@ void SetBlockSprites()
 
     SetMultipleBlockSprites(BlockType::Stone, 1);
     SetMultipleBlockSprites(BlockType::IronBlock, 22);
+    SetMultipleBlockSprites(BlockType::GoldBlock, 23);
+    SetMultipleBlockSprites(BlockType::DiamondBlock, 24);
     SetMultipleBlockSprites(BlockType::Dirt, 2);
     SetMultipleBlockSprites(BlockType::Sand, 18);
     SetMultipleBlockSprites(BlockType::Snow, 66);
     SetMultipleBlockSprites(BlockType::Wood, 20);
+    faceSprites[+BlockType::Wood].faceSprites[+Face::Top] = 21;
+    faceSprites[+BlockType::Wood].faceSprites[+Face::Bot] = 21;
     SetMultipleBlockSprites(BlockType::Ice, 67);
     SetMultipleBlockSprites(BlockType::Obsidian, 37);
     SetMultipleBlockSprites(BlockType::Leaves, 53);
     SetMultipleBlockSprites(BlockType::MossyCobblestone, 36);
+    SetMultipleBlockSprites(BlockType::TNT, 8);
+    faceSprites[+BlockType::TNT].faceSprites[+Face::Top] = 9;
+    faceSprites[+BlockType::TNT].faceSprites[+Face::Bot] = 10;
 }
 
 //TODO: Move to ChunkPos
@@ -266,6 +275,7 @@ struct BiomePoints {
 };
 //std::vector<BiomePoints> s_biomePoints;
 
+//TODO:!!!
 //SRAND IS NOT THREAD SAFE
 void UpdateBiomePoints()
 {
@@ -293,11 +303,194 @@ void UpdateBiomePoints()
     }
 }
 
+#define stb_lerp(t,a,b)               ( (a) + (t) * (float) ((b)-(a)) )
+#define stb_unlerp(t,a,b)             ( ((t) - (a)) / (float) ((b) - (a)) )
+#define stb_linear_remap(t,a,b,c,d)   stb_lerp(stb_unlerp(t,a,b),c,d)
+
+const uint32 averageBlockHeight = 72;
+
+float octave_multiplier[8] =
+{
+   1.01f,
+   1.03f,
+   1.052f,
+   1.021f,
+   1.0057f,
+   1.111f,
+   1.089f,
+   1.157f,
+};
+
+float stb_ComputeHeightFieldOctave(float ns, int o, float weight)
+{
+   float scale,heavier,sign;
+   scale = (float) (1 << o) * octave_multiplier[o];
+   sign = (ns < 0 ? -1.0f : 1.0f);
+   ns = (float) fabs(ns);
+   heavier = ns*ns*ns*ns*4*sign;
+   return scale/2 * stb_lerp(weight, ns, heavier) / 2;
+}
+
+float stb_ComputeHeightField(int x, int y, float weight)
+{
+   int o;
+   float ht = (float)averageBlockHeight;
+   for (o=3; o < 8; ++o) {
+      float scale = (float) (1 << o) * octave_multiplier[o];
+      float ns = Perlin3D({ x / scale, o * 2.0f, y / scale }, { 256, 256, 256 });
+      ht += stb_ComputeHeightFieldOctave(ns, o, weight);
+   }
+   return ht;
+}
+
+float stb_ComputeHeightFieldDelta(int x, int y, float weight)
+{
+   int o;
+   float ht = 0;
+   for (o=0; o < 3; ++o) {
+      float ns = (stb_BigNoise(x, y, o, 8348+o*23787)/32678.0f - 1.0f)/2.0f;
+      ht += stb_ComputeHeightFieldOctave(ns, o, weight);
+   }
+   return ht;
+}
+
 void ChunkArray::SetBlocks(ChunkIndex i)
 {
+#define STB_METHOD 0
 #define VORONOI 9
 
-#if VORONOI == 9
+#if STB_METHOD == 1
+
+    float heights[CHUNK_Z + 2][CHUNK_X + 2] = {};
+    float weights[CHUNK_Z + 2][CHUNK_X + 2] = {};
+    float heightsLerp[CHUNK_Z + 8][CHUNK_X + 8];
+    float heightsField[CHUNK_Z + 8][CHUNK_X + 8];
+    int height_field_int[CHUNK_Z + 8][CHUNK_X + 8];
+    GamePos chunkPos = ToGame(g_chunks->p[i]);
+
+    for (int32 z = -(CHUNK_Z / 2), zi = 0; z < (CHUNK_Z / 2); z++, zi++)
+    {
+        for (int32 x = -(CHUNK_X / 2), xi = 0; x < (CHUNK_X / 2); x++, xi++)
+        {
+            weights[zi][xi] = (float)stb_linear_remap(Perlin3D({ (x + chunkPos.p.x) / 256.0f, 100, (z + chunkPos.p.z) / 256.0f }, { 256, 256, 256 }),
+                                                      -1.5, 1.5, -4.0f, 5.0f);
+            heights[zi][xi] = stb_ComputeHeightField(x + chunkPos.p.x, z + chunkPos.p.z, weights[zi][xi]);
+        }
+    }
+
+    for (z = -4; z < CHUNK_Z + 4; ++z)
+    {
+        for (x = -4; x < CHUNK_X + 4; ++x)
+        {
+            xi = (x >> 3) + 1;
+            zi = (z >> 3) + 1;
+
+            float weight = Bilinear(weights[zi][ii], weights[zi][ii+1],
+                                    weights[zi+1][ii], weights[zi+1][ii+1], i&7, j&7);
+            weight = Clamp(weight, 0.0f, 1.0f);
+            float height = Bilinear(heights[zi][ii], heights[zi][ii+1],
+                                    heights[zi+1][ii], heights[zi+1][ii+1], i&7, j&7);
+            height += stb_ComputeHeightFieldDelta(x + i, y + j, weight);
+
+            if (ht < 4)
+                height = 4;
+            else if (ht > 160)
+                ht = 160;
+
+            height_lerp[j+4][i+4] =  weight;
+            height_field[j+4][i+4] = height;
+            height_field_int[j+4][i+4] = (int) height_field[j+4][i+4];
+            ground_top = stb_max(ground_top, height_field_int[j+4][i+4]);
+            solid_bottom = stb_min(solid_bottom, height_field_int[j+4][i+4]);
+        }
+    }
+
+    for (int32 z = -1; z < CHUNK_Y + 1; ++z)
+    {
+        for (int32 x = -1; x < CHUNK_X + 1; ++x)
+        {
+            int32 xi = x + 1;
+            int32 zi = z + 1;
+
+            float weight = Bilinear(weights[zi][xi], weights[zi][xi + 1], weights[zi + 1][xi], weights[zi + 1][xi + 1],
+                              float(i & 7), float(j & 7));
+            weight = Clamp(weight, 0, 1);
+            float height = Bilinear(heights[zi][xi], heights[zi][xi + 1], heights[zi + 1][xi], heights[zi + 1][xi + 1],
+                                float(i & 7), float(j & 7));
+            height += compute_height_field_delta(x + i, y + j, weight);
+            if (height < 4) height = 4; else if (height > 160) height = 160;
+            height_lerp[j + 4][i + 4] = weight;
+            height_field[j + 4][i + 4] = height;
+            height_field_int[j + 4][i + 4] = (int)height_field[j + 4][i + 4];
+            ground_top = stb_max(ground_top, height_field_int[j + 4][i + 4]);
+            solid_bottom = stb_min(solid_bottom, height_field_int[j + 4][i + 4]);
+            height_ore[j + 4][i + 4] = big_noise(x + i, y + j, 2, x * 77 + y * 31);
+        }
+    }
+
+    //float ht = (float)averageBlockHeight;
+    //float weight = (float)stb_linear_remap(Perlin3D({ (x + chunkBlockP.p.x) / 256.0f, 100, (z + chunkBlockP.p.z) / 256.0f }, { 256, 256, 256 }), -1.5, 1.5, -4.0f, 5.0f);
+    //for (int32 o = 3; o < 8; ++o)
+    //{
+    //    float scale = (float)(1 << o) * octave_multiplier[o];
+    //    float ns = Perlin3D({ x / scale, o * 2.0f, z / scale }, { 256, 256, 256 });
+    //    ht += stb_ComputeHeightFieldOctave(ns, o, weight);
+    //}
+    //yTotal = (int32)ht;
+
+
+#endif
+
+#if VORONOI == 11
+
+    float tempVal = {};
+    float moistVal = {};
+    float terrainVal = {};
+    BiomeTemp temp;
+    BiomeMoist moist;
+    Vec2 chunkPForNoise = { float(g_chunks->p[i].p.x), float(g_chunks->p[i].p.z) };
+    BiomeType biome;
+    TerrainType terrain;
+#if 1
+    tempVal  = VoronoiNoise(chunkPForNoise / 180, 1.0f, 0.5f);
+    moistVal = VoronoiNoise(chunkPForNoise / 60, 1.0f, 0.5f);
+    temp  = BiomeTemp(Clamp<float>(tempVal   * +BiomeTemp::Count,  0.0f, 5.9f));
+    moist = BiomeMoist(Clamp<float>(moistVal * +BiomeMoist::Count, 0.0f, 5.9f));
+    biome = GetBiomeType(temp, moist);
+
+    terrainVal = VoronoiNoise(chunkPForNoise / 31, 1.0f, 0.5f);
+    terrain = TerrainType(Clamp<float>(terrainVal * +TerrainType::Count, 0.0f, 2.9f));
+#else
+    NoiseParams tempParams = {
+        .numOfOctaves = 4,
+        .freq = 0.2f,
+        .weight = 1.0f,
+        .gainFactor = 0.5f,
+    };
+    NoiseParams moistParams = {
+        .numOfOctaves = 4,
+        .freq = 0.2f,
+        .weight = 1.0f,
+        .gainFactor = 0.5f,
+    };
+    tempVal = PerlinNoise(chunkPForNoise / 18, tempParams);
+    moistVal = PerlinNoise(chunkPForNoise / 6, moistParams);
+    temp = BiomeTemp(Clamp<float>(tempVal * +BiomeTemp::Count, 0.0f, 5.9f));
+    moist = BiomeMoist(Clamp<float>(moistVal * +BiomeMoist::Count, 0.0f, 5.9f));
+    biome = GetBiomeType(temp, moist);
+
+    NoiseParams terrainParams = {
+        .numOfOctaves = 4,
+        .freq = 0.2f,
+        .weight = 1.0f,
+        .gainFactor = 0.5f,
+    };
+    terrainVal = PerlinNoise(chunkPForNoise / 31, terrainParams);
+    terrain = TerrainType(Clamp<float>(terrainVal * +TerrainType::Count, 0.0f, 2.9f));
+#endif
+
+
+#elif VORONOI == 9
 
     //Reference article:
     //https://www.gamasutra.com/blogs/JonGallant/20160211/264591/Procedurally_Generating_Wrapping_World_Maps_in_Unity_C__Part_4.php
@@ -307,22 +500,32 @@ void ChunkArray::SetBlocks(ChunkIndex i)
     float moistVal = {};
     BiomeTemp temp;
     BiomeMoist moist;
-#if 1
     Vec2 chunkPForNoise = { float(g_chunks->p[i].p.x), float(g_chunks->p[i].p.z) };
-    tempVal  = VoronoiNoise(chunkPForNoise / 180, 1.0f, 0.0f);
-    moistVal = VoronoiNoise(chunkPForNoise / 60, 1.0f, 0.0f);
+    BiomeType biome;
+#if 1
+    tempVal  = VoronoiNoise(chunkPForNoise / 180, 1.0f, 0.5f);
+    moistVal = VoronoiNoise(chunkPForNoise / 60, 1.0f, 0.5f);
     temp  = BiomeTemp(Clamp<float>(tempVal   * +BiomeTemp::Count,  0.0f, 5.9f));
     moist = BiomeMoist(Clamp<float>(moistVal * +BiomeMoist::Count, 0.0f, 5.9f));
-    BiomeType biome = GetBiomeType(temp, moist);
+    biome = GetBiomeType(temp, moist);
 #else
-            NoiseParams tempParams = {
-
-        };
-            NoiseParams moistParams = {
-                
-            };
-            tempVal = PerlinNoise(blockRatio, tempParams);
-            moistVal = PerlinNoise(blockRatio, moistParams);
+    NoiseParams tempParams = {
+        .numOfOctaves = 4,
+        .freq = 0.2f,
+        .weight = 1.0f,
+        .gainFactor = 0.5f,
+    };
+    NoiseParams moistParams = {
+        .numOfOctaves = 4,
+        .freq = 0.2f,
+        .weight = 1.0f,
+        .gainFactor = 0.5f,
+    };
+    tempVal = PerlinNoise(chunkPForNoise / 18, tempParams);
+    moistVal = PerlinNoise(chunkPForNoise / 6, moistParams);
+    temp = BiomeTemp(Clamp<float>(tempVal * +BiomeTemp::Count, 0.0f, 5.9f));
+    moist = BiomeMoist(Clamp<float>(moistVal * +BiomeMoist::Count, 0.0f, 5.9f));
+    biome = GetBiomeType(temp, moist);
 #endif
 #endif
     //PROFILE_SCOPE("SetBlocks() ");
@@ -346,9 +549,139 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
             blockRatio /= 100;
             int32 yTotal = 0;
+#if VORONOI == 11
 
-#if VORONOI == 9
             
+            NoiseParams np;
+            switch (terrain)
+            {
+            case TerrainType::Plains:
+            {
+                np = {
+                    .numOfOctaves = 4,
+                    .freq = 0.75f,
+                    .weight = 1.0f,
+                    .gainFactor = 1.0f,
+                };
+
+                break;
+            }
+            case TerrainType::Hills:
+            {
+				np = {
+					.numOfOctaves = 2,
+					.freq = 0.75f,
+					.weight = 0.5f,
+					.gainFactor = 0.6f,
+				};
+                break;
+            }
+            case TerrainType::Mountains:
+            {
+
+                np = {
+                    .numOfOctaves = 8,
+                    .freq = 0.4f,
+                    .weight = 1.5f,
+                    .gainFactor = 0.9f,
+                };
+                break;
+            }
+            default:
+                assert(false);
+            }
+            
+            switch (biome)
+            {
+            case BiomeType::Woodland:
+                topBlockType = BlockType::Wood;
+                break;
+            case BiomeType::TropicalRainforest:
+				topBlockType = BlockType::DiamondBlock;
+                break;
+            case BiomeType::Grassland:
+				topBlockType = BlockType::Grass;
+                break;
+            case BiomeType::SeasonalForest:
+				topBlockType = BlockType::TNT;
+                break;
+            case BiomeType::TemperateRainforest:
+				topBlockType = BlockType::MossyCobblestone;
+                break;
+            case BiomeType::BorealForest:
+				topBlockType = BlockType::Leaves;
+                break;
+            case BiomeType::Savanna:
+				topBlockType = BlockType::GoldBlock;
+                break;
+            case BiomeType::Desert:
+				topBlockType = BlockType::Sand;
+                break;
+            case BiomeType::Ice:
+				topBlockType = BlockType::Ice;
+                break;
+            case BiomeType::Tundra:
+				topBlockType = BlockType::Snow;
+                break;
+            default:
+            {
+                assert(false);//(+chunkType) > +ChunkType::None && (+chunkType) < +ChunkType::Count);
+                break;
+            }
+            }
+
+            yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, np) * CHUNK_Y), 10, CHUNK_Y - 1);
+
+#elif VORONOI == 10
+            float ht = (float)averageBlockHeight;
+            float weight = (float)stb_linear_remap(Perlin3D({ (x + chunkBlockP.p.x) / 256.0f, 100, (z + chunkBlockP.p.z) / 256.0f }, { 256, 256, 256 }), -1.5, 1.5, -4.0f, 5.0f);
+            for (int32 o = 3; o < 8; ++o)
+            {
+                float scale = (float)(1 << o) * octave_multiplier[o];
+                float ns = Perlin3D({ x / scale, o * 2.0f, z / scale }, { 256, 256, 256 });
+                ht += stb_ComputeHeightFieldOctave(ns, o, weight);
+            }
+            yTotal = (int32)ht;
+
+
+
+#elif VORONOI == 9
+
+#if 1
+            float tempVal = {};
+            float moistVal = {};
+            BiomeTemp temp;
+            BiomeMoist moist;
+            Vec2 chunkPForNoise = { float(g_chunks->p[i].p.x), float(g_chunks->p[i].p.z) };
+            BiomeType biome;
+
+            float boundaryThreshold = 0.05f;
+            Vec2 chunkAndBlock = chunkPForNoise + Vec2({ float(x) / CHUNK_X, float(z) / CHUNK_Z });
+            tempVal  = VoronoiNoise(chunkAndBlock / 180, 1.0f, 0.5f);
+            moistVal = VoronoiNoise(chunkAndBlock / 60,  1.0f, 0.5f);
+            float tempIndex  = (Clamp<float>(tempVal  * +BiomeTemp::Count, 0.0f, 5.9f));
+            float moistIndex = (Clamp<float>(moistVal * +BiomeMoist::Count, 0.0f, 5.9f));
+
+            float secondaryBiomeTemp = tempIndex;
+            float secondaryBiomeMoist = moistIndex;
+            //BiomeType secondaryBiome;
+            //lerp the difference of the threshold value and the index value?  something like that
+            if (floorf(tempIndex + boundaryThreshold) != floorf(tempIndex))
+                secondaryBiomeTemp = tempIndex + 1.0f;
+            else if (floorf(tempIndex - boundaryThreshold) != floorf(tempIndex))
+                secondaryBiomeTemp = tempIndex - 1.0f;
+
+            if (floorf(moistIndex + boundaryThreshold) != floorf(moistIndex))
+                secondaryBiomeMoist = moistIndex + 1.0f;
+            else if (floorf(moistIndex - boundaryThreshold) != floorf(moistIndex))
+                secondaryBiomeMoist = moistIndex - 1.0f;
+
+            temp  = BiomeTemp(tempIndex);
+            moist = BiomeMoist(moistIndex);
+            biome = GetBiomeType(temp, moist);
+
+#endif
+
             NoiseParams np;
             switch (biome)
             {
@@ -366,6 +699,18 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                 break;
             }
             case BiomeType::TropicalRainforest:
+			{
+                np = {
+                    .numOfOctaves = 4,
+                    .freq = 0.75f,
+                    .weight = 1.0f,
+                    .gainFactor = 1.0f,
+                };
+
+				topBlockType = BlockType::DiamondBlock;
+
+                break;
+            }
             case BiomeType::Grassland:
 			{
                 np = {
@@ -380,6 +725,17 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                 break;
             }
             case BiomeType::SeasonalForest:
+            {
+                np = {
+                    .numOfOctaves = 8,
+                    .freq = 0.4f,
+                    .weight = 1.5f,
+                    .gainFactor = 0.9f,
+                };
+				topBlockType = BlockType::TNT;
+
+                break;
+            }
             case BiomeType::TemperateRainforest:
             {
                 np = {
@@ -406,6 +762,17 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                 break;
             }
             case BiomeType::Savanna:
+            {
+				np = {
+					.numOfOctaves = 1,
+					.freq = 1.0f,
+					.weight = 1.0f,
+					.gainFactor = 0.5f,
+				};
+				topBlockType = BlockType::GoldBlock;
+
+                break;
+            }
             case BiomeType::Desert:
             {
 				np = {
@@ -453,7 +820,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
 
 #elif VORONOI == 8
-    
+
             //Loop over every s_biomePoint and look for the closest one to the block/chunk,
             //if there are multiple that are within 2 chunks then interpolate
             for ()
@@ -617,7 +984,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
             chunkTypes[+chunkType]++;
             NoiseParams noiseParams = {};
-            
+
             switch (chunkType)
             {
             case ChunkType::Plains:
@@ -1102,7 +1469,7 @@ bool RegionSampler::RegionGather(ChunkIndex i)
     }
 
     bool valid = numIndices == arrsize(neighbors);
-        
+
     return valid;
 }
 void RegionSampler::DecrimentRefCount()
@@ -1197,7 +1564,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
         BlockType ct = BlockType::Grass;
 
 
-        //ChunkIndex neighbors[8];  This is what neighbors is 
+        //ChunkIndex neighbors[8];  This is what neighbors is
         if (!region.GetBlock(at, blockP + blockN + a) || !region.GetBlock(bt, blockP + blockN + b) ||
             !region.GetBlock(ct, blockP + blockN + c))
         {
