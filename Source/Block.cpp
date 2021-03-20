@@ -233,6 +233,7 @@ void SetBlockSprites()
     SetMultipleBlockSprites(BlockType::TNT, 8);
     faceSprites[+BlockType::TNT].faceSprites[+Face::Top] = 9;
     faceSprites[+BlockType::TNT].faceSprites[+Face::Bot] = 10;
+    SetMultipleBlockSprites(BlockType::Water, 255);
 }
 
 //TODO: Move to ChunkPos
@@ -348,149 +349,21 @@ float stb_ComputeHeightFieldDelta(int x, int y, float weight)
    int o;
    float ht = 0;
    for (o=0; o < 3; ++o) {
-      float ns = (stb_BigNoise(x, y, o, 8348+o*23787)/32678.0f - 1.0f)/2.0f;
+       float ns = (BigNoise({ x, y }, o, 8348 + o * 23787) / 32678.0f - 1.0f) / 2.0f;
       ht += stb_ComputeHeightFieldOctave(ns, o, weight);
    }
    return ht;
 }
 
+#define MIN_WATER_HEIGHT    20U
+#define MAX_WATER_HEIGHT    70U
+
 void ChunkArray::SetBlocks(ChunkIndex i)
 {
 #define STB_METHOD 0
-#define VORONOI 9
+#define VORONOI 200
 
-#if STB_METHOD == 1
-
-    float heights[CHUNK_Z + 2][CHUNK_X + 2] = {};
-    float weights[CHUNK_Z + 2][CHUNK_X + 2] = {};
-    float heightsLerp[CHUNK_Z + 8][CHUNK_X + 8];
-    float heightsField[CHUNK_Z + 8][CHUNK_X + 8];
-    int height_field_int[CHUNK_Z + 8][CHUNK_X + 8];
-    GamePos chunkPos = ToGame(g_chunks->p[i]);
-
-    for (int32 z = -(CHUNK_Z / 2), zi = 0; z < (CHUNK_Z / 2); z++, zi++)
-    {
-        for (int32 x = -(CHUNK_X / 2), xi = 0; x < (CHUNK_X / 2); x++, xi++)
-        {
-            weights[zi][xi] = (float)stb_linear_remap(Perlin3D({ (x + chunkPos.p.x) / 256.0f, 100, (z + chunkPos.p.z) / 256.0f }, { 256, 256, 256 }),
-                                                      -1.5, 1.5, -4.0f, 5.0f);
-            heights[zi][xi] = stb_ComputeHeightField(x + chunkPos.p.x, z + chunkPos.p.z, weights[zi][xi]);
-        }
-    }
-
-    for (z = -4; z < CHUNK_Z + 4; ++z)
-    {
-        for (x = -4; x < CHUNK_X + 4; ++x)
-        {
-            xi = (x >> 3) + 1;
-            zi = (z >> 3) + 1;
-
-            float weight = Bilinear(weights[zi][ii], weights[zi][ii+1],
-                                    weights[zi+1][ii], weights[zi+1][ii+1], i&7, j&7);
-            weight = Clamp(weight, 0.0f, 1.0f);
-            float height = Bilinear(heights[zi][ii], heights[zi][ii+1],
-                                    heights[zi+1][ii], heights[zi+1][ii+1], i&7, j&7);
-            height += stb_ComputeHeightFieldDelta(x + i, y + j, weight);
-
-            if (ht < 4)
-                height = 4;
-            else if (ht > 160)
-                ht = 160;
-
-            height_lerp[j+4][i+4] =  weight;
-            height_field[j+4][i+4] = height;
-            height_field_int[j+4][i+4] = (int) height_field[j+4][i+4];
-            ground_top = stb_max(ground_top, height_field_int[j+4][i+4]);
-            solid_bottom = stb_min(solid_bottom, height_field_int[j+4][i+4]);
-        }
-    }
-
-    for (int32 z = -1; z < CHUNK_Y + 1; ++z)
-    {
-        for (int32 x = -1; x < CHUNK_X + 1; ++x)
-        {
-            int32 xi = x + 1;
-            int32 zi = z + 1;
-
-            float weight = Bilinear(weights[zi][xi], weights[zi][xi + 1], weights[zi + 1][xi], weights[zi + 1][xi + 1],
-                              float(i & 7), float(j & 7));
-            weight = Clamp(weight, 0, 1);
-            float height = Bilinear(heights[zi][xi], heights[zi][xi + 1], heights[zi + 1][xi], heights[zi + 1][xi + 1],
-                                float(i & 7), float(j & 7));
-            height += compute_height_field_delta(x + i, y + j, weight);
-            if (height < 4) height = 4; else if (height > 160) height = 160;
-            height_lerp[j + 4][i + 4] = weight;
-            height_field[j + 4][i + 4] = height;
-            height_field_int[j + 4][i + 4] = (int)height_field[j + 4][i + 4];
-            ground_top = stb_max(ground_top, height_field_int[j + 4][i + 4]);
-            solid_bottom = stb_min(solid_bottom, height_field_int[j + 4][i + 4]);
-            height_ore[j + 4][i + 4] = big_noise(x + i, y + j, 2, x * 77 + y * 31);
-        }
-    }
-
-    //float ht = (float)averageBlockHeight;
-    //float weight = (float)stb_linear_remap(Perlin3D({ (x + chunkBlockP.p.x) / 256.0f, 100, (z + chunkBlockP.p.z) / 256.0f }, { 256, 256, 256 }), -1.5, 1.5, -4.0f, 5.0f);
-    //for (int32 o = 3; o < 8; ++o)
-    //{
-    //    float scale = (float)(1 << o) * octave_multiplier[o];
-    //    float ns = Perlin3D({ x / scale, o * 2.0f, z / scale }, { 256, 256, 256 });
-    //    ht += stb_ComputeHeightFieldOctave(ns, o, weight);
-    //}
-    //yTotal = (int32)ht;
-
-
-#endif
-
-#if VORONOI == 11
-
-    float tempVal = {};
-    float moistVal = {};
-    float terrainVal = {};
-    BiomeTemp temp;
-    BiomeMoist moist;
-    Vec2 chunkPForNoise = { float(g_chunks->p[i].p.x), float(g_chunks->p[i].p.z) };
-    BiomeType biome;
-    TerrainType terrain;
-#if 1
-    tempVal  = VoronoiNoise(chunkPForNoise / 180, 1.0f, 0.5f);
-    moistVal = VoronoiNoise(chunkPForNoise / 60, 1.0f, 0.5f);
-    temp  = BiomeTemp(Clamp<float>(tempVal   * +BiomeTemp::Count,  0.0f, 5.9f));
-    moist = BiomeMoist(Clamp<float>(moistVal * +BiomeMoist::Count, 0.0f, 5.9f));
-    biome = GetBiomeType(temp, moist);
-
-    terrainVal = VoronoiNoise(chunkPForNoise / 31, 1.0f, 0.5f);
-    terrain = TerrainType(Clamp<float>(terrainVal * +TerrainType::Count, 0.0f, 2.9f));
-#else
-    NoiseParams tempParams = {
-        .numOfOctaves = 4,
-        .freq = 0.2f,
-        .weight = 1.0f,
-        .gainFactor = 0.5f,
-    };
-    NoiseParams moistParams = {
-        .numOfOctaves = 4,
-        .freq = 0.2f,
-        .weight = 1.0f,
-        .gainFactor = 0.5f,
-    };
-    tempVal = PerlinNoise(chunkPForNoise / 18, tempParams);
-    moistVal = PerlinNoise(chunkPForNoise / 6, moistParams);
-    temp = BiomeTemp(Clamp<float>(tempVal * +BiomeTemp::Count, 0.0f, 5.9f));
-    moist = BiomeMoist(Clamp<float>(moistVal * +BiomeMoist::Count, 0.0f, 5.9f));
-    biome = GetBiomeType(temp, moist);
-
-    NoiseParams terrainParams = {
-        .numOfOctaves = 4,
-        .freq = 0.2f,
-        .weight = 1.0f,
-        .gainFactor = 0.5f,
-    };
-    terrainVal = PerlinNoise(chunkPForNoise / 31, terrainParams);
-    terrain = TerrainType(Clamp<float>(terrainVal * +TerrainType::Count, 0.0f, 2.9f));
-#endif
-
-
-#elif VORONOI == 9
+#if VORONOI == 9
 
     //Reference article:
     //https://www.gamasutra.com/blogs/JonGallant/20160211/264591/Procedurally_Generating_Wrapping_World_Maps_in_Unity_C__Part_4.php
@@ -500,7 +373,6 @@ void ChunkArray::SetBlocks(ChunkIndex i)
     float moistVal = {};
     BiomeTemp temp;
     BiomeMoist moist;
-    Vec2 chunkPForNoise = { float(g_chunks->p[i].p.x), float(g_chunks->p[i].p.z) };
     BiomeType biome;
 #if 1
     tempVal  = VoronoiNoise(chunkPForNoise / 180, 1.0f, 0.5f);
@@ -538,6 +410,37 @@ void ChunkArray::SetBlocks(ChunkIndex i)
     };
     BlockType topBlockType = BlockType::Empty;
 
+
+//________________________________________
+//___________NEW IMPLIMENTATION___________
+
+    GamePos chunkInGame = ToGame(g_chunks->p[i]);
+
+    NoiseParams np = {
+        .numOfOctaves = 8,
+        .freq = 0.17f,
+        .weight = 1.0f,
+        .gainFactor = 1.0f,
+    };
+
+    WorldPos chunkMeaningFullFloatLocation = ToWorld(chunkInGame);
+    Vec3 cell = Voronoi_DAndP(Vec2({ chunkMeaningFullFloatLocation.p.x, chunkMeaningFullFloatLocation.p.z }) / float(INT_MAX));
+    Vec2Int cellCenterInt = { int32(cell.x * float(INT_MAX)), int32(cell.y * float(INT_MAX)) };
+    Vec2 cellCenterFloat = { cellCenterInt.x / 100.0f, cellCenterInt.y / 100.0f };
+    uint32 centerCellHeight = Clamp<uint32>(uint32(CHUNK_Y * Perlin2D({ cellCenterFloat.x, cellCenterFloat.y }, np)), MIN_WATER_HEIGHT, MAX_WATER_HEIGHT - 2);
+    CellType cellType = CellType::Count;
+    if (centerCellHeight > MAX_WATER_HEIGHT - 2 + 4)
+    {
+        cellType = CellType::Inland;
+    }
+    else
+    {
+        cellType = CellType::Ocean;
+    }
+
+//_________END NEW IMPLIMENTATION_________
+//________________________________________
+
     for (int32 x = 0; x < CHUNK_X; x++)
     {
         for (int32 z = 0; z < CHUNK_Z; z++)
@@ -547,37 +450,28 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
             Vec2 blockRatio = { static_cast<float>(chunkBlockP.p.x + blockP.p.x), static_cast<float>(chunkBlockP.p.z + blockP.p.z) };
 
-            blockRatio /= 100;
+            const int32 blockRatioProduct = 100;
+            blockRatio /= blockRatioProduct;
             int32 yTotal = 0;
-#if VORONOI == 11
 
+//________________________________________
+//___________NEW IMPLIMENTATION___________
+
+
+            //Step 1:
+            //Generate heightmap of basic terrain
+            uint32 waterVsLandHeight = Clamp<uint32>(uint32(CHUNK_Y * Perlin2D(blockRatio, np)), MIN_WATER_HEIGHT, MAX_WATER_HEIGHT - 2);
+            BlockType topBlockType;// = BlockType::Grass;
+
+            //Step 2:
+            //Generate Cells using Voronoi and determine what type of region that cell is
+            // - Ocean, Coastal, or Inland
+            //float cellRegion = VoronoiNoise(blockRatio, 1.0f, 0.5f);
             
-            NoiseParams np;
-            switch (terrain)
+            uint32 cellTypeHeight = 0;
+            switch (cellType)
             {
-            case TerrainType::Plains:
-            {
-                np = {
-                    .numOfOctaves = 4,
-                    .freq = 0.75f,
-                    .weight = 1.0f,
-                    .gainFactor = 1.0f,
-                };
-
-                break;
-            }
-            case TerrainType::Hills:
-            {
-				np = {
-					.numOfOctaves = 2,
-					.freq = 0.75f,
-					.weight = 0.5f,
-					.gainFactor = 0.6f,
-				};
-                break;
-            }
-            case TerrainType::Mountains:
-            {
+            case CellType::Inland:
 
                 np = {
                     .numOfOctaves = 8,
@@ -585,66 +479,34 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                     .weight = 1.5f,
                     .gainFactor = 0.9f,
                 };
+                cellTypeHeight = Clamp<uint32>(uint32(CHUNK_Y * Perlin2D(blockRatio, np)), 0, CHUNK_Y - (MAX_WATER_HEIGHT - 2));
+                topBlockType = BlockType::Grass;
                 break;
-            }
+            case CellType::Ocean:
+                topBlockType = BlockType::Water;
+                break;
+            case CellType::Coastal:
+                break;
             default:
                 assert(false);
             }
+
+
             
-            switch (biome)
-            {
-            case BiomeType::Woodland:
-                topBlockType = BlockType::Wood;
-                break;
-            case BiomeType::TropicalRainforest:
-				topBlockType = BlockType::DiamondBlock;
-                break;
-            case BiomeType::Grassland:
-				topBlockType = BlockType::Grass;
-                break;
-            case BiomeType::SeasonalForest:
-				topBlockType = BlockType::TNT;
-                break;
-            case BiomeType::TemperateRainforest:
-				topBlockType = BlockType::MossyCobblestone;
-                break;
-            case BiomeType::BorealForest:
-				topBlockType = BlockType::Leaves;
-                break;
-            case BiomeType::Savanna:
-				topBlockType = BlockType::GoldBlock;
-                break;
-            case BiomeType::Desert:
-				topBlockType = BlockType::Sand;
-                break;
-            case BiomeType::Ice:
-				topBlockType = BlockType::Ice;
-                break;
-            case BiomeType::Tundra:
-				topBlockType = BlockType::Snow;
-                break;
-            default:
-            {
-                assert(false);//(+chunkType) > +ChunkType::None && (+chunkType) < +ChunkType::Count);
-                break;
-            }
-            }
+            //union CellGarbage {
+            //    uint64 a;
+            //    Vec2 v;
+            //};
+            //CellGarbage cellGarbage;
+            //cellGarbage.v = { cell.x, cell.y };
+            //uint32 cellHash = PCG_Random(cellGarbage.a);
+            //CellType cellType = static_cast<CellType>(cellHash % +CellType::Count);
 
-            yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, np) * CHUNK_Y), 10, CHUNK_Y - 1);
 
+
+            yTotal = Clamp<uint32>(waterVsLandHeight + cellTypeHeight, 3, CHUNK_Y); //add all together?
+#if VORONOI == 11
 #elif VORONOI == 10
-            float ht = (float)averageBlockHeight;
-            float weight = (float)stb_linear_remap(Perlin3D({ (x + chunkBlockP.p.x) / 256.0f, 100, (z + chunkBlockP.p.z) / 256.0f }, { 256, 256, 256 }), -1.5, 1.5, -4.0f, 5.0f);
-            for (int32 o = 3; o < 8; ++o)
-            {
-                float scale = (float)(1 << o) * octave_multiplier[o];
-                float ns = Perlin3D({ x / scale, o * 2.0f, z / scale }, { 256, 256, 256 });
-                ht += stb_ComputeHeightFieldOctave(ns, o, weight);
-            }
-            yTotal = (int32)ht;
-
-
-
 #elif VORONOI == 9
 
 #if 1
@@ -817,15 +679,6 @@ void ChunkArray::SetBlocks(ChunkIndex i)
             }
 
             yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, np) * CHUNK_Y), 10, CHUNK_Y - 1);
-
-
-#elif VORONOI == 8
-
-            //Loop over every s_biomePoint and look for the closest one to the block/chunk,
-            //if there are multiple that are within 2 chunks then interpolate
-            for ()
-
-
 
 
 #elif VORONOI == 7
@@ -1031,212 +884,6 @@ void ChunkArray::SetBlocks(ChunkIndex i)
             }
             }
 			yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio / 2, noiseParams) * CHUNK_Y), 10, CHUNK_Y - 1);
-
-
-#elif VORONOI == 4
-
-            blockRatio /= 2;
-
-            float vor = VoronoiNoise(blockRatio, 1.0f, 1.0f);
-            NoiseParams np;
-            switch (chunkType)
-            {
-            case ChunkType::Plains:
-			{
-
-                np = {
-                    .numOfOctaves = 4,
-                    .freq = 0.75f,
-                    .weight = 1.0f,
-                    .gainFactor = 1.0f,
-                };
-
-				topBlockType = BlockType::Grass;
-
-                break;
-            }
-            case ChunkType::Mountain:
-            {
-                np = {
-                    .numOfOctaves = 8,
-                    .freq = 0.4f,
-                    .weight = 1.5f,
-                    .gainFactor = 0.9f,
-                };
-				topBlockType = BlockType::Stone;
-
-                break;
-            }
-            case ChunkType::Desert:
-            {
-
-				np = {
-					.numOfOctaves = 1,
-					.freq = 1.0f,
-					.weight = 1.0f,
-					.gainFactor = 0.5f,
-				};
-				topBlockType = BlockType::Sand;
-
-                break;
-            }
-            default:
-            {
-                assert(false);//(+chunkType) > +ChunkType::None && (+chunkType) < +ChunkType::Count);
-                break;
-            }
-            }
-
-
-            float mountainSetpoint = 0.525f;
-            float plainsSetpoint = 0.475f;
-            ChunkType biome = int32(vor * 10) % +ChunkType::Count;
-
-            if (vor > mountainSetpoint)
-            {
-                yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, mountainParams) * CHUNK_Y), 10, CHUNK_Y - 1);
-                topBlockType = BlockType::Stone;
-            }
-            else if (vor <= plainsSetpoint)
-            {
-                yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, plainParams) * CHUNK_Y), 10, CHUNK_Y - 1);
-                topBlockType = BlockType::Grass;
-            }
-            else
-            {
-                vor = ((vor - plainsSetpoint) / (mountainSetpoint - plainsSetpoint));
-                //DebugPrint("B Vor: %f\n", vor);
-                //vor = (vor - plainsSetpoint) / (mountainSetpoint - plainsSetpoint);
-                if (RandomFloat(-1.0f, 1.0f) > 0)
-                    topBlockType = BlockType::Grass;
-                else
-                    topBlockType = BlockType::Stone;
-
-                float mountainHeight = static_cast<float>(Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, mountainParams) * CHUNK_Y), 10, CHUNK_Y - 1));
-                float plainsHeight = static_cast<float>(Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, plainParams) * CHUNK_Y), 10, CHUNK_Y - 1));
-                yTotal = static_cast<uint32>(Lerp<float>(plainsHeight, mountainHeight, vor));
-            }
-
-#elif VORONOI == 3
-
-            NoiseParams plainParams = {
-                .numOfOctaves = 8,
-                .freq = 0.1f,
-                .weight = 1.0f,
-                .gainFactor = 0.5f,
-            };
-            yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, plainParams) * CHUNK_Y), 10, CHUNK_Y - 1);
-            topBlockType = BlockType::Grass;
-
-#elif VORONOI == 2
-            //float vor = (VoronoiNoise(blockRatio, 1.0f, 0.0f) + 1.0f) / 2;
-            float vor = VoronoiNoise(blockRatio / 2, 1.0f, 1.0f);
-            NoiseParams mountainParams = {
-                .numOfOctaves = 8,
-                .freq = 0.4f,
-                .weight = 1.0f,
-                .gainFactor = 1.0f,
-            };
-            NoiseParams plainParams = {
-                .numOfOctaves = 8,
-                .freq = 0.1f,
-                .weight = 1.0f,
-                .gainFactor = 0.5f,
-            };
-
-            float dupe = 0.1f;
-            float mountainSetpoint = dupe;
-            float plainsSetpoint = dupe;
-
-            if (vor > mountainSetpoint)
-            {
-                yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, mountainParams) * CHUNK_Y), 10, CHUNK_Y - 1);
-                topBlockType = BlockType::Stone;
-            }
-            else if (vor < plainsSetpoint)
-            {
-                yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, plainParams) * CHUNK_Y), 10, CHUNK_Y - 1);
-                topBlockType = BlockType::Grass;
-            }
-            else
-            {
-                //DebugPrint("B Vor: %f\n", vor);
-                //vor = (vor - plainsSetpoint) / (mountainSetpoint - plainsSetpoint);
-                if (RandomFloat(-1.0f, 1.0f) > 0)
-                    topBlockType = BlockType::Grass;
-                else
-                    topBlockType = BlockType::Stone;
-
-                float mountainHeight = static_cast<float>(Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, mountainParams) * CHUNK_Y), 10, CHUNK_Y - 1));
-                float plainsHeight = static_cast<float>(Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, plainParams) * CHUNK_Y), 10, CHUNK_Y - 1));
-                yTotal = static_cast<uint32>(Lerp<float>(plainsHeight, mountainHeight, vor));
-            }
-
-
-#elif VORONOI == 1
-            float vor = (VoronoiNoise(blockRatio / 10, 1.0f, 0.0f) + 1.0f) / 2;
-            NoiseParams mountainParams = {
-                .numOfOctaves = 8,
-                .freq = 0.4f,
-                .weight = 1.0f,
-                .gainFactor = 1.0f,
-            };
-            NoiseParams plainParams = {
-                .numOfOctaves = 8,
-                .freq = 0.1f,
-                .weight = 1.0f,
-                .gainFactor = 0.5f,
-            };
-            NoiseParams noiseParams = {};
-
-            float mountainSetpoint = 0.6f;
-            float plainsSetpoint = 0.4f;
-
-            if (vor > mountainSetpoint)
-            {
-                noiseParams = mountainParams;
-            }
-            else if (vor < plainsSetpoint)
-            {
-                noiseParams = plainParams;
-            }
-            else
-            {
-                //DebugPrint("B Vor: %f\n", vor);
-                vor = (vor - plainsSetpoint) / (mountainSetpoint - plainsSetpoint);
-                //DebugPrint("A Vor: %f\n", vor);//only getting 0.566 to 1.0
-                noiseParams = {
-                .numOfOctaves = static_cast<int32>(Lerp<float>(static_cast<float>(mountainParams.numOfOctaves),
-                                                                 static_cast<float>(plainParams.numOfOctaves),   vor)),
-                .freq = Lerp<float>(mountainParams.freq,           plainParams.freq,           vor),
-                .weight = Lerp<float>(mountainParams.weight,         plainParams.weight,         vor),
-                .gainFactor = Lerp<float>(mountainParams.gainFactor,     plainParams.gainFactor,     vor),
-                };
-            }
-
-            yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, noiseParams) * CHUNK_Y), 10, CHUNK_Y - 1);
-#else
-            float vor = VoronoiNoise(blockRatio, 1.0f, 0.5f);
-            NoiseParams noiseParams;
-            if (vor >= 0)
-            {//Mountains
-                noiseParams = {
-                    .numOfOctaves = 16,
-                    .freq = 0.2f,
-                    .weight = 1.0f,
-                    .gainFactor = 1.0f,
-                };
-            }
-            else// if (vor >= 0)
-            {//Plains
-                noiseParams = {
-                    .numOfOctaves = 8,
-                    .freq = 0.2f,
-                    .weight = 1.0f,
-                    .gainFactor = 0.5f,
-                };
-            }
-            yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, noiseParams) * CHUNK_Y), 10, CHUNK_Y - 1);
 #endif
 
             //#if NOISETYPE == 2

@@ -31,6 +31,7 @@ enum class BlockType : uint8 {
     Obsidian,
     Leaves,
     MossyCobblestone,
+    Water,
     Count,
 //CobWeb,
 //Flower_Red,
@@ -87,6 +88,14 @@ enum class TerrainType : Uint8 {
     Count,
 };
 ENUMOPS(TerrainType);
+
+enum class CellType : Uint8 {
+    Ocean,
+    Coastal,
+    Inland,
+    Count,
+};
+ENUMOPS(CellType);
 
 #define CHUNK_TODELETE          0x0020
 #define CHUNK_RESCAN_BLOCKS     0x0040

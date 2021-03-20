@@ -10,12 +10,13 @@ struct NoiseParams {
 };
 
 
+Vec3 Voronoi_DAndP(Vec2 v);
+
 void NoiseInit();
-float PerlinNoise(Vec2 a, NoiseParams np);
+float Perlin2D(Vec2 a, NoiseParams np);
 float VoronoiNoise(Vec2 x, float u, float v);
-int32 GenerateTerrainHeight(int32 min, int32 max, Vec2 input);
 uint8 GetRandomUint8(uint8 a);
-int stb_BigNoise(int32 x, int32 y, int32 s, uint32 seed);
+int32 BigNoise(Vec2Int p, int32 s, uint32 seed);
 
 #if NOISETYPE == 2
 float Perlin3D(Vec3 in, Vec3Int wrap);

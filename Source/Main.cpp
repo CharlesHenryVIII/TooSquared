@@ -58,6 +58,16 @@ int main(int argc, char* argv[])
     bool uploadedLastFrame = false;
     bool debugDraw = true;
 
+    int32 area = 10;
+    for (int32 y = -area; y < area; y++)
+    {
+        for (int32 x = -area; x < area; x++)
+        {
+            Vec3 a = Voronoi_DAndP(Vec2({ float(x), float(y) }) / float(INT_MAX));
+            DebugPrint("%i, %i : %0.3f, %0.3f\n", x, y, a.x, a.y);
+        }
+    }
+
 
     //const float testSize = 10.0f;
     //for (float x = -testSize; x <= testSize; x += 0.1f)
