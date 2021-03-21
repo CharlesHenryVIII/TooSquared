@@ -251,7 +251,7 @@ struct ChunkArray
     uint32                                  chunkCount = 0;
     std::atomic<State>                      state[MAX_CHUNKS] = {};
     std::unordered_map<uint64, ChunkIndex>  chunkPosTable;
-    int32                                   refs[MAX_CHUNKS] = {};
+    std::atomic<int32>                      refs[MAX_CHUNKS] = {};
     ChunkType                               chunkType[MAX_CHUNKS] = {};
     TerrainType                             terrainType[MAX_CHUNKS] = {};
 

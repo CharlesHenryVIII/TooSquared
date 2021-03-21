@@ -419,6 +419,8 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                         else
                             blocks[i].e[x][y][z] = BlockType::Stone;
                     }
+                    assert(waterVsLandHeight < CHUNK_Y);
+                    assert(waterVsLandHeight > 0);
                     heightMap[x][z] = waterVsLandHeight;
                 }
             }
@@ -452,6 +454,20 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
     //Step 4:
     //Determine Terrain Type
+    {
+        if (g_chunks->chunkType[i] == ChunkType::Inland)
+        {
+            const float threshold = 0.1f;
+            Vec2 chunkPForNoise = { chunkGamePos.p.x, chunkGamePos.p.z };
+            float vorResult = VoronoiNoise(chunkPForNoise / (16.0f * 16.0f), 1.0f, 1.0f);
+            if (vorResult > 0.5 + threshold)
+                g_chunks->terrainType[i] = TerrainType::Mountains;
+            if (vorResult < 0.5 - threshold)
+                g_chunks->terrainType[i] = TerrainType::Plains;
+            else
+                g_chunks->terrainType[i] = TerrainType::Hills;
+        }
+    }
 
     //Step 5:
     //Generate terrain on Inland types
@@ -462,10 +478,10 @@ void ChunkArray::SetBlocks(ChunkIndex i)
         case TerrainType::Plains:
         {
             np = {
-                .numOfOctaves = 4,
-                .freq = 0.75f,
+                .numOfOctaves = 1,
+                .freq = 1.0f,
                 .weight = 1.0f,
-                .gainFactor = 1.0f,
+                .gainFactor = 0.5f,
             };
             break;
         }
@@ -482,16 +498,16 @@ void ChunkArray::SetBlocks(ChunkIndex i)
         case TerrainType::Mountains:
         {
             np = {
-                .numOfOctaves = 4,
-                .freq = 0.75f,
-                .weight = 1.0f,
-                .gainFactor = 1.0f,
+                .numOfOctaves = 8,
+                .freq = 0.4f,
+                .weight = 1.5f,
+                .gainFactor = 0.9f,
             };
             break;
         }
         default:
         {
-            assert(false);//(+chunkType) > +ChunkType::None && (+chunkType) < +ChunkType::Count);
+            assert(false);
             break;
         }
         }
@@ -504,25 +520,34 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                 {
                     Vec2 blockP = { chunkGamePos.p.x + x, chunkGamePos.p.z + z } ;
 
-                    int32 yTotal = Clamp<int32>(static_cast<int32>(Perlin2D(blockP * perlinScale, np) * CHUNK_Y), 2, CHUNK_Y);
+                    assert(heightMap[x][z] < CHUNK_Y);
+                    assert(heightMap[x][z] > 0);
+                    int32 yTotal = Clamp<int32>(static_cast<int32>(Perlin2D(blockP * perlinScale, np) * (CHUNK_Y)), 2, CHUNK_Y - heightMap[x][z] - 1);
+                    assert(yTotal < CHUNK_Y);
 
-                    for (int32 y = heightMap[x][z]; y < yTotal - 3; y++)
+                    int32 compareValue = yTotal + (int32)heightMap[x][z];
+                    for (int32 y = (int32)heightMap[x][z]; y < compareValue - 3; y++)
                     {
                         g_chunks->blocks[i].e[x][y][z] = BlockType::Stone;
                         heightMap[x][z]++;
                     }
+                    assert(heightMap[x][z] < CHUNK_Y);
 
-                    for (int32 y = heightMap[x][z]; y < yTotal - 1; y++)
+                    compareValue += 2;
+                    for (int32 y = (int32)heightMap[x][z]; y < compareValue - 1; y++)
                     {
                         g_chunks->blocks[i].e[x][y][z] = BlockType::Dirt;
                         heightMap[x][z]++;
                     }
+                    assert(heightMap[x][z] < CHUNK_Y);
 
-                    for (int32 y = heightMap[x][z]; y < yTotal; y++)
+                    compareValue += 1;
+                    for (int32 y = (int32)heightMap[x][z]; y < compareValue; y++)
                     {
                         g_chunks->blocks[i].e[x][y][z] = BlockType::Grass;
                         heightMap[x][z]++;
                     }
+                    assert(heightMap[x][z] < CHUNK_Y);
                 }
             }
         }
