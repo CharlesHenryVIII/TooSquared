@@ -12,7 +12,9 @@
  * Operator overloads on WorldPos and ChunkPos
  * Move main loops into a single loop that switches on chunk state?
  * SUN
-
+ * Capture mouse
+ * Curser/reticle
+ * optimize block creation and deletion
 
 
 

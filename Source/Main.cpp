@@ -113,7 +113,7 @@ int main(int argc, char* argv[])
         {
             ChunkPos cameraChunk = ToChunk(g_camera.p);
             SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared P: %i, %i, %i; C: %i, %i; Chunks: %u; Time: %0.2f; Triangles: %u",
-                (int32)g_camera.p.p.x, (int32)g_camera.p.p.y, (int32)g_camera.p.p.z, cameraChunk.p.x, cameraChunk.p.z, g_chunks->chunkCount, loadingTimer, g_renderer.numTrianglesDrawn).c_str());
+                (int32)floor(g_camera.p.p.x), (int32)floor(g_camera.p.p.y), (int32)floor(g_camera.p.p.z), cameraChunk.p.x, cameraChunk.p.z, g_chunks->chunkCount, loadingTimer, g_renderer.numTrianglesDrawn).c_str());
         }
 
         SDL_Event SDLEvent;
@@ -311,7 +311,7 @@ int main(int argc, char* argv[])
                 if (RayVsChunk(ray, centerChunkIndex, resultPos, distance, hitNormal))
                 {
                     hitBlock = resultPos;
-                    validHit = true;
+                    validHit = (distance < 5.0f);
                 }
 
                 if (!validHit && localRegion.RegionGather(centerChunkIndex))
@@ -325,12 +325,12 @@ int main(int argc, char* argv[])
                             if (distanceComparison < distance)
                             {
                                 hitBlock = resultPos;
-                                validHit = true;
                                 distance = distanceComparison;
                                 hitNormal = neighborNormal;
                             }
                         }
                     }
+                    validHit = (distance < 5.0f);
                 }
             }
         }
