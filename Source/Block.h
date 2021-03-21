@@ -89,13 +89,13 @@ enum class TerrainType : Uint8 {
 };
 ENUMOPS(TerrainType);
 
-enum class CellType : Uint8 {
+enum class ChunkType : Uint8 {
     Ocean,
     Coastal,
     Inland,
     Count,
 };
-ENUMOPS(CellType);
+ENUMOPS(ChunkType);
 
 #define CHUNK_TODELETE          0x0020
 #define CHUNK_RESCAN_BLOCKS     0x0040
@@ -252,6 +252,8 @@ struct ChunkArray
     std::atomic<State>                      state[MAX_CHUNKS] = {};
     std::unordered_map<uint64, ChunkIndex>  chunkPosTable;
     int32                                   refs[MAX_CHUNKS] = {};
+    ChunkType                               chunkType[MAX_CHUNKS] = {};
+    TerrainType                             terrainType[MAX_CHUNKS] = {};
 
     bool GetChunkFromPosition(ChunkIndex& result, ChunkPos p);
     void ClearChunk(ChunkIndex index);

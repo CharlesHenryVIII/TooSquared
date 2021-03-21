@@ -234,6 +234,7 @@ void SetBlockSprites()
     faceSprites[+BlockType::TNT].faceSprites[+Face::Top] = 9;
     faceSprites[+BlockType::TNT].faceSprites[+Face::Bot] = 10;
     SetMultipleBlockSprites(BlockType::Water, 255);
+    SetMultipleBlockSprites(BlockType::Bedrock, 17);
 }
 
 //TODO: Move to ChunkPos
@@ -357,23 +358,181 @@ float stb_ComputeHeightFieldDelta(int x, int y, float weight)
 
 
 
-#define MIN_WATER_HEIGHT    20U
-#define MAX_WATER_HEIGHT    70U
-
-int32 NewHightFunc(Vec2 v)
-{
-    const float sectionSize = 16 * 16;
-    int32 result = int32(floor(v.x / sectionSize) + floor(v.y / sectionSize));
-    if (result % 2 == 0)
-        return MAX_WATER_HEIGHT;
-    else
-        return MIN_WATER_HEIGHT;
-}
+#define HEIGHT_UNBREAKABLE  1U
+#define HEIGHT_MIN_WATER    20U
+#define HEIGHT_MAX_WATER    70U
 
 void ChunkArray::SetBlocks(ChunkIndex i)
 {
 #define STB_METHOD 0
 #define VORONOI 200
+
+////________________________________________
+////___________NEW IMPLIMENTATION___________
+    WorldPos chunkGamePos = ToWorld(g_chunks->p[i]);
+    NoiseParams seaFloorParams = {
+        .numOfOctaves = 8,
+        .freq = 0.17f,
+        .weight = 1.0f,
+        .gainFactor = 1.0f,
+    };
+    const float perlinScale = 0.01f;
+
+    //Step 1: 
+    //Generate base layer
+    {
+        for (uint32 x = 0; x < CHUNK_X; x++)
+        {
+            for (uint32 y = 0; y < HEIGHT_UNBREAKABLE; y++)
+            {
+                for (uint32 z = 0; z < CHUNK_Z; z++)
+                {
+                    blocks[i].e[x][y][z] = BlockType::Bedrock;
+                }
+            }
+        }
+    }
+
+    //Step 2:
+    //Generate heightmap of basic terrain
+    uint32 heightMap[CHUNK_X][CHUNK_Z] = {};
+    {
+        uint32 waterVsLandHeight = 0;
+        {
+            for (uint32 x = 0; x < CHUNK_X; x++)
+            {
+                for (uint32 z = 0; z < CHUNK_Z; z++)
+                {
+                    //Fill with stone from HEIGHT_MIN_WATER to the determined height - 3
+                    waterVsLandHeight = Clamp<uint32>(uint32(CHUNK_Y * Perlin2D({ (chunkGamePos.p.x + x) * perlinScale, (chunkGamePos.p.z + z) * perlinScale }, seaFloorParams)), HEIGHT_MIN_WATER, HEIGHT_MAX_WATER - 2);
+                    uint32 y = HEIGHT_UNBREAKABLE;
+                    for (y; y < waterVsLandHeight - 3; y++)
+                    {
+                        blocks[i].e[x][y][z] = BlockType::Stone;
+                    }
+
+                    //Fill the last 3 high blocks with either stone or sand depending on if the location is max height or not
+                    for (y; y < waterVsLandHeight; y++)
+                    {
+                        if (waterVsLandHeight < HEIGHT_MAX_WATER - 2)
+                            blocks[i].e[x][y][z] = BlockType::Sand;
+                        else
+                            blocks[i].e[x][y][z] = BlockType::Stone;
+                    }
+                    heightMap[x][z] = waterVsLandHeight;
+                }
+            }
+        }
+    }
+
+    //Step 3:
+    //Update chunk type based on terrain height
+    {
+        GamePos checkLocations[] = {
+            {-2,            0,          -2 },
+            { CHUNK_X + 2,  0,          -2 },
+            {-2,            0, CHUNK_Z + 2 },
+            { CHUNK_X + 2,  0, CHUNK_Z + 2 },
+        };
+        uint32 landTileCount = 0;
+        for (int32 c = 0; c < arrsize(checkLocations); c++)
+        {
+            Vec2 lookupLoc = { (chunkGamePos.p.x + checkLocations[c].p.x) * perlinScale, (chunkGamePos.p.z + checkLocations[c].p.z) * perlinScale };
+            uint32 height = Clamp<uint32>(uint32(CHUNK_Y * Perlin2D(lookupLoc, seaFloorParams)), HEIGHT_MIN_WATER, HEIGHT_MAX_WATER - 2);
+            if (height == HEIGHT_MAX_WATER - 2)
+                landTileCount++;
+        }
+        if (landTileCount == 4)
+            g_chunks->chunkType[i] = ChunkType::Inland;
+        else if (landTileCount == 0)
+            g_chunks->chunkType[i] = ChunkType::Ocean;
+        else
+            g_chunks->chunkType[i] = ChunkType::Coastal;
+    }
+
+    //Step 4:
+    //Determine Terrain Type
+
+    //Step 5:
+    //Generate terrain on Inland types
+    {
+        NoiseParams np;
+        switch (g_chunks->terrainType[i])
+        {
+        case TerrainType::Plains:
+        {
+            np = {
+                .numOfOctaves = 4,
+                .freq = 0.75f,
+                .weight = 1.0f,
+                .gainFactor = 1.0f,
+            };
+            break;
+        }
+        case TerrainType::Hills:
+        {
+            np = {
+                .numOfOctaves = 4,
+                .freq = 0.75f,
+                .weight = 1.0f,
+                .gainFactor = 1.0f,
+            };
+            break;
+        }
+        case TerrainType::Mountains:
+        {
+            np = {
+                .numOfOctaves = 4,
+                .freq = 0.75f,
+                .weight = 1.0f,
+                .gainFactor = 1.0f,
+            };
+            break;
+        }
+        default:
+        {
+            assert(false);//(+chunkType) > +ChunkType::None && (+chunkType) < +ChunkType::Count);
+            break;
+        }
+        }
+
+        if (g_chunks->chunkType[i] == ChunkType::Inland)
+        {
+            for (uint32 x = 0; x < CHUNK_X; x++)
+            {
+                for (uint32 z = 0; z < CHUNK_Z; z++)
+                {
+                    Vec2 blockP = { chunkGamePos.p.x + x, chunkGamePos.p.z + z } ;
+
+                    int32 yTotal = Clamp<int32>(static_cast<int32>(Perlin2D(blockP * perlinScale, np) * CHUNK_Y), 2, CHUNK_Y);
+
+                    for (int32 y = heightMap[x][z]; y < yTotal - 3; y++)
+                    {
+                        g_chunks->blocks[i].e[x][y][z] = BlockType::Stone;
+                        heightMap[x][z]++;
+                    }
+
+                    for (int32 y = heightMap[x][z]; y < yTotal - 1; y++)
+                    {
+                        g_chunks->blocks[i].e[x][y][z] = BlockType::Dirt;
+                        heightMap[x][z]++;
+                    }
+
+                    for (int32 y = heightMap[x][z]; y < yTotal; y++)
+                    {
+                        g_chunks->blocks[i].e[x][y][z] = BlockType::Grass;
+                        heightMap[x][z]++;
+                    }
+                }
+            }
+        }
+    }
+
+
+    ////float cellTypeVal = VoronoiNoise(chunkAndBlock / 64, 1.0f, 0.0f);
+
+
+    //yTotal = Clamp<uint32>(waterVsLandHeight, 3, CHUNK_Y - 1); //add all together?
 
 #if VORONOI == 9
 
@@ -387,6 +546,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
     BiomeMoist moist;
     BiomeType biome;
 #if 1
+    Vec2 chunkPForNoise = { float(g_chunks->p[i].p.x), float(g_chunks->p[i].p.z) };
     tempVal  = VoronoiNoise(chunkPForNoise / 180, 1.0f, 0.5f);
     moistVal = VoronoiNoise(chunkPForNoise / 60, 1.0f, 0.5f);
     temp  = BiomeTemp(Clamp<float>(tempVal   * +BiomeTemp::Count,  0.0f, 5.9f));
@@ -423,43 +583,43 @@ void ChunkArray::SetBlocks(ChunkIndex i)
     BlockType topBlockType = BlockType::Empty;
 
 
-//________________________________________
-//___________NEW IMPLIMENTATION___________
-
-    GamePos chunkInGame = ToGame(g_chunks->p[i]);
-
-    NoiseParams np = {
-        .numOfOctaves = 8,
-        .freq = 0.17f,
-        .weight = 1.0f,
-        .gainFactor = 1.0f,
-    };
-
-    WorldPos chunkMeaningfullFloatLocation = ToWorld(chunkInGame);
-    //Vec3 cell = Voronoi_DAndP(Vec2({ chunkMeaningfullFloatLocation.p.x, chunkMeaningfullFloatLocation.p.z }) * 100 / float(INT_MAX));
-    Vec3 cell = Voronoi_DAndP(Vec2({ chunkMeaningfullFloatLocation.p.x, chunkMeaningfullFloatLocation.p.z}) / 100.0);
-    cell = cell * 16.0f;// * 10 * 16 * 4 + 0.5;
-    Vec2Int cellCenterInt = { int32(cell.x), int32(cell.y) };
-
-    //Vec2Int cellCenterInt = { int32(cell.x * float(INT_MAX)), int32(cell.y * float(INT_MAX)) };
-    //Vec2Int cellCenterInt = { int32(cell.x * float(INT_MAX)), int32(cell.z * float(INT_MAX)) };
-    Vec2 cellCenterFloat = /*Vec2({ chunkMeaningfullFloatLocation.p.x, chunkMeaningfullFloatLocation.p.x }) + */Vec2({ cellCenterInt.x / 1.0f, cellCenterInt.y / 1.0f });
-
-    uint32 centerCellHeight = NewHightFunc(cellCenterFloat);
-    //uint32 centerCellHeight = Clamp<uint32>(uint32(CHUNK_Y * Perlin2D(cellCenterFloat, np)), MIN_WATER_HEIGHT, MAX_WATER_HEIGHT - 2);
-
-    CellType cellType = CellType::Count;
-    if (centerCellHeight > MAX_WATER_HEIGHT - 2 - 2)
-    {
-        cellType = CellType::Inland;
-    }
-    else
-    {
-        cellType = CellType::Ocean;
-    }
-
-//_________END NEW IMPLIMENTATION_________
-//________________________________________
+////________________________________________
+////___________NEW IMPLIMENTATION___________
+//
+//    GamePos chunkInGame = ToGame(g_chunks->p[i]);
+//
+//    NoiseParams np = {
+//        .numOfOctaves = 8,
+//        .freq = 0.17f,
+//        .weight = 1.0f,
+//        .gainFactor = 1.0f,
+//    };
+//
+//    WorldPos chunkMeaningfullFloatLocation = ToWorld(chunkInGame);
+//    //Vec3 cell = Voronoi_DAndP(Vec2({ chunkMeaningfullFloatLocation.p.x, chunkMeaningfullFloatLocation.p.z }) * 100 / float(INT_MAX));
+//    Vec3 cell = Voronoi_DAndP(Vec2({ chunkMeaningfullFloatLocation.p.x, chunkMeaningfullFloatLocation.p.z}) / 100.0);
+//    cell = cell * 16.0f;// * 10 * 16 * 4 + 0.5;
+//    Vec2Int cellCenterInt = { int32(cell.x), int32(cell.y) };
+//
+//    //Vec2Int cellCenterInt = { int32(cell.x * float(INT_MAX)), int32(cell.y * float(INT_MAX)) };
+//    //Vec2Int cellCenterInt = { int32(cell.x * float(INT_MAX)), int32(cell.z * float(INT_MAX)) };
+//    Vec2 cellCenterFloat = /*Vec2({ chunkMeaningfullFloatLocation.p.x, chunkMeaningfullFloatLocation.p.x }) + */Vec2({ cellCenterInt.x / 1.0f, cellCenterInt.y / 1.0f });
+//
+//    uint32 centerCellHeight = NewHightFunc(cellCenterFloat);
+//    //uint32 centerCellHeight = Clamp<uint32>(uint32(CHUNK_Y * Perlin2D(cellCenterFloat, np)), MIN_WATER_HEIGHT, MAX_WATER_HEIGHT - 2);
+//
+//    CellType cellType = CellType::Count;
+//    if (centerCellHeight > MAX_WATER_HEIGHT - 2 - 2)
+//    {
+//        cellType = CellType::Inland;
+//    }
+//    else
+//    {
+//        cellType = CellType::Ocean;
+//    }
+//
+////_________END NEW IMPLIMENTATION_________
+////________________________________________
 
     for (int32 x = 0; x < CHUNK_X; x++)
     {
@@ -473,60 +633,224 @@ void ChunkArray::SetBlocks(ChunkIndex i)
             const int32 blockRatioProduct = 100;
             blockRatio /= blockRatioProduct;
             int32 yTotal = 0;
-
-//________________________________________
-//___________NEW IMPLIMENTATION___________
+            //BlockType topBlockType;// = BlockType::Grass;
 
 
-            //Step 1:
-            //Generate heightmap of basic terrain
-            //uint32 waterVsLandHeight = Clamp<uint32>(uint32(CHUNK_Y * Perlin2D(blockRatio, np)), MIN_WATER_HEIGHT, MAX_WATER_HEIGHT - 2);
-            uint32 waterVsLandHeight = NewHightFunc(blockRatio * 100);
 
-            BlockType topBlockType;// = BlockType::Grass;
+#if 0
+            float tempVal = {};
+            float moistVal = {};
+            BiomeTemp temp;
+            BiomeMoist moist;
+            Vec2 chunkPForNoise = { float(g_chunks->p[i].p.x), float(g_chunks->p[i].p.z) };
+            BiomeType biome;
 
-            //Step 2:
-            //Generate Cells using Voronoi and determine what type of region that cell is
-            // - Ocean, Coastal, or Inland
-            //float cellRegion = VoronoiNoise(blockRatio, 1.0f, 0.5f);
-            
-            uint32 cellTypeHeight = 0;
-            switch (cellType)
+            float boundaryThreshold = 0.05f;
+            Vec2 chunkAndBlock = chunkPForNoise + Vec2({ float(x) / CHUNK_X, float(z) / CHUNK_Z });
+            tempVal  = VoronoiNoise(chunkAndBlock / 18, 1.0f, 0.0f);
+            moistVal = VoronoiNoise(chunkAndBlock / 6,  1.0f, 0.0f);
+            float tempIndex  = (Clamp<float>(tempVal  * +BiomeTemp::Count, 0.0f, 5.9f));
+            float moistIndex = (Clamp<float>(moistVal * +BiomeMoist::Count, 0.0f, 5.9f));
+
+            float secondaryBiomeTemp = tempIndex;
+            float secondaryBiomeMoist = moistIndex;
+            //BiomeType secondaryBiome;
+            //lerp the difference of the threshold value and the index value?  something like that
+            if (floorf(tempIndex + boundaryThreshold) != floorf(tempIndex))
+                secondaryBiomeTemp = tempIndex + 1.0f;
+            else if (floorf(tempIndex - boundaryThreshold) != floorf(tempIndex))
+                secondaryBiomeTemp = tempIndex - 1.0f;
+
+            if (floorf(moistIndex + boundaryThreshold) != floorf(moistIndex))
+                secondaryBiomeMoist = moistIndex + 1.0f;
+            else if (floorf(moistIndex - boundaryThreshold) != floorf(moistIndex))
+                secondaryBiomeMoist = moistIndex - 1.0f;
+
+            temp  = BiomeTemp(tempIndex);
+            moist = BiomeMoist(moistIndex);
+            biome = GetBiomeType(temp, moist);
+
+            NoiseParams np;
+            switch (biome)
             {
-            case CellType::Inland:
-
+            case BiomeType::Woodland:
+            {
+                np = {
+                    .numOfOctaves = 4,
+                    .freq = 0.75f,
+                    .weight = 1.0f,
+                    .gainFactor = 1.0f,
+                };
+                topBlockType = BlockType::Wood;
+                break;
+            }
+            case BiomeType::TropicalRainforest:
+			{
+                np = {
+                    .numOfOctaves = 4,
+                    .freq = 0.75f,
+                    .weight = 1.0f,
+                    .gainFactor = 1.0f,
+                };
+				topBlockType = BlockType::DiamondBlock;
+                break;
+            }
+            case BiomeType::Grassland:
+			{
+                np = {
+                    .numOfOctaves = 4,
+                    .freq = 0.75f,
+                    .weight = 1.0f,
+                    .gainFactor = 1.0f,
+                };
+				topBlockType = BlockType::Grass;
+                break;
+            }
+            case BiomeType::SeasonalForest:
+            {
                 np = {
                     .numOfOctaves = 8,
                     .freq = 0.4f,
                     .weight = 1.5f,
                     .gainFactor = 0.9f,
                 };
-                cellTypeHeight = Clamp<uint32>(uint32(CHUNK_Y * Perlin2D(blockRatio, np)), 0, CHUNK_Y - (MAX_WATER_HEIGHT - 2));
-                topBlockType = BlockType::Grass;
+				topBlockType = BlockType::TNT;
                 break;
-            case CellType::Ocean:
-                topBlockType = BlockType::Water;
+            }
+            case BiomeType::TemperateRainforest:
+            {
+                np = {
+                    .numOfOctaves = 8,
+                    .freq = 0.4f,
+                    .weight = 1.5f,
+                    .gainFactor = 0.9f,
+                };
+				topBlockType = BlockType::MossyCobblestone;
                 break;
-            case CellType::Coastal:
+            }
+            case BiomeType::BorealForest:
+            //case BiomeType::Mountain:
+            {
+                np = {
+                    .numOfOctaves = 8,
+                    .freq = 0.4f,
+                    .weight = 1.5f,
+                    .gainFactor = 0.9f,
+                };
+				topBlockType = BlockType::Leaves;
                 break;
+            }
+            case BiomeType::Savanna:
+            {
+				np = {
+					.numOfOctaves = 1,
+					.freq = 1.0f,
+					.weight = 1.0f,
+					.gainFactor = 0.5f,
+				};
+				topBlockType = BlockType::GoldBlock;
+                break;
+            }
+            case BiomeType::Desert:
+            {
+				np = {
+					.numOfOctaves = 1,
+					.freq = 1.0f,
+					.weight = 1.0f,
+					.gainFactor = 0.5f,
+				};
+				topBlockType = BlockType::Sand;
+                break;
+            }
+            case BiomeType::Ice:
+            {
+				np = {
+					.numOfOctaves = 1,
+					.freq = 2.0f,
+					.weight = 1.0f,
+					.gainFactor = 0.5f,
+				};
+				topBlockType = BlockType::Ice;
+                break;
+            }
+            case BiomeType::Tundra:
+            {
+				np = {
+					.numOfOctaves = 1,
+					.freq = 2.0f,
+					.weight = 1.0f,
+					.gainFactor = 0.5f,
+				};
+				topBlockType = BlockType::Snow;
+                break;
+            }
             default:
-                assert(false);
+            {
+                assert(false);//(+chunkType) > +ChunkType::None && (+chunkType) < +ChunkType::Count);
+                break;
+            }
             }
 
+            yTotal = Clamp<uint32>(static_cast<int32>(Perlin2D(blockRatio, np) * CHUNK_Y), 10, CHUNK_Y - 1);
+#endif
 
-            
-            //union CellGarbage {
-            //    uint64 a;
-            //    Vec2 v;
-            //};
-            //CellGarbage cellGarbage;
-            //cellGarbage.v = { cell.x, cell.y };
-            //uint32 cellHash = PCG_Random(cellGarbage.a);
-            //CellType cellType = static_cast<CellType>(cellHash % +CellType::Count);
+////___________OLD IMPLIMENTATION___________
+////________________________________________
 
 
-
-            yTotal = Clamp<uint32>(waterVsLandHeight + cellTypeHeight, 3, CHUNK_Y - 1); //add all together?
+////________________________________________
+////___________NEW IMPLIMENTATION___________
+//
+//
+//            //Step 1:
+//            //Generate heightmap of basic terrain
+//            //uint32 waterVsLandHeight = Clamp<uint32>(uint32(CHUNK_Y * Perlin2D(blockRatio, np)), MIN_WATER_HEIGHT, MAX_WATER_HEIGHT - 2);
+//            uint32 waterVsLandHeight = NewHightFunc(blockRatio * 100);
+//
+//            BlockType topBlockType;// = BlockType::Grass;
+//
+//            //Step 2:
+//            //Generate Cells using Voronoi and determine what type of region that cell is
+//            // - Ocean, Coastal, or Inland
+//            //float cellRegion = VoronoiNoise(blockRatio, 1.0f, 0.5f);
+//            
+//            uint32 cellTypeHeight = 0;
+//            switch (cellType)
+//            {
+//            case CellType::Inland:
+//
+//                np = {
+//                    .numOfOctaves = 8,
+//                    .freq = 0.4f,
+//                    .weight = 1.5f,
+//                    .gainFactor = 0.9f,
+//                };
+//                cellTypeHeight = Clamp<uint32>(uint32(CHUNK_Y * Perlin2D(blockRatio, np)), 0, CHUNK_Y - (MAX_WATER_HEIGHT - 2));
+//                topBlockType = BlockType::Grass;
+//                break;
+//            case CellType::Ocean:
+//                topBlockType = BlockType::Water;
+//                break;
+//            case CellType::Coastal:
+//                break;
+//            default:
+//                assert(false);
+//            }
+//
+//
+//            
+//            //union CellGarbage {
+//            //    uint64 a;
+//            //    Vec2 v;
+//            //};
+//            //CellGarbage cellGarbage;
+//            //cellGarbage.v = { cell.x, cell.y };
+//            //uint32 cellHash = PCG_Random(cellGarbage.a);
+//            //CellType cellType = static_cast<CellType>(cellHash % +CellType::Count);
+//
+//
+//
+//            yTotal = Clamp<uint32>(waterVsLandHeight + cellTypeHeight, 3, CHUNK_Y - 1); //add all together?
 #if VORONOI == 11
 #elif VORONOI == 10
 #elif VORONOI == 9
@@ -541,8 +865,8 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
             float boundaryThreshold = 0.05f;
             Vec2 chunkAndBlock = chunkPForNoise + Vec2({ float(x) / CHUNK_X, float(z) / CHUNK_Z });
-            tempVal  = VoronoiNoise(chunkAndBlock / 180, 1.0f, 0.5f);
-            moistVal = VoronoiNoise(chunkAndBlock / 60,  1.0f, 0.5f);
+            tempVal  = VoronoiNoise(chunkAndBlock / 18, 1.0f, 0.0f);
+            moistVal = VoronoiNoise(chunkAndBlock / 6,  1.0f, 0.0f);
             float tempIndex  = (Clamp<float>(tempVal  * +BiomeTemp::Count, 0.0f, 5.9f));
             float moistIndex = (Clamp<float>(moistVal * +BiomeMoist::Count, 0.0f, 5.9f));
 
@@ -700,7 +1024,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
             }
             }
 
-            yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio, np) * CHUNK_Y), 10, CHUNK_Y - 1);
+            yTotal = Clamp<uint32>(static_cast<int32>(Perlin2D(blockRatio, np) * CHUNK_Y), 10, CHUNK_Y - 1);
 
 
 #elif VORONOI == 7
@@ -907,6 +1231,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
             }
 			yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio / 2, noiseParams) * CHUNK_Y), 10, CHUNK_Y - 1);
 #endif
+#if 0
 
             //#if NOISETYPE == 2
             //            //int32 yTotal = Max(static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 10);
@@ -951,6 +1276,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                 }
                 blocks[i].e[x][y][z] = bt;
             }
+#endif
         }
     }
 

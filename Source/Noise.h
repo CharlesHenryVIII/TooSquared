@@ -6,7 +6,7 @@ struct NoiseParams {
     int32 numOfOctaves = 8;
     float freq = 0.2f;
     float weight = 1.0f;
-    float gainFactor; //"H" 0.5 to 1.0 Generally 0.5
+    float gainFactor = 0.5f; //"H" 0.5 to 1.0 Generally 0.5
 };
 
 

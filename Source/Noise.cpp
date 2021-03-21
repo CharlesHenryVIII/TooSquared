@@ -552,7 +552,7 @@ Vec3 Voronoi_DistanceAndPositionOfCenter(Vec2 v)
             }
         }
     }
-
+    
     //----------------------------------
     // second pass: distance to borders
     //----------------------------------

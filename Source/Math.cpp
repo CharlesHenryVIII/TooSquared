@@ -152,6 +152,10 @@ float Bilinear(float p00, float p10, float p01, float p11, float x, float y)
 {
     return { static_cast<float>(a.p.x), static_cast<float>(a.p.y), static_cast<float>(a.p.z) };
 }
+[[nodiscard]] WorldPos ToWorld(ChunkPos a)
+{
+    return ToWorld(ToGame(a));
+}
 
 [[nodiscard]] GamePos ToGame(WorldPos a)
 {

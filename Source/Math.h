@@ -569,10 +569,11 @@ struct WorldPos {
     }
 };
 
-[[nodiscard]] GamePos ToGame(ChunkPos a);
-[[nodiscard]] ChunkPos ToChunk(GamePos a);
 [[nodiscard]] WorldPos ToWorld(GamePos a);
+[[nodiscard]] WorldPos ToWorld(ChunkPos a);
+[[nodiscard]] GamePos ToGame(ChunkPos a);
 [[nodiscard]] GamePos ToGame(WorldPos a);
+[[nodiscard]] ChunkPos ToChunk(GamePos a);
 [[nodiscard]] ChunkPos ToChunk(WorldPos a);
 
 [[nodiscard]] inline WorldPos Floor(WorldPos v)

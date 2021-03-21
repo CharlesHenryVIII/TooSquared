@@ -56,7 +56,7 @@ int main(int argc, char* argv[])
     g_chunks = new ChunkArray();
     float loadingTimer = 0.0f;
     bool uploadedLastFrame = false;
-    bool debugDraw = true;
+    bool debugDraw = false;
 
     //int32 area = 10;
     //for (int32 y = -area; y <= area; y++)
