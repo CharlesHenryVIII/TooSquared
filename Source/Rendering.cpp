@@ -245,14 +245,12 @@ void ShaderProgram::CheckForUpdate()
     uint64 vertexFileTime = 0;
     if (!GetFileTime(&vertexFileTime, m_vertexFile))
     {
-        assert(false);//todo
         return;
     }
 
     uint64 pixelFileTime = 0;
     if(!GetFileTime(&pixelFileTime, m_pixelFile))
     {
-        assert(false);//todo
         return;
     }
 
@@ -721,9 +719,10 @@ void InitializeVideo()
     g_renderer.programs[+Shader::Chunk] = new ShaderProgram("Source/Shaders/Chunk.vert", "Source/Shaders/Chunk.frag");
     g_renderer.programs[+Shader::Cube] = new ShaderProgram("Source/Shaders/Cube.vert", "Source/Shaders/Cube.frag");
     g_renderer.programs[+Shader::BufferCopy] = new ShaderProgram("Source/Shaders/BufferCopy.vert", "Source/Shaders/BufferCopy.frag");
+    g_renderer.programs[+Shader::Sun] = new ShaderProgram("Source/Shaders/Sun.vert", "Source/Shaders/Sun.frag");
 
 #if DIRECTIONALLIGHT == 1
-    g_light.d = {  1.0f, -1.0f,  1.0f };
+    g_light.d = Normalize(Vec3({  0.4f, -1.0f,  0.1f }));
     g_light.c = {  1.0f,  1.0f,  1.0f };
 #else
     g_light.p = { 25.0f, 270.0f, 25.0f };

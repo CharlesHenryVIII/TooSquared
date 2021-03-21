@@ -424,6 +424,35 @@ int main(int argc, char* argv[])
         glViewport(0, 0, windowSizeThing.x, windowSizeThing.y);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+
+        {
+            glBlendFunc(GL_ONE, GL_ONE);
+
+            glDepthMask(GL_FALSE);
+            ShaderProgram* sp = g_renderer.programs[+Shader::Sun];
+            sp->UseShader();
+            sp->UpdateUniformVec3("u_directionalLight_d", 1, g_light.d.e);
+            Mat4 iViewProj;
+            gb_mat4_inverse(&iViewProj, &viewProj);
+            sp->UpdateUniformMat4("u_inverseViewProjection", 1, false, iViewProj.e);
+            sp->UpdateUniformVec3("u_cameraPosition", 1, g_camera.p.p.e);
+
+            //glViewport(0, 0, g_window.size.x, g_window.size.y);
+
+            g_renderer.backBuffer->m_vertexBuffer.Bind();
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+            glEnableVertexArrayAttrib(g_renderer.vao, 0);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+            glEnableVertexArrayAttrib(g_renderer.vao, 1);
+            glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
+            glEnableVertexArrayAttrib(g_renderer.vao, 2);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            
+            glDepthMask(GL_TRUE);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        }
+
         {
             //PROFILE_SCOPE("Semaphore Update");
 

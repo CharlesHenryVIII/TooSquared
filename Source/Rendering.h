@@ -71,6 +71,7 @@ enum class Shader : uint32 {
     Chunk,
     Cube,
     BufferCopy,
+    Sun,
     Count,
 };
 ENUMOPS(Shader);
