@@ -271,13 +271,14 @@ float Hash(Vec3 p)  // replace this by something better
 float Hash(Vec2 p)  // replace this by something better
 {
     Vec2 p2 = 50.0f * Fract(p * 0.3183099f + Vec2({ 0.71f, 0.113f }));
-    return -1.0f + 2.0f * Fract(p2.x * p2.y * (p2.x + p2.y) );
+    float result = -1.0f + 2.0f * Fract(p2.x * p2.y * (p2.x + p2.y));
+    return result;
 }
 
 Vec2 Hash2D(Vec2 p)  // replace this by something better
 {
-#if 1
-	return Fract(Sine(Vec2(DotProduct(p, Vec2(127.1f, 311.7f)),DotProduct(p, Vec2(269.5f, 183.3f)))) * 43758.5453f) * Vec2(0.1f, 1.0f);
+#if 0
+    return Fract(Sine(Vec2(DotProduct(p, Vec2(127.1f, 311.7f)),DotProduct(p, Vec2(269.5f, 183.3f)))) * 43758.5453f) * Vec2(0.1f, 1.0f);
 #else
     Vec2 p2 = 50.0f * Fract(p * 0.3183099f + Vec2({ 0.71f, 0.113f }));
     return -1.0f + 2.0f * Fract(p2 * (p2.x + p2.y) );
@@ -499,6 +500,27 @@ float voronoiDistance(Vec2 x )
 
 #endif
 
+
+Vec2 HashTest(Vec2 in)
+{
+    Vec2 result;
+    Vec2Int temp = { *(int32*)(&in.x), *(int32*)(&in.y) };
+    //result.x = ((temp.x ^ (temp.x >> 22)) >> (22 + (temp.x >> 61)));
+    //result.y = ((temp.y ^ (temp.y >> 22)) >> (22 + (temp.y >> 61)));
+    //return result;
+
+    temp.x ^= temp.x << 13;
+    temp.x ^= temp.x >> 17;
+    temp.x ^= temp.x << 5;
+
+    temp.y ^= temp.y << 13;
+    temp.y ^= temp.y >> 17;
+    temp.y ^= temp.y << 5;
+
+    result = { *(float*)(&temp.x), *(float*)(&temp.y) };
+    return result;
+}
+
 Vec3 Voronoi_DistanceAndPositionOfCenter(Vec2 v)
 {
     Vec2 n = Floor(v);
@@ -507,7 +529,7 @@ Vec3 Voronoi_DistanceAndPositionOfCenter(Vec2 v)
     //----------------------------------
     // first pass: regular voronoi
     //----------------------------------
-	Vec2 mg, center;
+    Vec2 mg, center;
 
     float md = inf;//8.0;
     const int32 searchSize = 1;
@@ -517,6 +539,8 @@ Vec3 Voronoi_DistanceAndPositionOfCenter(Vec2 v)
         {
             Vec2 g = Vec2(float(i), float(j));
             Vec2 o = Hash2D(n + g);
+            //Vec2 o = HashTest(n + g);
+            //DebugPrint("o: %+f\n", o);
             Vec2 r = g + o - f;
             float d = DotProduct(r, r);
 
@@ -539,6 +563,7 @@ Vec3 Voronoi_DistanceAndPositionOfCenter(Vec2 v)
         {
             Vec2 g = mg + Vec2(float(i), float(j));
             Vec2 o = Hash2D(n + g);
+            //Vec2 o = HashTest(n + g);
             Vec2 r = g + o - f;
 
             if (DotProduct(center - r, center - r) > 0.00001)
@@ -549,14 +574,89 @@ Vec3 Voronoi_DistanceAndPositionOfCenter(Vec2 v)
     return { center.x, center.y, md };
 }
 
+
+Texture* s_randomNoise = nullptr;
+Vec3 RandomNoiseFromImage(Vec2 a)
+{
+    Vec2Int aTransformed = Abs(Vec2Int({ int32(a.x * 8.0f), int32(a.y * 8.0f) }));
+    //Vec2Int pixelLocation = aTransformed % s_randomNoise->m_size;
+
+    //uint32 pixelIndex = (pixelLocation.y * s_randomNoise->m_size.x + pixelLocation.x) % 
+    //                    s_randomNoise->m_size.x * s_randomNoise->m_size.y;
+    uint32 pixelIndex = (aTransformed.y * s_randomNoise->m_size.x + aTransformed.x) % 
+                        s_randomNoise->m_size.x * s_randomNoise->m_size.y;
+    Vec3 result = {};
+    result.x = s_randomNoise->m_data[pixelIndex + 0] / float(UCHAR_MAX);
+    result.y = s_randomNoise->m_data[pixelIndex + 1] / float(UCHAR_MAX);
+    result.z = s_randomNoise->m_data[pixelIndex + 2] / float(UCHAR_MAX);
+
+    return result;
+}
+
+Vec3 Voronoi_DistanceAndPositionOfCenter2(Vec2 v)
+{
+    Vec2 n = Floor(v);
+    Vec2 f = Fract(v);
+
+	float id, le;
+
+    float md = inf;// 10.0f;
+    
+    for(int32 j =- 1; j <= 1; j++)
+    { 
+        for (int32 i = -1; i <= 1; i++)
+        {
+            Vec2 g1 = n + Vec2(float(i), float(j));
+            Vec3 rr = RandomNoiseFromImage(g1);
+            Vec2 o = g1 + rr.xy;
+            Vec2 r = v - o;
+            float d = DotProduct(r, r);
+            float z = rr.z;
+
+            if (d < md)
+            {
+                md = d;
+                id = z + g1.x + g1.y * 7.0f;
+                le = 0.0f;
+            }
+        }
+    }
+
+    return Vec3(md, le, id);
+}
+
+//void mainImage(out vec4 fragColor, in vec2 fragCoord)
+//{
+//    vec2 p = fragCoord.xy / iResolution.x;
+//    p += 0.5 * cos(0.1 * iTime + vec2(0.0, 1.57));
+//
+//    const float scale = 8.0;
+//
+//    vec3 c = voronoi(scale * p);
+//
+//    vec3 col = 0.6 + 0.4 * cos(c.y * 0.6 + vec3(0.0, 0.9, 1.5));
+//    col *= 0.96 + 0.04 * sin(10.0 * c.z);
+//    col *= smoothstep(0.008, 0.015, sqrt(c.x));
+//    vec2 e = vec2(2.0, 0.0) / iResolution.x;
+//    vec3 ca = voronoi(scale * (p + e.xy));
+//    vec3 cb = voronoi(scale * (p + e.yx));
+//    col *= 1.0 - clamp(abs(2.0 * c.z - ca.z - cb.z) * 1000.0, 0.0, 1.0);
+//
+//    col = rand3(c.yz);
+//}
+
 void NoiseInit()
 {
-
+    s_randomNoise = new Texture("Assets/noise_texture_0002.png");
 }
 
 Vec3 Voronoi_DAndP(Vec2 v)
 {
+#if 0
+    return Voronoi_DistanceAndPositionOfCenter2(v);
+#else
     return Voronoi_DistanceAndPositionOfCenter(v);
+#endif
 }
 
 

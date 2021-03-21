@@ -58,13 +58,25 @@ int main(int argc, char* argv[])
     bool uploadedLastFrame = false;
     bool debugDraw = true;
 
-    int32 area = 10;
-    for (int32 y = -area; y < area; y++)
+    //int32 area = 10;
+    //for (int32 y = -area; y <= area; y++)
+    //{
+    //    for (int32 x = -area; x <= area; x++)
+    //    {
+    //        //Vec3 a = Voronoi_DAndP(Vec2({ float(x), float(y) }) / float(INT_MAX));
+    //        Vec3 a = Voronoi_DAndP(Vec2({ float(x), float(y) }));
+    //        DebugPrint("%i, %i : %0.3f, %0.3f, W: %0.3f \n", x, y, a.x, a.y, a.z);
+    //    }
+    //}
+
+    float area = 0.1f;
+    for (float y = 0; y <= area + FLT_EPSILON; y += 0.001f)
     {
-        for (int32 x = -area; x < area; x++)
+        for (float x = 0; x <= area + FLT_EPSILON; x += 0.001f)
         {
-            Vec3 a = Voronoi_DAndP(Vec2({ float(x), float(y) }) / float(INT_MAX));
-            DebugPrint("%i, %i : %0.3f, %0.3f\n", x, y, a.x, a.y);
+            //Vec3 a = Voronoi_DAndP(Vec2({ float(x), float(y) }) / float(INT_MAX));
+            Vec3 a = Voronoi_DAndP(100 * Vec2({ x, y }));
+            DebugPrint("%+0.6f, %+0.6f : %+0.6f, %+0.6f, W: %+0.6f \n", x, y, a.y, a.z, a.x);
         }
     }
 

@@ -355,8 +355,20 @@ float stb_ComputeHeightFieldDelta(int x, int y, float weight)
    return ht;
 }
 
+
+
 #define MIN_WATER_HEIGHT    20U
 #define MAX_WATER_HEIGHT    70U
+
+int32 NewHightFunc(Vec2 v)
+{
+    const float sectionSize = 16 * 16;
+    int32 result = int32(floor(v.x / sectionSize) + floor(v.y / sectionSize));
+    if (result % 2 == 0)
+        return MAX_WATER_HEIGHT;
+    else
+        return MIN_WATER_HEIGHT;
+}
 
 void ChunkArray::SetBlocks(ChunkIndex i)
 {
@@ -423,13 +435,21 @@ void ChunkArray::SetBlocks(ChunkIndex i)
         .gainFactor = 1.0f,
     };
 
-    WorldPos chunkMeaningFullFloatLocation = ToWorld(chunkInGame);
-    Vec3 cell = Voronoi_DAndP(Vec2({ chunkMeaningFullFloatLocation.p.x, chunkMeaningFullFloatLocation.p.z }) / float(INT_MAX));
-    Vec2Int cellCenterInt = { int32(cell.x * float(INT_MAX)), int32(cell.y * float(INT_MAX)) };
-    Vec2 cellCenterFloat = { cellCenterInt.x / 100.0f, cellCenterInt.y / 100.0f };
-    uint32 centerCellHeight = Clamp<uint32>(uint32(CHUNK_Y * Perlin2D({ cellCenterFloat.x, cellCenterFloat.y }, np)), MIN_WATER_HEIGHT, MAX_WATER_HEIGHT - 2);
+    WorldPos chunkMeaningfullFloatLocation = ToWorld(chunkInGame);
+    //Vec3 cell = Voronoi_DAndP(Vec2({ chunkMeaningfullFloatLocation.p.x, chunkMeaningfullFloatLocation.p.z }) * 100 / float(INT_MAX));
+    Vec3 cell = Voronoi_DAndP(Vec2({ chunkMeaningfullFloatLocation.p.x, chunkMeaningfullFloatLocation.p.z}) / 100.0);
+    cell = cell * 16.0f;// * 10 * 16 * 4 + 0.5;
+    Vec2Int cellCenterInt = { int32(cell.x), int32(cell.y) };
+
+    //Vec2Int cellCenterInt = { int32(cell.x * float(INT_MAX)), int32(cell.y * float(INT_MAX)) };
+    //Vec2Int cellCenterInt = { int32(cell.x * float(INT_MAX)), int32(cell.z * float(INT_MAX)) };
+    Vec2 cellCenterFloat = /*Vec2({ chunkMeaningfullFloatLocation.p.x, chunkMeaningfullFloatLocation.p.x }) + */Vec2({ cellCenterInt.x / 1.0f, cellCenterInt.y / 1.0f });
+
+    uint32 centerCellHeight = NewHightFunc(cellCenterFloat);
+    //uint32 centerCellHeight = Clamp<uint32>(uint32(CHUNK_Y * Perlin2D(cellCenterFloat, np)), MIN_WATER_HEIGHT, MAX_WATER_HEIGHT - 2);
+
     CellType cellType = CellType::Count;
-    if (centerCellHeight > MAX_WATER_HEIGHT - 2 + 4)
+    if (centerCellHeight > MAX_WATER_HEIGHT - 2 - 2)
     {
         cellType = CellType::Inland;
     }
@@ -460,7 +480,9 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
             //Step 1:
             //Generate heightmap of basic terrain
-            uint32 waterVsLandHeight = Clamp<uint32>(uint32(CHUNK_Y * Perlin2D(blockRatio, np)), MIN_WATER_HEIGHT, MAX_WATER_HEIGHT - 2);
+            //uint32 waterVsLandHeight = Clamp<uint32>(uint32(CHUNK_Y * Perlin2D(blockRatio, np)), MIN_WATER_HEIGHT, MAX_WATER_HEIGHT - 2);
+            uint32 waterVsLandHeight = NewHightFunc(blockRatio * 100);
+
             BlockType topBlockType;// = BlockType::Grass;
 
             //Step 2:
@@ -504,7 +526,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
 
 
-            yTotal = Clamp<uint32>(waterVsLandHeight + cellTypeHeight, 3, CHUNK_Y); //add all together?
+            yTotal = Clamp<uint32>(waterVsLandHeight + cellTypeHeight, 3, CHUNK_Y - 1); //add all together?
 #if VORONOI == 11
 #elif VORONOI == 10
 #elif VORONOI == 9

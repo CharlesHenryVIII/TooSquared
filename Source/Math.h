@@ -239,7 +239,16 @@ inline Vec3Int& operator-=(Vec3Int &a, Vec3Int b)
 }
 [[nodiscard]] inline Vec3Int operator/=(Vec3Int& a, int32 b)
 {
-    a = {a.x / b, a.y / b, a.z / b };
+    a = a / b;
+}
+[[nodiscard]] inline Vec3Int operator%(Vec3Int a, Vec3Int b)
+{
+    Vec3Int r = {a.x % b.x, a.y % b.y, a.z % b.z };
+    return r;
+}
+[[nodiscard]] inline Vec3Int operator%=(Vec3Int& a, Vec3Int b)
+{
+    a = a % b;
 }
 
 
@@ -264,6 +273,15 @@ inline Vec3Int& operator-=(Vec3Int &a, Vec3Int b)
 inline Vec2Int &operator-=(Vec2Int &a, Vec2Int b)
 {
     return (a = a - b);
+}
+[[nodiscard]] inline Vec2Int operator%(Vec2Int a, Vec2Int b)
+{
+    Vec2Int r = { a.x % b.x, a.y % b.y };
+    return r;
+}
+[[nodiscard]] inline Vec2Int operator%=(Vec2Int& a, Vec2Int b)
+{
+    a = a % b;
 }
 
 
@@ -361,6 +379,10 @@ template <typename T>
 [[nodiscard]] inline Vec3Int Abs(Vec3Int a)
 {
     return { abs(a.x), abs(a.y), abs(a.z) };
+}
+[[nodiscard]] inline Vec2Int Abs(Vec2Int a)
+{
+    return { abs(a.x), abs(a.y) };
 }
 
 [[nodiscard]] inline Vec2 Sine(Vec2 v)
