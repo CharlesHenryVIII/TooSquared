@@ -491,6 +491,10 @@ Atan2f return value:
 {
     return a.x * b.x + a.y * b.y;
 }
+[[nodiscard]] inline float DotProduct(Vec3 a, Vec3 b)
+{
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
 
 [[nodiscard]] inline float Pythags(const Vec2& a)
 {
@@ -593,3 +597,15 @@ struct Frustum {
 Frustum ComputeFrustum(const Mat4& mvProj);
 bool IsBoxInFrustum(const Frustum& f, float* bmin, float* bmax);
 int32 ManhattanDistance(Vec3Int a, Vec3Int b);
+
+struct AABB {
+    Vec3 min = {};
+    Vec3 max = {};
+};
+
+struct Ray {
+    Vec3 origin;
+    Vec3 direction;
+};
+
+bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal);

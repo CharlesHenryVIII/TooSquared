@@ -239,3 +239,66 @@ int32 ManhattanDistance(Vec3Int a, Vec3Int b)
 {
     return abs(a.x - b.x) + abs(a.y - b.y) + abs(a.z - b.z);
 }
+
+bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal)
+{
+    float tmin = 0;
+    float tmax = FLT_MAX;
+
+    for (int32 slab = 0; slab < 3; ++slab)
+    {
+        if (::fabs(ray.direction.e[slab]) < FLT_EPSILON)
+        {
+            // Ray is parallel to the slab
+            if (ray.origin.e[slab] < box.min.e[slab] || ray.origin.e[slab] > box.max.e[slab])
+                return false;
+        }
+        else
+        {
+
+            float ood = 1.0f / ray.direction.e[slab];
+            float t1 = (box.min.e[slab] - ray.origin.e[slab]) * ood;
+            float t2 = (box.max.e[slab] - ray.origin.e[slab]) * ood;
+            if (t1 > t2)
+            {
+                std::swap(t1, t2);
+            }
+
+            tmin = Max(tmin, t1);
+            tmax = Min(tmax, t2);
+
+            if (tmin > tmax)
+                return false;
+
+        }
+    }
+
+
+    intersect = ray.origin + ray.direction * tmin;
+    min = tmin;
+
+    Vec3 center = (box.max + box.min) / 2.0f;
+    Vec3 toNormal = intersect - center;
+    Vec3 normalized = Normalize(toNormal);
+    Vec3 normals[] = {
+        {1, 0, 0},
+        {-1, 0, 0},
+        {0, 1, 0},
+        {0, -1, 0},
+        {0, 0, 1},
+        {0, 0, -1},
+    };
+
+    float distance = -1;
+    for (Vec3 n : normals)
+    {
+        float newDistance = DotProduct(normalized, n);
+        if (newDistance > distance)
+        {
+            distance = newDistance;
+            normal = n;
+        }
+    }
+
+    return true;
+}

@@ -212,6 +212,7 @@ void SetMultipleBlockSprites(BlockType bt, uint32 v)
 }
 void SetBlockSprites()
 {
+    SetMultipleBlockSprites(BlockType::Dirt, 2);
     SetMultipleBlockSprites(BlockType::Grass, 3);
     faceSprites[+BlockType::Grass].faceSprites[+Face::Top] = 0;
     faceSprites[+BlockType::Grass].faceSprites[+Face::Bot] = 2;
@@ -220,7 +221,6 @@ void SetBlockSprites()
     SetMultipleBlockSprites(BlockType::IronBlock, 22);
     SetMultipleBlockSprites(BlockType::GoldBlock, 23);
     SetMultipleBlockSprites(BlockType::DiamondBlock, 24);
-    SetMultipleBlockSprites(BlockType::Dirt, 2);
     SetMultipleBlockSprites(BlockType::Sand, 18);
     SetMultipleBlockSprites(BlockType::Snow, 66);
     SetMultipleBlockSprites(BlockType::Wood, 20);
@@ -1508,6 +1508,7 @@ void RegionSampler::IncrimentRefCount()
 
 void ChunkArray::BuildChunkVertices(RegionSampler region)
 {
+    assert(g_chunks->state[region.center] == ChunkArray::VertexLoading);
     ChunkIndex i = region.center;
     faceVertices[i].clear();
     faceVertices[i].reserve(10000);
@@ -1603,6 +1604,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
         vertIndex += 2;
         vertIndex = vertIndex % 8;
     }
+    g_chunks->state[region.center] = ChunkArray::VertexLoaded;
 }
 
 void ChunkArray::UploadChunk(ChunkIndex i)
@@ -1686,7 +1688,6 @@ void CreateVertices::DoThing()
     //PROFILE_SCOPE("THREAD: CreateVertices()");
     region.IncrimentRefCount();
     g_chunks->BuildChunkVertices(region);
-    g_chunks->state[region.center] = ChunkArray::VertexLoaded;
     region.DecrimentRefCount();
 }
 
@@ -1697,7 +1698,6 @@ void DrawBlock(WorldPos p, Color color, float scale, const Mat4& perspective)
 
 void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective)
 {
-
     if (g_renderer.cubeVertexBuffer == nullptr)
     {
         const Vec3 cubeVertices[] = {
@@ -1773,4 +1773,87 @@ void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective)
 
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
     g_renderer.numTrianglesDrawn += 36 / 3;
+}
+
+
+bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& distance, Vec3& normal)
+{
+    distance = inf;
+
+    AABB chunkBox;
+    chunkBox.min = ToWorld(g_chunks->p[chunkIndex]).p;
+    chunkBox.max = { chunkBox.min.x + CHUNK_X, chunkBox.min.y + CHUNK_Y, chunkBox.min.z + CHUNK_Z };
+
+    float chunkDistance;
+    Vec3 chunkIntersection;
+    Vec3 chunkNormalResult;
+    if (!RayVsAABB(ray, chunkBox, chunkDistance, chunkIntersection, chunkNormalResult))
+        return false;
+
+    for (int32 x = 0; x < CHUNK_X; x++)
+    {
+        for (int32 y = 0; y < CHUNK_Y; y++)
+        {
+            for (int32 z = 0; z < CHUNK_Z; z++)
+            {
+                if (g_chunks->blocks[chunkIndex].e[x][y][z] != BlockType::Empty)
+                {
+                    GamePos blockP = Convert_BlockToGame(chunkIndex, { x, y, z });
+
+                    AABB box;
+                    box.min = ToWorld(blockP).p;
+                    box.max = box.min + 1.0f;
+
+                    float minDistanceToHit;
+                    Vec3 intersectionPoint = {};
+                    Vec3 normalFace;
+                    if (RayVsAABB(ray, box, minDistanceToHit, intersectionPoint, normalFace))
+                    {
+                        if (minDistanceToHit < distance)
+                        { 
+                            block = blockP;
+                            distance = minDistanceToHit;
+                            normal = normalFace;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return distance != inf;
+}
+
+void SetBlock(GamePos hitBlock, Vec3 hitNormal, BlockType setBlockType)
+{
+    ChunkPos hitChunkP = ToChunk(hitBlock);
+    ChunkIndex hitChunkIndex;
+    if (g_chunks->GetChunkFromPosition(hitChunkIndex, hitChunkP))
+    {
+        ChunkPos trash;
+        Vec3Int blockRelP = Convert_GameToBlock(trash, hitBlock);
+        blockRelP += Vec3ToVec3Int(hitNormal);
+        GamePos chunkAddLoc = Convert_BlockToGame(hitChunkIndex, blockRelP);
+        ChunkPos newChunkPos;
+        Vec3Int newBlockRelP = Convert_GameToBlock(newChunkPos, chunkAddLoc);
+        ChunkIndex newChunkIndex;
+        if (g_chunks->GetChunkFromPosition(newChunkIndex, newChunkPos))
+        {
+            hitChunkIndex = newChunkIndex;
+            blockRelP = newBlockRelP;
+
+            g_chunks->blocks[hitChunkIndex].e[blockRelP.x][blockRelP.y][blockRelP.z] = setBlockType;
+            RegionSampler regionUpdate;
+            regionUpdate.RegionGather(hitChunkIndex);
+            g_chunks->state[hitChunkIndex] = ChunkArray::VertexLoading;
+            g_chunks->BuildChunkVertices(regionUpdate);
+
+            for (ChunkIndex index : regionUpdate.neighbors)
+            {
+                RegionSampler region;
+                region.RegionGather(index);
+                g_chunks->state[index] = ChunkArray::VertexLoading;
+                g_chunks->BuildChunkVertices(region);
+            }
+        }
+    }
 }

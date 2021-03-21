@@ -288,9 +288,73 @@ int main(int argc, char* argv[])
         front.z = sin(DegToRad(g_camera.yaw)) * cos(DegToRad(g_camera.pitch));
         g_camera.front = Normalize(front);
 
-        gb_mat4_look_at(&g_camera.view, { g_camera.p.p.x, g_camera.p.p.y, g_camera.p.p.z },
-                       { g_camera.p.p.x + g_camera.front.x, g_camera.p.p.y + g_camera.front.y, g_camera.p.p.z + g_camera.front.z },
-                         g_camera.up);
+        Vec3 lookTarget = g_camera.p.p + g_camera.front;
+        gb_mat4_look_at(&g_camera.view, g_camera.p.p, lookTarget, g_camera.up);
+
+
+        GamePos hitBlock;
+        bool validHit = false;
+        Vec3 hitNormal;
+
+        {
+            RegionSampler localRegion;
+            ChunkIndex centerChunkIndex;
+            Ray ray = {
+                .origin = g_camera.p.p,
+                .direction = lookTarget - g_camera.p.p,
+            };
+            if (g_chunks->GetChunkFromPosition(centerChunkIndex, ToChunk(g_camera.p)))
+            {
+                //bool RayVsChunk(const Ray & ray, ChunkIndex chunkIndex, GamePos & block, float& distance);
+                GamePos resultPos = {};
+                float distance;
+                if (RayVsChunk(ray, centerChunkIndex, resultPos, distance, hitNormal))
+                {
+                    hitBlock = resultPos;
+                    validHit = true;
+                }
+
+                if (!validHit && localRegion.RegionGather(centerChunkIndex))
+                {
+                    for (ChunkIndex neighbor : localRegion.neighbors)
+                    {
+                        float distanceComparison;
+                        Vec3 neighborNormal;
+                        if (RayVsChunk(ray, neighbor, resultPos, distanceComparison, neighborNormal))
+                        {
+                            if (distanceComparison < distance)
+                            {
+                                hitBlock = resultPos;
+                                validHit = true;
+                                distance = distanceComparison;
+                                hitNormal = neighborNormal;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        //TODO: Optimize to update corners (max 4 chunks)
+        if (keyStates[SDL_BUTTON_RIGHT].downThisFrame)
+        {
+            if (validHit)
+            {
+                SetBlock(hitBlock, {}, BlockType::Empty);
+            }
+        }
+        //TODO: Optimize to update corners (max 4 chunks)
+        for (int32 c = SDLK_1; c <= SDLK_9; c++)
+        {
+            if (keyStates[c].downThisFrame)
+            {
+                if (validHit)
+                {
+                    SetBlock(hitBlock, hitNormal, BlockType(c - SDLK_1 + 1));
+                    break;
+                }
+            }
+        }
 
         //testCamera.p = { 0, 100, 0 };
         //gb_mat4_look_at(&g_camera.view, g_camera.p.p, testCamera.p.p, {0, 1, 0});
@@ -299,7 +363,7 @@ int main(int argc, char* argv[])
         //gb_mat4_look_at(&testCamera.view, testCamera.p.p, lookatPosition, { 0, 1, 0 });
 
         Mat4 perspective;
-        gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.65f, 2000.0f);
+        gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.2f, 2000.0f);
         Mat4 viewProj = perspective * g_camera.view;//testCamera.view;
 
 
@@ -313,22 +377,6 @@ int main(int argc, char* argv[])
             g_camera.drawDistance = 60;
 #endif
 
-#if 0
-            g_camera.fogDistance = 40;
-            ChunkPos cam = ToChunk(g_camera.p);
-            for (int32 z = -g_camera.drawDistance; z <= g_camera.drawDistance; z++)
-            {
-                for (int32 x = -g_camera.drawDistance; x <= g_camera.drawDistance; x++)
-                {
-                    ChunkPos newBlockP = { cam.x + x, 0, cam.z + z };
-                    ChunkIndex funcResult;
-                    if (!g_chunks->GetChunkFromPosition(funcResult, newBlockP))
-                    {
-                        ChunkIndex chunki = g_chunks->AddChunk(newBlockP);
-                    }
-                }
-            }
-#else
             g_camera.fogDistance = g_camera.drawDistance + 10;
             ChunkPos cam = ToChunk(g_camera.p);
             for (int32 _drawDistance = 0; _drawDistance < g_camera.drawDistance; _drawDistance++)
@@ -350,7 +398,6 @@ int main(int argc, char* argv[])
                     }
                 }
             }
-#endif
 
             {
                 //PROFILE_SCOPE("Chunk Delete Check");
@@ -399,7 +446,6 @@ int main(int argc, char* argv[])
         {
             //PROFILE_SCOPE("Chunk Loading Vertex Loop");
 
-#if 1
             for (int32 _drawDistance = 0; _drawDistance < g_camera.drawDistance; _drawDistance++)
             {
                 for (int32 drawZ = -_drawDistance; drawZ <= _drawDistance; drawZ++)
@@ -431,49 +477,6 @@ int main(int argc, char* argv[])
                     }
                 }
             }
-
-#else
-            //slower but starts from the center
-            for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
-            {
-                if (!g_chunks->active[i])
-                    continue;
-
-                if (g_chunks->state[i] == ChunkArray::BlocksLoaded)
-                {
-                    GamePos p = Convert_ChunkIndexToGame(i);
-                    ChunkIndex indices[8] = {};
-
-                    uint32 numIndices = 0;
-                    for (int32 x = -1; x <= 1; x++)
-                    {
-                        for (int32 z = -1; z <= 1; z++)
-                        {
-                            if (x == 0 && z == 0)
-                                continue;
-                            ChunkIndex chunkIndex = 0;
-                            if (g_chunks->GetChunk(chunkIndex, { p.x + x * int32(CHUNK_X), p.y, p.z + z * int32(CHUNK_Z) }))
-                            {
-                                if (g_chunks->state[chunkIndex] >= ChunkArray::BlocksLoaded)
-                                {
-                                    indices[numIndices++] = chunkIndex;
-                                }
-                            }
-                        }
-                    }
-                    if (numIndices == arrsize(indices))
-                    {
-                        CreateVertices* job = new CreateVertices();
-                        static_assert(sizeof(job->neighbors) == sizeof(indices));
-
-                        job->chunk = i;
-                        memcpy(job->neighbors, indices, sizeof(indices));
-                        g_chunks->state[i] = ChunkArray::VertexLoading;
-                        multiThreading.SubmitJob(job);
-                    }
-                }
-            }
-#endif
         }
 
         {
@@ -484,8 +487,6 @@ int main(int argc, char* argv[])
 #elif NDEBUG
             const int32 uploadMax = 40;
 #endif
-#if 1
-#if 1
             struct Renderable {
                 ChunkIndex r;
                 int32 d;
@@ -529,71 +530,6 @@ int main(int argc, char* argv[])
                     g_chunks->RenderChunk(renderChunk);
                 }
             }
-
-#else
-            for (int32 _drawDistance = 0; _drawDistance < g_camera.drawDistance; _drawDistance++)
-            {
-                for (int32 drawZ = -_drawDistance; drawZ <= _drawDistance; drawZ++)
-                {
-                    for (int32 drawX = -_drawDistance; drawX <= _drawDistance; drawX++)
-                    {
-                        if ((drawX < _drawDistance && drawX > -_drawDistance) &&
-                            (drawZ < _drawDistance && drawZ > -_drawDistance))
-                            continue;
-
-                        ChunkPos cameraChunkP = ToChunk(g_camera.p);
-                        ChunkIndex chunkIndex = 0;
-                        ChunkPos drawDistanceChunk = { cameraChunkP.p.x + drawX, 0, cameraChunkP.p.z + drawZ };
-                        if (!g_chunks->GetChunkFromPosition(chunkIndex, drawDistanceChunk))
-                            continue;
-
-                        if (!g_chunks->active[chunkIndex])
-                            continue;
-
-                        GamePos min = ToGame(drawDistanceChunk);
-                        GamePos max = { min.p.x + (int32)CHUNK_X, min.p.y + (int32)CHUNK_Y, min.p.z + (int32)CHUNK_Z };
-                        if (bool inFrustum = IsBoxInFrustum(frustum, ToWorld(min).p.e, ToWorld(max).p.e))
-                        {
-                            if (g_chunks->state[chunkIndex] == ChunkArray::VertexLoaded)
-                            {
-                                if (uploadCount > uploadMax)
-                                    continue;
-                                g_chunks->UploadChunk(chunkIndex);
-                                uploadCount++;
-                                uploadedLastFrame = true;
-                            }
-                            if (g_chunks->state[chunkIndex] == ChunkArray::Uploaded)
-                            {
-                                g_chunks->RenderChunk(chunkIndex);
-                            }
-                        }
-                    }
-                }
-            }
-#endif
-
-#else
-            int32 uploadCount = 0;
-            PreChunkRender();
-            for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
-            {
-                if (!g_chunks->active[i])
-                    continue;
-
-                if (g_chunks->state[i] == ChunkArray::VertexLoaded)
-                {
-                    if (uploadCount > uploadMax)
-                        continue;
-                    g_chunks->UploadChunk(i);
-                    uploadCount++;
-                    uploadedLastFrame = true;
-                }
-                if (g_chunks->state[i] == ChunkArray::Uploaded)
-                {
-                    g_chunks->RenderChunk(i);
-                }
-            }
-#endif
         }
 
         {
@@ -623,6 +559,15 @@ int main(int argc, char* argv[])
 
                     DrawBlock(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, perspective);
                 }
+            }
+            if (validHit)
+            {
+                WorldPos pos;
+                pos = ToWorld(hitBlock);
+                pos.p = pos.p + 0.5f;
+                Color temp = Mint;
+                temp.a = 0.6f;
+                DrawBlock(pos, temp, 1.1f, perspective);
             }
         }
 
