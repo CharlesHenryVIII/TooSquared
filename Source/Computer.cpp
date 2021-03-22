@@ -15,7 +15,7 @@ MultiThreading::MultiThreading()
     m_jobVectorMutex = SDL_CreateMutex();
     m_wait_semaphore = SDL_CreateSemaphore(0);
 
-    SDL_AtomicSet(&running, 1);
+    running = 1;
     uint32 usableCores = UsableCores();
     for (uint32 i = 0; i < usableCores; ++i)
     {
@@ -29,7 +29,7 @@ MultiThreading::MultiThreading()
     SDL_LockMutex(m_jobVectorMutex);
     if (m_jobs.empty())
         return nullptr;
-    SDL_AtomicAdd(&m_jobs_in_flight, 1);
+    m_jobs_in_flight++;
 
     Job* job = m_jobs[0];
     m_jobs.erase(m_jobs.begin());
@@ -56,8 +56,9 @@ int32 MultiThreading::ThreadFunction(void* data)
 
     while (true)
     {
+        //SDL_SemWait returns 0 on success and -value on error
         int32 sem_result = SDL_SemWait(MT.m_semaphore);
-        if (sem_result != 0 || SDL_AtomicGet(&MT.running) == 0)
+        if (sem_result != 0 || MT.running == false)
             break;
 
         Job* job = MT.AcquireJob();
@@ -71,9 +72,8 @@ int32 MultiThreading::ThreadFunction(void* data)
             job->DoThing();
         }
 
-        int32 atomic_result = SDL_AtomicAdd(&MT.m_jobs_in_flight, -1);
-        if (atomic_result == 1)
-            SDL_SemPost(MT.m_wait_semaphore);
+        //if (--MT.m_jobs_in_flight == 1)
+        //    SDL_SemPost(MT.m_wait_semaphore);
         delete job;
     }
     return 0;

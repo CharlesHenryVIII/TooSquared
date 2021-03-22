@@ -3,6 +3,7 @@
 #include "SDL\include\SDL.h"
 
 #include <vector>
+#include <atomic>
 
 struct Job
 {
@@ -18,11 +19,11 @@ struct MultiThreading {
 private:
     SDL_mutex* m_jobVectorMutex = nullptr;
     SDL_sem* m_semaphore = nullptr;
-    SDL_atomic_t m_jobs_in_flight = {};
+    std::atomic<int32> m_jobs_in_flight = {};
     SDL_sem* m_wait_semaphore = nullptr;
     std::vector<Job*> m_jobs;
     std::vector<SDL_Thread*> m_threads;
-    SDL_atomic_t running;
+    std::atomic<bool> running;
 
     static int32 ThreadFunction(void* data);
     MultiThreading();
@@ -38,7 +39,7 @@ public:
     }
     int32 GetJobsInFlight()
     {
-        return SDL_AtomicGet(&m_jobs_in_flight);
+        return m_jobs_in_flight;
     }
 	void SubmitJob(Job* job);
 };
