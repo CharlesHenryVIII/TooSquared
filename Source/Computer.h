@@ -1,29 +1,25 @@
 #pragma once
 #include "Math.h"
-#include "SDL\include\SDL.h"
 
-#include <vector>
 #include <atomic>
+#include <mutex>
+#include <semaphore>
+#include <thread>
+#include <vector>
 
 struct Job
 {
     virtual void DoThing() = 0;
 };
 
-//
-//struct SetVertexAO : public Job {
-//    virtual void DoThing();
-//};
-
 struct MultiThreading {
 private:
-    SDL_mutex* m_jobVectorMutex = nullptr;
-    SDL_sem* m_semaphore = nullptr;
+    std::mutex* m_jobVectorMutex = nullptr;
+    std::counting_semaphore<PTRDIFF_MAX>* m_semaphore = nullptr;
     std::atomic<int32> m_jobs_in_flight = {};
-    SDL_sem* m_wait_semaphore = nullptr;
-    std::vector<Job*> m_jobs;
-    std::vector<SDL_Thread*> m_threads;
     std::atomic<bool> running;
+    std::vector<Job*> m_jobs;
+    std::vector<std::thread> m_threads;
 
     static int32 ThreadFunction(void* data);
     MultiThreading();

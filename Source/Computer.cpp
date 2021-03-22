@@ -1,8 +1,7 @@
 #include "Computer.h"
 #include "Math.h"
 #include "WinInterop.h"
-
-#include <thread>
+#include "SDL\include\SDL.h"
 
 uint32 UsableCores()
 {
@@ -11,39 +10,39 @@ uint32 UsableCores()
 
 MultiThreading::MultiThreading()
 {
-    m_semaphore = SDL_CreateSemaphore(0);
-    m_jobVectorMutex = SDL_CreateMutex();
-    m_wait_semaphore = SDL_CreateSemaphore(0);
+    m_jobVectorMutex = new std::mutex();
+    m_semaphore = new std::counting_semaphore<PTRDIFF_MAX>(0);
 
     running = 1;
     uint32 usableCores = UsableCores();
     for (uint32 i = 0; i < usableCores; ++i)
     {
-        m_threads.push_back(SDL_CreateThread(ThreadFunction, ("Thread " + std::to_string(i)).c_str(), nullptr));
+        m_threads.push_back(std::thread(&MultiThreading::ThreadFunction, nullptr));
+        SetThreadName(m_threads[i].native_handle(), ToString("Thread %s", std::to_string(i).c_str()).c_str());
         DebugPrint("Created New Thread: %i\n", i);
     }
 }
 
 [[nodiscard]] Job* MultiThreading::AcquireJob()
 {
-    SDL_LockMutex(m_jobVectorMutex);
+    m_jobVectorMutex->lock();
     if (m_jobs.empty())
         return nullptr;
     m_jobs_in_flight++;
 
     Job* job = m_jobs[0];
     m_jobs.erase(m_jobs.begin());
-    SDL_UnlockMutex(m_jobVectorMutex);
+    m_jobVectorMutex->unlock();
     return job;
 }
 
 void MultiThreading::SubmitJob(Job* job)
 {
 #if 1
-    SDL_LockMutex(m_jobVectorMutex);
+    m_jobVectorMutex->lock();
     m_jobs.push_back(job);
-    SDL_SemPost(m_semaphore);
-    SDL_UnlockMutex(m_jobVectorMutex);
+    m_semaphore->release();
+    m_jobVectorMutex->unlock();
 #else
     job->DoThing();
     delete job;
@@ -56,9 +55,8 @@ int32 MultiThreading::ThreadFunction(void* data)
 
     while (true)
     {
-        //SDL_SemWait returns 0 on success and -value on error
-        int32 sem_result = SDL_SemWait(MT.m_semaphore);
-        if (sem_result != 0 || MT.running == false)
+        MT.m_semaphore->acquire();
+        if (!MT.running)
             break;
 
         Job* job = MT.AcquireJob();
@@ -66,21 +64,18 @@ int32 MultiThreading::ThreadFunction(void* data)
         if (job == nullptr)
             continue;
 
-        //Actual Job:
         {
             //PROFILE_SCOPE("THREAD JOB: ");
             job->DoThing();
         }
 
-        //if (--MT.m_jobs_in_flight == 1)
-        //    SDL_SemPost(MT.m_wait_semaphore);
+        MT.m_jobs_in_flight--;
         delete job;
     }
     return 0;
 }
 
 std::thread::id mainThreadID = std::this_thread::get_id();
-
 bool OnMainThread()
 {
     return mainThreadID == std::this_thread::get_id();
