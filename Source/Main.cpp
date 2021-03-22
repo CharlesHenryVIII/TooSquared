@@ -426,7 +426,7 @@ int main(int argc, char* argv[])
 
 
         {
-            glBlendFunc(GL_ONE, GL_ONE);
+            //glBlendFunc(GL_ONE, GL_ONE);
 
             glDepthMask(GL_FALSE);
             ShaderProgram* sp = g_renderer.programs[+Shader::Sun];
@@ -450,7 +450,7 @@ int main(int argc, char* argv[])
             glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
             
             glDepthMask(GL_TRUE);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         }
 
         {

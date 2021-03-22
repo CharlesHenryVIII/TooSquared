@@ -123,6 +123,16 @@ public:
     inline void Bind();
 };
 
+class TextureCube {
+public:
+    Vec2Int m_size = {};
+    GLuint m_handle = {};
+
+
+    TextureCube(const char* fileLocation);
+    inline void Bind();
+};
+
 class ShaderProgram
 {
     GLuint m_handle = 0;
@@ -224,6 +234,7 @@ struct Renderer {
     FrameBuffer* backBuffer = nullptr;
     VertexBuffer* cubeVertexBuffer;
     uint32 numTrianglesDrawn = 0;
+    TextureCube* skyBox;
 };
 
 const uint32 pixelsPerBlock = 16;

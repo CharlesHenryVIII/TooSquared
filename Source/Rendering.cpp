@@ -172,6 +172,119 @@ inline void TextureArray::Bind()
 }
 
 
+struct DDS_PIXELFORMAT
+{
+    uint32 dwSize;
+    uint32 dwFlags;
+    uint32 dwFourCC;
+    uint32 dwRGBBitCount;
+    uint32 dwRBitMask;
+    uint32 dwGBitMask;
+    uint32 dwBBitMask;
+    uint32 dwABitMask;
+};
+static_assert(sizeof(DDS_PIXELFORMAT) == 32, "Incorrect structure size!");
+
+typedef struct
+{
+    uint32           dwSize;
+    uint32           dwFlags;
+    uint32           dwHeight;
+    uint32           dwWidth;
+    uint32           dwPitchOrLinearSize;
+    uint32           dwDepth;
+    uint32           dwMipMapCount;
+    uint32           dwReserved1[11];
+    DDS_PIXELFORMAT ddspf;
+    uint32           dwCaps;
+    uint32           dwCaps2;
+    uint32           dwCaps3;
+    uint32           dwCaps4;
+    uint32           dwReserved2;
+} DDS_HEADER;
+static_assert(sizeof(DDS_HEADER) == 124, "Incorrect structure size!");
+
+TextureCube::TextureCube(const char* fileLocation)
+{
+    glGenTextures(1, &m_handle);
+    Bind();
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+    FILE* file;
+    if (fopen_s(&file, fileLocation, "rb") != 0)
+    {
+        assert(false);
+        return;
+    }
+
+    Defer{ fclose(file); };
+
+    fseek(file, 0, SEEK_END);
+    auto size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    uint8_t* buffer = new uint8_t[size];
+    fread(buffer, size, 1, file);
+    DDS_HEADER* header = (DDS_HEADER*)((uint32*)buffer + 1);
+    uint8_t* data = (uint8_t*)(header + 1);
+
+    int32 levels = header->dwMipMapCount;
+
+#if 0
+    void glTexStorage3D(GL_PROXY_TEXTURE_CUBE_MAP_ARRAY,
+                        levels,
+                        GLenum internalformat,
+                        GLsizei width,
+                        GLsizei height,
+                        GLsizei depth);
+#endif
+
+    GLenum targets[] = {
+        GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+        GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
+    };
+
+    for (int i = 0; i < arrsize(targets); ++i)
+    {
+        GLsizei width = header->dwWidth;
+        GLsizei height = header->dwHeight;
+
+        auto Align = [](GLsizei i) { return i + 3 & ~(3); };
+
+        for (int level = 0; level < levels; ++level)
+        {
+            GLsizei bw = Align(width);
+            GLsizei bh = Align(height);
+            GLsizei byte_size = bw * bh;
+
+            glCompressedTexImage2D(targets[i],
+                                    level,
+                                    GL_COMPRESSED_RGBA_S3TC_DXT5_EXT,
+                                    width,
+                                    height,
+                                    0,
+                                    byte_size,
+                                    data);
+
+            data += byte_size;
+            width = Max(width >> 1, 1);
+            height = Max(height >> 1, 1);
+        }
+    }
+}
+
+void TextureCube::Bind()
+{
+    glBindTexture(GL_TEXTURE_CUBE_MAP, m_handle);
+}
+
+
 bool ShaderProgram::CompileShader(GLuint handle, const char* name, std::string text)
 {
     const char* strings[] = { text.c_str() };
@@ -715,6 +828,8 @@ void InitializeVideo()
 #else
     g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png");
     g_renderer.spriteTextArray = new TextureArray("Assets/MinecraftSpriteSheet20120215.png");
+    //g_renderer.skyBox = new TextureCube("Assets/skybox.dds");
+    g_renderer.skyBox = new TextureCube("Assets/sky.dds");
 #endif
     g_renderer.programs[+Shader::Chunk] = new ShaderProgram("Source/Shaders/Chunk.vert", "Source/Shaders/Chunk.frag");
     g_renderer.programs[+Shader::Cube] = new ShaderProgram("Source/Shaders/Cube.vert", "Source/Shaders/Cube.frag");
