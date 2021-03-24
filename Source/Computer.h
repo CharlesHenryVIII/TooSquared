@@ -14,15 +14,16 @@ struct Job
 
 struct MultiThreading {
 private:
-    std::mutex* m_jobVectorMutex = nullptr;
-    std::counting_semaphore<PTRDIFF_MAX>* m_semaphore = nullptr;
-    std::atomic<int32> m_jobs_in_flight = {};
-    std::atomic<bool> running;
-    std::vector<Job*> m_jobs;
-    std::vector<std::thread> m_threads;
+    std::mutex                              m_jobVectorMutex;
+    std::counting_semaphore<PTRDIFF_MAX>    m_semaphore;
+    std::atomic<int32>                      m_jobs_in_flight = {};
+    std::atomic<bool>                       m_running;
+    std::vector<Job*>                       m_jobs;
+    std::vector<std::thread>                m_threads;
 
     static int32 ThreadFunction(void* data);
     MultiThreading();
+    ~MultiThreading();
     MultiThreading(MultiThreading&) = delete;
     MultiThreading& operator=(MultiThreading&) = delete;
     Job* AcquireJob();

@@ -7,7 +7,6 @@
 
 ChunkArray* g_chunks;
 
-//
 BiomeType BiomeTable[+BiomeMoist::Count][+BiomeTemp::Count] = {
     //COLDEST        //COLDER            //COLD                   //HOT                           //HOTTER                        //HOTTEST
     { BiomeType::Ice, BiomeType::Tundra, BiomeType::Grassland,    BiomeType::Desert,              BiomeType::Desert,              BiomeType::Desert },              //DRYEST
@@ -18,13 +17,11 @@ BiomeType BiomeTable[+BiomeMoist::Count][+BiomeTemp::Count] = {
     { BiomeType::Ice, BiomeType::Tundra, BiomeType::BorealForest, BiomeType::TemperateRainforest, BiomeType::TropicalRainforest,  BiomeType::TropicalRainforest },  //WETTEST
 };
 
-
-
 BiomeType GetBiomeType(BiomeTemp temp, BiomeMoist moist)
 {
     return BiomeTable[+moist][+temp];
 }
-//
+
 
 
 int64 PositionHash(ChunkPos p)
@@ -710,25 +707,25 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                 break;
             }
             case BiomeType::TropicalRainforest:
-			{
+            {
                 np = {
                     .numOfOctaves = 4,
                     .freq = 0.75f,
                     .weight = 1.0f,
                     .gainFactor = 1.0f,
                 };
-				topBlockType = BlockType::DiamondBlock;
+                topBlockType = BlockType::DiamondBlock;
                 break;
             }
             case BiomeType::Grassland:
-			{
+            {
                 np = {
                     .numOfOctaves = 4,
                     .freq = 0.75f,
                     .weight = 1.0f,
                     .gainFactor = 1.0f,
                 };
-				topBlockType = BlockType::Grass;
+                topBlockType = BlockType::Grass;
                 break;
             }
             case BiomeType::SeasonalForest:
@@ -739,7 +736,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                     .weight = 1.5f,
                     .gainFactor = 0.9f,
                 };
-				topBlockType = BlockType::TNT;
+                topBlockType = BlockType::TNT;
                 break;
             }
             case BiomeType::TemperateRainforest:
@@ -750,7 +747,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                     .weight = 1.5f,
                     .gainFactor = 0.9f,
                 };
-				topBlockType = BlockType::MossyCobblestone;
+                topBlockType = BlockType::MossyCobblestone;
                 break;
             }
             case BiomeType::BorealForest:
@@ -762,51 +759,51 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                     .weight = 1.5f,
                     .gainFactor = 0.9f,
                 };
-				topBlockType = BlockType::Leaves;
+                topBlockType = BlockType::Leaves;
                 break;
             }
             case BiomeType::Savanna:
             {
-				np = {
-					.numOfOctaves = 1,
-					.freq = 1.0f,
-					.weight = 1.0f,
-					.gainFactor = 0.5f,
-				};
-				topBlockType = BlockType::GoldBlock;
+                np = {
+                    .numOfOctaves = 1,
+                    .freq = 1.0f,
+                    .weight = 1.0f,
+                    .gainFactor = 0.5f,
+                };
+                topBlockType = BlockType::GoldBlock;
                 break;
             }
             case BiomeType::Desert:
             {
-				np = {
-					.numOfOctaves = 1,
-					.freq = 1.0f,
-					.weight = 1.0f,
-					.gainFactor = 0.5f,
-				};
-				topBlockType = BlockType::Sand;
+                np = {
+                    .numOfOctaves = 1,
+                    .freq = 1.0f,
+                    .weight = 1.0f,
+                    .gainFactor = 0.5f,
+                };
+                topBlockType = BlockType::Sand;
                 break;
             }
             case BiomeType::Ice:
             {
-				np = {
-					.numOfOctaves = 1,
-					.freq = 2.0f,
-					.weight = 1.0f,
-					.gainFactor = 0.5f,
-				};
-				topBlockType = BlockType::Ice;
+                np = {
+                    .numOfOctaves = 1,
+                    .freq = 2.0f,
+                    .weight = 1.0f,
+                    .gainFactor = 0.5f,
+                };
+                topBlockType = BlockType::Ice;
                 break;
             }
             case BiomeType::Tundra:
             {
-				np = {
-					.numOfOctaves = 1,
-					.freq = 2.0f,
-					.weight = 1.0f,
-					.gainFactor = 0.5f,
-				};
-				topBlockType = BlockType::Snow;
+                np = {
+                    .numOfOctaves = 1,
+                    .freq = 2.0f,
+                    .weight = 1.0f,
+                    .gainFactor = 0.5f,
+                };
+                topBlockType = BlockType::Snow;
                 break;
             }
             default:
@@ -932,7 +929,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                 break;
             }
             case BiomeType::TropicalRainforest:
-			{
+            {
                 np = {
                     .numOfOctaves = 4,
                     .freq = 0.75f,
@@ -940,12 +937,12 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                     .gainFactor = 1.0f,
                 };
 
-				topBlockType = BlockType::DiamondBlock;
+                topBlockType = BlockType::DiamondBlock;
 
                 break;
             }
             case BiomeType::Grassland:
-			{
+            {
                 np = {
                     .numOfOctaves = 4,
                     .freq = 0.75f,
@@ -953,7 +950,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                     .gainFactor = 1.0f,
                 };
 
-				topBlockType = BlockType::Grass;
+                topBlockType = BlockType::Grass;
 
                 break;
             }
@@ -965,7 +962,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                     .weight = 1.5f,
                     .gainFactor = 0.9f,
                 };
-				topBlockType = BlockType::TNT;
+                topBlockType = BlockType::TNT;
 
                 break;
             }
@@ -977,7 +974,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                     .weight = 1.5f,
                     .gainFactor = 0.9f,
                 };
-				topBlockType = BlockType::MossyCobblestone;
+                topBlockType = BlockType::MossyCobblestone;
 
                 break;
             }
@@ -990,55 +987,55 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                     .weight = 1.5f,
                     .gainFactor = 0.9f,
                 };
-				topBlockType = BlockType::Leaves;
+                topBlockType = BlockType::Leaves;
 
                 break;
             }
             case BiomeType::Savanna:
             {
-				np = {
-					.numOfOctaves = 1,
-					.freq = 1.0f,
-					.weight = 1.0f,
-					.gainFactor = 0.5f,
-				};
-				topBlockType = BlockType::GoldBlock;
+                np = {
+                    .numOfOctaves = 1,
+                    .freq = 1.0f,
+                    .weight = 1.0f,
+                    .gainFactor = 0.5f,
+                };
+                topBlockType = BlockType::GoldBlock;
 
                 break;
             }
             case BiomeType::Desert:
             {
-				np = {
-					.numOfOctaves = 1,
-					.freq = 1.0f,
-					.weight = 1.0f,
-					.gainFactor = 0.5f,
-				};
-				topBlockType = BlockType::Sand;
+                np = {
+                    .numOfOctaves = 1,
+                    .freq = 1.0f,
+                    .weight = 1.0f,
+                    .gainFactor = 0.5f,
+                };
+                topBlockType = BlockType::Sand;
 
                 break;
             }
             case BiomeType::Ice:
             {
-				np = {
-					.numOfOctaves = 1,
-					.freq = 2.0f,
-					.weight = 1.0f,
-					.gainFactor = 0.5f,
-				};
-				topBlockType = BlockType::Ice;
+                np = {
+                    .numOfOctaves = 1,
+                    .freq = 2.0f,
+                    .weight = 1.0f,
+                    .gainFactor = 0.5f,
+                };
+                topBlockType = BlockType::Ice;
 
                 break;
             }
             case BiomeType::Tundra:
             {
-				np = {
-					.numOfOctaves = 1,
-					.freq = 2.0f,
-					.weight = 1.0f,
-					.gainFactor = 0.5f,
-				};
-				topBlockType = BlockType::Snow;
+                np = {
+                    .numOfOctaves = 1,
+                    .freq = 2.0f,
+                    .weight = 1.0f,
+                    .gainFactor = 0.5f,
+                };
+                topBlockType = BlockType::Snow;
 
                 break;
             }
@@ -1062,7 +1059,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
             switch (biome)
             {
             case BiomeType::Plains:
-			{
+            {
                 np = {
                     .numOfOctaves = 4,
                     .freq = 0.75f,
@@ -1070,7 +1067,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                     .gainFactor = 1.0f,
                 };
 
-				topBlockType = BlockType::Grass;
+                topBlockType = BlockType::Grass;
 
                 break;
             }
@@ -1082,31 +1079,31 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                     .weight = 1.5f,
                     .gainFactor = 0.9f,
                 };
-				topBlockType = BlockType::Stone;
+                topBlockType = BlockType::Stone;
 
                 break;
             }
             case BiomeType::Desert:
             {
-				np = {
-					.numOfOctaves = 1,
-					.freq = 1.0f,
-					.weight = 1.0f,
-					.gainFactor = 0.5f,
-				};
-				topBlockType = BlockType::Sand;
+                np = {
+                    .numOfOctaves = 1,
+                    .freq = 1.0f,
+                    .weight = 1.0f,
+                    .gainFactor = 0.5f,
+                };
+                topBlockType = BlockType::Sand;
 
                 break;
             }
             case BiomeType::Tundra:
             {
-				np = {
-					.numOfOctaves = 1,
-					.freq = 2.0f,
-					.weight = 1.0f,
-					.gainFactor = 0.5f,
-				};
-				topBlockType = BlockType::Snow;
+                np = {
+                    .numOfOctaves = 1,
+                    .freq = 2.0f,
+                    .weight = 1.0f,
+                    .gainFactor = 0.5f,
+                };
+                topBlockType = BlockType::Snow;
 
                 break;
             }
@@ -1212,39 +1209,39 @@ void ChunkArray::SetBlocks(ChunkIndex i)
             switch (chunkType)
             {
             case ChunkType::Plains:
-			{
-				noiseParams = {
-					.numOfOctaves = 4,
-					.freq = 0.75f,
-					.weight = 1.0f,
-					.gainFactor = 1.0f,
-				};
-				topBlockType = BlockType::Grass;
+            {
+                noiseParams = {
+                    .numOfOctaves = 4,
+                    .freq = 0.75f,
+                    .weight = 1.0f,
+                    .gainFactor = 1.0f,
+                };
+                topBlockType = BlockType::Grass;
 
                 break;
             }
             case ChunkType::Mountain:
             {
-				noiseParams = {
-					.numOfOctaves = 8,
-					.freq = 0.4f,
-					.weight = 1.5f,
-					.gainFactor = 0.9f,
-				};
-				topBlockType = BlockType::Stone;
+                noiseParams = {
+                    .numOfOctaves = 8,
+                    .freq = 0.4f,
+                    .weight = 1.5f,
+                    .gainFactor = 0.9f,
+                };
+                topBlockType = BlockType::Stone;
 
                 break;
             }
             case ChunkType::Desert:
             {
 
-				noiseParams = {
-					.numOfOctaves = 1,
-					.freq = 1.0f,
-					.weight = 1.0f,
-					.gainFactor = 0.5f,
-				};
-				topBlockType = BlockType::Sand;
+                noiseParams = {
+                    .numOfOctaves = 1,
+                    .freq = 1.0f,
+                    .weight = 1.0f,
+                    .gainFactor = 0.5f,
+                };
+                topBlockType = BlockType::Sand;
 
                 break;
             }
@@ -1254,7 +1251,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                 break;
             }
             }
-			yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio / 2, noiseParams) * CHUNK_Y), 10, CHUNK_Y - 1);
+            yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio / 2, noiseParams) * CHUNK_Y), 10, CHUNK_Y - 1);
 #endif
 #if 0
 

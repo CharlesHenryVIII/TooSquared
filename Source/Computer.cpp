@@ -9,11 +9,9 @@ uint32 UsableCores()
 }
 
 MultiThreading::MultiThreading()
+    : m_semaphore(0)
 {
-    m_jobVectorMutex = new std::mutex();
-    m_semaphore = new std::counting_semaphore<PTRDIFF_MAX>(0);
-
-    running = 1;
+    m_running = 1;
     uint32 usableCores = UsableCores();
     for (uint32 i = 0; i < usableCores; ++i)
     {
@@ -22,27 +20,34 @@ MultiThreading::MultiThreading()
         DebugPrint("Created New Thread: %i\n", i);
     }
 }
+MultiThreading::~MultiThreading()
+{
+    m_running = false;
+    m_semaphore.release(m_threads.size());
+
+    for (std::thread& thread : m_threads)
+        thread.join();
+}
 
 [[nodiscard]] Job* MultiThreading::AcquireJob()
 {
-    m_jobVectorMutex->lock();
+    
+    std::lock_guard<std::mutex> lock(m_jobVectorMutex);
     if (m_jobs.empty())
         return nullptr;
     m_jobs_in_flight++;
 
     Job* job = m_jobs[0];
     m_jobs.erase(m_jobs.begin());
-    m_jobVectorMutex->unlock();
     return job;
 }
 
 void MultiThreading::SubmitJob(Job* job)
 {
 #if 1
-    m_jobVectorMutex->lock();
+    std::lock_guard<std::mutex> lock(m_jobVectorMutex);
     m_jobs.push_back(job);
-    m_semaphore->release();
-    m_jobVectorMutex->unlock();
+    m_semaphore.release();
 #else
     job->DoThing();
     delete job;
@@ -55,8 +60,8 @@ int32 MultiThreading::ThreadFunction(void* data)
 
     while (true)
     {
-        MT.m_semaphore->acquire();
-        if (!MT.running)
+        MT.m_semaphore.acquire();
+        if (!MT.m_running)
             break;
 
         Job* job = MT.AcquireJob();

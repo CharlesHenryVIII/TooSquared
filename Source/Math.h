@@ -23,6 +23,8 @@ union Color {
     float e[4];
 };
 
+
+
 const Color Red = { 1.0f, 0.0f, 0.0f, 1.0f };
 const Color Green = { 0.0f, 1.0f, 0.0f, 1.0f };
 const Color Blue = { 0.0f, 0.0f, 1.0f, 1.0f };

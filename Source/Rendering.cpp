@@ -105,7 +105,7 @@ Texture::~Texture()
     stbi_image_free(m_data);
 }
 
-inline void Texture::Bind()
+void Texture::Bind()
 {
     glBindTexture(GL_TEXTURE_2D, m_handle);
 #ifdef _DEBUGPRINT
@@ -163,7 +163,7 @@ TextureArray::TextureArray(const char* fileLocation)
 #endif
 }
 
-inline void TextureArray::Bind()
+void TextureArray::Bind()
 {
     glBindTexture(GL_TEXTURE_2D_ARRAY, m_handle);
 #ifdef _DEBUGPRINT
@@ -699,7 +699,7 @@ void FillIndexBuffer(IndexBuffer* ib)
 //	
 //}
 
-inline void FrameBuffer::Bind()
+void FrameBuffer::Bind()
 {
     glBindFramebuffer(GL_FRAMEBUFFER, m_handle);
 }
@@ -829,7 +829,8 @@ void InitializeVideo()
     g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png");
     g_renderer.spriteTextArray = new TextureArray("Assets/MinecraftSpriteSheet20120215.png");
     //g_renderer.skyBox = new TextureCube("Assets/skybox.dds");
-    g_renderer.skyBox = new TextureCube("Assets/sky.dds");
+    g_renderer.skyBoxNight = new TextureCube("Assets/skyboxNight.dds");
+    g_renderer.skyBoxDay = new TextureCube("Assets/sky.dds");//DayMinecraftSkybox2.dds");
 #endif
     g_renderer.programs[+Shader::Chunk] = new ShaderProgram("Source/Shaders/Chunk.vert", "Source/Shaders/Chunk.frag");
     g_renderer.programs[+Shader::Cube] = new ShaderProgram("Source/Shaders/Cube.vert", "Source/Shaders/Cube.frag");
@@ -837,7 +838,7 @@ void InitializeVideo()
     g_renderer.programs[+Shader::Sun] = new ShaderProgram("Source/Shaders/Sun.vert", "Source/Shaders/Sun.frag");
 
 #if DIRECTIONALLIGHT == 1
-    g_light.d = Normalize(Vec3({  0.4f, -1.0f,  0.1f }));
+    g_light.d = Normalize(Vec3({  0.0f, -1.0f,  0.0f }));
     g_light.c = {  1.0f,  1.0f,  1.0f };
 #else
     g_light.p = { 25.0f, 270.0f, 25.0f };

@@ -29,6 +29,11 @@ struct Mouse {
     Vec2Int wheel = {}; //Y for vertical rotations, X for Horizontal rotations/movement
 }g_mouse;
 
+struct GameData {
+    float m_currentTime = 12.0f;
+    float m_timeScale = 1.0f;
+}g_gameData;
+
 int main(int argc, char* argv[])
 {
     std::unordered_map<int32, Key> keyStates;
@@ -69,16 +74,16 @@ int main(int argc, char* argv[])
     //    }
     //}
 
-    float area = 0.1f;
-    for (float y = 0; y <= area + FLT_EPSILON; y += 0.001f)
-    {
-        for (float x = 0; x <= area + FLT_EPSILON; x += 0.001f)
-        {
-            //Vec3 a = Voronoi_DAndP(Vec2({ float(x), float(y) }) / float(INT_MAX));
-            Vec3 a = Voronoi_DAndP(100 * Vec2({ x, y }));
-            DebugPrint("%+0.6f, %+0.6f : %+0.6f, %+0.6f, W: %+0.6f \n", x, y, a.y, a.z, a.x);
-        }
-    }
+    //float area = 0.1f;
+    //for (float y = 0; y <= area + FLT_EPSILON; y += 0.001f)
+    //{
+    //    for (float x = 0; x <= area + FLT_EPSILON; x += 0.001f)
+    //    {
+    //        //Vec3 a = Voronoi_DAndP(Vec2({ float(x), float(y) }) / float(INT_MAX));
+    //        Vec3 a = Voronoi_DAndP(100 * Vec2({ x, y }));
+    //        DebugPrint("%+0.6f, %+0.6f : %+0.6f, %+0.6f, W: %+0.6f \n", x, y, a.y, a.z, a.x);
+    //    }
+    //}
 
 
     //const float testSize = 10.0f;
@@ -95,6 +100,7 @@ int main(int argc, char* argv[])
         totalTime = SDL_GetPerformanceCounter() / freq;
         float deltaTime = float(totalTime - previousTime);// / 10;
         previousTime = totalTime;
+        g_gameData.m_currentTime = fmod(g_gameData.m_currentTime + deltaTime * g_gameData.m_timeScale, 24.0f);
 
         /*********************
          *
@@ -269,7 +275,8 @@ int main(int argc, char* argv[])
         if (keyStates[SDLK_x].down)
             g_camera.p.p.x += cameraSpeed;
 
-        float sensitivity = 0.3f; // change this value to your liking
+        // change this value to your liking
+        float sensitivity = 0.3f; 
         g_mouse.pDelta *= sensitivity;
 
 
@@ -279,7 +286,7 @@ int main(int argc, char* argv[])
             g_camera.pitch -= g_mouse.pDelta.y;
         }
 
-        // make sure that when pitch is out of bounds, screen doesn't get flipped
+        //make sure that when pitch is out of bounds, screen doesn't get flipped
         g_camera.pitch = Clamp<float>(g_camera.pitch, -89.0f, 89.0f);
 
         Vec3 front = {};
@@ -291,6 +298,15 @@ int main(int argc, char* argv[])
         Vec3 lookTarget = g_camera.p.p + g_camera.front;
         gb_mat4_look_at(&g_camera.view, g_camera.p.p, lookTarget, g_camera.up);
 
+        float SunRotationRadians = (((g_gameData.m_currentTime - 6.0f) / 24) * tau);
+        float sunRotationCos = cosf(SunRotationRadians);
+        g_light.d = Normalize(Vec3({ -sunRotationCos, -sinf(SunRotationRadians),  0.0f }));
+        const Color orangeSun = { 196 / 255.0f, 71 / 255.0f, 30 / 255.0f, 1.0f};
+
+        float sunRotationCosAbs = fabsf(sunRotationCos);
+        g_light.c.r = orangeSun.r * sunRotationCosAbs + (1 - sunRotationCosAbs) * White.r;
+        g_light.c.g = orangeSun.g * sunRotationCosAbs + (1 - sunRotationCosAbs) * White.g;
+        g_light.c.b = orangeSun.b * sunRotationCosAbs + (1 - sunRotationCosAbs) * White.b;
 
         GamePos hitBlock;
         bool validHit = false;
@@ -425,6 +441,7 @@ int main(int argc, char* argv[])
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
+        //SKYBOX
         {
             //glBlendFunc(GL_ONE, GL_ONE);
 
@@ -432,12 +449,16 @@ int main(int argc, char* argv[])
             ShaderProgram* sp = g_renderer.programs[+Shader::Sun];
             sp->UseShader();
             sp->UpdateUniformVec3("u_directionalLight_d", 1, g_light.d.e);
+            sp->UpdateUniformVec3("u_sunColor", 1, g_light.c.e);
             Mat4 iViewProj;
             gb_mat4_inverse(&iViewProj, &viewProj);
             sp->UpdateUniformMat4("u_inverseViewProjection", 1, false, iViewProj.e);
             sp->UpdateUniformVec3("u_cameraPosition", 1, g_camera.p.p.e);
-
-            //glViewport(0, 0, g_window.size.x, g_window.size.y);
+            sp->UpdateUniformFloat("u_gameTime", g_gameData.m_currentTime);
+            glActiveTexture(GL_TEXTURE1);
+            g_renderer.skyBoxNight->Bind();
+            glActiveTexture(GL_TEXTURE0);
+            g_renderer.skyBoxDay->Bind();
 
             g_renderer.backBuffer->m_vertexBuffer.Bind();
 

@@ -47,9 +47,9 @@ void main()
     //
     vec3 norm = normalize(p_normal);
 #if DIRECTIONALLIGHT == 1
-    vec3 constLightDir = vec3(0.2, -.9, 0.1);
-    //vec3 lightViewPosition = (p_view * vec4(-u_directionalLight_d, 0)).xyz;
-    vec3 lightViewPosition = (p_view * vec4(-constLightDir, 0)).xyz;
+    //vec3 constLightDir = vec3(0.2, -.9, 0.1);
+    //vec3 lightViewPosition = (p_view * vec4(-constLightDir, 0)).xyz;
+    vec3 lightViewPosition = (p_view * vec4(-u_directionalLight_d, 0)).xyz;
     vec3 lightDir = normalize(lightViewPosition);
 #else
     vec3 lightViewPosition = (p_view * vec4(u_lightP, 1)).xyz;

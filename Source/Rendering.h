@@ -109,7 +109,7 @@ public:
     Texture(Texture::TextureParams tp);
     Texture(const char* fileLocation);
     ~Texture();
-    inline void Bind();
+    void Bind();
 };
 
 class TextureArray {
@@ -120,7 +120,7 @@ public:
 
 
     TextureArray(const char* fileLocation);
-    inline void Bind();
+    void Bind();
 };
 
 class TextureCube {
@@ -130,7 +130,7 @@ public:
 
 
     TextureCube(const char* fileLocation);
-    inline void Bind();
+    void Bind();
 };
 
 class ShaderProgram
@@ -234,7 +234,8 @@ struct Renderer {
     FrameBuffer* backBuffer = nullptr;
     VertexBuffer* cubeVertexBuffer;
     uint32 numTrianglesDrawn = 0;
-    TextureCube* skyBox;
+    TextureCube* skyBoxNight;
+    TextureCube* skyBoxDay;
 };
 
 const uint32 pixelsPerBlock = 16;
