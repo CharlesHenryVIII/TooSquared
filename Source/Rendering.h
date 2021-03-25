@@ -15,8 +15,8 @@ extern Window g_window;
 struct Camera;
 extern Camera g_camera;
 #if DIRECTIONALLIGHT == 1
-struct Light_Direction;
-extern Light_Direction g_light;
+//struct Light_Direction;
+//extern Light_Direction g_light;
 #else
 struct Light_Point;
 extern Light_Point g_light;
@@ -236,6 +236,8 @@ struct Renderer {
     uint32 numTrianglesDrawn = 0;
     TextureCube* skyBoxNight;
     TextureCube* skyBoxDay;
+    Light_Direction sunLight;
+    Light_Direction moonLight;
 };
 
 const uint32 pixelsPerBlock = 16;

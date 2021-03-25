@@ -8,7 +8,7 @@ Renderer g_renderer;
 Window g_window;
 Camera g_camera;
 #if DIRECTIONALLIGHT == 1
-Light_Direction g_light;
+//Light_Direction g_light;
 #else
 Light_Point g_light;
 #endif
@@ -838,8 +838,8 @@ void InitializeVideo()
     g_renderer.programs[+Shader::Sun] = new ShaderProgram("Source/Shaders/Sun.vert", "Source/Shaders/Sun.frag");
 
 #if DIRECTIONALLIGHT == 1
-    g_light.d = Normalize(Vec3({  0.0f, -1.0f,  0.0f }));
-    g_light.c = {  1.0f,  1.0f,  1.0f };
+    g_renderer.sunLight.d = Normalize(Vec3({  0.0f, -1.0f,  0.0f }));
+    g_renderer.sunLight.c = {  1.0f,  1.0f,  1.0f };
 #else
     g_light.p = { 25.0f, 270.0f, 25.0f };
     g_light.c = {  1.0f,  1.0f,  1.0f };

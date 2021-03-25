@@ -309,17 +309,17 @@ int main(int argc, char* argv[])
 
         float SunRotationRadians = (((g_gameData.m_currentTime - 6.0f) / 24) * tau);
         float sunRotationCos = cosf(SunRotationRadians);
-        g_light.d = Normalize(Vec3({ -sunRotationCos, -sinf(SunRotationRadians),  0.0f }));
+        g_renderer.sunLight.d = Normalize(Vec3({ -sunRotationCos, -sinf(SunRotationRadians),  0.0f }));
+        g_renderer.moonLight.d = -g_renderer.sunLight.d;
         const Color orangeSun = { 220 / 255.0f, 90 / 255.0f, 40 / 255.0f, 1.0f};
 
-        float sunRotationCosAbs = fabsf(sunRotationCos);
         //TODO: Fix this garbage shit:
         float sunThreshold = 0.2f;
         if ((g_gameData.m_currentTime > (6 - sunThreshold)) && (g_gameData.m_currentTime < (18 + sunThreshold)))
         { 
             if ((g_gameData.m_currentTime > (6 + sunThreshold)) && (g_gameData.m_currentTime < (18 - sunThreshold)))
             {
-                g_light.c = { White.r, White.g, White.b };
+                g_renderer.sunLight.c = { White.r, White.g, White.b };
             }
             else
             {
@@ -335,9 +335,9 @@ int main(int argc, char* argv[])
                     percentOfWhiteSun = fabsf(1 - ((g_gameData.m_currentTime - (18.0f - sunThreshold)) / (sunThreshold * 2)));
                 }
 
-                g_light.c.r = Lerp<float>(Lerp<float>(White.r, orangeSun.r, 1 - percentOfWhiteSun), 0.0f, 1 - percentOfWhiteSun);
-                g_light.c.g = Lerp<float>(Lerp<float>(White.g, orangeSun.g, 1 - percentOfWhiteSun), 0.0f, 1 - percentOfWhiteSun);
-                g_light.c.b = Lerp<float>(Lerp<float>(White.b, orangeSun.b, 1 - percentOfWhiteSun), 0.0f, 1 - percentOfWhiteSun);
+                g_renderer.sunLight.c.r = Lerp<float>(Lerp<float>(White.r, orangeSun.r, 1 - percentOfWhiteSun), 0.0f, 1 - percentOfWhiteSun);
+                g_renderer.sunLight.c.g = Lerp<float>(Lerp<float>(White.g, orangeSun.g, 1 - percentOfWhiteSun), 0.0f, 1 - percentOfWhiteSun);
+                g_renderer.sunLight.c.b = Lerp<float>(Lerp<float>(White.b, orangeSun.b, 1 - percentOfWhiteSun), 0.0f, 1 - percentOfWhiteSun);
             }
             //g_light.c.r = orangeSun.r * sunRotationCosAbs + (1 - sunRotationCosAbs) * White.r;
             //g_light.c.g = orangeSun.g * sunRotationCosAbs + (1 - sunRotationCosAbs) * White.g;
@@ -345,7 +345,7 @@ int main(int argc, char* argv[])
 
         }
         else
-            g_light.c = {0, 0, 0};
+            g_renderer.sunLight.c = {0, 0, 0};
         //END OF GARBAGE?
 
 
@@ -492,8 +492,8 @@ int main(int argc, char* argv[])
             glDepthMask(GL_FALSE);
             ShaderProgram* sp = g_renderer.programs[+Shader::Sun];
             sp->UseShader();
-            sp->UpdateUniformVec3("u_directionalLight_d", 1, g_light.d.e);
-            sp->UpdateUniformVec3("u_sunColor", 1, g_light.c.e);
+            sp->UpdateUniformVec3("u_directionalLight_d", 1, g_renderer.sunLight.d.e);
+            sp->UpdateUniformVec3("u_sunColor", 1, g_renderer.sunLight.c.e);
             Mat4 iViewProj;
             gb_mat4_inverse(&iViewProj, &viewProj);
             sp->UpdateUniformMat4("u_inverseViewProjection", 1, false, iViewProj.e);
