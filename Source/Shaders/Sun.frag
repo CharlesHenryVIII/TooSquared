@@ -24,14 +24,15 @@ void main()
     //vec3 skybox = mix(skyboxDay, skyboxNight, 1.0);
     vec3 skybox;
 
-    if (u_gameTime > 6.1 && u_gameTime < 17.9)
+    float threshold = 0.5;
+    if (u_gameTime > 6 + threshold && u_gameTime < 18 - threshold)
         skybox = skyboxDay;
-    else if (u_gameTime < 5.9 && u_gameTime < 18.1)
+    else if (u_gameTime > 18 + threshold || u_gameTime < 6 - threshold)
         skybox = skyboxNight;
-    else if (u_gameTime >= 5.9 && u_gameTime <= 6.1)
-        skybox = mix(skyboxNight, skyboxDay, (u_gameTime - 5.9) / (6.1 - 5.9));
+    else if (u_gameTime >= 6 - threshold && u_gameTime <= 6 + threshold)
+        skybox = mix(skyboxNight, skyboxDay, (u_gameTime - (6 - threshold)) / (threshold * 2));
     else
-        skybox = mix(skyboxDay, skyboxNight, (u_gameTime - 17.9) / (18.1 - 17.9));
+        skybox = mix(skyboxDay, skyboxNight, (u_gameTime - (18 - threshold)) / (threshold * 2));
    // vec3 skyboxDayM   = skyboxDay   * smoothstep(0, 12, (u_gameTime - 6));
    // vec3 skyboxNightM = skyboxNight * smoothstep(12, 24, (u_gameTime - 6));
    // vec3 skybox = skyboxDayM + skyboxNightM;

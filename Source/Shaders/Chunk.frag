@@ -19,6 +19,7 @@ struct Material {
 
 #if DIRECTIONALLIGHT == 1
 uniform vec3 u_directionalLight_d;
+uniform vec3 u_lightColor;
 #else
 uniform vec3 u_lightColor;
 uniform vec3 u_lightP;
@@ -38,8 +39,8 @@ void main()
     //
     //AMBIENT Lighting:
     //
-    vec3 ambient = vec3(1.0) * material.ambient;
-    //vec3 ambient = u_lightColor * material.ambient;
+    //vec3 ambient = vec3(1.0) * material.ambient;
+    vec3 ambient = u_lightColor * material.ambient;
 
 
     //
@@ -56,8 +57,8 @@ void main()
     vec3 lightDir = normalize(lightViewPosition - p_pixelP);
 #endif
     float diff = max(dot(norm, lightDir), 0.0);
-    //vec3 diffuse = u_lightColor * (diff * material.diffuse);
-    vec3 diffuse = vec3(1.0) * (diff * material.diffuse);
+    vec3 diffuse = u_lightColor * (diff * material.diffuse);
+    //vec3 diffuse = vec3(1.0) * (diff * material.diffuse);
     
 
     //
@@ -86,7 +87,7 @@ void main()
     //
     //RESULT:
     //
-    vec3 result = (max(ambient + diffuse + specular - ambientOcclusion, 0.25)) * pixel.xyz;
+    vec3 result = (max(ambient + diffuse + specular - ambientOcclusion, 0.15)) * pixel.xyz;
     //ambient = vec3(1);
     //result = (max(ambient - ambientOcclusion, 0)) * pixel.xyz;
 

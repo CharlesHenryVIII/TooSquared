@@ -286,6 +286,15 @@ int main(int argc, char* argv[])
             g_camera.pitch -= g_mouse.pDelta.y;
         }
 
+        if (keyStates[SDLK_t].downThisFrame)
+        {
+            if (keyStates[SDLK_LSHIFT].down)
+                g_gameData.m_timeScale /= 10;
+            else
+                g_gameData.m_timeScale *= 10;
+        }
+
+
         //make sure that when pitch is out of bounds, screen doesn't get flipped
         g_camera.pitch = Clamp<float>(g_camera.pitch, -89.0f, 89.0f);
 
@@ -301,12 +310,47 @@ int main(int argc, char* argv[])
         float SunRotationRadians = (((g_gameData.m_currentTime - 6.0f) / 24) * tau);
         float sunRotationCos = cosf(SunRotationRadians);
         g_light.d = Normalize(Vec3({ -sunRotationCos, -sinf(SunRotationRadians),  0.0f }));
-        const Color orangeSun = { 196 / 255.0f, 71 / 255.0f, 30 / 255.0f, 1.0f};
+        const Color orangeSun = { 220 / 255.0f, 90 / 255.0f, 40 / 255.0f, 1.0f};
 
         float sunRotationCosAbs = fabsf(sunRotationCos);
-        g_light.c.r = orangeSun.r * sunRotationCosAbs + (1 - sunRotationCosAbs) * White.r;
-        g_light.c.g = orangeSun.g * sunRotationCosAbs + (1 - sunRotationCosAbs) * White.g;
-        g_light.c.b = orangeSun.b * sunRotationCosAbs + (1 - sunRotationCosAbs) * White.b;
+        //TODO: Fix this garbage shit:
+        float sunThreshold = 0.2f;
+        if ((g_gameData.m_currentTime > (6 - sunThreshold)) && (g_gameData.m_currentTime < (18 + sunThreshold)))
+        { 
+            if ((g_gameData.m_currentTime > (6 + sunThreshold)) && (g_gameData.m_currentTime < (18 - sunThreshold)))
+            {
+                g_light.c = { White.r, White.g, White.b };
+            }
+            else
+            {
+                float percentOfWhiteSun = 0.0f;
+                if (g_gameData.m_currentTime <= (6 + sunThreshold))
+                {
+                    //approaching 1.0 as sun comes up and time goes 6.0
+                    percentOfWhiteSun = fabs((g_gameData.m_currentTime - (6.0f - sunThreshold)) / (sunThreshold * 2));
+                }
+                else
+                {
+                    //approaching 0.0 as sun goes down and time goes 18.0
+                    percentOfWhiteSun = fabsf(1 - ((g_gameData.m_currentTime - (18.0f - sunThreshold)) / (sunThreshold * 2)));
+                }
+
+                g_light.c.r = Lerp<float>(Lerp<float>(White.r, orangeSun.r, 1 - percentOfWhiteSun), 0.0f, 1 - percentOfWhiteSun);
+                g_light.c.g = Lerp<float>(Lerp<float>(White.g, orangeSun.g, 1 - percentOfWhiteSun), 0.0f, 1 - percentOfWhiteSun);
+                g_light.c.b = Lerp<float>(Lerp<float>(White.b, orangeSun.b, 1 - percentOfWhiteSun), 0.0f, 1 - percentOfWhiteSun);
+            }
+            //g_light.c.r = orangeSun.r * sunRotationCosAbs + (1 - sunRotationCosAbs) * White.r;
+            //g_light.c.g = orangeSun.g * sunRotationCosAbs + (1 - sunRotationCosAbs) * White.g;
+            //g_light.c.b = orangeSun.b * sunRotationCosAbs + (1 - sunRotationCosAbs) * White.b;
+
+        }
+        else
+            g_light.c = {0, 0, 0};
+        //END OF GARBAGE?
+
+
+
+
 
         GamePos hitBlock;
         bool validHit = false;
