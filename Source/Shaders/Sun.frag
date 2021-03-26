@@ -7,6 +7,8 @@ out vec4 color;
 
 uniform vec3 u_directionalLight_d;
 uniform vec3 u_sunColor;
+uniform vec3 u_directionalLightMoon_d;
+uniform vec3 u_moonColor;
 uniform float u_gameTime;
 uniform mat4 u_inverseViewProjection;
 uniform vec3 u_cameraPosition;
@@ -16,6 +18,7 @@ void main()
     vec4 unprojected = u_inverseViewProjection * vec4(p_clipspace, 0.0, 1.0);
     unprojected.xyz /= unprojected.w;
 
+//_____SKYBOX_____
     vec3 V = normalize(unprojected.xyz - u_cameraPosition); // view direction
     vec3 skyboxDay = texture(s_skyboxDay, V).xyz;
     vec3 skyboxNight = texture(s_skyboxNight, V).xyz;
@@ -23,7 +26,6 @@ void main()
     //vec3 skybox = mix(skyboxDay, skyboxNight, skyboxMixAmount);
     //vec3 skybox = mix(skyboxDay, skyboxNight, 1.0);
     vec3 skybox;
-
     float threshold = 0.5;
     if (u_gameTime > 6 + threshold && u_gameTime < 18 - threshold)
         skybox = skyboxDay;
@@ -37,12 +39,22 @@ void main()
    // vec3 skyboxNightM = skyboxNight * smoothstep(12, 24, (u_gameTime - 6));
    // vec3 skybox = skyboxDayM + skyboxNightM;
 
+//___SUN AMOUNT___
     float sunAmount = distance(V, -u_directionalLight_d); // sun falloff descreasing from mid point
     vec3 sunColor = u_sunColor;
     vec3 sun = smoothstep(0.03, 0.026, sunAmount) * sunColor * 1.0; // sun disc
     sun += 0.5 * (1 - sunAmount);
     //color = vec4(sun.xyz + skybox, 1);
-    vec3 skyColor = skybox + clamp(sun, 0, 1);
+
+//___MUN AMOUNT___
+    float moonAmount = distance(V, -u_directionalLightMoon_d); // sun falloff descreasing from mid point
+    vec3 moonColor = u_moonColor;
+    vec3 moon = smoothstep(0.03, 0.026, moonAmount) * moonColor * 1.0; // sun disc
+    moon += 0.5 * (1 - moonAmount);
+
+//___SKY COLOR____
+    //color = vec4(sun.xyz + skybox, 1);
+    vec3 skyColor = skybox + clamp(sun + moon, 0, 1);
     vec3 fogColor = vec3(0.5);
 
     color.xyz = V;

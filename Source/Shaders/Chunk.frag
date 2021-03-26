@@ -20,6 +20,8 @@ struct Material {
 #if DIRECTIONALLIGHT == 1
 uniform vec3 u_directionalLight_d;
 uniform vec3 u_lightColor;
+uniform vec3 u_directionalLightMoon_d;
+uniform vec3 u_moonColor;
 #else
 uniform vec3 u_lightColor;
 uniform vec3 u_lightP;
@@ -52,13 +54,20 @@ void main()
     //vec3 lightViewPosition = (p_view * vec4(-constLightDir, 0)).xyz;
     vec3 lightViewPosition = (p_view * vec4(-u_directionalLight_d, 0)).xyz;
     vec3 lightDir = normalize(lightViewPosition);
+
+    vec3 lightViewPositionMoon = (p_view * vec4(-u_directionalLightMoon_d, 0)).xyz;
+    vec3 lightDirMoon = normalize(lightViewPositionMoon);
 #else
     vec3 lightViewPosition = (p_view * vec4(u_lightP, 1)).xyz;
     vec3 lightDir = normalize(lightViewPosition - p_pixelP);
 #endif
     float diff = max(dot(norm, lightDir), 0.0);
-    vec3 diffuse = u_lightColor * (diff * material.diffuse);
+    vec3 diffuseSun = u_lightColor * (diff * material.diffuse);
+
+    float diffMoon = max(dot(norm, lightDirMoon), 0.0);
+    vec3 diffuseMoon = u_moonColor * (diffMoon * material.diffuse);
     //vec3 diffuse = vec3(1.0) * (diff * material.diffuse);
+    vec3 diffuse = diffuseSun + diffuseMoon;
     
 
     //

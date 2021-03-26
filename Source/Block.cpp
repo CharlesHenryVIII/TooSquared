@@ -1630,6 +1630,8 @@ void PreChunkRender(const Mat4& perspective)
 #if DIRECTIONALLIGHT == 1
     sp->UpdateUniformVec3("u_directionalLight_d",  1,  g_renderer.sunLight.d.e);
     sp->UpdateUniformVec3("u_lightColor",  1,  g_renderer.sunLight.c.e);
+    sp->UpdateUniformVec3("u_directionalLightMoon_d", 1, g_renderer.moonLight.d.e);
+    sp->UpdateUniformVec3("u_moonColor", 1, g_renderer.moonLight.c.e);
 #else
     sp->UpdateUniformVec3("u_lightColor",  1,  g_light.c.e);
     sp->UpdateUniformVec3("u_lightP",      1,  g_light.p.e);

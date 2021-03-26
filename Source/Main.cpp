@@ -34,6 +34,39 @@ struct GameData {
     float m_timeScale = 1.0f;
 }g_gameData;
 
+//returns false if out of range
+bool HeavensInterpolation(float& result, float time, float lo, float hi, float interpolate_lo, float interpolate_hi)
+{
+    result = 0;
+    if (time > lo && time < hi)
+    {
+        if (time > interpolate_lo && time < interpolate_hi)
+        {
+            result = 1.0f;
+        }
+        else
+        {
+            result = 0.0f;
+            if (time <= interpolate_lo)
+            {
+                //approaching 1.0 as sun comes up and time goes 6.0
+                result = fabs((time - lo) / (interpolate_lo - lo));
+            }
+            else
+            {
+                //approaching 0.0 as sun goes down and time goes 18.0
+                result = fabsf(1 - ((time - interpolate_hi) / (hi - interpolate_hi)));
+            }
+        }
+    }
+    else
+    {
+        result = 0;
+        return false;
+    }
+    return true;
+}
+
 int main(int argc, char* argv[])
 {
     std::unordered_map<int32, Key> keyStates;
@@ -311,41 +344,34 @@ int main(int argc, char* argv[])
         float sunRotationCos = cosf(SunRotationRadians);
         g_renderer.sunLight.d = Normalize(Vec3({ -sunRotationCos, -sinf(SunRotationRadians),  0.0f }));
         g_renderer.moonLight.d = -g_renderer.sunLight.d;
-        const Color orangeSun = { 220 / 255.0f, 90 / 255.0f, 40 / 255.0f, 1.0f};
+        const Color sunTransitionColor  = { 220 / 255.0f,  90 / 255.0f,  40 / 255.0f, 1.0f};
+        const Color moonTransitionColor = {  50 / 255.0f,  50 / 255.0f,  60 / 255.0f, 1.0f};
 
         //TODO: Fix this garbage shit:
-        float sunThreshold = 0.2f;
-        if ((g_gameData.m_currentTime > (6 - sunThreshold)) && (g_gameData.m_currentTime < (18 + sunThreshold)))
-        { 
-            if ((g_gameData.m_currentTime > (6 + sunThreshold)) && (g_gameData.m_currentTime < (18 - sunThreshold)))
+        {
+
+            float percentOfSun = 0;
+            if (HeavensInterpolation(percentOfSun, g_gameData.m_currentTime, 5.9f, 18.1f, 6.1f, 17.9f))
             {
-                g_renderer.sunLight.c = { White.r, White.g, White.b };
+                g_renderer.sunLight.c.r = Lerp<float>(Lerp<float>(White.r, sunTransitionColor.r, 1 - percentOfSun), 0.0f, 1 - percentOfSun);
+                g_renderer.sunLight.c.g = Lerp<float>(Lerp<float>(White.g, sunTransitionColor.g, 1 - percentOfSun), 0.0f, 1 - percentOfSun);
+                g_renderer.sunLight.c.b = Lerp<float>(Lerp<float>(White.b, sunTransitionColor.b, 1 - percentOfSun), 0.0f, 1 - percentOfSun);
             }
             else
-            {
-                float percentOfWhiteSun = 0.0f;
-                if (g_gameData.m_currentTime <= (6 + sunThreshold))
-                {
-                    //approaching 1.0 as sun comes up and time goes 6.0
-                    percentOfWhiteSun = fabs((g_gameData.m_currentTime - (6.0f - sunThreshold)) / (sunThreshold * 2));
-                }
-                else
-                {
-                    //approaching 0.0 as sun goes down and time goes 18.0
-                    percentOfWhiteSun = fabsf(1 - ((g_gameData.m_currentTime - (18.0f - sunThreshold)) / (sunThreshold * 2)));
-                }
+                g_renderer.sunLight.c = { 0, 0, 0 };
 
-                g_renderer.sunLight.c.r = Lerp<float>(Lerp<float>(White.r, orangeSun.r, 1 - percentOfWhiteSun), 0.0f, 1 - percentOfWhiteSun);
-                g_renderer.sunLight.c.g = Lerp<float>(Lerp<float>(White.g, orangeSun.g, 1 - percentOfWhiteSun), 0.0f, 1 - percentOfWhiteSun);
-                g_renderer.sunLight.c.b = Lerp<float>(Lerp<float>(White.b, orangeSun.b, 1 - percentOfWhiteSun), 0.0f, 1 - percentOfWhiteSun);
+            float percentOfMoon = 0;
+            //percentOfMoon = 1 - percentOfSun;
+            if (HeavensInterpolation(percentOfMoon, fmodf(g_gameData.m_currentTime + 12.0f, 24.0f), 5.9f, 18.1f, 6.1f, 17.9f))
+            {
+                g_renderer.moonLight.c.r = Lerp<float>(moonTransitionColor.r, {}, 1 - percentOfMoon);
+                g_renderer.moonLight.c.g = Lerp<float>(moonTransitionColor.g, {}, 1 - percentOfMoon);
+                g_renderer.moonLight.c.b = Lerp<float>(moonTransitionColor.b, {}, 1 - percentOfMoon);
             }
-            //g_light.c.r = orangeSun.r * sunRotationCosAbs + (1 - sunRotationCosAbs) * White.r;
-            //g_light.c.g = orangeSun.g * sunRotationCosAbs + (1 - sunRotationCosAbs) * White.g;
-            //g_light.c.b = orangeSun.b * sunRotationCosAbs + (1 - sunRotationCosAbs) * White.b;
+            else
+                g_renderer.moonLight.c = { 0, 0, 0 };
 
         }
-        else
-            g_renderer.sunLight.c = {0, 0, 0};
         //END OF GARBAGE?
 
 
@@ -494,6 +520,8 @@ int main(int argc, char* argv[])
             sp->UseShader();
             sp->UpdateUniformVec3("u_directionalLight_d", 1, g_renderer.sunLight.d.e);
             sp->UpdateUniformVec3("u_sunColor", 1, g_renderer.sunLight.c.e);
+            sp->UpdateUniformVec3("u_directionalLightMoon_d", 1, g_renderer.moonLight.d.e);
+            sp->UpdateUniformVec3("u_moonColor", 1, g_renderer.moonLight.c.e);
             Mat4 iViewProj;
             gb_mat4_inverse(&iViewProj, &viewProj);
             sp->UpdateUniformMat4("u_inverseViewProjection", 1, false, iViewProj.e);
