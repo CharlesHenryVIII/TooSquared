@@ -42,7 +42,7 @@ void main()
     //AMBIENT Lighting:
     //
     //vec3 ambient = vec3(1.0) * material.ambient;
-    vec3 ambient = u_lightColor * material.ambient;
+    vec3 ambient = clamp(u_lightColor + u_moonColor, 0, 1) * material.ambient;
 
 
     //
@@ -90,13 +90,14 @@ void main()
     //float adjustedVertexCount = p_connectedVertices;
     float adjustedVertexCount = min(p_connectedVertices, 2);
     float ambientOcclusion = adjustedVertexCount / 3.0;
+    ambientOcclusion = clamp(ambientOcclusion, 0, 1);
     //ambientOcclusion = ambientOcclusion * ambientOcclusion;
 
 
     //
     //RESULT:
     //
-    vec3 result = (max(ambient + diffuse + specular - ambientOcclusion, 0.15)) * pixel.xyz;
+    vec3 result = (max(ambient + diffuse + specular - ambientOcclusion, 0.2)) * pixel.xyz;
     //ambient = vec3(1);
     //result = (max(ambient - ambientOcclusion, 0)) * pixel.xyz;
 

@@ -120,7 +120,7 @@
       <ConformanceMode>true</ConformanceMode>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>Contrib;Contrib/Glew/include;Contrib/Glew/include/GL;Contrib/FastNoise2/FastNoise;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>Contrib;Contrib/Glew/include;Contrib/Glew/include/GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
@@ -140,7 +140,7 @@
       <ConformanceMode>true</ConformanceMode>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>Contrib;Contrib/Glew/include;Contrib/Glew/include/GL;Contrib/FastNoise2/FastNoise;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>Contrib;Contrib/Glew/include;Contrib/Glew/include/GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
@@ -165,6 +165,14 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
+    <None Include="Source\Shaders\BufferCopy.frag" />
+    <None Include="Source\Shaders\BufferCopy.vert" />
+    <None Include="Source\Shaders\Chunk.frag" />
+    <None Include="Source\Shaders\Chunk.vert" />
+    <None Include="Source\Shaders\Cube.frag" />
+    <None Include="Source\Shaders\Cube.vert" />
+    <None Include="Source\Shaders\Sun.frag" />
+    <None Include="Source\Shaders\Sun.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Block.h" />

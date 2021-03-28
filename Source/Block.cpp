@@ -362,8 +362,9 @@ float stb_ComputeHeightFieldDelta(int x, int y, float weight)
 void ChunkArray::SetBlocks(ChunkIndex i)
 {
 #define STB_METHOD 0
-#define VORONOI 200
+#define VORONOI 4
 
+#if VORONOI == 0
 ////________________________________________
 ////___________NEW IMPLIMENTATION___________
     WorldPos chunkGamePos = ToWorld(g_chunks->p[i]);
@@ -556,7 +557,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
     //yTotal = Clamp<uint32>(waterVsLandHeight, 3, CHUNK_Y - 1); //add all together?
 
-#if VORONOI == 9
+#elif VORONOI == 9
 
     //Reference article:
     //https://www.gamasutra.com/blogs/JonGallant/20160211/264591/Procedurally_Generating_Wrapping_World_Maps_in_Unity_C__Part_4.php
@@ -1252,8 +1253,54 @@ void ChunkArray::SetBlocks(ChunkIndex i)
             }
             }
             yTotal = Clamp<uint32>(static_cast<int32>(PerlinNoise(blockRatio / 2, noiseParams) * CHUNK_Y), 10, CHUNK_Y - 1);
+#elif VORONOI == 4
+
+            blockRatio /= 2;
+
+            //float vor = (VoronoiNoise(blockRatio, 1.0f, 0.0f) + 1.0f) / 2;
+            float vor = VoronoiNoise(blockRatio / 4, 1.0f, 1.0f);
+            NoiseParams mountainParams = {
+                .numOfOctaves = 8,
+                .freq = 0.4f,
+                .weight = 1.5f,
+                .gainFactor = 0.9f,
+            };
+            NoiseParams plainParams = {
+                .numOfOctaves = 4,
+                .freq = 0.75f,
+                .weight = 1.0f,
+                .gainFactor = 1.0f,
+            };
+
+            float mountainSetpoint = 0.575f;
+            float plainsSetpoint = 0.475f;
+
+            if (vor > mountainSetpoint)
+            {
+                yTotal = Clamp<uint32>(static_cast<int32>(Perlin2D(blockRatio, mountainParams) * CHUNK_Y), 10, CHUNK_Y - 1);
+                topBlockType = BlockType::Stone;
+            }
+            else if (vor < plainsSetpoint)
+            {
+                yTotal = Clamp<uint32>(static_cast<int32>(Perlin2D(blockRatio, plainParams) * CHUNK_Y), 10, CHUNK_Y - 1);
+                topBlockType = BlockType::Grass;
+            }
+            else
+            {
+                vor = ((vor - plainsSetpoint) / (mountainSetpoint - plainsSetpoint));
+                //DebugPrint("B Vor: %f\n", vor);
+                //vor = (vor - plainsSetpoint) / (mountainSetpoint - plainsSetpoint);
+                if (RandomFloat(-1.0f, 1.0f) > 0)
+                    topBlockType = BlockType::Grass;
+                else
+                    topBlockType = BlockType::Stone;
+
+                float mountainHeight = static_cast<float>(Clamp<uint32>(static_cast<int32>(Perlin2D(blockRatio, mountainParams) * CHUNK_Y), 10, CHUNK_Y - 1));
+                float plainsHeight = static_cast<float>(Clamp<uint32>(static_cast<int32>(Perlin2D(blockRatio, plainParams) * CHUNK_Y), 10, CHUNK_Y - 1));
+                yTotal = static_cast<uint32>(Lerp<float>(plainsHeight, mountainHeight, vor));
+            }
 #endif
-#if 0
+#if 1
 
             //#if NOISETYPE == 2
             //            //int32 yTotal = Max(static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 10);
@@ -1503,6 +1550,19 @@ void RegionSampler::IncrimentRefCount()
         g_chunks->refs[i]++;
 }
 
+//{
+///*
+//    1. Place temporary blocks in the chunk when it is edited and flag the chunk to rebuild vertices
+//        - editing the chunk when the chunk is being rebuilt.  Need to know which temp blocks to remove
+//    2. Remove the vertices at the target location and update the vertices at that area.
+//        - issues: inserting vertices out of order would cause problems for future updates
+//        - place new vertices at the back of the 
+//    3. 
+//
+//*/
+//    
+//}
+
 void ChunkArray::BuildChunkVertices(RegionSampler region)
 {
     assert(g_chunks->state[region.center] == ChunkArray::VertexLoading);
@@ -1511,53 +1571,57 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
     faceVertices[i].reserve(10000);
     uploadedIndexCount[i] = 0;
     GamePos realP = Convert_ChunkIndexToGame(i);
-    for (int32 x = 0; x < CHUNK_X; x++)
+
     {
-        for (int32 y = 0; y < CHUNK_Y; y++)
+        PROFILE_SCOPE("THREAD: Vertex Creation");
+        for (int32 x = 0; x < CHUNK_X; x++)
         {
-            for (int32 z = 0; z < CHUNK_Z; z++)
+            for (int32 y = 0; y < CHUNK_Y; y++)
             {
-                for (uint32 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
+                for (int32 z = 0; z < CHUNK_Z; z++)
                 {
                     BlockType currentBlockType = blocks[i].e[x][y][z];
                     if (currentBlockType == BlockType::Empty)
                         continue;
-
-                    Vec3Int vf = Vec3ToVec3Int(faceNormals[faceIndex]);
-                    int32 xReal = x + vf.x;
-                    int32 yReal = y + vf.y;
-                    int32 zReal = z + vf.z;
-
-                    bool outOfBounds = (xReal >= CHUNK_X || yReal >= CHUNK_Y || zReal >= CHUNK_Z ||
-                        xReal < 0 || yReal < 0 || zReal < 0);
-
-                    BlockType type;
-                    if (region.GetBlock(type, {xReal, yReal, zReal}) && type == BlockType::Empty)
+                    for (uint32 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
                     {
-                        VertexFace f = {};// = cubeFaces[faceIndex];
-                        Vec3 offset = { static_cast<float>(x + realP.p.x), static_cast<float>(y + realP.p.y), static_cast<float>(z + realP.p.z) };
 
-                        f.a.blockIndex = z * CHUNK_Z + y * CHUNK_Y + x;
-                        f.b.blockIndex = z * CHUNK_Z + y * CHUNK_Y + x;
-                        f.c.blockIndex = z * CHUNK_Z + y * CHUNK_Y + x;
-                        f.d.blockIndex = z * CHUNK_Z + y * CHUNK_Y + x;
+                        Vec3Int vf = Vec3ToVec3Int(faceNormals[faceIndex]);
+                        int32 xReal = x + vf.x;
+                        int32 yReal = y + vf.y;
+                        int32 zReal = z + vf.z;
 
-                        f.a.spriteIndex = faceSprites[+currentBlockType].faceSprites[faceIndex];
-                        f.b.spriteIndex = faceSprites[+currentBlockType].faceSprites[faceIndex];
-                        f.c.spriteIndex = faceSprites[+currentBlockType].faceSprites[faceIndex];
-                        f.d.spriteIndex = faceSprites[+currentBlockType].faceSprites[faceIndex];
+                        bool outOfBounds = (xReal >= CHUNK_X || yReal >= CHUNK_Y || zReal >= CHUNK_Z ||
+                            xReal < 0 || yReal < 0 || zReal < 0);
 
-                        f.a.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
-                        f.b.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
-                        f.c.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
-                        f.d.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
+                        BlockType type;
+                        if (region.GetBlock(type, { xReal, yReal, zReal }) && type == BlockType::Empty)
+                        {
+                            VertexFace f = {};// = cubeFaces[faceIndex];
+                            Vec3 offset = { static_cast<float>(x + realP.p.x), static_cast<float>(y + realP.p.y), static_cast<float>(z + realP.p.z) };
 
-                        faceVertices[i].push_back(f.a);
-                        faceVertices[i].push_back(f.b);
-                        faceVertices[i].push_back(f.c);
-                        faceVertices[i].push_back(f.d);
+                            f.a.blockIndex = z * CHUNK_Z + y * CHUNK_Y + x;
+                            f.b.blockIndex = z * CHUNK_Z + y * CHUNK_Y + x;
+                            f.c.blockIndex = z * CHUNK_Z + y * CHUNK_Y + x;
+                            f.d.blockIndex = z * CHUNK_Z + y * CHUNK_Y + x;
 
-                        uploadedIndexCount[i] += 6;
+                            f.a.spriteIndex = faceSprites[+currentBlockType].faceSprites[faceIndex];
+                            f.b.spriteIndex = faceSprites[+currentBlockType].faceSprites[faceIndex];
+                            f.c.spriteIndex = faceSprites[+currentBlockType].faceSprites[faceIndex];
+                            f.d.spriteIndex = faceSprites[+currentBlockType].faceSprites[faceIndex];
+
+                            f.a.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
+                            f.b.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
+                            f.c.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
+                            f.d.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
+
+                            faceVertices[i].push_back(f.a);
+                            faceVertices[i].push_back(f.b);
+                            faceVertices[i].push_back(f.c);
+                            faceVertices[i].push_back(f.d);
+
+                            uploadedIndexCount[i] += 6;
+                        }
                     }
                 }
             }
@@ -1566,42 +1630,45 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
 
     uint32 vertIndex = 0;
     //-X and -Z
-    for (Vertex_Chunk& vert : faceVertices[i])
     {
-        uint8 normal = (vert.nAndConnectedVertices & 0xF0) >> 4;
-        Vec3Int blockN = Vec3ToVec3Int(faceNormals[normal]);
-        Vec3Int blockP = GetBlockPosFromIndex(vert.blockIndex);
-
-        uint8 faceIndex = normal;
-        Vec3Int a = *(&vertexBlocksToCheck[faceIndex].e0 + (vertIndex + 0));
-        Vec3Int b = *(&vertexBlocksToCheck[faceIndex].e0 + (vertIndex + 1));
-        Vec3Int c = a + b;
-
-        BlockType at = BlockType::Grass;
-        BlockType bt = BlockType::Grass;
-        BlockType ct = BlockType::Grass;
-
-
-        //ChunkIndex neighbors[8];  This is what neighbors is
-        if (!region.GetBlock(at, blockP + blockN + a) || !region.GetBlock(bt, blockP + blockN + b) ||
-            !region.GetBlock(ct, blockP + blockN + c))
+        //PROFILE_SCOPE("THREAD: AO Creation");
+        for (Vertex_Chunk& vert : faceVertices[i])
         {
-            //failed to get block needs to be redone;
-            g_chunks->flags[i] |= CHUNK_RESCAN_BLOCKS;
-        }
-        else
-            g_chunks->flags[i] &= ~(CHUNK_RESCAN_BLOCKS);
-        if (at != BlockType::Empty)
-            vert.nAndConnectedVertices += 1;
-        if (bt != BlockType::Empty)
-            vert.nAndConnectedVertices += 1;
-        if (ct != BlockType::Empty)
-            vert.nAndConnectedVertices += 1;
+            uint8 normal = (vert.nAndConnectedVertices & 0xF0) >> 4;
+            Vec3Int blockN = Vec3ToVec3Int(faceNormals[normal]);
+            Vec3Int blockP = GetBlockPosFromIndex(vert.blockIndex);
 
-        vertIndex += 2;
-        vertIndex = vertIndex % 8;
+            uint8 faceIndex = normal;
+            Vec3Int a = *(&vertexBlocksToCheck[faceIndex].e0 + (vertIndex + 0));
+            Vec3Int b = *(&vertexBlocksToCheck[faceIndex].e0 + (vertIndex + 1));
+            Vec3Int c = a + b;
+
+            BlockType at = BlockType::Grass;
+            BlockType bt = BlockType::Grass;
+            BlockType ct = BlockType::Grass;
+
+
+            //ChunkIndex neighbors[8];  This is what neighbors is
+            if (!region.GetBlock(at, blockP + blockN + a) || !region.GetBlock(bt, blockP + blockN + b) ||
+                !region.GetBlock(ct, blockP + blockN + c))
+            {
+                //failed to get block needs to be redone;
+                g_chunks->flags[i] |= CHUNK_RESCAN_BLOCKS;
+            }
+            else
+                g_chunks->flags[i] &= ~(CHUNK_RESCAN_BLOCKS);
+            if (at != BlockType::Empty)
+                vert.nAndConnectedVertices += 1;
+            if (bt != BlockType::Empty)
+                vert.nAndConnectedVertices += 1;
+            if (ct != BlockType::Empty)
+                vert.nAndConnectedVertices += 1;
+
+            vertIndex += 2;
+            vertIndex = vertIndex % 8;
+        }
+        g_chunks->state[region.center] = ChunkArray::VertexLoaded;
     }
-    g_chunks->state[region.center] = ChunkArray::VertexLoaded;
 }
 
 void ChunkArray::UploadChunk(ChunkIndex i)
@@ -1643,7 +1710,7 @@ void PreChunkRender(const Mat4& perspective)
     sp->UpdateUniformUint8("u_CHUNK_Z", CHUNK_Z);
 
     Material material;
-    material.ambient = { 0.02f, 0.02f, 0.02f };
+    material.ambient = { 0.2f, 0.2f, 0.2f };
     material.diffuse = { 1.0f, 1.0f, 1.0f };
     material.specular = { 0.4f, 0.4f,  0.4f };
     material.shininess = 32;//0.78125f;
@@ -1823,6 +1890,19 @@ bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& di
     return distance != inf;
 }
 
+void ChunkUpdateBlocks(ChunkPos p, Vec3Int offset)
+{
+    ChunkIndex chunkIndex;
+    p.p += offset;
+    if (g_chunks->GetChunkFromPosition(chunkIndex, p))
+    {
+        g_chunks->state[chunkIndex] = ChunkArray::VertexLoading;
+        RegionSampler regionUpdate;
+        regionUpdate.RegionGather(chunkIndex);
+        g_chunks->BuildChunkVertices(regionUpdate);
+    }
+}
+
 void SetBlock(GamePos hitBlock, Vec3 hitNormal, BlockType setBlockType)
 {
     ChunkPos hitChunkP = ToChunk(hitBlock);
@@ -1835,6 +1915,7 @@ void SetBlock(GamePos hitBlock, Vec3 hitNormal, BlockType setBlockType)
         GamePos chunkAddLoc = Convert_BlockToGame(hitChunkIndex, blockRelP);
         ChunkPos newChunkPos;
         Vec3Int newBlockRelP = Convert_GameToBlock(newChunkPos, chunkAddLoc);
+
         ChunkIndex newChunkIndex;
         if (g_chunks->GetChunkFromPosition(newChunkIndex, newChunkPos))
         {
@@ -1846,14 +1927,15 @@ void SetBlock(GamePos hitBlock, Vec3 hitNormal, BlockType setBlockType)
             regionUpdate.RegionGather(hitChunkIndex);
             g_chunks->state[hitChunkIndex] = ChunkArray::VertexLoading;
             g_chunks->BuildChunkVertices(regionUpdate);
-
-            for (ChunkIndex index : regionUpdate.neighbors)
-            {
-                RegionSampler region;
-                region.RegionGather(index);
-                g_chunks->state[index] = ChunkArray::VertexLoading;
-                g_chunks->BuildChunkVertices(region);
-            }
         }
+
+        if (blockRelP.x == CHUNK_X - 1)
+            ChunkUpdateBlocks(newChunkPos, { 1,  0,  0 });
+        if (blockRelP.x == 0)
+            ChunkUpdateBlocks(newChunkPos, { -1,  0,  0 });
+        if (blockRelP.z == CHUNK_Z - 1)
+            ChunkUpdateBlocks(newChunkPos, { 0,  0,  1 });
+        if (blockRelP.z == 0)
+            ChunkUpdateBlocks(newChunkPos, { 0,  0, -1 });
     }
 }

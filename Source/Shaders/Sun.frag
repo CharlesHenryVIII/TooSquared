@@ -42,26 +42,28 @@ void main()
 //___SUN AMOUNT___
     float sunAmount = distance(V, -u_directionalLight_d); // sun falloff descreasing from mid point
     vec3 sunColor = u_sunColor;
-    vec3 sun = smoothstep(0.03, 0.026, sunAmount) * sunColor * 1.0; // sun disc
+    vec3 sun = smoothstep(0.03, 0.026, sunAmount) * sunColor * 5.0; // sun disc
     sun += 0.5 * (1 - sunAmount);
-    //color = vec4(sun.xyz + skybox, 1);
+    sun = clamp(sun, 0, 1);
+    //color = clamp(vec4(sun.xyz + skybox.xyz, 1), 0, 1);
 
 //___MUN AMOUNT___
-    float moonAmount = distance(V, -u_directionalLightMoon_d); // sun falloff descreasing from mid point
+    float moonAmount = distance(V, -u_directionalLightMoon_d); // moon falloff descreasing from mid point
     vec3 moonColor = u_moonColor;
-    vec3 moon = smoothstep(0.03, 0.026, moonAmount) * moonColor * 1.0; // sun disc
-    moon += 0.5 * (1 - moonAmount);
+    vec3 moon = smoothstep(0.03, 0.026, moonAmount) * moonColor.xyz * 4.0; // moon disc
+    moon += 0.1 * (1 - moonAmount);
+    moon = clamp(moon, 0, 1);
 
 //___SKY COLOR____
     //color = vec4(sun.xyz + skybox, 1);
-    vec3 skyColor = skybox + clamp(sun + moon, 0, 1);
+    vec3 skyColor = clamp(skybox.xyz + sun + moon.xyz, 0, 1);
     vec3 fogColor = vec3(0.5);
 
-    color.xyz = V;
+//    color.xyz = V;
 
-    float dotResult = max(dot(V, vec3(0, 1, 0)), 0);
-    color.xyz = vec3(dotResult);
-    color.xyz = mix(fogColor, skyColor, smoothstep(0.02, 0.1, dotResult));
+//    float dotResult = max(dot(V, vec3(0, 1, 0)), 0);
+//    color.xyz = vec3(dotResult);
+//    color.xyz = mix(fogColor, skyColor, smoothstep(0.02, 0.1, dotResult));
     color.a = 1;
     color.xyz = skyColor;
 

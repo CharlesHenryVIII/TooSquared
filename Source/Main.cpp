@@ -95,6 +95,7 @@ int main(int argc, char* argv[])
     float loadingTimer = 0.0f;
     bool uploadedLastFrame = false;
     bool debugDraw = false;
+    bool TEST_CREATE_AND_UPLOAD_CHUNKS = true;
 
     //int32 area = 10;
     //for (int32 y = -area; y <= area; y++)
@@ -307,6 +308,8 @@ int main(int argc, char* argv[])
             g_camera.p.p.z += cameraSpeed;
         if (keyStates[SDLK_x].down)
             g_camera.p.p.x += cameraSpeed;
+        if (keyStates[SDLK_c].downThisFrame)
+            TEST_CREATE_AND_UPLOAD_CHUNKS = !TEST_CREATE_AND_UPLOAD_CHUNKS;
 
         // change this value to your liking
         float sensitivity = 0.3f; 
@@ -345,7 +348,7 @@ int main(int argc, char* argv[])
         g_renderer.sunLight.d = Normalize(Vec3({ -sunRotationCos, -sinf(SunRotationRadians),  0.0f }));
         g_renderer.moonLight.d = -g_renderer.sunLight.d;
         const Color sunTransitionColor  = { 220 / 255.0f,  90 / 255.0f,  40 / 255.0f, 1.0f};
-        const Color moonTransitionColor = {  50 / 255.0f,  50 / 255.0f,  60 / 255.0f, 1.0f};
+        const Color moonTransitionColor = {  80 / 255.0f,  80 / 255.0f,  90 / 255.0f, 1.0f};
 
         //TODO: Fix this garbage shit:
         {
@@ -476,6 +479,7 @@ int main(int argc, char* argv[])
                         {
                             ChunkPos newBlockP = { cam.p.x + x, 0, cam.p.z + z };
                             ChunkIndex funcResult;
+                            if (TEST_CREATE_AND_UPLOAD_CHUNKS)
                             if (!g_chunks->GetChunkFromPosition(funcResult, newBlockP))
                             {
                                 ChunkIndex chunki = g_chunks->AddChunk(newBlockP);
@@ -493,8 +497,9 @@ int main(int argc, char* argv[])
                     {
                         if (g_chunks->active[i])
                         {
-                            if ((g_chunks->p[i].p.x > cam.p.x + g_camera.fogDistance || g_chunks->p[i].p.z > cam.p.z + g_camera.fogDistance) ||
-                                (g_chunks->p[i].p.x < cam.p.x - g_camera.fogDistance || g_chunks->p[i].p.z < cam.p.z - g_camera.fogDistance))
+                            if (((g_chunks->p[i].p.x > cam.p.x + g_camera.fogDistance || g_chunks->p[i].p.z > cam.p.z + g_camera.fogDistance) ||
+                                (g_chunks->p[i].p.x < cam.p.x - g_camera.fogDistance || g_chunks->p[i].p.z < cam.p.z - g_camera.fogDistance)) ||
+                                !TEST_CREATE_AND_UPLOAD_CHUNKS)
                             {
                                 g_chunks->flags[i] |= CHUNK_TODELETE;
                             }
@@ -607,7 +612,8 @@ int main(int argc, char* argv[])
 #ifdef _DEBUG
             const int32 uploadMax = 10;
 #elif NDEBUG
-            const int32 uploadMax = 40;
+            //const int32 uploadMax = 40;
+            const int32 uploadMax = 300;
 #endif
             struct Renderable {
                 ChunkIndex r;
@@ -641,7 +647,7 @@ int main(int argc, char* argv[])
                 ChunkIndex renderChunk = renderables[i].r;
                 if (g_chunks->state[renderChunk] == ChunkArray::VertexLoaded)
                 {
-                    if (uploadCount > uploadMax)
+                    if (uploadCount > uploadMax || (g_chunks->flags[renderChunk] & CHUNK_TODELETE))
                         continue;
                     g_chunks->UploadChunk(renderChunk);
                     uploadCount++;
