@@ -223,6 +223,8 @@ struct RegionSampler {
 
     ChunkIndex neighbors[8] = {};
     ChunkIndex center = 0;
+    ChunkPos centerP;
+    ChunkPos neighborsP[8];
 
     bool GetBlock(BlockType& result, Vec3Int blockRelP);
     bool RegionGather(ChunkIndex i);
@@ -249,6 +251,7 @@ struct ChunkArray
     uint32                                  uploadedIndexCount[MAX_CHUNKS] = {};
     uint16                                  flags[MAX_CHUNKS] = {};
     uint32                                  chunkCount = 0;
+    uint16                                  height[MAX_CHUNKS] = {};
     std::atomic<State>                      state[MAX_CHUNKS] = {};
     std::unordered_map<uint64, ChunkIndex>  chunkPosTable;
     std::atomic<int32>                      refs[MAX_CHUNKS] = {};

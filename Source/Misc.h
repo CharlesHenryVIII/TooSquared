@@ -74,3 +74,4 @@ struct ScopeTimer
 
 
 extern bool g_running;
+uint64_t GetCurrentTime();

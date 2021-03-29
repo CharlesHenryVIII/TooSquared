@@ -21,3 +21,8 @@ float GetTimer()
     uint64 c = SDL_GetPerformanceCounter();
     return float(((c - ct) * 1000) / (double)f);
 }
+
+uint64 GetCurrentTime()
+{
+    return ((SDL_GetPerformanceCounter() - ct) * 1000 * 1000 * 1000) / f; //nano seconds
+}

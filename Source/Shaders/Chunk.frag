@@ -97,7 +97,7 @@ void main()
     //
     //RESULT:
     //
-    vec3 result = (max(ambient + diffuse + specular - ambientOcclusion, 0.2)) * pixel.xyz;
+    vec3 result = (max(ambient + diffuse + specular - ambientOcclusion, 0.01)) * pixel.xyz;
     //ambient = vec3(1);
     //result = (max(ambient - ambientOcclusion, 0)) * pixel.xyz;
 

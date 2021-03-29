@@ -435,7 +435,8 @@ int main(int argc, char* argv[])
         //TODO: Optimize to update corners (max 4 chunks)
         for (int32 c = SDLK_1; c <= SDLK_9; c++)
         {
-            if (keyStates[c].downThisFrame)
+            //if (keyStates[c].downThisFrame)
+            if (keyStates[c].down)
             {
                 if (validHit)
                 {
