@@ -360,25 +360,286 @@ float stb_ComputeHeightFieldDelta(int x, int y, float weight)
 #define HEIGHT_UNBREAKABLE  1U
 #define HEIGHT_MIN_WATER    20U
 #define HEIGHT_MAX_WATER    70U
+uint64 s_worldSeed = 0;
+
 
 void ChunkArray::SetBlocks(ChunkIndex i)
 {
 #define STB_METHOD 0
-#define VORONOI 4
+#define VORONOI 12
 
-#if VORONOI == 0
-////________________________________________
-////___________NEW IMPLIMENTATION___________
+#if VORONOI == 12
     WorldPos chunkGamePos = ToWorld(g_chunks->p[i]);
     NoiseParams seaFloorParams = {
         .numOfOctaves = 8,
         .freq = 0.17f,
+        //.freq = 0.3f,
         .weight = 1.0f,
+        //.gainFactor = 0.8f,
         .gainFactor = 1.0f,
     };
+    int32 noiseOffset = 40;
     const float perlinScale = 0.01f;
 
     //Step 1: 
+    //Generate base layer
+    {
+        for (uint32 x = 0; x < CHUNK_X; x++)
+        {
+            for (uint32 y = 0; y < HEIGHT_UNBREAKABLE; y++)
+            {
+                for (uint32 z = 0; z < CHUNK_Z; z++)
+                {
+                    blocks[i].e[x][y][z] = BlockType::Bedrock;
+                }
+            }
+        }
+        g_chunks->height[i] = 1;
+    }
+
+    //Step 2:
+    //Generate heightmap of basic terrain
+    uint32 heightMap[CHUNK_X][CHUNK_Z] = {};
+    {
+        uint32 newHeight = 0;
+        uint32 waterVsLandHeight = 0;
+        {
+            for (uint32 x = 0; x < CHUNK_X; x++)
+            {
+                for (uint32 z = 0; z < CHUNK_Z; z++)
+                {
+                    //Fill with stone from HEIGHT_MIN_WATER to the determined height - 3
+                    waterVsLandHeight = Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D({ (chunkGamePos.p.x + x) * perlinScale, (chunkGamePos.p.z + z) * perlinScale }, seaFloorParams)), HEIGHT_MIN_WATER, HEIGHT_MAX_WATER - 2);
+                    uint32 y = HEIGHT_UNBREAKABLE;
+                    for (y; y < waterVsLandHeight - 3; y++)
+                    {
+                        blocks[i].e[x][y][z] = BlockType::Stone;
+                    }
+
+                    //Fill the last 3 high blocks with either stone or sand depending on if the location is max height or not
+                    for (y; y < waterVsLandHeight; y++)
+                    {
+                        if (waterVsLandHeight < HEIGHT_MAX_WATER - 2)
+                            blocks[i].e[x][y][z] = BlockType::Sand;
+                        else
+                            blocks[i].e[x][y][z] = BlockType::Stone;
+                    }
+                    assert(waterVsLandHeight < CHUNK_Y);
+                    assert(waterVsLandHeight > 0);
+                    heightMap[x][z] = waterVsLandHeight;
+                    newHeight = Max(waterVsLandHeight, newHeight);
+                }
+            }
+        }
+        g_chunks->height[i] = newHeight;
+    }
+
+    //Step 3:
+    //Update chunk type based on terrain height
+    {
+        GamePos checkLocations[] = {
+            {-2,            0,          -2 },
+            { CHUNK_X + 2,  0,          -2 },
+            {-2,            0, CHUNK_Z + 2 },
+            { CHUNK_X + 2,  0, CHUNK_Z + 2 },
+        };
+        uint32 landTileCount = 0;
+        for (int32 c = 0; c < arrsize(checkLocations); c++)
+        {
+            Vec2 lookupLoc = { (chunkGamePos.p.x + checkLocations[c].p.x) * perlinScale, (chunkGamePos.p.z + checkLocations[c].p.z) * perlinScale };
+            uint32 height = Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D(lookupLoc, seaFloorParams)), HEIGHT_MIN_WATER, HEIGHT_MAX_WATER - 2);
+            if (height == HEIGHT_MAX_WATER - 2)
+                landTileCount++;
+        }
+        if (landTileCount == 4)
+            g_chunks->chunkType[i] = ChunkType::Inland;
+        else if (landTileCount == 0)
+            g_chunks->chunkType[i] = ChunkType::Ocean;
+        else
+            g_chunks->chunkType[i] = ChunkType::Coastal;
+    }
+
+    //Step 4:
+    //Determine Terrain Type
+    {
+        const float threshold = 0.1f;
+        Vec2 chunkPForNoise = { chunkGamePos.p.x, chunkGamePos.p.z };
+        float vorResult = VoronoiNoise(chunkPForNoise / (16.0f * 16.0f), 1.0f, 1.0f);
+        switch (g_chunks->chunkType[i])
+        {
+        case ChunkType::Inland:
+            if (vorResult > 0.5 + threshold)
+                g_chunks->terrainType[i] = TerrainType::Mountains;
+            if (vorResult < 0.5 - threshold)
+                g_chunks->terrainType[i] = TerrainType::Plains;
+            else
+                g_chunks->terrainType[i] = TerrainType::Hills;
+            break;
+
+        case ChunkType::Coastal:
+            g_chunks->terrainType[i] = TerrainType::Plains;
+            
+            break;
+        }
+    }
+
+    //Step 5:
+    //Generate terrain on Inland types
+    {
+        NoiseParams np;
+        switch (g_chunks->terrainType[i])
+        {
+        case TerrainType::Plains:
+        {
+            np = {
+                .numOfOctaves = 1,
+                .freq = 1.0f,
+                .weight = 1.0f,
+                .gainFactor = 0.5f,
+            };
+            break;
+        }
+        case TerrainType::Hills:
+        {
+            np = {
+                .numOfOctaves = 4,
+                .freq = 0.75f,
+                .weight = 1.0f,
+                .gainFactor = 1.0f,
+            };
+            break;
+        }
+        case TerrainType::Mountains:
+        {
+            np = {
+                .numOfOctaves = 8,
+                .freq = 0.4f,
+                .weight = 1.5f,
+                .gainFactor = 0.9f,
+            };
+            break;
+        }
+        default:
+        {
+            assert(false);
+            break;
+        }
+        }
+
+        uint32 newHeight = 0;
+        switch (g_chunks->chunkType[i])
+        {
+        case ChunkType::Inland:
+            for (uint32 x = 0; x < CHUNK_X; x++)
+            {
+                for (uint32 z = 0; z < CHUNK_Z; z++)
+                {
+                    Vec2 blockP = { chunkGamePos.p.x + x, chunkGamePos.p.z + z };
+
+                    assert(heightMap[x][z] < CHUNK_Y);
+                        assert(heightMap[x][z] > 0);
+                        int32 yTotal = Clamp<int32>(static_cast<int32>(Perlin2D(blockP * perlinScale, np) * (CHUNK_Y)), 2, CHUNK_Y - heightMap[x][z] - 1);
+                    assert(yTotal < CHUNK_Y);
+
+                    int32 compareValue = yTotal + (int32)heightMap[x][z];
+                    for (int32 y = (int32)heightMap[x][z]; y < compareValue - 3; y++)
+                    {
+                        g_chunks->blocks[i].e[x][y][z] = BlockType::Stone;
+                        heightMap[x][z]++;
+                    }
+                    assert(heightMap[x][z] < CHUNK_Y);
+
+                    compareValue += 2;
+                    for (int32 y = (int32)heightMap[x][z]; y < compareValue - 1; y++)
+                    {
+                        g_chunks->blocks[i].e[x][y][z] = BlockType::Dirt;
+                        heightMap[x][z]++;
+                    }
+                    assert(heightMap[x][z] < CHUNK_Y);
+
+                    compareValue += 1;
+                    for (int32 y = (int32)heightMap[x][z]; y < compareValue; y++)
+                    {
+                        g_chunks->blocks[i].e[x][y][z] = BlockType::Grass;
+                        heightMap[x][z]++;
+                    }
+                    assert(heightMap[x][z] < CHUNK_Y);
+                    newHeight = Max(newHeight, heightMap[x][z]);
+                }
+            }
+            g_chunks->height[i] = newHeight;
+            break;
+
+        case ChunkType::Coastal:
+            for (uint32 x = 0; x < CHUNK_X; x++)
+            {
+                for (uint32 z = 0; z < CHUNK_Z; z++)
+                {
+                    
+                }
+            }
+            break;
+
+        //default:
+        }
+    }
+
+    //Step 6: Set Biomes
+    {
+        ChunkPos chunkP = g_chunks->p[i];
+        uint32 areaSize = 10; //size of the area for sampling positions
+
+        Vec3Int localPoint = chunkP.p / areaSize; //floor
+        Vec2 allPoints[9];
+        //Vec2 neighborPoints[8] = {};
+        //Vec2 centerPoint = {};
+        {
+            float offsetSize = float(Max<uint32>((areaSize / 2 - 1), 1));
+            int32 incrimentor = 0;
+            for (int32 z = localPoint.z - 1; z <= localPoint.z + 1; z++)
+            {
+                for (int32 x = localPoint.x - 1; x <= localPoint.x + 1; x++)
+                {
+                    Vec2 p = {};
+                    float xOffsetRatio = ((XXSeedHash(s_worldSeed, x) & 0xFFFF) / float(0xFFFF));
+                    float yOffsetRatio = ((XXSeedHash(s_worldSeed, z) & 0xFFFF) / float(0xFFFF));
+                    p.x = float(x) + xOffsetRatio * offsetSize;
+                    p.y = float(z) + yOffsetRatio * offsetSize;
+                    allPoints[incrimentor++] = p;
+                }
+            }
+        }
+        //{
+        //    Vec2 p = {};
+        //    float xOffsetRatio = ((XXSeedHash(s_worldSeed, localPoint.x) & 0xFFFF) / float(0xFFFF));
+        //    float yOffsetRatio = ((XXSeedHash(s_worldSeed, localPoint.z) & 0xFFFF) / float(0xFFFF));
+        //    p.x = float(localPoint.x) + xOffsetRatio;
+        //    p.y = float(localPoint.z) + yOffsetRatio;
+        //    centerPoint = p;
+        //}
+    }
+
+
+
+
+
+
+
+
+
+#elif VORONOI == 0
+////________________________________________
+////___________NEW IMPLIMENTATION___________
+WorldPos chunkGamePos = ToWorld(g_chunks->p[i]);
+NoiseParams seaFloorParams = {
+    .numOfOctaves = 8,
+    .freq = 0.17f,
+    .weight = 1.0f,
+    .gainFactor = 1.0f,
+};
+const float perlinScale = 0.01f;
+
+//Step 1: 
     //Generate base layer
     {
         for (uint32 x = 0; x < CHUNK_X; x++)
@@ -1302,7 +1563,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                 yTotal = static_cast<uint32>(Lerp<float>(plainsHeight, mountainHeight, vor));
             }
 #endif
-#if 1
+#if 0
 
             //#if NOISETYPE == 2
             //            //int32 yTotal = Max(static_cast<int32>(Noise(blockRatio) * CHUNK_Y), 10);
@@ -1639,7 +1900,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
     float timerTotal[+T_Vertices::Count] = {};
     uint16 heightOfChunk = height[i];
     {
-        PROFILE_SCOPE("THREAD: Vertex Creation");
+        //PROFILE_SCOPE("THREAD: Vertex Creation");
         for (int32 x = 0; x < CHUNK_X; x++)
         {
             for (int32 y = 0; y < heightOfChunk; y++)
@@ -1649,7 +1910,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                     BlockType currentBlockType = blocks[i].e[x][y][z];
                     if (currentBlockType == BlockType::Empty)
                         continue;
-                    ACCTIMER(T_Vertices::Faces);
+                    //ACCTIMER(T_Vertices::Faces);
                     for (uint32 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
                     {
                         Vec3Int vf = Vec3ToVec3Int(faceNormals[faceIndex]);
@@ -1660,7 +1921,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                         BlockType type;
                         bool getBlockResult = false;
                         {
-                            ACCTIMER(T_Vertices::GetBlock);
+                            //ACCTIMER(T_Vertices::GetBlock);
                             getBlockResult = (region.GetBlock(type, { xReal, yReal, zReal })) || (yReal == CHUNK_Y);
                         }
                         if (getBlockResult && type == BlockType::Empty)
@@ -1683,7 +1944,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                             f.c.nAndConnectedVertices =
                             f.d.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
 
-                            ACCTIMER(T_Vertices::Pushback);
+                            //ACCTIMER(T_Vertices::Pushback);
                             faceVertices[i].push_back(f.a);
                             faceVertices[i].push_back(f.b);
                             faceVertices[i].push_back(f.c);
@@ -1696,7 +1957,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
             }
         }
     }
-    PRINTTIMER();
+    //PRINTTIMER();
 
     uint32 vertIndex = 0;
     //-X and -Z

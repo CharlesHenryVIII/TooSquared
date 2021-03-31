@@ -64,11 +64,11 @@
 //}
 //
 //
-////uint64 random(uint128 state)
-////{
-////    uint64 result = rotate64(uint64(state ^ (state >> 64)), state >> 122);
-////    return result;
-////}
+//uint64 PCG_Random(uint128 state)
+//{
+//    uint64 result = rotate64(uint64(state ^ (state >> 64)), state >> 122);
+//    return result;
+//}
 //
 
 uint32 PCG_Random(uint64 state)
