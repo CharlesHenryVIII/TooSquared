@@ -212,6 +212,14 @@ struct Rectangle_Int {
     Vec3 r = {a.x - b, a.y - b, a.z - b};
     return r;
 }
+[[nodiscard]] inline Vec3 operator+=(Vec3& a, float b)
+{
+    a = {a.x + b, a.y + b, a.z + b};
+}
+[[nodiscard]] inline Vec3 operator-=(Vec3& a, float b)
+{
+    a = {a.x - b, a.y - b, a.z - b};
+}
 [[nodiscard]] inline bool operator==(Vec3Int a, Vec3Int b)
 {
     return ((a.x == b.x) && (a.y == b.y) && (a.z == b.z));
@@ -292,7 +300,6 @@ inline Vec2Int &operator-=(Vec2Int &a, Vec2Int b)
     Vec3 r = { a + b.x, a + b.y, a + b.z };
     return r;
 }
-
 [[nodiscard]] inline Vec3 operator-(float a, Vec3 b)
 {
     Vec3 r = { a - b.x, a - b.y, a - b.z };

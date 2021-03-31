@@ -366,9 +366,110 @@ uint64 s_worldSeed = 0;
 void ChunkArray::SetBlocks(ChunkIndex i)
 {
 #define STB_METHOD 0
-#define VORONOI 12
+#define VORONOI 13
 
-#if VORONOI == 12
+#if VORONOI == 13
+
+    WorldPos chunkGamePos = ToWorld(g_chunks->p[i]);
+    uint16 heightMap[CHUNK_X][CHUNK_Z] = {};
+
+    {
+        for (uint32 x = 0; x < CHUNK_X; x++)
+        {
+            for (uint32 y = 0; y < HEIGHT_UNBREAKABLE; y++)
+            {
+                for (uint32 z = 0; z < CHUNK_Z; z++)
+                {
+                    blocks[i].e[x][y][z] = BlockType::Bedrock;
+                    heightMap[x][z] = HEIGHT_UNBREAKABLE;
+                }
+            }
+        }
+    }
+
+    {
+        for (uint32 x = 0; x < CHUNK_X; x++)
+        {
+            for (uint32 y = HEIGHT_UNBREAKABLE; y < HEIGHT_MIN_WATER; y++)
+            {
+                for (uint32 z = 0; z < CHUNK_Z; z++)
+                {
+                    blocks[i].e[x][y][z] = BlockType::Stone;
+                    heightMap[x][z] = HEIGHT_MIN_WATER;
+                }
+            }
+        }
+    }
+
+    {
+        for (uint32 x = 0; x < CHUNK_X; x++)
+        {
+            for (uint32 y = HEIGHT_MIN_WATER; y < HEIGHT_MAX_WATER; y++)
+            {
+                for (uint32 z = 0; z < CHUNK_Z; z++)
+                {
+                    Vec3 lookupLoc = { (chunkGamePos.p.x + x) / 400, (chunkGamePos.p.y + y) / 400, (chunkGamePos.p.z + z) / 400 };
+                    int32 wrap = 256;
+                    float perlinResult = Perlin3D(lookupLoc, { wrap, wrap, wrap });
+                    blocks[i].e[x][y][z] = BlockType(Clamp(int32(perlinResult * CHUNK_Y), 0, 3));
+                    if (blocks[i].e[x][y][z] != BlockType::Empty)
+                        heightMap[x][z] = y + 1;
+                }
+            }
+        }
+    }
+
+    {
+        for (uint32 x = 0; x < CHUNK_X; x++)
+        {
+            for (uint32 y = HEIGHT_MAX_WATER; y < CHUNK_Y; y++)
+            {
+                for (uint32 z = 0; z < CHUNK_Z; z++)
+                {
+                    if (heightMap[x][z] >= HEIGHT_MAX_WATER)
+                    {
+                        int32 scaleH = Max<int32>(1 - ((HEIGHT_MAX_WATER - y)/* / (CHUNK_Y - HEIGHT_MAX_WATER)*/), 1);
+                        int32 scaleV = Max<int32>(1 -  ((HEIGHT_MAX_WATER - y)/* / (CHUNK_Y - HEIGHT_MAX_WATER)*/), 1);
+                        Vec3 lookupLoc = { (chunkGamePos.p.x + x) / scaleH, (chunkGamePos.p.y + y - HEIGHT_MAX_WATER) / scaleV, (chunkGamePos.p.z + z) / scaleH };
+                        int32 wrap = 1 << 2;
+                        float perlinResult = Perlin3D(lookupLoc, { wrap, wrap, wrap });
+                        blocks[i].e[x][y][z] = BlockType(Clamp(int32(perlinResult * CHUNK_Y), 0, 3));
+
+                    }
+                    if (blocks[i].e[x][y][z] != BlockType::Empty)
+                        heightMap[x][z] = y + 1;
+                }
+            }
+        }
+    }
+
+    
+    for (int32 z = 0; z < CHUNK_Z; z++)
+    {
+        for (int32 x = 0; x < CHUNK_X; x++)
+        {
+            g_chunks->height[i] = Max(heightMap[x][z], g_chunks->height[i]);
+        }
+    }
+
+    //for (uint32 x = 0; x < CHUNK_X; x++)
+    //{
+    //    for (uint32 y = 0; y < CHUNK_Y; y++)
+    //    {
+    //        for (uint32 z = 0; z < CHUNK_Z; z++)
+    //        {
+    //            Vec3 lookupLoc = { (chunkGamePos.p.x + x) / 20, (chunkGamePos.p.y + y), (chunkGamePos.p.z + z) / 20 };
+    //            //int32 wrap = 1024;
+    //            int32 wrap = 256;
+    //            float perlinResult = Perlin3D(lookupLoc / 8, { wrap / 4, wrap, wrap / 4 });
+    //            blocks[i].e[x][y][z] = BlockType(Clamp(int32(perlinResult * CHUNK_Y), 0, 3));
+    //        }
+    //    }
+    //}
+    //g_chunks->height[i] = CHUNK_Y;
+
+
+#elif VORONOI == 12
     WorldPos chunkGamePos = ToWorld(g_chunks->p[i]);
     NoiseParams seaFloorParams = {
         .numOfOctaves = 8,

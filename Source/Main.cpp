@@ -325,9 +325,18 @@ int main(int argc, char* argv[])
         if (keyStates[SDLK_t].downThisFrame)
         {
             if (keyStates[SDLK_LSHIFT].down)
+            {
                 g_gameData.m_timeScale /= 10;
+            }
+            else if (keyStates[SDLK_LCTRL].down)
+            {
+                g_gameData.m_currentTime = 10;
+                g_gameData.m_timeScale = 0;
+            }
             else
+            {
                 g_gameData.m_timeScale *= 10;
+            }
         }
 
 
