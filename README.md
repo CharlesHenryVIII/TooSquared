@@ -14,6 +14,9 @@
  * Capture mouse
  * Curser/reticle
  * optimize block creation and deletion
+ * Render water correctly
+ * collision
+ * improve chunk update code
 
 
 

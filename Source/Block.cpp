@@ -363,6 +363,13 @@ float stb_ComputeHeightFieldDelta(int x, int y, float weight)
 uint64 s_worldSeed = 0;
 
 
+uint32 GetLandHeight(WorldPos chunkP, Vec3Int blockP, NoiseParams& params, float scale, int32 noiseOffset, uint32 lowerClamp, uint32 upperClamp)
+{
+    Vec2 lookupLoc = { (chunkP.p.x + blockP.x) * scale, (chunkP.p.z + blockP.z) * scale };
+    return Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D(lookupLoc, params)), lowerClamp, upperClamp);
+}
+
+
 void ChunkArray::SetBlocks(ChunkIndex i)
 {
 #define STB_METHOD 0
@@ -372,7 +379,18 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
     WorldPos chunkGamePos = ToWorld(g_chunks->p[i]);
     uint16 heightMap[CHUNK_X][CHUNK_Z] = {};
+    int32 noiseOffset = HEIGHT_MIN_WATER;
+    float perlinScale = 0.01f;
+    NoiseParams seaFloorParams = {
+        .numOfOctaves = 8,
+        .freq = 0.17f,
+        //.freq = 0.3f,
+        .weight = 1.0f,
+        //.gainFactor = 0.8f,
+        .gainFactor = 1.0f,
+    };
 
+    //set the base unbreakable layer
     {
         for (uint32 x = 0; x < CHUNK_X; x++)
         {
@@ -387,6 +405,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
         }
     }
 
+    //set the stone in between water and bedrock
     {
         for (uint32 x = 0; x < CHUNK_X; x++)
         {
@@ -401,49 +420,99 @@ void ChunkArray::SetBlocks(ChunkIndex i)
         }
     }
 
+    //set the majority of the blocks
     {
-        for (uint32 x = 0; x < CHUNK_X; x++)
+        uint32 newHeight = 0;
+        uint32 waterVsLandHeight = 0;
         {
-            for (uint32 y = HEIGHT_MIN_WATER; y < HEIGHT_MAX_WATER; y++)
+            for (uint32 x = 0; x < CHUNK_X; x++)
             {
                 for (uint32 z = 0; z < CHUNK_Z; z++)
                 {
-                    Vec3 lookupLoc = { (chunkGamePos.p.x + x) / 400, (chunkGamePos.p.y + y) / 400, (chunkGamePos.p.z + z) / 400 };
-                    int32 wrap = 256;
-                    float perlinResult = Perlin3D(lookupLoc, { wrap, wrap, wrap });
-                    blocks[i].e[x][y][z] = BlockType(Clamp(int32(perlinResult * CHUNK_Y), 0, 3));
-                    if (blocks[i].e[x][y][z] != BlockType::Empty)
-                        heightMap[x][z] = y + 1;
-                }
-            }
-        }
-    }
-
-    {
-        for (uint32 x = 0; x < CHUNK_X; x++)
-        {
-            for (uint32 y = HEIGHT_MAX_WATER; y < CHUNK_Y; y++)
-            {
-                for (uint32 z = 0; z < CHUNK_Z; z++)
-                {
-                    if (heightMap[x][z] >= HEIGHT_MAX_WATER)
+                    //Fill with stone from HEIGHT_MIN_WATER to the determined height - 3
+                    waterVsLandHeight = GetLandHeight(chunkGamePos, { int32(x), 0, int32(z) }, seaFloorParams, perlinScale, noiseOffset, HEIGHT_MIN_WATER, CHUNK_Y);//HEIGHT_MIN_WATER - 2);
+                    //waterVsLandHeight = Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D({ (chunkGamePos.p.x + x) * perlinScale, (chunkGamePos.p.z + z) * perlinScale }, seaFloorParams)), HEIGHT_MIN_WATER, HEIGHT_MAX_WATER - 2);
+                    uint32 y = HEIGHT_UNBREAKABLE;
+                    for (y; y < Min(waterVsLandHeight, HEIGHT_MIN_WATER) - 3; y++)
                     {
-                        int32 scaleH = Max<int32>(1 - ((HEIGHT_MAX_WATER - y)/* / (CHUNK_Y - HEIGHT_MAX_WATER)*/), 1);
-                        int32 scaleV = Max<int32>(1 -  ((HEIGHT_MAX_WATER - y)/* / (CHUNK_Y - HEIGHT_MAX_WATER)*/), 1);
-                        Vec3 lookupLoc = { (chunkGamePos.p.x + x) / scaleH, (chunkGamePos.p.y + y - HEIGHT_MAX_WATER) / scaleV, (chunkGamePos.p.z + z) / scaleH };
-                        int32 wrap = 1 << 2;
-                        float perlinResult = Perlin3D(lookupLoc, { wrap, wrap, wrap });
-                        blocks[i].e[x][y][z] = BlockType(Clamp(int32(perlinResult * CHUNK_Y), 0, 3));
-
+                        blocks[i].e[x][y][z] = BlockType::Stone;
                     }
-                    if (blocks[i].e[x][y][z] != BlockType::Empty)
-                        heightMap[x][z] = y + 1;
+
+                    //Fill the last 3 high blocks with either stone or sand depending on if the location is max height or not
+
+                    if (waterVsLandHeight < HEIGHT_MAX_WATER - 2)
+                    {//ocean
+
+                        for (y; y < waterVsLandHeight - 3; y++)
+                        {
+                            blocks[i].e[x][y][z] = BlockType::Stone;
+                        }
+
+                        for (y; y < waterVsLandHeight; y++)
+                        {
+                            blocks[i].e[x][y][z] = BlockType::Sand;
+                        }
+                    }
+                    else if (waterVsLandHeight < HEIGHT_MAX_WATER + 1)
+                    {//coastal
+
+                        for (y; y < waterVsLandHeight - 2; y++)
+                        {
+                            blocks[i].e[x][y][z] = BlockType::Stone;
+                        }
+
+                        for (y; y < waterVsLandHeight; y++)
+                        {
+                            blocks[i].e[x][y][z] = BlockType::Sand;
+                        }
+                    }
+                    else
+                    {//land
+
+                        for (y; y < waterVsLandHeight - 3; y++)
+                        {
+                            blocks[i].e[x][y][z] = BlockType::Stone;
+                        }
+
+                        for (y; y < waterVsLandHeight - 1; y++)
+                        {
+                            blocks[i].e[x][y][z] = BlockType::Dirt;
+                        }
+
+                        for (y; y < waterVsLandHeight; y++)
+                        {
+                            blocks[i].e[x][y][z] = BlockType::Grass;
+                        }
+                    }
+                    assert(waterVsLandHeight < CHUNK_Y);
+                    assert(waterVsLandHeight > 0);
+                    heightMap[x][z] = waterVsLandHeight;
+                    newHeight = Max(waterVsLandHeight, newHeight);
                 }
             }
         }
+        g_chunks->height[i] = Max(uint16(newHeight), g_chunks->height[i]);
     }
 
     
+
+    //Add water
+    for (int32 z = 0; z < CHUNK_Z; z++)
+    {
+        for (int32 y = 0; y < HEIGHT_MAX_WATER; y++)
+        {
+            for (int32 x = 0; x < CHUNK_X; x++)
+            {
+                if (g_chunks->blocks[i].e[x][y][z] == BlockType::Empty)
+                {
+                    g_chunks->blocks[i].e[x][y][z] = BlockType::Water;
+                    g_chunks->height[i] = Max(uint16(y + 1), g_chunks->height[i]);
+                }
+            }
+        }
+    }
+
+    //Update chunk height
     for (int32 z = 0; z < CHUNK_Z; z++)
     {
         for (int32 x = 0; x < CHUNK_X; x++)
@@ -451,6 +520,158 @@ void ChunkArray::SetBlocks(ChunkIndex i)
             g_chunks->height[i] = Max(heightMap[x][z], g_chunks->height[i]);
         }
     }
+
+
+    ////Step 4:
+    ////Determine Terrain Type
+    //{
+    //    const float threshold = 0.1f;
+    //    Vec2 chunkPForNoise = { chunkGamePos.p.x, chunkGamePos.p.z };
+    //    float vorResult = VoronoiNoise(chunkPForNoise / (16.0f * 16.0f), 1.0f, 1.0f);
+    //    switch (g_chunks->chunkType[i])
+    //    {
+    //    case ChunkType::Inland:
+    //        if (vorResult > 0.5 + threshold)
+    //            g_chunks->terrainType[i] = TerrainType::Mountains;
+    //        if (vorResult < 0.5 - threshold)
+    //            g_chunks->terrainType[i] = TerrainType::Plains;
+    //        else
+    //            g_chunks->terrainType[i] = TerrainType::Hills;
+    //        break;
+
+    //    case ChunkType::Coastal:
+    //        g_chunks->terrainType[i] = TerrainType::Plains;
+    //        
+    //        break;
+    //    }
+    //}
+
+    ////Step 5:
+    ////Generate terrain on Inland types
+    //{
+    //    NoiseParams np;
+    //    switch (g_chunks->terrainType[i])
+    //    {
+    //    case TerrainType::Plains:
+    //    {
+    //        np = {
+    //            .numOfOctaves = 1,
+    //            .freq = 1.0f,
+    //            .weight = 1.0f,
+    //            .gainFactor = 0.5f,
+    //        };
+    //        break;
+    //    }
+    //    case TerrainType::Hills:
+    //    {
+    //        np = {
+    //            .numOfOctaves = 4,
+    //            .freq = 0.75f,
+    //            .weight = 1.0f,
+    //            .gainFactor = 1.0f,
+    //        };
+    //        break;
+    //    }
+    //    case TerrainType::Mountains:
+    //    {
+    //        np = {
+    //            .numOfOctaves = 8,
+    //            .freq = 0.4f,
+    //            .weight = 1.5f,
+    //            .gainFactor = 0.9f,
+    //        };
+    //        break;
+    //    }
+    //    default:
+    //    {
+    //        assert(false);
+    //        break;
+    //    }
+    //    }
+
+
+    //    //create land based on distance from water ie sample GetLandHeight and determine how large of a value over MAX_WATER_HEIGHT it is
+    //    {
+    //        uint16 newHeight = 0;
+    //        switch (g_chunks->chunkType[i])
+    //        {
+    //        case ChunkType::Inland:
+    //            for (uint32 x = 0; x < CHUNK_X; x++)
+    //            {
+    //                for (uint32 z = 0; z < CHUNK_Z; z++)
+    //                {
+    //                    Vec3 blockP = { chunkGamePos.p.x + x, 0, chunkGamePos.p.z + z };
+    //                    uint32 scaleHeight = GetLandHeight(chunkGamePos, {int32(x), 0, int32(z)}, seaFloorParams, perlinScale, noiseOffset, );
+
+    //                    assert(heightMap[x][z] < CHUNK_Y);
+    //                    assert(heightMap[x][z] > 0);
+    //                    int32 yAddition = Clamp<int32>(static_cast<int32>(Perlin2D(Vec2({ blockP.x, blockP.z }) * perlinScale, np) * (CHUNK_Y)), 2, CHUNK_Y - heightMap[x][z] - 1);
+    //                    yAddition = int32(yAddition * Clamp<float>((scaleHeight - (HEIGHT_MAX_WATER - 1) / 32.0f), 0.0f, 1.0f));
+    //                    assert(yAddition < CHUNK_Y);
+
+    //                    int32 compareValue = yAddition + (int32)heightMap[x][z];
+    //                    for (int32 y = (int32)heightMap[x][z]; y < compareValue - 3; y++)
+    //                    {
+    //                        g_chunks->blocks[i].e[x][y][z] = BlockType::Stone;
+    //                        heightMap[x][z]++;
+    //                    }
+    //                    assert(heightMap[x][z] < CHUNK_Y);
+
+    //                    compareValue += 2;
+    //                    for (int32 y = (int32)heightMap[x][z]; y < compareValue - 1; y++)
+    //                    {
+    //                        g_chunks->blocks[i].e[x][y][z] = BlockType::Dirt;
+    //                        heightMap[x][z]++;
+    //                    }
+    //                    assert(heightMap[x][z] < CHUNK_Y);
+
+    //                    compareValue += 1;
+    //                    for (int32 y = (int32)heightMap[x][z]; y < compareValue; y++)
+    //                    {
+    //                        g_chunks->blocks[i].e[x][y][z] = BlockType::Grass;
+    //                        heightMap[x][z]++;
+    //                    }
+    //                    assert(heightMap[x][z] < CHUNK_Y);
+    //                    newHeight = Max(newHeight, heightMap[x][z]);
+    //                }
+    //            }
+    //            break;
+
+    //        case ChunkType::Coastal:
+
+    //            for (uint32 x = 0; x < CHUNK_X; x++)
+    //            {
+    //                for (uint32 z = 0; z < CHUNK_Z; z++)
+    //                {
+    //                    uint32 scaleHeight = GetLandHeight(chunkGamePos, { int32(x), 0, int32(z) }, seaFloorParams, perlinScale, noiseOffset, false);
+    //                    scaleHeight = uint32(Clamp<float>((scaleHeight - (HEIGHT_MAX_WATER - 2)) / 16.0f, 0.0f, 1.0f));
+
+    //                    Vec3 blockP = { chunkGamePos.p.x + x, 0, chunkGamePos.p.z + z };
+    //                    int32 yAddition = Clamp<int32>(static_cast<int32>(Perlin2D(Vec2({ blockP.x, blockP.z }) * perlinScale, np) * (CHUNK_Y)), 2, CHUNK_Y - heightMap[x][z] - 1);
+
+
+    //                    uint32 yStart = heightMap[x][z];
+    //                    for (uint32 y = yStart; y < CHUNK_Y && y < yStart + yAddition; y++)
+    //                    {
+    //                        g_chunks->blocks[i].e[x][y][z] = BlockType::Sand;
+    //                        heightMap[x][z]++;
+    //                    }
+
+    //                    newHeight = Max(newHeight, heightMap[x][z]);
+    //                }
+    //            }
+    //            break;
+
+    //        case ChunkType::Ocean:
+    //            
+    //            break;
+    //            //default:
+    //        }
+    //        g_chunks->height[i] = Max(newHeight, g_chunks->height[i]);
+    //    }
+    //}
+
+
 
     //for (uint32 x = 0; x < CHUNK_X; x++)
     //{
