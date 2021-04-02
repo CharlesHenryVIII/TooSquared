@@ -469,6 +469,29 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                     else
                     {//land
 
+                        //add perlin noise here for creating more interesting land
+
+                        float currentHeightMaxHeightRatio = float((waterVsLandHeight - HEIGHT_MAX_WATER)) / float((CHUNK_Y - HEIGHT_MAX_WATER));
+                        //float heightRatio = 1.0f - (currentHeightMaxHeightRatio * currentHeightMaxHeightRatio);
+                        float heightRatio = currentHeightMaxHeightRatio;
+
+                        NoiseParams additionParms = {
+                            .numOfOctaves = 8,
+                            .freq = 0.2f,
+                            .weight = 1.0f,
+                            .gainFactor = 0.5f,
+                        };
+                         //case TweenStyle::Linear: break;
+                         //case TweenStyle::Square: t = t * t;  break;
+                         //case TweenStyle::Cube:   t = t * t * t;  break;
+
+                         //case TweenStyle::InverseCube:   t = 1.0f - (inv_t * inv_t * inv_t);  break;
+
+                        Vec2 lookupLoc = { (chunkGamePos.p.x + x) * perlinScale, (chunkGamePos.p.z + z) * perlinScale };
+                        uint32 additionHeight = Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D(lookupLoc, additionParms)), 0, CHUNK_Y - waterVsLandHeight);
+
+                        waterVsLandHeight += uint32(heightRatio * additionHeight);
+
                         for (y; y < waterVsLandHeight - 3; y++)
                         {
                             blocks[i].e[x][y][z] = BlockType::Stone;
