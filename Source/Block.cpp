@@ -422,9 +422,10 @@ void ChunkArray::SetBlocks(ChunkIndex i)
     }
 
     uint32 areaSize = 10; //size of the area for sampling positions
+    TerrainType terrainTypes[CHUNK_X][CHUNK_Z];
 
 
-#if 1
+#if 0
     Vec3Int a_localPoint = g_chunks->p[i].p / areaSize; //floor
     Vec2 a_allPoints[9];
     {
@@ -468,53 +469,71 @@ void ChunkArray::SetBlocks(ChunkIndex i)
         uint32 xHash = XXSeedHash(s_worldSeed, int32(closestPoint.x * areaSize));
         uint32 zHash = XXSeedHash(s_worldSeed, int32(closestPoint.y * areaSize));
         g_chunks->terrainType[i] = TerrainType((xHash + zHash) % +TerrainType::Count);
+
+        for (int32 x = 0; x < CHUNK_X; x++)
+        {
+            for (int32 z = 0; z < CHUNK_Z; z++)
+            {
+                TerrainType terrainTypes[x][z] = g_chunks->terrainType[i];
+            }
+        }
     }
+
 #else
 
-    Vec3Int a_localPoint = g_chunks->p[i].p / areaSize; //floor
-    Vec2 a_allPoints[9];
+    for (int32 x = 0; x < CHUNK_X; x++)
     {
-        float c_offsetSize = float(Max<uint32>((areaSize / 2 - 1), 1));
-        int32 incrimentor = 0;
-        for (int32 a_z = a_localPoint.z - 1; a_z <= a_localPoint.z + 1; a_z++)
+        for (int32 z = 0; z < CHUNK_Z; z++)
         {
-            for (int32 a_x = a_localPoint.x - 1; a_x <= a_localPoint.x + 1; a_x++)
-            {
-                Vec2 p = {};
-                int64 positionSeed = PositionHash({a_x, 0, a_z});
 
-                 
-                float xOffsetRatio = Clamp((XXSeedHash(positionSeed + s_worldSeed, a_x) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
-                float yOffsetRatio = Clamp((XXSeedHash(positionSeed + s_worldSeed, a_z) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
-                float xOffset = xOffsetRatio * (c_offsetSize / areaSize);
-                float yOffset = yOffsetRatio * (c_offsetSize / areaSize);
-                p.x = float(a_x) + xOffset;
-                p.y = float(a_z) + yOffset;
-                a_allPoints[incrimentor++] = p;
+            Vec3Int a_localPoint = g_chunks->p[i].p / areaSize; //floor
+            Vec2 a_allPoints[9];
+            {
+                float c_offsetSize = float(Max<uint32>((areaSize / 2 - 1), 1));
+                int32 incrimentor = 0;
+                for (int32 a_z = a_localPoint.z - 1; a_z <= a_localPoint.z + 1; a_z++)
+                {
+                    for (int32 a_x = a_localPoint.x - 1; a_x <= a_localPoint.x + 1; a_x++)
+                    {
+                        Vec2 p = {};
+                        int64 positionSeed = PositionHash({ a_x, 0, a_z });
+
+
+                        float xOffsetRatio = Clamp((XXSeedHash(positionSeed + s_worldSeed, a_x) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
+                        float yOffsetRatio = Clamp((XXSeedHash(positionSeed + s_worldSeed, a_z) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
+                        float xOffset = xOffsetRatio * (c_offsetSize / areaSize);
+                        float yOffset = yOffsetRatio * (c_offsetSize / areaSize);
+                        p.x = float(a_x) + xOffset;
+                        p.y = float(a_z) + yOffset;
+                        a_allPoints[incrimentor++] = p;
+                    }
+                }
+
+                Vec2 closestPoint = {};
+                float distClosestPoint = inf;
+                Vec2 thisPoint = { float(g_chunks->p[i].p.x) + float(x) / CHUNK_X, float(g_chunks->p[i].p.z) + float(z) / CHUNK_Z};
+                for (Vec2 loc : a_allPoints)
+                {
+                    Vec2 newLoc = loc * float(areaSize);
+                    float dist = Distance(thisPoint, newLoc);
+                    if (dist < distClosestPoint)
+                    {
+                        distClosestPoint = dist;
+                        closestPoint = newLoc;
+                    }
+                    //WorldPos blockLoc = { newLoc.x * CHUNK_X, 180, newLoc.y * CHUNK_Z };
+                    //cubesToDraw.push_back(blockLoc);
+                }
+                //assert(distClosestPoint < float(areaSize * 2));
+
+                uint32 xHash = XXSeedHash(s_worldSeed, int32(closestPoint.x * areaSize));
+                uint32 zHash = XXSeedHash(s_worldSeed, int32(closestPoint.y * areaSize));
+                terrainTypes[x][z] = TerrainType((xHash + zHash) % +TerrainType::Count);
             }
         }
-        
-        Vec2 closestPoint = {};
-        float distClosestPoint = inf;
-        Vec2 thisPoint = { float(g_chunks->p[i].p.x), float(g_chunks->p[i].p.z) };
-        for (Vec2 loc : a_allPoints)
-        {
-            Vec2 newLoc = loc * float(areaSize);
-            float dist = Distance(thisPoint, newLoc);
-            if (dist < distClosestPoint)
-            {
-                distClosestPoint = dist;
-                closestPoint = newLoc;
-            }
-            //WorldPos blockLoc = { newLoc.x * CHUNK_X, 180, newLoc.y * CHUNK_Z };
-            //cubesToDraw.push_back(blockLoc);
-        }
-        //assert(distClosestPoint < float(areaSize * 2));
-
-        uint32 xHash = XXSeedHash(s_worldSeed, int32(closestPoint.x * areaSize));
-        uint32 zHash = XXSeedHash(s_worldSeed, int32(closestPoint.y * areaSize));
-        g_chunks->terrainType[i] = TerrainType((xHash + zHash) % +TerrainType::Count);
     }
+
+
 #endif
 
     //set the majority of the blocks
@@ -574,7 +593,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                         //float heightRatio = 1.0f - (currentHeightMaxHeightRatio * currentHeightMaxHeightRatio);
                         //float heightRatio = currentHeightMaxHeightRatio * currentHeightMaxHeightRatio;
 
-                        switch (g_chunks->terrainType[i])
+                        switch (terrainTypes[x][z])
                         {
                         case TerrainType::Plains:
 
