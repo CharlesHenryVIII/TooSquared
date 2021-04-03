@@ -704,9 +704,10 @@ int main(int argc, char* argv[])
 
                     WorldPos chunkP = ToWorld(Convert_ChunkIndexToGame(i));
                     chunkP.p.x += CHUNK_X / 2.0f;
+                    chunkP.p.y = float(g_chunks->height[i] + 1);
                     //chunkP.p.y = CHUNK_Y;
                     chunkP.p.z += CHUNK_Z / 2.0f;
-                    Vec3 size = { CHUNK_X / 4.0f, CHUNK_Y, CHUNK_Z / 4.0f };
+                    Vec3 size = { CHUNK_X / 4.0f, 1, CHUNK_Z / 4.0f };
 
                     DrawBlock(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, perspective);
                 }

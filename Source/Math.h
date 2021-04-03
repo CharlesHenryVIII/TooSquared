@@ -305,25 +305,21 @@ inline Vec2Int &operator-=(Vec2Int &a, Vec2Int b)
     Vec3 r = { a - b.x, a - b.y, a - b.z };
     return r;
 }
-
 [[nodiscard]] inline Vec2 operator+(Vec2 a, float b)
 {
     Vec2 r = { a.x + b, a.y + b };
     return r;
 }
-
 [[nodiscard]] inline Vec2 operator+(float a, Vec2 b)
 {
     Vec2 r = { a + b.x, a + b.y };
     return r;
 }
-
 [[nodiscard]] inline Vec2 operator-(Vec2 a, float b)
 {
     Vec2 r = { a.x - b, a.y - b };
     return r;
 }
-
 [[nodiscard]] inline Vec2 operator-(float a, Vec2 b)
 {
     Vec2 r = { a - b.x, a - b.y };
@@ -445,6 +441,7 @@ template <typename T>
 //    return sqrtf(powf(B.x - A.x, 2) + powf(B.y - A.y, 2));
 //}
 
+//TODO: Remove powf and replace with * operator
 [[nodiscard]] inline Vec3 Normalize(Vec3 v)
 {
     float hyp = sqrtf(powf(v.x, 2) + powf(v.y, 2) + powf(v.z, 2));
@@ -454,6 +451,34 @@ template <typename T>
 {
     float hyp = sqrtf(powf(v.x, 2) + powf(v.y, 2));
     return { (v.x / hyp), (v.y / hyp) };
+}
+inline float* Normalize(float* v, size_t length)
+{
+    float total = 0;
+    for (int32 i = 0; i < length; i++)
+    {
+        total += (v[i] * v[i]);
+    }
+    float hyp = sqrtf(total);
+    for (int32 i = 0; i < length; i++)
+    {
+        v[i] = v[i] / hyp;
+    }
+    return v;
+}
+inline double* Normalize(double* v, size_t length)
+{
+    double total = 0;
+    for (int32 i = 0; i < length; i++)
+    {
+        total += (v[i] * v[i]);
+    }
+    double hyp = sqrt(total);
+    for (int32 i = 0; i < length; i++)
+    {
+        v[i] = v[i] / hyp;
+    }
+    return v;
 }
 //inline Vec2 NormalizeZero(Vec2 v)
 //{
@@ -516,6 +541,10 @@ Atan2f return value:
 }
 
 [[nodiscard]] inline float Distance(Vec2 a, Vec2 b)
+{
+    return Pythags(a - b);
+}
+[[nodiscard]] inline double DistanceD(Vec2 a, Vec2 b)
 {
     return Pythags(a - b);
 }
@@ -618,3 +647,4 @@ struct Ray {
 };
 
 bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal);
+void QuickSort(uint8* data, const int32 length, const int32 itemSize, int32 (*compare)(const void* a, const void* b));

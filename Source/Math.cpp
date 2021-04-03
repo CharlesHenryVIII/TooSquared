@@ -302,3 +302,65 @@ bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec
 
     return true;
 }
+
+//#include <iostream>
+//#include <stdio.h>
+//#include <string_view>
+//#include <string>
+//#include <cassert>
+
+
+int ComparisonFunction(const void* a, const void* b)
+{
+    return  *(int32*)b - *(int32*)a;
+}
+
+void Swap(void* a, void* b, const int32 size)
+{
+    
+    uint8* c = (uint8*)a;
+    uint8* d = (uint8*)b;
+    for (int32 i = 0; i < size; i++)
+    {
+        
+		uint8 temp = c[i];
+		c[i] = d[i];
+		d[i] = temp;
+    }
+}
+
+int Partition(uint8* array, const int32 itemSize, int32 iBegin, int32 iEnd, int32 (*compare)(const void*, const void*))
+{
+    assert(array != nullptr);
+    uint8* pivot = &array[iEnd * itemSize];
+    assert(pivot != nullptr);
+    int32 lowOffset = iBegin;
+
+	for (int32 i = iBegin; i < iEnd; i++)
+	{
+		if (compare(&array[i * itemSize], pivot) > 0)
+		{
+			Swap(&array[lowOffset * itemSize], &array[i * itemSize], itemSize);
+			lowOffset++;
+		}
+	}
+
+    Swap(&array[lowOffset * itemSize], &array[iEnd * itemSize], itemSize);
+    return lowOffset;
+}
+
+
+void QuickSortInternal(uint8* array, const int32 itemSize, int32 iBegin, int32 iEnd, int32 (*compare)(const void*, const void*))
+{
+	if (iBegin < iEnd)
+	{
+        int32 pivotIndex = Partition(array, itemSize, iBegin, iEnd, compare);
+		QuickSortInternal(array, itemSize, iBegin, pivotIndex - 1, compare); //Low Sort
+		QuickSortInternal(array, itemSize, pivotIndex + 1, iEnd, compare); //High Sort
+	}
+}
+
+void QuickSort(uint8* data, const int32 length, const int32 itemSize, int32 (*compare)(const void* a, const void* b))
+{
+    QuickSortInternal(data, itemSize, 0, length - 1, compare);
+}

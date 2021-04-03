@@ -33,8 +33,11 @@ public:
         single_thread,
         multi_thread,
     };
+#if 0
     Threads threads = multi_thread;
-    //Threads threads = single_thread;
+#else
+    Threads threads = single_thread;
+#endif
     static MultiThreading& GetInstance()
     {
         static MultiThreading instance;
