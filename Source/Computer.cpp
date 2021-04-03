@@ -44,14 +44,20 @@ MultiThreading::~MultiThreading()
 
 void MultiThreading::SubmitJob(Job* job)
 {
-#if 1
-    std::lock_guard<std::mutex> lock(m_jobVectorMutex);
-    m_jobs.push_back(job);
-    m_semaphore.release();
-#else
-    job->DoThing();
-    delete job;
-#endif
+    switch (threads)
+    {
+    case Threads::single_thread:
+
+        job->DoThing();
+        delete job;
+        break;
+    case Threads::multi_thread:
+
+        std::lock_guard<std::mutex> lock(m_jobVectorMutex);
+        m_jobs.push_back(job);
+        m_semaphore.release();
+        break;
+    }
 }
 
 int32 MultiThreading::ThreadFunction(void* data)

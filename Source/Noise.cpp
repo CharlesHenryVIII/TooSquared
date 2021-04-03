@@ -976,3 +976,25 @@ uint32 XXSeedHash(uint64 seed, int32 buf)
     h32 ^= h32 >> 16;
     return h32;
 }
+
+uint32 XXSeedHash(uint64 seed, int64 buf)
+{
+		uint32 h32;
+		int32 index = 0;
+
+        h32 = (uint32)seed + PRIME32_5;
+		h32 += (uint32)2 * 4;
+		
+        h32 += (uint32)((buf >> 32) & 0xFFFFFFFF) * PRIME32_3;
+        h32 = RotateLeft(h32, 17) * PRIME32_4;
+        h32 += (uint32)(buf & 0xFFFFFFFF) * PRIME32_3;
+        h32 = RotateLeft(h32, 17) * PRIME32_4;
+
+		h32 ^= h32 >> 15;
+		h32 *= PRIME32_2;
+		h32 ^= h32 >> 13;
+		h32 *= PRIME32_3;
+		h32 ^= h32 >> 16;
+		
+		return h32;
+}

@@ -369,6 +369,7 @@ uint32 GetLandHeight(WorldPos chunkP, Vec3Int blockP, NoiseParams& params, float
     return Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D(lookupLoc, params)), lowerClamp, upperClamp);
 }
 
+std::vector<WorldPos> cubesToDraw;
 
 void ChunkArray::SetBlocks(ChunkIndex i)
 {
@@ -419,6 +420,102 @@ void ChunkArray::SetBlocks(ChunkIndex i)
             }
         }
     }
+
+    uint32 areaSize = 10; //size of the area for sampling positions
+
+
+#if 1
+    Vec3Int a_localPoint = g_chunks->p[i].p / areaSize; //floor
+    Vec2 a_allPoints[9];
+    {
+        float c_offsetSize = float(Max<uint32>((areaSize / 2 - 1), 1));
+        int32 incrimentor = 0;
+        for (int32 a_z = a_localPoint.z - 1; a_z <= a_localPoint.z + 1; a_z++)
+        {
+            for (int32 a_x = a_localPoint.x - 1; a_x <= a_localPoint.x + 1; a_x++)
+            {
+                Vec2 p = {};
+                int64 positionSeed = PositionHash({a_x, 0, a_z});
+
+                 
+                float xOffsetRatio = Clamp((XXSeedHash(positionSeed + s_worldSeed, a_x) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
+                float yOffsetRatio = Clamp((XXSeedHash(positionSeed + s_worldSeed, a_z) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
+                float xOffset = xOffsetRatio * (c_offsetSize / areaSize);
+                float yOffset = yOffsetRatio * (c_offsetSize / areaSize);
+                p.x = float(a_x) + xOffset;
+                p.y = float(a_z) + yOffset;
+                a_allPoints[incrimentor++] = p;
+            }
+        }
+        
+        Vec2 closestPoint = {};
+        float distClosestPoint = inf;
+        Vec2 thisPoint = { float(g_chunks->p[i].p.x), float(g_chunks->p[i].p.z) };
+        for (Vec2 loc : a_allPoints)
+        {
+            Vec2 newLoc = loc * float(areaSize);
+            float dist = Distance(thisPoint, newLoc);
+            if (dist < distClosestPoint)
+            {
+                distClosestPoint = dist;
+                closestPoint = newLoc;
+            }
+            //WorldPos blockLoc = { newLoc.x * CHUNK_X, 180, newLoc.y * CHUNK_Z };
+            //cubesToDraw.push_back(blockLoc);
+        }
+        //assert(distClosestPoint < float(areaSize * 2));
+
+        uint32 xHash = XXSeedHash(s_worldSeed, int32(closestPoint.x * areaSize));
+        uint32 zHash = XXSeedHash(s_worldSeed, int32(closestPoint.y * areaSize));
+        g_chunks->terrainType[i] = TerrainType((xHash + zHash) % +TerrainType::Count);
+    }
+#else
+
+    Vec3Int a_localPoint = g_chunks->p[i].p / areaSize; //floor
+    Vec2 a_allPoints[9];
+    {
+        float c_offsetSize = float(Max<uint32>((areaSize / 2 - 1), 1));
+        int32 incrimentor = 0;
+        for (int32 a_z = a_localPoint.z - 1; a_z <= a_localPoint.z + 1; a_z++)
+        {
+            for (int32 a_x = a_localPoint.x - 1; a_x <= a_localPoint.x + 1; a_x++)
+            {
+                Vec2 p = {};
+                int64 positionSeed = PositionHash({a_x, 0, a_z});
+
+                 
+                float xOffsetRatio = Clamp((XXSeedHash(positionSeed + s_worldSeed, a_x) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
+                float yOffsetRatio = Clamp((XXSeedHash(positionSeed + s_worldSeed, a_z) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
+                float xOffset = xOffsetRatio * (c_offsetSize / areaSize);
+                float yOffset = yOffsetRatio * (c_offsetSize / areaSize);
+                p.x = float(a_x) + xOffset;
+                p.y = float(a_z) + yOffset;
+                a_allPoints[incrimentor++] = p;
+            }
+        }
+        
+        Vec2 closestPoint = {};
+        float distClosestPoint = inf;
+        Vec2 thisPoint = { float(g_chunks->p[i].p.x), float(g_chunks->p[i].p.z) };
+        for (Vec2 loc : a_allPoints)
+        {
+            Vec2 newLoc = loc * float(areaSize);
+            float dist = Distance(thisPoint, newLoc);
+            if (dist < distClosestPoint)
+            {
+                distClosestPoint = dist;
+                closestPoint = newLoc;
+            }
+            //WorldPos blockLoc = { newLoc.x * CHUNK_X, 180, newLoc.y * CHUNK_Z };
+            //cubesToDraw.push_back(blockLoc);
+        }
+        //assert(distClosestPoint < float(areaSize * 2));
+
+        uint32 xHash = XXSeedHash(s_worldSeed, int32(closestPoint.x * areaSize));
+        uint32 zHash = XXSeedHash(s_worldSeed, int32(closestPoint.y * areaSize));
+        g_chunks->terrainType[i] = TerrainType((xHash + zHash) % +TerrainType::Count);
+    }
+#endif
 
     //set the majority of the blocks
     {
@@ -472,11 +569,37 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                         //add perlin noise here for creating more interesting land
 
                         float currentHeightMaxHeightRatio = float((waterVsLandHeight - HEIGHT_MAX_WATER)) / float((CHUNK_Y - HEIGHT_MAX_WATER));
-                        //float heightRatio = 1.0f - (currentHeightMaxHeightRatio * currentHeightMaxHeightRatio);
+                        float freq = 1.0f;
                         float heightRatio = currentHeightMaxHeightRatio;
+                        //float heightRatio = 1.0f - (currentHeightMaxHeightRatio * currentHeightMaxHeightRatio);
+                        //float heightRatio = currentHeightMaxHeightRatio * currentHeightMaxHeightRatio;
+
+                        switch (g_chunks->terrainType[i])
+                        {
+                        case TerrainType::Plains:
+
+                            heightRatio = currentHeightMaxHeightRatio / 10.0f;
+                            freq = 0.1f;
+                            break;
+                        case TerrainType::Hills:
+
+                            heightRatio = currentHeightMaxHeightRatio;
+                            freq = 1.0f;
+                            break;
+                        case TerrainType::Mountains:
+
+                            heightRatio = currentHeightMaxHeightRatio;
+                            freq = 2.0f;
+                            break;
+                        default:
+                            freq = 1.0f;
+                            heightRatio = currentHeightMaxHeightRatio;
+                            break;
+                        }
+
 
                         NoiseParams additionParms = {
-                            .numOfOctaves = 8,
+                            .numOfOctaves = 2,
                             .freq = 0.2f,
                             .weight = 1.0f,
                             .gainFactor = 0.5f,
@@ -488,10 +611,13 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                          //case TweenStyle::InverseCube:   t = 1.0f - (inv_t * inv_t * inv_t);  break;
 
                         Vec2 lookupLoc = { (chunkGamePos.p.x + x) * perlinScale, (chunkGamePos.p.z + z) * perlinScale };
-                        uint32 additionHeight = Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D(lookupLoc, additionParms)), 0, CHUNK_Y - waterVsLandHeight);
+                        uint32 additionHeight = Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D(lookupLoc * freq, additionParms)), 0, CHUNK_Y - waterVsLandHeight);
 
                         waterVsLandHeight += uint32(heightRatio * additionHeight);
 
+                        assert(waterVsLandHeight > y);
+                        assert(waterVsLandHeight < CHUNK_Y);
+                        waterVsLandHeight = Clamp(waterVsLandHeight, y + 1, CHUNK_Y - 1);
                         for (y; y < waterVsLandHeight - 3; y++)
                         {
                             blocks[i].e[x][y][z] = BlockType::Stone;

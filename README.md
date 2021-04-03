@@ -17,6 +17,7 @@
  * Render water correctly
  * collision
  * improve chunk update code
+ * Added perlin seeding
 
 
 

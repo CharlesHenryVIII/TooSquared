@@ -29,6 +29,12 @@ private:
     Job* AcquireJob();
 
 public:
+    enum Threads{
+        single_thread,
+        multi_thread,
+    };
+    Threads threads = multi_thread;
+    //Threads threads = single_thread;
     static MultiThreading& GetInstance()
     {
         static MultiThreading instance;

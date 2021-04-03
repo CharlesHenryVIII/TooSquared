@@ -129,6 +129,7 @@ int main(int argc, char* argv[])
     //    }
     //}
 
+    cubesToDraw.reserve(100000);
     while (g_running)
     {
         totalTime = SDL_GetPerformanceCounter() / freq;
@@ -310,6 +311,18 @@ int main(int argc, char* argv[])
             g_camera.p.p.x += cameraSpeed;
         if (keyStates[SDLK_c].downThisFrame)
             TEST_CREATE_AND_UPLOAD_CHUNKS = !TEST_CREATE_AND_UPLOAD_CHUNKS;
+        if (keyStates[SDLK_m].downThisFrame)
+        {
+            switch (multiThreading.threads)
+            {
+            case MultiThreading::single_thread:
+                multiThreading.threads = MultiThreading::multi_thread;
+                break;
+            case MultiThreading::multi_thread:
+                multiThreading.threads = MultiThreading::single_thread;
+                break;
+            }
+        }
 
         // change this value to your liking
         float sensitivity = 0.3f; 
@@ -473,7 +486,7 @@ int main(int argc, char* argv[])
 #ifdef _DEBUG
             g_camera.drawDistance = 10;
 #elif NDEBUG
-            g_camera.drawDistance = 60;
+            g_camera.drawDistance = 20;//60;
 #endif
 
             g_camera.fogDistance = g_camera.drawDistance + 10;
@@ -696,6 +709,10 @@ int main(int argc, char* argv[])
                     Vec3 size = { CHUNK_X / 4.0f, CHUNK_Y, CHUNK_Z / 4.0f };
 
                     DrawBlock(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, perspective);
+                }
+                for (WorldPos p : cubesToDraw)
+                {
+                    DrawBlock(p, Red, 2.0f, perspective);
                 }
             }
             if (validHit)

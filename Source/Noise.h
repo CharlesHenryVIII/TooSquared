@@ -18,6 +18,7 @@ float VoronoiNoise(Vec2 x, float u, float v);
 uint8 GetRandomUint8(uint8 a);
 int32 BigNoise(Vec2Int p, int32 s, uint32 seed);
 uint32 XXSeedHash(uint64 seed, int32 buf);
+uint32 XXSeedHash(uint64 seed, int64 buf);
 
 #if NOISETYPE == 2
 float Perlin3D(Vec3 in, Vec3Int wrap);
