@@ -242,6 +242,7 @@ inline Vec3Int& operator-=(Vec3Int &a, Vec3Int b)
 {
     return (a = a - b);
 }
+//
 [[nodiscard]] inline Vec3Int operator/(Vec3Int a, int32 b)
 {
     Vec3Int r = {a.x / b, a.y / b, a.z / b };
@@ -251,6 +252,7 @@ inline Vec3Int& operator-=(Vec3Int &a, Vec3Int b)
 {
     a = a / b;
 }
+//
 [[nodiscard]] inline Vec3Int operator%(Vec3Int a, Vec3Int b)
 {
     Vec3Int r = {a.x % b.x, a.y % b.y, a.z % b.z };
@@ -259,6 +261,38 @@ inline Vec3Int& operator-=(Vec3Int &a, Vec3Int b)
 [[nodiscard]] inline Vec3Int operator%=(Vec3Int& a, Vec3Int b)
 {
     a = a % b;
+}
+//
+[[nodiscard]] inline Vec3Int operator*(int32 a, Vec3Int b)
+{
+    Vec3Int r = { a * b.x, a * b.y, a * b.z };
+    return r;
+}
+[[nodiscard]] inline Vec3Int operator*(Vec3Int a, int32 b)
+{
+    Vec3Int r = { a.x * b, a.y * b, a.z * b };
+    return r;
+}
+//
+[[nodiscard]] inline Vec3Int operator+(Vec3Int a, int32 b)
+{
+    Vec3Int r = { a.x + b, a.y + b, a.z + b };
+    return r;
+}
+[[nodiscard]] inline Vec3Int operator+(int32 a, Vec3Int b)
+{
+    Vec3Int r = { a + b.x, a + b.y, a + b.z };
+    return r;
+}
+[[nodiscard]] inline Vec2Int operator+(Vec2Int a, int32 b)
+{
+    Vec2Int r = { a.x + b, a.y + b};
+    return r;
+}
+[[nodiscard]] inline Vec2Int operator+(int32 a, Vec2Int b)
+{
+    Vec2Int r = { a + b.x, a + b.y };
+    return r;
 }
 
 
