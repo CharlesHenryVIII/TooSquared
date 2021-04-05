@@ -252,6 +252,15 @@ inline Vec3Int& operator-=(Vec3Int &a, Vec3Int b)
 {
     a = a / b;
 }
+[[nodiscard]] inline Vec2Int operator/(Vec2Int a, int32 b)
+{
+    Vec2Int r = {a.x / b, a.y / b };
+    return r;
+}
+[[nodiscard]] inline Vec2Int operator/=(Vec2Int& a, int32 b)
+{
+    a = a / b;
+}
 //
 [[nodiscard]] inline Vec3Int operator%(Vec3Int a, Vec3Int b)
 {
@@ -271,6 +280,16 @@ inline Vec3Int& operator-=(Vec3Int &a, Vec3Int b)
 [[nodiscard]] inline Vec3Int operator*(Vec3Int a, int32 b)
 {
     Vec3Int r = { a.x * b, a.y * b, a.z * b };
+    return r;
+}
+[[nodiscard]] inline Vec2Int operator*(int32 a, Vec2Int b)
+{
+    Vec2Int r = { a * b.x, a * b.y };
+    return r;
+}
+[[nodiscard]] inline Vec2Int operator*(Vec2Int a, int32 b)
+{
+    Vec2Int r = { a.x * b, a.y * b };
     return r;
 }
 //
@@ -613,6 +632,16 @@ Atan2f return value:
 [[nodiscard]] inline Vec3 Vec3IntToVec3(Vec3Int a)
 {
     return { static_cast<float>(a.x), static_cast<float>(a.y), static_cast<float>(a.z) };
+}
+
+[[nodiscard]] inline Vec2Int Vec2ToVec2Int(Vec2 a)
+{
+    return { static_cast<int32>(a.x), static_cast<int32>(a.y) };
+}
+
+[[nodiscard]] inline Vec2 Vec2IntToVec2(Vec2Int a)
+{
+    return { static_cast<float>(a.x), static_cast<float>(a.y) };
 }
 //Multiplication of two vectors without adding each dimension to get the dot product
 [[nodiscard]] inline Vec3Int HadamardProduct(Vec3Int a, Vec3Int b)

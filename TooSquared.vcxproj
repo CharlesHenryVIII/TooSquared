@@ -156,6 +156,7 @@
     <ClCompile Include="Contrib\Glew\src\glew.c" />
     <ClCompile Include="Source\Block.cpp" />
     <ClCompile Include="Source\Computer.cpp" />
+    <ClCompile Include="Source\Entity.cpp" />
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Math.cpp" />
     <ClCompile Include="Source\Misc.cpp" />
@@ -177,6 +178,7 @@
   <ItemGroup>
     <ClInclude Include="Source\Block.h" />
     <ClInclude Include="Source\Computer.h" />
+    <ClInclude Include="Source\Entity.h" />
     <ClInclude Include="Source\Math.h" />
     <ClInclude Include="Source\Misc.h" />
     <ClInclude Include="Source\Noise.h" />

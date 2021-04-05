@@ -401,8 +401,6 @@ int main(int argc, char* argv[])
 
 
 
-
-
         GamePos hitBlock;
         bool validHit = false;
         Vec3 hitNormal;
