@@ -399,7 +399,7 @@ uint32 GetPlainsHeight(GamePos p, float perlinScale, int32 noiseOffset, uint32 l
     //float perlinScale = 1.0f;
     NoiseParams np = {
         .numOfOctaves = 2,
-        .freq = 0.2f,
+        .freq = 0.1f,
         .weight = 1.0f,
         .gainFactor = 0.5f,
     };
@@ -428,7 +428,7 @@ uint32 GetMountainsHeight(GamePos p, float perlinScale, int32 noiseOffset, uint3
 {
     float frequency = 2.0f;
     NoiseParams np = {
-        .numOfOctaves = 2,
+        .numOfOctaves = 4,
         .freq = 0.2f,
         .weight = 1.0f,
         .gainFactor = 0.5f,
@@ -491,7 +491,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
     bool TEST_firstTimeThrough = true;
     int32 cellSize = 10; //size of the area for sampling positions
-    float terrainWeights[CHUNK_X][CHUNK_Z][+TerrainType::Count] = {};
+    double terrainWeights[CHUNK_X][CHUNK_Z][+TerrainType::Count] = {};
     for (int32 x = 0; x < CHUNK_X; x++)
     {
         for (int32 z = 0; z < CHUNK_Z; z++)
@@ -533,14 +533,16 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
                 //Step 4:
                 //Jitter the corners
+#if 0
                 float cellOffsetSize = Max(cellSize / 2.0f - 1.0f, 1.0f);
                 for (int32 j = 0; j < arrsize(surroundPoints); j++)
                 {
                     const Vec3Int& c_sp = cell_surroundPoints[j];
-                    int64 positionSeed = PositionHash(ChunkPos(c_sp));
+                    int64 z_positionSeed = PositionHash(ChunkPos(c_sp));
+                    uint32 x_positionSeed = PCG_Random(z_positionSeed);
 
-                    float xOffsetRatio = Clamp((XXSeedHash(positionSeed + s_worldSeed, c_sp.x) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
-                    float zOffsetRatio = Clamp((XXSeedHash(positionSeed + s_worldSeed, c_sp.z) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
+                    float xOffsetRatio = Clamp((XXSeedHash(x_positionSeed + s_worldSeed, c_sp.x) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
+                    float zOffsetRatio = Clamp((XXSeedHash(z_positionSeed + s_worldSeed, c_sp.z) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
                     float xOffset = CHUNK_X * cellSize * (xOffsetRatio * (cellOffsetSize / cellSize));
                     float zOffset = CHUNK_Z * cellSize * (zOffsetRatio * (cellOffsetSize / cellSize));
                     surroundPoints[j].p.x = int32(float(surroundPoints[j].p.x) + xOffset);
@@ -553,6 +555,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                         TEST_firstTimeThrough = false;
                     }
                 }
+#endif
 
                 //Step 5:
                 //Determine which cell the block is in
@@ -561,9 +564,10 @@ void ChunkArray::SetBlocks(ChunkIndex i)
 
                 for (int32 j = 0; j < arrsize(surroundPoints); j++)
                 {
-                    Vec3 lineSegment = Vec3IntToVec3(surroundPoints[(j + 1) % arrsize(surroundPoints)].p - surroundPoints[j].p);
-                    Vec3 point = Vec3IntToVec3(blockLoc.p - surroundPoints[j].p);
-                    if (DotProduct(lineSegment, point) < 0)
+                    Vec3Int originP = surroundPoints[j].p;
+                    Vec3 lineSegment = Vec3IntToVec3(surroundPoints[(j + 1) % arrsize(surroundPoints)].p - originP);
+                    Vec3 point = Vec3IntToVec3(blockLoc.p - originP);
+                    if (DotProduct(lineSegment, point) > 0)
                     {
                         assert(j >= 0 && j < 4);
                         if (j == 0)
@@ -582,7 +586,7 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                 int32 apronDist = 2;
                 float distances[arrsize(surroundPoints)] = {};
                 for (int32 j = 0; j < arrsize(surroundPoints); j++)
-                    distances[j] = inf;
+                    distances[j] = 0;
 
                 bool needsToLerp = false;
                 
@@ -606,11 +610,9 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                     }
 
                     float dist = Distance(referencePoint, point);
-                    if (int32(dist) < apronDist)
-                    {
-                        distances[j] = dist;
+                    distances[j] = dist;
+                    if (int32(dist) <= apronDist)
                         needsToLerp = true;
-                    }
                 }
 
                 //dist == 0
@@ -631,30 +633,35 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                     for (int32 j = 0; j < arrsize(surroundPoints); j++)
                     {
                         //check over line
-                        if (distances[j] < inf)
+                        if (distances[j] <= apronDist)
                         {
-                            float originPercentage = (distances[j] + apronDist) / float(apronDist * 2);
+                            if (distances[j] >= 3 && distances[j] <= 4)
+                                int32 anothertestlmaoooooo = 123980u;
+                            double originPercentage = (distances[j] + apronDist) / double(apronDist * 2);
+                            if (originPercentage != 1.0f)
+                                int32 asdfasdf = 1011;
 
                             Vec2Int indices = { 0, 0 };
                             TerrainType tt = GetTerrainType(ToChunk(centerPoints[1 + indices.x][1 + indices.y]));
-                            terrainWeights[x][z][+tt] = Clamp(terrainWeights[x][z][+tt] + originPercentage, 0.0f, 1.0f);
+                            //terrainWeights[x][z][+tt] = Clamp(terrainWeights[x][z][+tt] + originPercentage, 0.0f, 1.0f);
+                            terrainWeights[x][z][+tt] += originPercentage;
                             if (j == 0)
-                                indices += { -1,  0 };
+                                indices += { -1, 0 };
                             else if (j == 1)
-                                indices += {  0,  1 };
+                                indices += {  0, 1 };
                             else if (j == 2)
-                                indices += {  1,  0 };
+                                indices += {  1, 0 };
                             else
                                 indices += {  0, -1 };
 
-                            float destPercentage = 1 - originPercentage;
-                            tt = GetTerrainType(ToChunk(centerPoints[1 + indices.x][1 + indices.y]));
-                            terrainWeights[x][z][+tt] = Clamp(terrainWeights[x][z][+tt] + destPercentage, 0.0f, 1.0f);
+                            double destPercentage = 1 - originPercentage;
+                            TerrainType tt2 = GetTerrainType(ToChunk(centerPoints[1 + indices.x][1 + indices.y]));
+                            terrainWeights[x][z][+tt2] += destPercentage;
 
 
                             //check corner tile
-                            int32 jCorner = j + 3 % arrsize(surroundPoints);
-                            if (distances[jCorner])
+                            int32 jCorner = (j + 3) % arrsize(surroundPoints);
+                            if (distances[jCorner] < apronDist)
                             {
                                 if (jCorner == 0)
                                     indices += { -1, 0 };
@@ -665,153 +672,30 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                                 else
                                     indices += {  0, -1 };
 
+                                if (originPercentage != 1.0f)
+                                    int32 thisisatestlmao = 1023;
+
                                 originPercentage = (distances[jCorner] + apronDist) / float(apronDist * 2);
                                 destPercentage = 1 - originPercentage;
 
-                                tt = GetTerrainType(ToChunk(centerPoints[1 + indices.x][1 + indices.y]));
-                                terrainWeights[x][z][+tt] += destPercentage;
+                                TerrainType tt3 = GetTerrainType(ToChunk(centerPoints[1 + indices.x][1 + indices.y]));
+                                terrainWeights[x][z][+tt3] += destPercentage;
                             }
                         }
+                        else if (distances[j] == inf)
+                            terrainWeights[x][z][j] = 0.0f;
                     }
                 }
 
-                float total = {};
-                for (float v : terrainWeights[x][z])
+                double total = {};
+                for (double v : terrainWeights[x][z])
                     total += v;
-                for (float& v : terrainWeights[x][z])
+                for (double& v : terrainWeights[x][z])
                     v = v / total;
             }
         }
     }
 
-
-
-#if 0
-    uint32 areaSize = 10; //size of the area for sampling positions
-    double terrainWeightPercentages[CHUNK_X][CHUNK_Z][+TerrainType::Count] = {};
-    Vec3Int a_localPoint = g_chunks->p[i].p / areaSize; //floor
-    Vec2 a_allPoints[9];
-    {
-        float c_offsetSize = float(Max<uint32>((areaSize / 2 - 1), 1));
-        int32 incrimentor = 0;
-        for (int32 a_z = a_localPoint.z - 1; a_z <= a_localPoint.z + 1; a_z++)
-        {
-            for (int32 a_x = a_localPoint.x - 1; a_x <= a_localPoint.x + 1; a_x++)
-            {
-                Vec2 p = {};
-                int64 positionSeed = PositionHash({ a_x, 0, a_z });
-
-
-                float xOffsetRatio = Clamp((XXSeedHash(positionSeed + s_worldSeed, a_x) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
-                float yOffsetRatio = Clamp((XXSeedHash(positionSeed + s_worldSeed, a_z) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
-                float xOffset = xOffsetRatio * (c_offsetSize / areaSize);
-                float yOffset = yOffsetRatio * (c_offsetSize / areaSize);
-                p.x = float(a_x) + xOffset;
-                p.y = float(a_z) + yOffset;
-                a_allPoints[incrimentor++] = p;
-            }
-        }
-
-        Vec2 closestPoint = {};
-        float distClosestPoint = inf;
-        Vec2 thisPoint = { float(g_chunks->p[i].p.x), float(g_chunks->p[i].p.z) };
-        for (Vec2 loc : a_allPoints)
-        {
-            Vec2 newLoc = loc * float(areaSize);
-            float dist = Distance(thisPoint, newLoc);
-            if (dist < distClosestPoint)
-            {
-                distClosestPoint = dist;
-                closestPoint = newLoc;
-            }
-            //WorldPos blockLoc = { newLoc.x * CHUNK_X, 180, newLoc.y * CHUNK_Z };
-            //cubesToDraw.push_back(blockLoc);
-        }
-        //assert(distClosestPoint < float(areaSize * 2));
-
-        uint32 xHash = XXSeedHash(s_worldSeed, int32(closestPoint.x * areaSize));
-        uint32 zHash = XXSeedHash(s_worldSeed, int32(closestPoint.y * areaSize));
-        g_chunks->terrainType[i] = TerrainType((xHash + zHash) % +TerrainType::Count);
-
-        for (int32 x = 0; x < CHUNK_X; x++)
-        {
-            for (int32 z = 0; z < CHUNK_Z; z++)
-            {
-                TerrainType terrainTypes[x][z] = g_chunks->terrainType[i];
-            }
-        }
-    }
-#endif
-#if 0
-
-    uint32 areaSize = 10; //size of the area for sampling positions
-    double terrainWeightPercentages[CHUNK_X][CHUNK_Z][+TerrainType::Count] = {};
-    bool firstTimeThrough = true;
-    for (int32 x = 0; x < CHUNK_X; x++)
-    {
-        for (int32 z = 0; z < CHUNK_Z; z++)
-        {
-
-            Vec3Int a_localPoint = g_chunks->p[i].p / areaSize; //floor
-            Vec2 a_allPoints[9];
-            {
-                float c_offsetSize = float(Max<uint32>((areaSize / 2 - 1), 1));
-                int32 incrimentor = 0;
-                for (int32 a_z = a_localPoint.z - 1; a_z <= a_localPoint.z + 1; a_z++)
-                {
-                    for (int32 a_x = a_localPoint.x - 1; a_x <= a_localPoint.x + 1; a_x++)
-                    {
-                        Vec2 p = {};
-                        int64 positionSeed = PositionHash({ a_x, 0, a_z });
-
-
-                        float xOffsetRatio = Clamp(((XXSeedHash(positionSeed + s_worldSeed, a_x) & 0xFFFF) / float(0xFFFF) - 0.5f) * 2, -1.0f, 1.0f);
-                        float yOffsetRatio = Clamp(((XXSeedHash(positionSeed + s_worldSeed, a_z) & 0xFFFF) / float(0xFFFF) - 0.5f) * 2, -1.0f, 1.0f);
-                        float xOffset = xOffsetRatio * (c_offsetSize / areaSize);
-                        float yOffset = yOffsetRatio * (c_offsetSize / areaSize);
-                        p.x = float(a_x) + xOffset;
-                        p.y = float(a_z) + yOffset;
-                        a_allPoints[incrimentor++] = p;
-                    }
-                }
-
-                Vec2 thisPoint = { float(g_chunks->p[i].p.x) + float(x) / CHUNK_X, float(g_chunks->p[i].p.z) + float(z) / CHUNK_Z};
-                
-                for (Vec2 loc : a_allPoints)
-                {
-                    Vec2 newLoc = Floor(loc * float(areaSize));
-                    uint32 xHash = XXSeedHash(s_worldSeed, int32(newLoc.x));//wrong location already multiplying by areaSize?
-                    uint32 zHash = XXSeedHash(s_worldSeed, int32(newLoc.y));
-                    double dist = DistanceD(thisPoint, newLoc);
-                    terrainWeightPercentages[x][z][+TerrainType((xHash + zHash) % +TerrainType::Count)] += dist;
-                    if (firstTimeThrough)
-                    {
-                        WorldPos blockLoc = { newLoc.x * CHUNK_X, 240, newLoc.y * CHUNK_Z };
-                        cubesToDraw.push_back(blockLoc);
-                        firstTimeThrough = false;
-                    }
-                }
-                double weightSum = 0;
-                for (int32 j = 0; j < arrsize(terrainWeightPercentages[x][z]); j++)
-                    weightSum += terrainWeightPercentages[x][z][j];
-                for (int32 j = 0; j < arrsize(terrainWeightPercentages[x][z]); j++)
-                    terrainWeightPercentages[x][z][j] /= weightSum;
-                for (int32 d = 0; d < arrsize(terrainWeightPercentages[x][z]); d++)
-                    terrainWeightPercentages[x][z][d] = 1 - terrainWeightPercentages[x][z][d];
-
-                weightSum = 0;
-                for (int32 j = 0; j < arrsize(terrainWeightPercentages[x][z]); j++)
-                    weightSum += terrainWeightPercentages[x][z][j];
-                for (int32 j = 0; j < arrsize(terrainWeightPercentages[x][z]); j++)
-                    terrainWeightPercentages[x][z][j] /= weightSum;
-                
-            }
-
-        }
-    }
-
-
-#endif
 
     //set the majority of the blocks
     {
@@ -877,98 +761,13 @@ void ChunkArray::SetBlocks(ChunkIndex i)
                         uint32 additionalHeight = 0;
                         for (uint32 j = 0; j < +TerrainType::Count; j++)
                         {
+                            if (terrainWeights[x][z][j] > 0.0001f && terrainWeights[x][z][j] < 1.0f - 0.0001f)
+                                int32 asdf = 10;
                             //additionalHeight += uint32(float(terrainFunctions[j]) * 0.1f * terrainWeights[x][z][j]);
-                            additionalHeight = uint32(Lerp<float>(float(additionalHeight), terrainFunctions[j] * 0.1f, terrainWeights[x][z][j]));
+                            //additionalHeight = uint32(Lerp<float>(float(additionalHeight), terrainFunctions[j] * 0.1f, terrainWeights[x][z][j]));
+                            additionalHeight += uint32(float(terrainFunctions[j]) * 0.1f * terrainWeights[x][z][j]);
                         }
                         waterVsLandHeight += additionalHeight;
-
-#if 1
-#if 1
-#if 1// original
-#if 0
-                        double actualHeightRatio = {};
-                        double actualFreq = {};
-                        TerrainType closestTerrain;
-                        double currentMax = 0;
-
-                        for (uint32 j = 0; j < +TerrainType::Count; j++)
-                        {
-                            if (currentMax < terrainWeightPercentages[x][z][j])
-                            {
-                                currentMax = terrainWeightPercentages[x][z][j];
-                                closestTerrain = TerrainType(j);
-                            }
-                        }
-                        actualFreq += freqs[+closestTerrain];
-                        actualHeightRatio = heightRatios[+closestTerrain];
-                        Vec2 lookupLoc = { (chunkGamePos.p.x + x) * perlinScale, (chunkGamePos.p.z + z) * perlinScale };
-                        uint32 additionHeight = Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D(lookupLoc * float(actualFreq), additionParms)), 0, CHUNK_Y - waterVsLandHeight);
-                        waterVsLandHeight += uint32(actualHeightRatio * additionHeight);
-#endif
-#else
-
-                        double actualHeightRatio = {};
-                        double actualFreq = {};
-
-                        for (uint32 j = 0; j < +TerrainType::Count; j++)
-                        {
-                            actualHeightRatio += heightRatios[j] * terrainWeightPercentages[x][z][j];
-                            actualFreq += freqs[j] * terrainWeightPercentages[x][z][j];
-                        }
-                         //case TweenStyle::Linear: break;
-                         //case TweenStyle::Square: t = t * t;  break;
-                         //case TweenStyle::Cube:   t = t * t * t;  break;
-
-                         //case TweenStyle::InverseCube:   t = 1.0f - (inv_t * inv_t * inv_t);  break;
-
-                        Vec2 lookupLoc = { (chunkGamePos.p.x + x) * perlinScale, (chunkGamePos.p.z + z) * perlinScale };
-                        uint32 additionHeight = Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D(lookupLoc * float(actualFreq), additionParms)), 0, CHUNK_Y - waterVsLandHeight);
-                        waterVsLandHeight += uint32(actualHeightRatio * additionHeight);
-#endif
-#else
-
-                        double actualHeightRatio = {};
-                        double actualFreq = {};
-
-                        for (uint32 j = 0; j < +TerrainType::Count; j++)
-                        {
-                            actualHeightRatio = Lerp(actualHeightRatio, heightRatios[j], terrainWeightPercentages[x][z][j]);
-                            actualFreq = Lerp(actualFreq, freqs[j], terrainWeightPercentages[x][z][j]);
-                        }
-                         //case TweenStyle::Linear: break;
-                         //case TweenStyle::Square: t = t * t;  break;
-                         //case TweenStyle::Cube:   t = t * t * t;  break;
-
-                         //case TweenStyle::InverseCube:   t = 1.0f - (inv_t * inv_t * inv_t);  break;
-
-                        Vec2 lookupLoc = { (chunkGamePos.p.x + x) * perlinScale, (chunkGamePos.p.z + z) * perlinScale };
-                        uint32 additionHeight = Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D(lookupLoc * float(actualFreq), additionParms)), 0, CHUNK_Y - waterVsLandHeight);
-                        waterVsLandHeight += uint32(actualHeightRatio * additionHeight);
-                        
-#endif
-#else
-
-#if 0
-                        Vec2 lookupLoc = { (chunkGamePos.p.x + x) * perlinScale, (chunkGamePos.p.z + z) * perlinScale };
-                        uint32 additionHeights[+TerrainType::Count] = {};
-                        for (uint32 j = 0; j < +TerrainType::Count; j++)
-                            additionHeights[j] = Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D(lookupLoc * float(freqs[j]), additionParms)), 0, CHUNK_Y - waterVsLandHeight);
-                       
-                        for (uint32 j = 0; j < +TerrainType::Count; j++)
-                            waterVsLandHeight += uint32(float(additionHeights[j]) * terrainWeightPercentages[x][z][j]);
-#else
-
-                        Vec2 lookupLoc = { (chunkGamePos.p.x + x) * perlinScale, (chunkGamePos.p.z + z) * perlinScale };
-                        uint32 additionHeights[+TerrainType::Count] = {};
-                        for (uint32 j = 0; j < +TerrainType::Count; j++)
-                            additionHeights[j] = Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D(lookupLoc * float(freqs[j]), additionParms)), 0, CHUNK_Y - waterVsLandHeight);
-                       
-                        double additionalHeight = 0;
-                        for (uint32 j = 0; j < +TerrainType::Count; j++)
-                            additionalHeight = Lerp(additionalHeight, double(additionHeights[j]), terrainWeightPercentages[x][z][j]);
-                        waterVsLandHeight += uint32(additionalHeight);
-#endif
-#endif
 
 
                         assert(waterVsLandHeight > y);
