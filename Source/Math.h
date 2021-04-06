@@ -576,7 +576,8 @@ Atan2f return value:
 
 [[nodiscard]] inline float DotProduct(Vec2 a, Vec2 b)
 {
-    return a.x * b.x + a.y * b.y;
+    float r = a.x * b.x + a.y * b.y;
+    return r;
 }
 [[nodiscard]] inline float DotProduct(Vec3 a, Vec3 b)
 {
