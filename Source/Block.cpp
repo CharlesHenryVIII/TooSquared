@@ -481,7 +481,7 @@ struct VoronoiCell {
         {
             Vec2 normal = lines[i].Normal();
             Vec2 point = { float(blockP.p.x), float(blockP.p.z) };
-
+            point -= lines[i].p0;
             if (DotProduct(normal, point) > 0)
                 return false;
         }
@@ -500,6 +500,8 @@ struct VoronoiCell {
 struct VoronoiRegion {
     const int32 m_cellSize = 10; //size of the area for sampling positions
     const int32 m_apronDistance = 2;
+    ChunkPos Debug_referenceChunkP;
+    Vec2Int Debug_referenceCellP;
     std::vector<VoronoiCell> cells;
 
     [[nodiscard]] VoronoiCell* GetCell(GamePos p)
@@ -526,15 +528,16 @@ struct VoronoiRegion {
 
     [[nodiscard]] Vec2Int ToCell(ChunkPos p)
     {
-        Vec2Int result = Vec2Int({ p.p.x , p.p.z }) / m_cellSize;
+        Vec2Int result = Vec2ToVec2Int(Floor(Vec2({ float(p.p.x) , float(p.p.z) }) / float(m_cellSize)));
         return result;
     }
 
     [[nodiscard]] Vec2Int ToCell(GamePos p)
     {
         ChunkPos chunkPos = ToChunk(p);
-        Vec2Int result = { chunkPos.p.x / m_cellSize, chunkPos.p.z / m_cellSize };
-        return result;
+        return ToCell(chunkPos);
+        //Vec2Int result = { chunkPos.p.x / m_cellSize, chunkPos.p.z / m_cellSize };
+        //return result;
         //Vec2Int result = Vec2Int({ p.p.x , p.p.z }) / m_cellSize;
         //return result;
     }
@@ -545,6 +548,8 @@ struct VoronoiRegion {
         Vec2Int cell_chunkP = ToCell(chunkP);
         bool DEBUGTEST_firstTimeThrough = true;
 
+        Debug_referenceChunkP = chunkP;
+        Debug_referenceCellP = cell_chunkP;
         for (int32 cell_x = -currentRegionGatherSize; cell_x <= currentRegionGatherSize; cell_x++)
         {
             for (int32 cell_y = -currentRegionGatherSize; cell_y <= currentRegionGatherSize; cell_y++)
@@ -598,6 +603,7 @@ struct VoronoiRegion {
                     cellCorners[i].p.z += int32(float(CHUNK_Z) * offsetInChunks.y);
 #endif
 
+#if 0
                     if (DEBUGTEST_firstTimeThrough)
                     {
                         WorldPos blockLoc = ToWorld(cellCorners[i]);
@@ -605,6 +611,7 @@ struct VoronoiRegion {
                         cubesToDraw.push_back(blockLoc);
                         DEBUGTEST_firstTimeThrough = false;
                     }
+#endif
                 }
 
                 VoronoiCell cell;
@@ -855,6 +862,8 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                         //________
                         GamePos blockLoc = Convert_BlockToGame(chunkIndex, { x, 0, z });
                         Vec2Int centerPointIndices = {};
+                        if (blockLoc.p == Vec3Int({ -144, 0, -40 }))
+                            int32 i = 0;
                         VoronoiCell* cell = region.GetCell(blockLoc);
                         assert(cell);
                         //________
