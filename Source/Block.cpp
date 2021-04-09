@@ -462,26 +462,26 @@ Vec2Int vornoiEdges[+VoronoiEdges::Count] = {
 };
 
 struct VoronoiCell {
-    GamePos center = {};
-    LineSegment lines[+VoronoiEdges::Count] = {};
+    GamePos m_center = {};
+    LineSegment m_lines[+VoronoiEdges::Count] = {};
 
     void BuildCell(GamePos* corners, GamePos cellCenter)
     {
-        center = cellCenter;
-        for (int32 i = 0; i < arrsize(lines); i++)
+        m_center = cellCenter;
+        for (int32 i = 0; i < arrsize(m_lines); i++)
         {
-            lines[i].p0 = { float(corners[i].p.x),                        float(corners[i].p.z) };
-            lines[i].p1 = { float(corners[(i + 1) % arrsize(lines)].p.x), float(corners[(i + 1) % arrsize(lines)].p.z) };
+            m_lines[i].p0 = { float(corners[i].p.x),                        float(corners[i].p.z) };
+            m_lines[i].p1 = { float(corners[(i + 1) % arrsize(m_lines)].p.x), float(corners[(i + 1) % arrsize(m_lines)].p.z) };
         }
     }
 
     [[nodiscard]] bool IsInside(GamePos blockP)
     {
-        for (int32 i = 0; i < arrsize(lines); i++)
+        for (int32 i = 0; i < arrsize(m_lines); i++)
         {
-            Vec2 normal = lines[i].Normal();
+            Vec2 normal = m_lines[i].Normal();
             Vec2 point = { float(blockP.p.x), float(blockP.p.z) };
-            point -= lines[i].p0;
+            point -= m_lines[i].p0;
             if (DotProduct(normal, point) > 0)
                 return false;
         }
@@ -491,18 +491,20 @@ struct VoronoiCell {
     [[nodiscard]] std::vector<float> DistanceToEachLineSegment(const GamePos& blockP)
     {
         std::vector<float> distances;
-        for (int32 i = 0; i < arrsize(lines); i++)
+        for (int32 i = 0; i < arrsize(m_lines); i++)
         {
-            Vec2 lineDest = lines[i].p1 - lines[i].p0;
-            Vec2 point = Vec2({ float(blockP.p.x), float(blockP.p.z) }) - lines[i].p0;
+            Vec2 lineDest = m_lines[i].p1 - m_lines[i].p0;
+            Vec2 point = Vec2({ float(blockP.p.x), float(blockP.p.z) }) - m_lines[i].p0;
 
             //https://mathinsight.org/dot_product
             float lineDistance = Distance({}, lineDest);
             float distanceAlongLine = DotProduct(lineDest, point) / lineDistance;
             float distanceRatioAlongLine = distanceAlongLine / lineDistance;
             Vec2 pointOnLine = Lerp<Vec2>(Vec2({}), lineDest, Vec2({ 1.0f, 1.0f }) * distanceRatioAlongLine);
-            pointOnLine.x    = Clamp<float>(pointOnLine.x, 0.0f, lineDest.x);
-            pointOnLine.y    = Clamp<float>(pointOnLine.y, 0.0f, lineDest.y);
+            Vec2 hi = { Max(0.0f, lineDest.x), Max(0.0f, lineDest.y) };
+            Vec2 lo = { Min(0.0f, lineDest.x), Min(0.0f, lineDest.y) };
+            pointOnLine.x = Clamp<float>(pointOnLine.x, lo.x, hi.x);
+            pointOnLine.y = Clamp<float>(pointOnLine.y, lo.y, hi.y);
 
             distances.push_back(Distance(pointOnLine, point));
         }
@@ -511,8 +513,8 @@ struct VoronoiCell {
 
     [[nodiscard]] uint32 GetHash()
     {
-        uint32 xHash = XXSeedHash(s_worldSeed, center.p.x);
-        uint32 zHash = XXSeedHash(s_worldSeed, center.p.z);
+        uint32 xHash = XXSeedHash(s_worldSeed, m_center.p.x);
+        uint32 zHash = XXSeedHash(s_worldSeed, m_center.p.z);
         union TempMerge {
             struct {
                 uint32 x;
@@ -599,7 +601,7 @@ struct VoronoiRegion {
 
                 for (VoronoiCell& cell : cells)
                 {
-                    if (cell.center.p == (thisCell->center.p + neighborChunkOffsets[i].p))
+                    if (cell.m_center.p == (thisCell->m_center.p + neighborChunkOffsets[i].p))
                         results[i] = cell;
                 }
             }
@@ -612,6 +614,39 @@ struct VoronoiRegion {
     //TODO: Improve
     std::vector<VoronoiResult> GetVoronoiDistancesAndNeighbors(VoronoiCell* blockCell, const GamePos& blockP)
     {
+#if 1
+        std::vector<float> distances = blockCell->DistanceToEachLineSegment(blockP);
+        std::vector<VoronoiResult> results;
+        for (int32 i = 0; i < distances.size(); i++)
+        {
+            Vec2 _normal = blockCell->m_lines[i].Normal();
+            Vec2 normal = Normalize(_normal);
+            Vec2 halfwayPoint = blockCell->m_lines[i].p0 + (blockCell->m_lines[i].p1 - blockCell->m_lines[i].p0);
+
+            Vec2 blockCheckLocation = halfwayPoint + normal;
+            GamePos gameCheckLocation = GamePos({ int32(floorf(blockCheckLocation.x + 0.5f)), 0, int32(floorf(blockCheckLocation.y + 0.5f)) });
+            VoronoiCell* checkCell = GetCell(gameCheckLocation);
+            int32 j = 0;
+            while (checkCell->m_center.p == blockCell->m_center.p)
+            {
+                blockCheckLocation += normal;
+                gameCheckLocation = GamePos({ int32(floorf(blockCheckLocation.x)), 0, int32(floorf(blockCheckLocation.y)) });
+                checkCell = GetCell(gameCheckLocation);
+                if (j++ >= 50)
+                {
+                    assert(false);
+                    break;
+                }
+            }
+
+            VoronoiResult result = {};
+            result.cell = *checkCell;
+            result.distance = distances[i];
+            results.push_back(result);
+        }
+        return results;
+
+#else
         std::vector<VoronoiResult> results;
         GamePos neighborLocationOffsets[] = {
             CellToGame(Vec2Int({ -1 ,  0 })),
@@ -640,6 +675,7 @@ struct VoronoiRegion {
             }
         }
         return results;
+#endif
     }
 
     void BuildRegion(ChunkPos chunkP)
@@ -974,7 +1010,7 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                         std::vector<VoronoiResult> voronoiResults = region.GetVoronoiDistancesAndNeighbors(cell, blockP);
                         for (int32 i = 0; i < voronoiResults.size(); i++)
                         {
-                            if (voronoiResults[i].distance < region.m_apronDistance)
+                            if (voronoiResults[i].distance <= float(region.m_apronDistance))
                             {
                                 float halfLambertDistanceToMainCellCenter = ((voronoiResults[i].distance / region.m_apronDistance) + 1.0f) / 2.0f;
                                 uint32 neighborHash = voronoiResults[i].cell.GetHash();
@@ -1728,6 +1764,7 @@ const float perlinScale = 0.01f;
 //
 ////_________END NEW IMPLIMENTATION_________
 ////________________________________________
+#if 0
 
     for (int32 x = 0; x < CHUNK_X; x++)
     {
@@ -1742,6 +1779,7 @@ const float perlinScale = 0.01f;
             blockRatio /= blockRatioProduct;
             int32 yTotal = 0;
             //BlockType topBlockType;// = BlockType::Grass;
+#endif
 
 
 
@@ -2382,9 +2420,11 @@ const float perlinScale = 0.01f;
                 blocks[i].e[x][y][z] = bt;
             }
 #endif
+#if 0
         }
     }
 
+#endif
 #if 0
     //Layer 1 + 2
     blocks[i].e[CHUNK_X - 1][CHUNK_Y - 6][CHUNK_Z - 2] = BlockType::Grass;
