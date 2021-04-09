@@ -33,7 +33,7 @@ public:
         single_thread,
         multi_thread,
     };
-#if 0
+#if 1
     Threads threads = multi_thread;
 #else
     Threads threads = single_thread;

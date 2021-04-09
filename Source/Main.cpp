@@ -456,7 +456,7 @@ int main(int argc, char* argv[])
         for (int32 c = SDLK_1; c <= SDLK_9; c++)
         {
             //if (keyStates[c].downThisFrame)
-            if (keyStates[c].down)
+            if (keyStates[c].downThisFrame)
             {
                 if (validHit)
                 {

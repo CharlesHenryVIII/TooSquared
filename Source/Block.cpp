@@ -501,10 +501,10 @@ struct VoronoiCell {
             float distanceAlongLine = DotProduct(lineDest, point) / lineDistance;
             float distanceRatioAlongLine = distanceAlongLine / lineDistance;
             Vec2 pointOnLine = Lerp<Vec2>(Vec2({}), lineDest, Vec2({ 1.0f, 1.0f }) * distanceRatioAlongLine);
-            Vec2 hi = { Max(0.0f, lineDest.x), Max(0.0f, lineDest.y) };
-            Vec2 lo = { Min(0.0f, lineDest.x), Min(0.0f, lineDest.y) };
-            pointOnLine.x = Clamp<float>(pointOnLine.x, lo.x, hi.x);
-            pointOnLine.y = Clamp<float>(pointOnLine.y, lo.y, hi.y);
+            //Vec2 hi = { Max(0.0f, lineDest.x), Max(0.0f, lineDest.y) };
+            //Vec2 lo = { Min(0.0f, lineDest.x), Min(0.0f, lineDest.y) };
+            //pointOnLine.x = Clamp<float>(pointOnLine.x, lo.x, hi.x);
+            //pointOnLine.y = Clamp<float>(pointOnLine.y, lo.y, hi.y);
 
             distances.push_back(Distance(pointOnLine, point));
         }
@@ -1005,9 +1005,11 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                         TerrainType cellType = TerrainType(cellHash % +TerrainType::Count);
 
                         uint32 additionalHeight = uint32(float(terrainFunctions[+cellType]) * 0.1f);
+                        uint32 baseHeight = uint32(float(terrainFunctions[+cellType]) * 0.1f);
 
 
                         std::vector<VoronoiResult> voronoiResults = region.GetVoronoiDistancesAndNeighbors(cell, blockP);
+                        uint32 heightCount = 1;
                         for (int32 i = 0; i < voronoiResults.size(); i++)
                         {
                             if (voronoiResults[i].distance <= float(region.m_apronDistance))
@@ -1016,7 +1018,9 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                                 uint32 neighborHash = voronoiResults[i].cell.GetHash();
                                 TerrainType neighborType = TerrainType(neighborHash % +TerrainType::Count);
                                 uint32 neighborHeight = uint32(float(terrainFunctions[+neighborType]) * 0.1f);
-                                additionalHeight = uint32(Lerp<>(float(neighborHeight), float(additionalHeight), halfLambertDistanceToMainCellCenter));
+                                additionalHeight = uint32(float(baseHeight) * halfLambertDistanceToMainCellCenter);
+                                additionalHeight += uint32(float(neighborHeight) * (1.0f - halfLambertDistanceToMainCellCenter));
+                                heightCount++;
                             }
                         }
 
