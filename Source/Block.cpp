@@ -621,7 +621,7 @@ struct VoronoiRegion {
         {
             Vec2 _normal = blockCell->m_lines[i].Normal();
             Vec2 normal = Normalize(_normal);
-            Vec2 halfwayPoint = blockCell->m_lines[i].p0 + (blockCell->m_lines[i].p1 - blockCell->m_lines[i].p0);
+            Vec2 halfwayPoint = blockCell->m_lines[i].p0 + ((blockCell->m_lines[i].p1 - blockCell->m_lines[i].p0) / 2);
 
             Vec2 blockCheckLocation = halfwayPoint + normal;
             GamePos gameCheckLocation = GamePos({ int32(floorf(blockCheckLocation.x + 0.5f)), 0, int32(floorf(blockCheckLocation.y + 0.5f)) });
@@ -987,8 +987,10 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                         GamePos blockP = Convert_BlockToGame(chunkIndex, { x, 0, z });
                         Vec2Int centerPointIndices = {};
                         if (blockP.p == Vec3Int({ -144, 0, -40 }))
-                            int32 i = 0;
+                            int32 asdf = 0;
                         if (blockP.p.x == -290 && blockP.p.z == 16)
+                            int32 asdf = 0;
+                        if (blockP.p.x == -349 && blockP.p.z == -142)
                             int32 asdf = 0;
                         VoronoiCell* cell = region.GetCell(blockP);
                         assert(cell);
@@ -1004,25 +1006,45 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                         uint32 cellHash = cell->GetHash();
                         TerrainType cellType = TerrainType(cellHash % +TerrainType::Count);
 
-                        uint32 additionalHeight = uint32(float(terrainFunctions[+cellType]) * 0.1f);
-                        uint32 baseHeight = uint32(float(terrainFunctions[+cellType]) * 0.1f);
+                        float noiseHeightScale = 0.4f;
+                        float baseHeight = float(terrainFunctions[+cellType]) * noiseHeightScale;
 
 
                         std::vector<VoronoiResult> voronoiResults = region.GetVoronoiDistancesAndNeighbors(cell, blockP);
-                        uint32 heightCount = 1;
+                        //float heightSum = terrainFunctions[+cellType] * 0.1f;
+                        float heights = 0;
+                        int32 counts = 0;
+
                         for (int32 i = 0; i < voronoiResults.size(); i++)
                         {
-                            if (voronoiResults[i].distance <= float(region.m_apronDistance))
+                            if (voronoiResults[i].distance < float(region.m_apronDistance))
                             {
+#if 1
+                                float halfLambertDistanceToMainCellCenter = ((voronoiResults[i].distance / region.m_apronDistance) + 1.0f) / 2.0f;
+                                uint32 neighborHash = voronoiResults[i].cell.GetHash();
+                                TerrainType neighborType = TerrainType(neighborHash % +TerrainType::Count);
+                                float neighborHeight = float(terrainFunctions[+neighborType]) * noiseHeightScale;
+
+                                heights += Lerp<float>(neighborHeight, baseHeight, halfLambertDistanceToMainCellCenter);
+                                counts++;
+
+                                
+#else
                                 float halfLambertDistanceToMainCellCenter = ((voronoiResults[i].distance / region.m_apronDistance) + 1.0f) / 2.0f;
                                 uint32 neighborHash = voronoiResults[i].cell.GetHash();
                                 TerrainType neighborType = TerrainType(neighborHash % +TerrainType::Count);
                                 uint32 neighborHeight = uint32(float(terrainFunctions[+neighborType]) * 0.1f);
                                 additionalHeight = uint32(float(baseHeight) * halfLambertDistanceToMainCellCenter);
                                 additionalHeight += uint32(float(neighborHeight) * (1.0f - halfLambertDistanceToMainCellCenter));
-                                heightCount++;
+#endif
                             }
                         }
+
+                        uint32 additionalHeight = 0;
+                        if (counts)
+                            additionalHeight = uint32(roundf(heights / float(counts)));
+                        else
+                            additionalHeight = uint32(baseHeight);
 
 
                         waterVsLandHeight += additionalHeight;
