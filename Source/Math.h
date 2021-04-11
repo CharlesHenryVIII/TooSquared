@@ -588,10 +588,17 @@ Atan2f return value:
 {
     return sqrtf(powf(a.x, 2) + powf(a.y, 2));
 }
-
-[[nodiscard]] inline float Pythags(Vec3 a)
+[[nodiscard]] inline float Pythags(const Vec3& a)
 {
     return sqrtf(a.x * a.x + a.y * a.y + a.z * a.z);
+}
+[[nodiscard]] inline float Pythags(const Vec2Int& a)
+{
+    return Pythags(Vec2({ float(a.x), float(a.y) }));
+}
+[[nodiscard]] inline float Pythags(const Vec3Int& a)
+{
+    return Pythags(Vec3({ float(a.x), float(a.y), float(a.z) }));
 }
 
 [[nodiscard]] inline float Distance(Vec2 a, Vec2 b)
@@ -599,6 +606,14 @@ Atan2f return value:
     return Pythags(a - b);
 }
 [[nodiscard]] inline double DistanceD(Vec2 a, Vec2 b)
+{
+    return Pythags(a - b);
+}
+[[nodiscard]] inline double Distance(Vec3Int a, Vec3Int b)
+{
+    return Pythags(a - b);
+}
+[[nodiscard]] inline double Distance(Vec2Int a, Vec2Int b)
 {
     return Pythags(a - b);
 }

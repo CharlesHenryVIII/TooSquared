@@ -611,6 +611,28 @@ struct VoronoiRegion {
             return nullptr;
     }
 
+    VoronoiCell* HuntForBlock(VoronoiCell* baseCell, const Vec2& basePos, const Vec2& _direction)
+    {
+        Vec2 direction = Normalize(_direction);
+
+        Vec2 checkLocation = basePos;
+        GamePos gameCheckLocation = {};
+        VoronoiCell* checkCell = nullptr;
+        int32 j = 0;
+        do {
+            checkLocation = checkLocation + direction;
+            gameCheckLocation = GamePos({ int32(floorf(checkLocation.x + 0.5f)), 0, int32(floorf(checkLocation.y + 0.5f)) });
+            checkCell = GetCell(gameCheckLocation);
+            if (j++ >= 50)
+            {
+                assert(false);
+                break;
+            }
+        } while (checkCell->m_center.p == baseCell->m_center.p);
+
+        return checkCell;
+    }
+
     //TODO: Improve
     std::vector<VoronoiResult> GetVoronoiDistancesAndNeighbors(VoronoiCell* blockCell, const GamePos& blockP)
     {
@@ -619,30 +641,36 @@ struct VoronoiRegion {
         std::vector<VoronoiResult> results;
         for (int32 i = 0; i < distances.size(); i++)
         {
-            Vec2 _normal = blockCell->m_lines[i].Normal();
-            Vec2 normal = Normalize(_normal);
+            //Get cell over line
+
             Vec2 halfwayPoint = blockCell->m_lines[i].p0 + ((blockCell->m_lines[i].p1 - blockCell->m_lines[i].p0) / 2);
-
-            Vec2 blockCheckLocation = halfwayPoint + normal;
-            GamePos gameCheckLocation = GamePos({ int32(floorf(blockCheckLocation.x + 0.5f)), 0, int32(floorf(blockCheckLocation.y + 0.5f)) });
-            VoronoiCell* checkCell = GetCell(gameCheckLocation);
-            int32 j = 0;
-            while (checkCell->m_center.p == blockCell->m_center.p)
-            {
-                blockCheckLocation += normal;
-                gameCheckLocation = GamePos({ int32(floorf(blockCheckLocation.x)), 0, int32(floorf(blockCheckLocation.y)) });
-                checkCell = GetCell(gameCheckLocation);
-                if (j++ >= 50)
-                {
-                    assert(false);
-                    break;
-                }
-            }
-
+            VoronoiCell* checkCell = HuntForBlock(blockCell, halfwayPoint, blockCell->m_lines[i].Normal());
             VoronoiResult result = {};
             result.cell = *checkCell;
             result.distance = distances[i];
             results.push_back(result);
+
+
+#if 1
+            //Get cell over point
+            result = {};
+
+
+            //Get Distance to point
+            Vec2 cornerLoc = blockCell->m_lines[i].p1;
+            //GamePos pointLoc = { uint32(_pointLoc.x), 0, uint32(_pointLoc.y) };
+            Vec2 blockLoc = { float(blockP.p.x), float(blockP.p.z) };
+            result.distance = Distance(blockLoc, cornerLoc);
+
+            //find the cell over the point
+            Vec2 cellCenter = { float(blockCell->m_center.p.x), float(blockCell->m_center.p.z) };
+            Vec2 _toCorner = cornerLoc - cellCenter;
+            //Vec2 toCorner = Normalize(_toCorner);
+            result.cell = *HuntForBlock(blockCell, cornerLoc, _toCorner);
+            results.push_back(result);
+
+#endif
+
         }
         return results;
 
@@ -804,130 +832,6 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
     VoronoiRegion region;
     region.BuildRegion(g_chunks->p[chunkIndex]);
 
-#if 0
-    for (int32 x = 0; x < CHUNK_X; x++)
-    {
-        for (int32 z = 0; z < CHUNK_Z; z++)
-        {
-
-            //Step 5:
-            //Determine which cell the block is in
-            GamePos blockLoc = Convert_BlockToGame(chunkIndex, { x, 0, z });
-            Vec2Int centerPointIndices = {};
-
-            VoronoiCell* cell = region.GetCell(blockLoc);
-
-
-    //        //Step 6:
-    //        //line vs point to determine if line is within apron and get distance to point
-
-    //        //Vec3 lineDest = Vec3IntToVec3(surroundPoints[(j + 1) % arrsize(surroundPoints)].p - surroundPoints[j].p);
-    //        Vec3 lineDest = Vec3IntToVec3(surroundPoints[(j + 1) % arrsize(surroundPoints)].p - surroundPoints[j].p);
-    //        Vec3 point = ToWorld(GamePos(blockLoc.p - surroundPoints[j].p)).p;
-
-    //        //https://mathinsight.org/dot_product
-    //        float lineDistance = Distance({}, lineDest);
-    //        float distanceAlongLine = DotProduct(lineDest, point) / lineDistance;
-    //        float distanceRatioAlongLine = distanceAlongLine / lineDistance;
-    //        Vec3 referencePoint = {};
-    //        if (distanceAlongLine > lineDistance)
-    //        {
-    //            referencePoint = lineDest;
-    //        }
-    //        else if (distanceAlongLine > 0)
-    //        {
-    //            referencePoint = Lerp<Vec3>(Vec3({}), lineDest, Vec3({ 1.0f, 1.0f, 1.0f }) * distanceRatioAlongLine);
-    //        }
-
-    //        float dist = Distance(referencePoint, point);
-    //        distances[j] = dist;
-    //        if (int32(dist) <= apronDist)
-    //            needsToLerp = true;
-
-
-
-    //        //dist == 0
-    //        //originPercentage = 0.5;
-    //        //destPercentage = 0.5;
-
-    //        //dist == 4
-    //        //originPercentage = 1;
-    //        //destPercentage = 0.125;
-
-    //        //Step 7:
-    //        //Lerp between the distances
-    //        ChunkPos newCenterPoint = ToChunk(centerPoints[1 + centerPointIndices.x][1 + centerPointIndices.y]);
-    //        if (!needsToLerp)
-    //            terrainWeights[x][z][+GetTerrainType(newCenterPoint)] = 1.0f;
-    //        else
-    //        {
-    //            for (int32 j = 0; j < arrsize(surroundPoints); j++)
-    //            {
-    //                //check over line
-    //                if (distances[j] <= apronDist)
-    //                {
-    //                    if (distances[j] >= 3 && distances[j] <= 4)
-    //                        int32 anothertestlmaoooooo = 123980u;
-    //                    double originPercentage = (distances[j] + apronDist) / double(apronDist * 2);
-    //                    if (originPercentage != 1.0f)
-    //                        int32 asdfasdf = 1011;
-
-    //                    Vec2Int indices = { 0, 0 };
-    //                    TerrainType tt = GetTerrainType(ToChunk(centerPoints[1 + indices.x][1 + indices.y]));
-    //                    //terrainWeights[x][z][+tt] = Clamp(terrainWeights[x][z][+tt] + originPercentage, 0.0f, 1.0f);
-    //                    terrainWeights[x][z][+tt] += originPercentage;
-    //                    if (j == 0)
-    //                        indices += { -1, 0 };
-    //                    else if (j == 1)
-    //                        indices += {  0, 1 };
-    //                    else if (j == 2)
-    //                        indices += {  1, 0 };
-    //                    else
-    //                        indices += {  0, -1 };
-
-    //                    double destPercentage = 1 - originPercentage;
-    //                    TerrainType tt2 = GetTerrainType(ToChunk(centerPoints[1 + indices.x][1 + indices.y]));
-    //                    terrainWeights[x][z][+tt2] += destPercentage;
-
-
-    //                    //check corner tile
-    //                    int32 jCorner = (j + 3) % arrsize(surroundPoints);
-    //                    if (distances[jCorner] < apronDist)
-    //                    {
-    //                        if (jCorner == 0)
-    //                            indices += { -1, 0 };
-    //                        else if (jCorner == 1)
-    //                            indices += {  0, 1 };
-    //                        else if (jCorner == 2)
-    //                            indices += {  1, 0 };
-    //                        else
-    //                            indices += {  0, -1 };
-
-    //                        if (originPercentage != 1.0f)
-    //                            int32 thisisatestlmao = 1023;
-
-    //                        originPercentage = (distances[jCorner] + apronDist) / float(apronDist * 2);
-    //                        destPercentage = 1 - originPercentage;
-
-    //                        TerrainType tt3 = GetTerrainType(ToChunk(centerPoints[1 + indices.x][1 + indices.y]));
-    //                        terrainWeights[x][z][+tt3] += destPercentage;
-    //                    }
-    //                }
-    //                else if (distances[j] == inf)
-    //                    terrainWeights[x][z][j] = 0.0f;
-    //            }
-    //        }
-
-    //        double total = {};
-    //        for (double v : terrainWeights[x][z])
-    //            total += v;
-    //        for (double& v : terrainWeights[x][z])
-    //            v = v / total;
-        }
-    }
-#endif
-
-
     //set the majority of the blocks
     {
         uint32 newHeight = 0;
@@ -992,6 +896,8 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                             int32 asdf = 0;
                         if (blockP.p.x == -349 && blockP.p.z == -142)
                             int32 asdf = 0;
+                        if (blockP.p.x == -289 && blockP.p.z == 15)
+                            int32 asdf = 0;
                         VoronoiCell* cell = region.GetCell(blockP);
                         assert(cell);
 
@@ -1014,12 +920,14 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                         //float heightSum = terrainFunctions[+cellType] * 0.1f;
                         float heights = 0;
                         int32 counts = 0;
+                        float lowestDistance = inf;
 
                         for (int32 i = 0; i < voronoiResults.size(); i++)
                         {
                             if (voronoiResults[i].distance < float(region.m_apronDistance))
                             {
 #if 1
+                                lowestDistance = Min(lowestDistance, voronoiResults[i].distance);
                                 float halfLambertDistanceToMainCellCenter = ((voronoiResults[i].distance / region.m_apronDistance) + 1.0f) / 2.0f;
                                 uint32 neighborHash = voronoiResults[i].cell.GetHash();
                                 TerrainType neighborType = TerrainType(neighborHash % +TerrainType::Count);
