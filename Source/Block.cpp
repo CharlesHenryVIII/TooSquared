@@ -636,7 +636,6 @@ struct VoronoiRegion {
     //TODO: Improve
     std::vector<VoronoiResult> GetVoronoiDistancesAndNeighbors(VoronoiCell* blockCell, const GamePos& blockP)
     {
-#if 1
         std::vector<float> distances = blockCell->DistanceToEachLineSegment(blockP);
         std::vector<VoronoiResult> results;
         for (int32 i = 0; i < distances.size(); i++)
@@ -651,7 +650,6 @@ struct VoronoiRegion {
             results.push_back(result);
 
 
-#if 1
             //Get cell over point
             result = {};
 
@@ -669,41 +667,10 @@ struct VoronoiRegion {
             result.cell = *HuntForBlock(blockCell, cornerLoc, _toCorner);
             results.push_back(result);
 
-#endif
 
         }
         return results;
 
-#else
-        std::vector<VoronoiResult> results;
-        GamePos neighborLocationOffsets[] = {
-            CellToGame(Vec2Int({ -1 ,  0 })),
-            CellToGame(Vec2Int({  0 ,  1 })),
-            CellToGame(Vec2Int({  1 ,  0 })),
-            CellToGame(Vec2Int({  0 , -1 })),
-        };
-        int32 distanceIndex = 0;
-        std::vector<float> distanceToNeighbor = blockCell->DistanceToEachLineSegment(blockP);
-
-        for (int32 i = 0; i < +VoronoiEdges::Count; i++)
-        {
-            for (VoronoiCell& cell : cells)
-            {
-                VoronoiResult result = {};
-                if (cell.center.p == blockCell->center.p)
-                    continue;
-
-                if (blockCell->center.p + neighborLocationOffsets[i].p == cell.center.p)
-                {
-                    result.cell = cell;
-                    result.distance = distanceToNeighbor[i];
-                    results.push_back(result);
-                    break;
-                }
-            }
-        }
-        return results;
-#endif
     }
 
     void BuildRegion(ChunkPos chunkP)
@@ -919,6 +886,53 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                         float noiseHeightScale = 0.4f;
                         float baseHeight = float(terrainFunctions[+cellType]) * noiseHeightScale;
 
+#if 1
+                        float gBlurWeights[5][5] = {
+                          1,  4,  7,  4,  1,
+                          4, 16, 26, 16,  4,
+                          7, 26, 41, 26,  7,
+                          4, 16, 26, 16,  4,
+                          1,  4,  7,  4,  1,
+                        };
+                        float gWeightTotal = 0;
+                        for (int32 y = 0; y < sizeof(gBlurWeights) / sizeof(gBlurWeights[0]); y++)
+                        {
+                            for (int32 x = 0; x < sizeof(gBlurWeights[0]) / sizeof(gBlurWeights[0][0]); x++)
+                            {
+                                gWeightTotal += gBlurWeights[y][x];
+                            }
+                        }
+                        for (int32 y = 0; y < sizeof(gBlurWeights) / sizeof(gBlurWeights[0]); y++)
+                        {
+                            for (int32 x = 0; x < sizeof(gBlurWeights[0]) / sizeof(gBlurWeights[0][0]); x++)
+                            {
+                                gBlurWeights[y][x] /= gWeightTotal;
+                            }
+                        }
+
+                        float newHeight = 0;
+                        for (int32 y = 0; y < sizeof(gBlurWeights) / sizeof(gBlurWeights[0]); y++)
+                        {
+                            for (int32 x = 0; x < sizeof(gBlurWeights[0]) / sizeof(gBlurWeights[0][0]); x++)
+                            {
+                                Vec3Int blockOffset = {};
+                                blockOffset.x = x - (sizeof(gBlurWeights[0]) / sizeof(gBlurWeights[0][0])) / 2;
+                                blockOffset.z = y - (sizeof(gBlurWeights) / sizeof(gBlurWeights[0])) / 2;
+                                GamePos checkBlockP = {};
+                                checkBlockP.p = blockP.p + blockOffset;
+                                VoronoiCell* checkCell = region.GetCell(checkBlockP);
+                                uint32 hashValue = checkCell->GetHash();
+                                TerrainType neighborType = TerrainType(hashValue % +TerrainType::Count);
+                                float cellHeight = float(terrainFunctions[+neighborType]) * noiseHeightScale;
+                                
+                                newHeight += cellHeight * gBlurWeights[y][x];
+                            }
+                        }
+
+                        waterVsLandHeight += uint32(newHeight);
+
+
+#else
 
                         std::vector<VoronoiResult> voronoiResults = region.GetVoronoiDistancesAndNeighbors(cell, blockP);
                         //float heightSum = terrainFunctions[+cellType] * 0.1f;
@@ -930,7 +944,6 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                         {
                             if (voronoiResults[i].distance < float(region.m_apronDistance))
                             {
-#if 1
                                 lowestDistance = Min(lowestDistance, voronoiResults[i].distance);
                                 float halfLambertDistanceToMainCellCenter = ((voronoiResults[i].distance / region.m_apronDistance) + 1.0f) / 2.0f;
                                 uint32 neighborHash = voronoiResults[i].cell.GetHash();
@@ -939,16 +952,6 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
 
                                 heightSum += Lerp<float>(neighborHeight, baseHeight, halfLambertDistanceToMainCellCenter);
                                 counts++;
-
-                                
-#else
-                                float halfLambertDistanceToMainCellCenter = ((voronoiResults[i].distance / region.m_apronDistance) + 1.0f) / 2.0f;
-                                uint32 neighborHash = voronoiResults[i].cell.GetHash();
-                                TerrainType neighborType = TerrainType(neighborHash % +TerrainType::Count);
-                                uint32 neighborHeight = uint32(float(terrainFunctions[+neighborType]) * 0.1f);
-                                additionalHeight = uint32(float(baseHeight) * halfLambertDistanceToMainCellCenter);
-                                additionalHeight += uint32(float(neighborHeight) * (1.0f - halfLambertDistanceToMainCellCenter));
-#endif
                             }
                         }
 
@@ -958,8 +961,9 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                         else
                             additionalHeight = uint32(baseHeight);
 
-
                         waterVsLandHeight += additionalHeight;
+#endif
+
                         //________
 
 
@@ -980,6 +984,9 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
 
                         for (y; y < waterVsLandHeight; y++)
                         {
+#if 1
+                            blocks[chunkIndex].e[x][y][z] = BlockType::Grass;
+#else
                             if (counts == 0)
                                 blocks[chunkIndex].e[x][y][z] = BlockType::Grass;
                             else if (counts == 1)
@@ -994,6 +1001,7 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                                 blocks[chunkIndex].e[x][y][z] = BlockType::Obsidian;
                             else if (counts > 5)
                                 blocks[chunkIndex].e[x][y][z] = BlockType::DiamondBlock;
+#endif
                         }
                     }
                     assert(waterVsLandHeight < CHUNK_Y);
