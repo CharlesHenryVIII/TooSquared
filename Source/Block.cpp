@@ -475,7 +475,7 @@ struct VoronoiCell {
         }
     }
 
-    [[nodiscard]] bool IsInside(GamePos blockP)
+    [[nodiscard]] bool Contains(GamePos blockP)
     {
         for (int32 i = 0; i < arrsize(m_lines); i++)
         {
@@ -547,7 +547,7 @@ struct VoronoiRegion {
     {
         for (VoronoiCell& cell : cells)
         {
-            if (cell.IsInside(p))
+            if (cell.Contains(p))
                 return &cell;
         }
         return nullptr;
@@ -583,7 +583,7 @@ struct VoronoiRegion {
         VoronoiCell results[+VoronoiEdges::Count] = {};
         for (VoronoiCell& cell : cells)
         {
-            if (cell.IsInside(blockP))
+            if (cell.Contains(blockP))
                 thisCell = &cell;
         }
 
@@ -898,6 +898,10 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                             int32 asdf = 0;
                         if (blockP.p.x == -289 && blockP.p.z == 15)
                             int32 asdf = 0;
+                        if (blockP.p.x == -290 && blockP.p.z == 12)
+                            int32 asdf = 0;
+                        if (blockP.p.x == -290 && blockP.p.z == 13)
+                            int32 asdf = 0;
                         VoronoiCell* cell = region.GetCell(blockP);
                         assert(cell);
 
@@ -918,7 +922,7 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
 
                         std::vector<VoronoiResult> voronoiResults = region.GetVoronoiDistancesAndNeighbors(cell, blockP);
                         //float heightSum = terrainFunctions[+cellType] * 0.1f;
-                        float heights = 0;
+                        float heightSum = 0;
                         int32 counts = 0;
                         float lowestDistance = inf;
 
@@ -933,7 +937,7 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                                 TerrainType neighborType = TerrainType(neighborHash % +TerrainType::Count);
                                 float neighborHeight = float(terrainFunctions[+neighborType]) * noiseHeightScale;
 
-                                heights += Lerp<float>(neighborHeight, baseHeight, halfLambertDistanceToMainCellCenter);
+                                heightSum += Lerp<float>(neighborHeight, baseHeight, halfLambertDistanceToMainCellCenter);
                                 counts++;
 
                                 
@@ -950,7 +954,7 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
 
                         uint32 additionalHeight = 0;
                         if (counts)
-                            additionalHeight = uint32(roundf(heights / float(counts)));
+                            additionalHeight = uint32(roundf(heightSum / float(counts)));
                         else
                             additionalHeight = uint32(baseHeight);
 
@@ -976,7 +980,20 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
 
                         for (y; y < waterVsLandHeight; y++)
                         {
-                            blocks[chunkIndex].e[x][y][z] = BlockType::Grass;
+                            if (counts == 0)
+                                blocks[chunkIndex].e[x][y][z] = BlockType::Grass;
+                            else if (counts == 1)
+                                blocks[chunkIndex].e[x][y][z] = BlockType::Stone;
+                            else if (counts == 2)
+                                blocks[chunkIndex].e[x][y][z] = BlockType::TNT;
+                            else if (counts == 3)
+                                blocks[chunkIndex].e[x][y][z] = BlockType::Snow;
+                            else if (counts == 4)
+                                blocks[chunkIndex].e[x][y][z] = BlockType::Wood;
+                            else if (counts == 5)
+                                blocks[chunkIndex].e[x][y][z] = BlockType::Obsidian;
+                            else if (counts > 5)
+                                blocks[chunkIndex].e[x][y][z] = BlockType::DiamondBlock;
                         }
                     }
                     assert(waterVsLandHeight < CHUNK_Y);
