@@ -583,6 +583,18 @@ Atan2f return value:
 {
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }
+[[nodiscard]] inline Vec3 CrossProduct(Vec3 a, Vec3 b)
+{
+    Vec3 r = {};
+    gb_vec3_cross(&r, a, b);
+    return r;
+}
+[[nodiscard]] inline float CrossProduct(Vec2 a, Vec2 b)
+{
+    float r = {};
+    gb_vec2_cross(&r, a, b);
+    return r;
+}
 
 [[nodiscard]] inline float Pythags(const Vec2& a)
 {
@@ -617,11 +629,38 @@ Atan2f return value:
 {
     return Pythags(a - b);
 }
-
-[[nodiscard]] inline float Distance(const Vec3& a, const Vec3& b)
+[[nodiscard]] inline float Distance(Vec3 a, Vec3 b)
 {
     return Pythags(a - b);
 }
+
+[[nodiscard]] inline float Length(Vec2 a)
+{
+    return Pythags(a);
+}
+[[nodiscard]] inline double LengthD(Vec2 a)
+{
+    return Pythags(a);
+}
+[[nodiscard]] inline double Length(Vec3Int a)
+{
+    return Pythags(a);
+}
+[[nodiscard]] inline double Length(Vec2Int a)
+{
+    return Pythags(a);
+}
+[[nodiscard]] inline float Length(Vec3 a)
+{
+    return Pythags(a);
+}
+
+[[nodiscard]] inline Vec3 Round(const Vec3& a)
+{
+    Vec3 r = { roundf(a.x), roundf(a.y), roundf(a.z) };
+    return r;
+}
+
 
 [[nodiscard]] uint32 PCG_Random(uint64 state);
 [[nodiscard]] inline uint32 RandomU32(uint64 state, uint32 min, uint32 max)
@@ -711,9 +750,17 @@ struct Frustum {
     Plane e[6];
 };
 
+struct Triangle {
+    Vec3 p0 = {};
+    Vec3 p1 = {};
+    Vec3 p2 = {};
+};
+
 Frustum ComputeFrustum(const Mat4& mvProj);
 bool IsBoxInFrustum(const Frustum& f, float* bmin, float* bmax);
 int32 ManhattanDistance(Vec3Int a, Vec3Int b);
+bool SphereVsTriangle(const Vec3& center, const float& radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance);
+Vec3 ClosestPointOnLineSegment(const Vec3& A, const Vec3& B, const Vec3& Point);
 
 struct AABB {
     Vec3 min = {};

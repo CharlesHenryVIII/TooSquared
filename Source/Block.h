@@ -266,6 +266,7 @@ struct ChunkArray
     void UploadChunk(ChunkIndex i);
     void RenderChunk(ChunkIndex i);
     bool GetChunk(ChunkIndex& result, GamePos blockP);
+    bool GetBlock(BlockType& blockType, const GamePos& blockP);
 
 };
 extern ChunkArray* g_chunks;

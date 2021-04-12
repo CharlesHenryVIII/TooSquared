@@ -67,6 +67,87 @@ bool HeavensInterpolation(float& result, float time, float lo, float hi, float i
     return true;
 }
 
+struct Capsule
+{
+    float m_radius = 0;
+    float m_height = 0;
+    WorldPos m_tip;
+    WorldPos m_tail;
+};
+
+enum class MovementType {
+    Fly,
+    Collision,
+};
+
+void UpdatePosition(Vec3& position, Vec3& velocity, Vec3& acceleration, const float gravity, const float dt, const Vec3& terminalVelocity)
+{
+    velocity.y += gravity * dt;
+    velocity.y = Clamp(velocity.y, -terminalVelocity.y, terminalVelocity.y);
+
+    velocity.x += acceleration.x * dt;
+    velocity.z += acceleration.z * dt;
+
+    Vec3 deltaPosition = velocity * dt;
+    position += deltaPosition;
+}
+
+struct VertexFace {
+    
+    Vec3 e[4];
+};
+
+const VertexFace cubeVertices[6] = {
+    // +x
+    VertexFace( { 
+    Vec3(1.0,  1.0,  1.0),
+    Vec3(1.0,    0,  1.0),
+    Vec3(1.0,  1.0,    0),
+    Vec3(1.0,    0,    0) 
+    }),
+
+    // -x
+    VertexFace({
+    Vec3(0,  1.0,    0),
+    Vec3(0,    0,    0),
+    Vec3(0,  1.0,  1.0),
+    Vec3(0,    0,  1.0)
+    }),
+
+    // +y
+    VertexFace({
+	Vec3( 1.0,  1.0,  1.0 ),
+	Vec3( 1.0,  1.0,    0 ),
+	Vec3(   0,  1.0,  1.0 ), 
+	Vec3(   0,  1.0,    0 )
+    }),
+
+    // -y
+	VertexFace({
+	Vec3(   0,    0,  1.0 ), 
+	Vec3(   0,    0,    0 ),
+	Vec3( 1.0,    0,  1.0 ),
+	Vec3( 1.0,    0,    0 )
+	}),
+
+    // z
+	VertexFace({
+	Vec3(   0,  1.0,  1.0 ), 
+	Vec3(   0,    0,  1.0 ),
+	Vec3( 1.0,  1.0,  1.0 ),
+	Vec3( 1.0,    0,  1.0 )
+	}),
+
+    // -z
+    VertexFace({
+	Vec3( 1.0,  1.0,    0 ),
+	Vec3( 1.0,    0,    0 ),
+	Vec3(   0,  1.0,    0 ), 
+	Vec3(   0,    0,    0 )
+    })
+};
+
+
 int main(int argc, char* argv[])
 {
     std::unordered_map<int32, Key> keyStates;
@@ -128,6 +209,11 @@ int main(int argc, char* argv[])
     //        DebugPrint("VoronoiNoise at %+05.1f, %+05.1f: %+05.4f\n", x, y, VoronoiNoise({ x, y }, 1.0f, 0.0f));
     //    }
     //}
+
+    Capsule playerCollider = {};
+    playerCollider.m_height = 1.8f;
+    playerCollider.m_radius = 0.25f;
+    MovementType playerMovementType = MovementType::Fly;
 
     cubesToDraw.reserve(100000);
     while (g_running)
@@ -289,26 +375,19 @@ int main(int argc, char* argv[])
             g_running = false;
         if (keyStates[SDLK_BACKQUOTE].downThisFrame)
             debugDraw = !debugDraw;
+        if (keyStates[SDLK_0].downThisFrame)
+        {
+            switch (playerMovementType)
+            {
+            case MovementType::Fly:
+                playerMovementType = MovementType::Collision;
+                break;
+            case MovementType::Collision:
+                playerMovementType = MovementType::Fly;
+                break;
+            }
+        }
 
-        float cameraSpeed = 10.0f * deltaTime;
-        if (keyStates[SDLK_LSHIFT].down)
-            cameraSpeed *= 30;
-        if (keyStates[SDLK_w].down)
-            g_camera.p.p += (cameraSpeed * g_camera.front);
-        if (keyStates[SDLK_s].down)
-            g_camera.p.p -= (cameraSpeed * g_camera.front);
-        if (keyStates[SDLK_a].down)
-            g_camera.p.p -= (Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed);
-        if (keyStates[SDLK_d].down)
-            g_camera.p.p += (Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed);
-        if (keyStates[SDLK_LCTRL].down)
-            g_camera.p.p.y -= cameraSpeed;
-        if (keyStates[SDLK_SPACE].down)
-            g_camera.p.p.y += cameraSpeed;
-        if (keyStates[SDLK_z].down)
-            g_camera.p.p.z += cameraSpeed;
-        if (keyStates[SDLK_x].down)
-            g_camera.p.p.x += cameraSpeed;
         if (keyStates[SDLK_c].downThisFrame)
             TEST_CREATE_AND_UPLOAD_CHUNKS = !TEST_CREATE_AND_UPLOAD_CHUNKS;
         if (keyStates[SDLK_m].downThisFrame)
@@ -350,6 +429,291 @@ int main(int argc, char* argv[])
             {
                 g_gameData.m_timeScale *= 10;
             }
+        }
+        
+        float cameraSpeed = 0;
+        switch (playerMovementType)
+        {
+        case MovementType::Fly:
+            cameraSpeed = 10.0f * deltaTime;
+            if (keyStates[SDLK_LSHIFT].down)
+                cameraSpeed *= 30;
+            if (keyStates[SDLK_w].down)
+                g_camera.p.p += (cameraSpeed * g_camera.front);
+            if (keyStates[SDLK_s].down)
+                g_camera.p.p -= (cameraSpeed * g_camera.front);
+            if (keyStates[SDLK_a].down)
+                g_camera.p.p -= (Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed);
+            if (keyStates[SDLK_d].down)
+                g_camera.p.p += (Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed);
+            if (keyStates[SDLK_LCTRL].down)
+                g_camera.p.p.y -= cameraSpeed;
+            if (keyStates[SDLK_SPACE].down)
+                g_camera.p.p.y += cameraSpeed;
+            if (keyStates[SDLK_z].down)
+                g_camera.p.p.z += cameraSpeed;
+            if (keyStates[SDLK_x].down)
+                g_camera.p.p.x += cameraSpeed;
+            break;
+        case MovementType::Collision:
+        {
+            cameraSpeed = 5.0f * deltaTime;;
+            if (keyStates[SDLK_LSHIFT].down)
+                cameraSpeed *= 2;
+            if (keyStates[SDLK_w].down)
+                g_camera.p.p += (cameraSpeed * g_camera.front);
+            if (keyStates[SDLK_s].down)
+                g_camera.p.p -= (cameraSpeed * g_camera.front);
+            if (keyStates[SDLK_a].down)
+                g_camera.p.p -= (Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed);
+            if (keyStates[SDLK_d].down)
+                g_camera.p.p += (Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed);
+            //if (keyStates[SDLK_LCTRL].down)
+            //    g_camera.p.p.y -= cameraSpeed;
+            //if (keyStates[SDLK_SPACE].down)
+            //    g_camera.p.p.y += cameraSpeed;
+            if (keyStates[SDLK_z].down)
+                g_camera.p.p.z += cameraSpeed;
+            if (keyStates[SDLK_x].down)
+                g_camera.p.p.x += cameraSpeed;
+
+            playerCollider.m_tip = g_camera.p;
+            playerCollider.m_tip.p.y += playerCollider.m_radius;
+            playerCollider.m_tail = playerCollider.m_tip;
+            playerCollider.m_tail.p.y -= playerCollider.m_height;
+
+
+            bool topBlocked = false;
+            bool botBlocked = false;
+#if 1
+            std::vector<GamePos> neighborBlocks;
+            GamePos referenceGamePosition = ToGame(playerCollider.m_tip);
+            int32 horizontalOffset = Max(int32(playerCollider.m_radius + 0.5f), 1);
+            int32 verticalOffset   = Max(int32(playerCollider.m_tip.p.y - playerCollider.m_tail.p.y + 0.5f), 1);
+
+            {
+                for (int32 x = -horizontalOffset; x <= horizontalOffset; x++)
+                {
+                    for (int32 y = -verticalOffset; y <= verticalOffset; y++)
+                    {
+                        for (int32 z = -horizontalOffset; z <= horizontalOffset; z++)
+                        {
+                            neighborBlocks.push_back(GamePos(referenceGamePosition.p + Vec3Int({x, y, z})));
+                        }
+                    }
+                }
+                
+                //generate traingles
+                std::vector<Triangle> xTriangles;
+                std::vector<Triangle> yTriangles;
+                std::vector<Triangle> zTriangles;
+
+                for (GamePos block : neighborBlocks)
+                {
+                    BlockType blockType;
+                    if (g_chunks->GetBlock(blockType, block) && blockType != BlockType::Empty)
+                    {
+                        WorldPos blockP = ToWorld(block);
+
+                        for (int32 i = 0; i <= 1; i++)
+                        {
+                            Triangle vertex;
+                            vertex.p0 = blockP.p + cubeVertices[i].e[0];
+                            vertex.p1 = blockP.p + cubeVertices[i].e[1];
+                            vertex.p2 = blockP.p + cubeVertices[i].e[2];
+                            xTriangles.push_back(vertex);
+
+                            vertex = {};
+                            vertex.p0 = blockP.p + cubeVertices[i].e[1];
+                            vertex.p1 = blockP.p + cubeVertices[i].e[2];
+                            vertex.p2 = blockP.p + cubeVertices[i].e[3];
+                            xTriangles.push_back(vertex);
+                        }
+
+                        for (int32 i = 2; i <= 3 ; i++)
+                        {
+                            Triangle vertex;
+                            vertex.p0 = blockP.p + cubeVertices[i].e[0];
+                            vertex.p1 = blockP.p + cubeVertices[i].e[1];
+                            vertex.p2 = blockP.p + cubeVertices[i].e[2];
+                            yTriangles.push_back(vertex);
+
+                            vertex = {};
+                            vertex.p0 = blockP.p + cubeVertices[i].e[1];
+                            vertex.p1 = blockP.p + cubeVertices[i].e[2];
+                            vertex.p2 = blockP.p + cubeVertices[i].e[3];
+                            yTriangles.push_back(vertex);
+                        }
+
+                        for (int32 i = 4; i <= 5 ; i++)
+                        {
+                            Triangle vertex;
+                            vertex.p0 = blockP.p + cubeVertices[i].e[0];
+                            vertex.p1 = blockP.p + cubeVertices[i].e[1];
+                            vertex.p2 = blockP.p + cubeVertices[i].e[2];
+                            zTriangles.push_back(vertex);
+
+                            vertex = {};
+                            vertex.p0 = blockP.p + cubeVertices[i].e[1];
+                            vertex.p1 = blockP.p + cubeVertices[i].e[2];
+                            vertex.p2 = blockP.p + cubeVertices[i].e[3];
+                            zTriangles.push_back(vertex);
+                        }
+                    }
+                }
+
+                //Sphere vs Triangle for horizontal
+
+                for (Triangle t : xTriangles)
+                {
+                    // sphere center
+                    Vec3 triangleCenter = (t.p0 + t.p1 + t.p2) / 3;
+                    Vec3 top = playerCollider.m_tip.p  - playerCollider.m_radius;
+                    Vec3 bot = playerCollider.m_tail.p + playerCollider.m_radius;
+                    Vec3 center = {};
+                    center.x = Clamp(triangleCenter.x, bot.x, top.x); 
+                    center.y = Clamp(triangleCenter.y, bot.y, top.y); 
+                    center.z = Clamp(triangleCenter.z, bot.z, top.z); 
+
+                    //bool SphereVsTriangle(const Vec3& center, const float& radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance)
+                    Vec3 directionToTriangle = {};
+                    float distanceToTriangle = {};
+                    if (SphereVsTriangle(center, playerCollider.m_radius, t, directionToTriangle, distanceToTriangle) && distanceToTriangle > 0.0f)
+                    {
+                        //Sphere inside triangle
+                        g_camera.p.p.x += (-directionToTriangle.x) * distanceToTriangle;
+                        break;
+                    }
+
+                }
+
+
+            }
+#else
+
+            {
+                GamePos topBlock = ToGame(playerCollider.m_tip);
+
+                GamePos topBlockX = ToGame(WorldPos(playerCollider.m_tip.p + 0.5f));
+                if (topBlockX.p.x == topBlock.p.x)
+                {
+                    topBlockX.p.x -= 1;
+                }
+                BlockType topBlockType;
+                if (g_chunks->GetBlock(topBlockType, topBlock) && topBlockType != BlockType::Empty)
+                {
+                    if (g_chunks->GetBlock(topBlockType, topBlockX) && topBlockType != BlockType::Empty)
+                        topBlocked = true;
+                    else
+                    {
+                        playerCollider.m_tip.p.x = playerCollider.m_tail.p.x = float(topBlock.p.x) + ((topBlockX.p.x - topBlock.p.x) * playerCollider.m_radius);
+                    }
+                }
+
+                GamePos botBlock = ToGame(playerCollider.m_tail);
+                GamePos botBlockX = ToGame(WorldPos(Round(playerCollider.m_tail.p + 0.5f)));
+                if (botBlockX.p.x == botBlock.p.x)
+                {
+                    botBlockX.p.x -= 1;
+                }
+                BlockType botBlockType;
+                if (g_chunks->GetBlock(botBlockType, botBlock) && botBlockType != BlockType::Empty)
+                {
+                    if (g_chunks->GetBlock(botBlockType, botBlockX) && botBlockType != BlockType::Empty)
+                        botBlocked = true;
+                    else
+                    {
+                        playerCollider.m_tip.p.x = float(botBlock.p.x);
+                        playerCollider.m_tail.p.x = float(botBlock.p.x);
+                    }
+                }
+            }
+
+            {
+                GamePos topBlock = ToGame(playerCollider.m_tip);
+                GamePos topBlockY = ToGame(WorldPos(Round(playerCollider.m_tip.p)));
+                if (topBlockY.p.y == topBlock.p.y)
+                {
+                    topBlockY.p.y -= 1;
+                }
+                BlockType topBlockType;
+                if (g_chunks->GetBlock(topBlockType, topBlock) && topBlockType != BlockType::Empty)
+                {
+                    if (g_chunks->GetBlock(topBlockType, topBlockY) && topBlockType != BlockType::Empty)
+                        topBlocked = true;
+                    else
+                    {
+                        playerCollider.m_tip.p.y = float(topBlock.p.y);
+                        playerCollider.m_tail.p.y = float(topBlock.p.y);
+                    }
+                }
+
+                GamePos botBlock = ToGame(playerCollider.m_tail);
+                GamePos botBlockY = ToGame(WorldPos(Round(playerCollider.m_tail.p)));
+                if (botBlockY.p.y == botBlock.p.y)
+                {
+                    botBlockY.p.y -= 1;
+                }
+                BlockType botBlockType;
+                if (g_chunks->GetBlock(botBlockType, botBlock) && botBlockType != BlockType::Empty)
+                {
+                    if (g_chunks->GetBlock(botBlockType, botBlockY) && botBlockType != BlockType::Empty)
+                        botBlocked = true;
+                    else
+                    {
+                        playerCollider.m_tip.p.y = float(botBlock.p.y);
+                        playerCollider.m_tail.p.y = float(playerCollider.m_tip.p.y) - playerCollider.m_height;
+                    }
+                }
+            }
+
+            {
+                GamePos topBlock = ToGame(playerCollider.m_tip);
+                GamePos topBlockZ = ToGame(WorldPos(Round(playerCollider.m_tip.p)));
+                if (topBlockZ.p.z == topBlock.p.z)
+                {
+                    topBlockZ.p.z -= 1;
+                }
+                BlockType topBlockType;
+                if (g_chunks->GetBlock(topBlockType, topBlock) && topBlockType != BlockType::Empty)
+                {
+                    if (g_chunks->GetBlock(topBlockType, topBlockZ) && topBlockType != BlockType::Empty)
+                        topBlocked = true;
+                    else
+                    {
+                        playerCollider.m_tip.p.z = float(topBlock.p.z);
+                        playerCollider.m_tail.p.z = float(topBlock.p.z);
+                    }
+                }
+
+                GamePos botBlock = ToGame(playerCollider.m_tail);
+                GamePos botBlockZ = ToGame(WorldPos(Round(playerCollider.m_tail.p)));
+                if (botBlockZ.p.z == botBlock.p.z)
+                {
+                    botBlockZ.p.z -= 1;
+                }
+                BlockType botBlockType;
+                if (g_chunks->GetBlock(botBlockType, botBlock) && botBlockType != BlockType::Empty)
+                {
+                    if (g_chunks->GetBlock(botBlockType, botBlockZ) && botBlockType != BlockType::Empty)
+                        botBlocked = true;
+                    else
+                    {
+                        playerCollider.m_tip.p.z = float(botBlock.p.z);
+                        playerCollider.m_tail.p.z = float(botBlock.p.z);
+                    }
+                }
+            }
+
+            g_camera.p = playerCollider.m_tip;
+            g_camera.p.p.y -= playerCollider.m_radius;
+#endif
+            
+
+            //ChunkPos playerChunk = ToChunk(topBlock);
+
+            break;
+        }
         }
 
 

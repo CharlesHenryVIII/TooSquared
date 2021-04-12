@@ -303,6 +303,126 @@ bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec
     return true;
 }
 
+bool SphereVsTriangle(const Vec3& center, const float& radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance)
+{
+    // plane normal
+    Vec3 N = Normalize(CrossProduct(triangle.p1 - triangle.p0, triangle.p2 - triangle.p0));
+
+    // signed distance between sphere and plane
+    float dist = DotProduct(center - triangle.p0, N);
+
+    // can pass through back side of triangle (optional)
+    bool isDoubleSided = false;
+    if (!isDoubleSided && dist > 0)
+    {
+        return false;
+    }
+    // no intersection if 
+    else if (dist < -radius || dist > radius)
+    {
+        return false;
+    }
+
+    Vec3 point0 = center - N * dist; // projected sphere center on triangle plane
+
+    // Now determine whether point0 is inside all triangle edges: 
+    Vec3 c0 = CrossProduct(point0 - triangle.p0, triangle.p1 - triangle.p0);
+    Vec3 c1 = CrossProduct(point0 - triangle.p1, triangle.p2 - triangle.p1);
+    Vec3 c2 = CrossProduct(point0 - triangle.p2, triangle.p0 - triangle.p2);
+
+    bool inside = DotProduct(c0, N) <= 0 && DotProduct(c1, N) <= 0 && DotProduct(c2, N) <= 0;
+    bool intersects = false;
+    Vec3 point1 = {};
+    Vec3 point2 = {};
+    Vec3 point3 = {};
+    if (!inside)
+    { 
+        float radiussq = radius * radius; // sphere radius squared
+
+        // Edge 1:
+        Vec3 point1 = ClosestPointOnLineSegment(triangle.p0, triangle.p1, center);
+        Vec3 v1 = center - point1;
+        float distsq1 = DotProduct(v1, v1);
+        intersects = distsq1 < radiussq;
+
+        // Edge 2:
+        Vec3 point2 = ClosestPointOnLineSegment(triangle.p1, triangle.p2, center);
+        Vec3 v2 = center - point2;
+        float distsq2 = DotProduct(v2, v2);
+        intersects |= distsq2 < radiussq;
+
+        // Edge 3:
+        Vec3 point3 = ClosestPointOnLineSegment(triangle.p2, triangle.p0, center);
+        Vec3 v3 = center - point3;
+        float distsq3 = DotProduct(v3, v3);
+        intersects |= distsq3 < radiussq;
+    }
+
+    if (inside || intersects)
+    {
+        Vec3 best_point = point0;
+        Vec3 intersection_vec;
+
+        if (inside)
+        {
+            intersection_vec = center - point0;
+        }
+        else
+        {
+            Vec3 d = center - point1;
+            float best_distsq = DotProduct(d, d);
+            best_point = point1;
+            intersection_vec = d;
+
+            d = center - point2;
+            float distsq = DotProduct(d, d);
+            if (distsq < best_distsq)
+            {
+                distsq = best_distsq;
+                best_point = point2;
+                intersection_vec = d;
+            }
+
+            d = center - point3;
+            distsq = DotProduct(d, d);
+            if (distsq < best_distsq)
+            {
+                distsq = best_distsq;
+                best_point = point3;
+                intersection_vec = d;
+            }
+        }
+
+        float len = Length(intersection_vec);  // vector3 length calculation: 
+        if (len)
+        { 
+            //Vec3 penetration_vec = sqrtf(DotProduct(intersection_vec, intersection_vec));
+            directionToTriangle = intersection_vec / len;  // normalize
+            if (isnan(directionToTriangle.x))
+                int32 i = 10;//issues;
+            directionToTriangle = -directionToTriangle;
+            distance = radius - len; // radius = sphere radius
+        }
+        else
+        {
+            directionToTriangle = {};
+            distance = {};
+        }
+        return true; // intersection success
+    }
+    else
+        return false;
+}
+
+Vec3 ClosestPointOnLineSegment(const Vec3& A, const Vec3& B, const Vec3& Point)
+{
+    Vec3 AB = B - A;
+    float t = DotProduct(Point - A, AB) / DotProduct(AB, AB);
+    //Saturate func: Min(Max(t, 0.0f), 1.0f)
+    return A + Min(Max(t, 0.0f), 1.0f) * AB;
+}
+
+
 //#include <iostream>
 //#include <stdio.h>
 //#include <string_view>
@@ -323,9 +443,9 @@ void Swap(void* a, void* b, const int32 size)
     for (int32 i = 0; i < size; i++)
     {
         
-		uint8 temp = c[i];
-		c[i] = d[i];
-		d[i] = temp;
+        uint8 temp = c[i];
+        c[i] = d[i];
+        d[i] = temp;
     }
 }
 
@@ -336,14 +456,14 @@ int Partition(uint8* array, const int32 itemSize, int32 iBegin, int32 iEnd, int3
     assert(pivot != nullptr);
     int32 lowOffset = iBegin;
 
-	for (int32 i = iBegin; i < iEnd; i++)
-	{
-		if (compare(&array[i * itemSize], pivot) > 0)
-		{
-			Swap(&array[lowOffset * itemSize], &array[i * itemSize], itemSize);
-			lowOffset++;
-		}
-	}
+    for (int32 i = iBegin; i < iEnd; i++)
+    {
+        if (compare(&array[i * itemSize], pivot) > 0)
+        {
+            Swap(&array[lowOffset * itemSize], &array[i * itemSize], itemSize);
+            lowOffset++;
+        }
+    }
 
     Swap(&array[lowOffset * itemSize], &array[iEnd * itemSize], itemSize);
     return lowOffset;
@@ -352,12 +472,12 @@ int Partition(uint8* array, const int32 itemSize, int32 iBegin, int32 iEnd, int3
 
 void QuickSortInternal(uint8* array, const int32 itemSize, int32 iBegin, int32 iEnd, int32 (*compare)(const void*, const void*))
 {
-	if (iBegin < iEnd)
-	{
+    if (iBegin < iEnd)
+    {
         int32 pivotIndex = Partition(array, itemSize, iBegin, iEnd, compare);
-		QuickSortInternal(array, itemSize, iBegin, pivotIndex - 1, compare); //Low Sort
-		QuickSortInternal(array, itemSize, pivotIndex + 1, iEnd, compare); //High Sort
-	}
+        QuickSortInternal(array, itemSize, iBegin, pivotIndex - 1, compare); //Low Sort
+        QuickSortInternal(array, itemSize, pivotIndex + 1, iEnd, compare); //High Sort
+    }
 }
 
 void QuickSort(uint8* data, const int32 length, const int32 itemSize, int32 (*compare)(const void* a, const void* b))

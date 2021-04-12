@@ -82,14 +82,6 @@ const VertexFace cubeVertices[6] = VertexFace[6](
     ))
 );
 
-//const vec2 faceUV[6] = vec2[6](
-//    vec2( 0, 1),
-//    vec2( 0, 0),
-//    vec2( 1, 1),
-//    vec2( 0, 0),
-//    vec2( 1, 0),
-//    vec2( 1, 1)
-//);
 const vec2 faceUV[4] = vec2[4](
     vec2(0, 1),
     vec2(0, 0),
