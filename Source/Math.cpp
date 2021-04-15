@@ -306,10 +306,10 @@ bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec
 bool SphereVsTriangle(const Vec3& center, const float& radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance)
 {
     // plane normal
-    Vec3 N = Normalize(CrossProduct(triangle.p1 - triangle.p0, triangle.p2 - triangle.p0));
+    Vec3 N = Normalize(CrossProduct(triangle.p1.p - triangle.p0.p, triangle.p2.p - triangle.p0.p));
 
     // signed distance between sphere and plane
-    float dist = DotProduct(center - triangle.p0, N);
+    float dist = DotProduct(center - triangle.p0.p, N);
 
     // can pass through back side of triangle (optional)
     bool isDoubleSided = false;
@@ -326,9 +326,9 @@ bool SphereVsTriangle(const Vec3& center, const float& radius, const Triangle& t
     Vec3 point0 = center - N * dist; // projected sphere center on triangle plane
 
     // Now determine whether point0 is inside all triangle edges: 
-    Vec3 c0 = CrossProduct(point0 - triangle.p0, triangle.p1 - triangle.p0);
-    Vec3 c1 = CrossProduct(point0 - triangle.p1, triangle.p2 - triangle.p1);
-    Vec3 c2 = CrossProduct(point0 - triangle.p2, triangle.p0 - triangle.p2);
+    Vec3 c0 = CrossProduct(point0 - triangle.p0.p, triangle.p1.p - triangle.p0.p);
+    Vec3 c1 = CrossProduct(point0 - triangle.p1.p, triangle.p2.p - triangle.p1.p);
+    Vec3 c2 = CrossProduct(point0 - triangle.p2.p, triangle.p0.p - triangle.p2.p);
 
     bool inside = DotProduct(c0, N) <= 0 && DotProduct(c1, N) <= 0 && DotProduct(c2, N) <= 0;
     bool intersects = false;
@@ -340,19 +340,19 @@ bool SphereVsTriangle(const Vec3& center, const float& radius, const Triangle& t
         float radiussq = radius * radius; // sphere radius squared
 
         // Edge 1:
-        Vec3 point1 = ClosestPointOnLineSegment(triangle.p0, triangle.p1, center);
+        Vec3 point1 = ClosestPointOnLineSegment(triangle.p0.p, triangle.p1.p, center);
         Vec3 v1 = center - point1;
         float distsq1 = DotProduct(v1, v1);
         intersects = distsq1 < radiussq;
 
         // Edge 2:
-        Vec3 point2 = ClosestPointOnLineSegment(triangle.p1, triangle.p2, center);
+        Vec3 point2 = ClosestPointOnLineSegment(triangle.p1.p, triangle.p2.p, center);
         Vec3 v2 = center - point2;
         float distsq2 = DotProduct(v2, v2);
         intersects |= distsq2 < radiussq;
 
         // Edge 3:
-        Vec3 point3 = ClosestPointOnLineSegment(triangle.p2, triangle.p0, center);
+        Vec3 point3 = ClosestPointOnLineSegment(triangle.p2.p, triangle.p0.p, center);
         Vec3 v3 = center - point3;
         float distsq3 = DotProduct(v3, v3);
         intersects |= distsq3 < radiussq;

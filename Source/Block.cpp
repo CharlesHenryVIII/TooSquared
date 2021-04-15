@@ -2033,6 +2033,68 @@ void CreateVertices::DoThing()
     region.DecrimentRefCount();
 }
 
+void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& perspective)
+{
+    VertexBuffer* vertexBuffer = new VertexBuffer();
+    IndexBuffer* indexBuffer = new IndexBuffer();
+
+    std::vector<Vertex> vertices;
+    std::vector<uint32> indices;
+    vertices.reserve(triangles.size());
+   
+
+    for (int32 i = 0; i < triangles.size(); i++)
+    {
+        Vertex a = {};
+        Vec3 normal = triangles[i].Normal();
+        a.p = triangles[i].p0.p;
+        a.p += normal * 0.03f;
+        vertices.push_back(a);
+        a.p = triangles[i].p1.p;
+        a.p += normal * 0.03f;
+        vertices.push_back(a);
+        a.p = triangles[i].p2.p;
+        a.p += normal * 0.03f;
+        vertices.push_back(a);
+        indices.push_back(i * 3 + 0);
+        indices.push_back(i * 3 + 1);
+        indices.push_back(i * 3 + 2);
+    }
+    vertexBuffer->Upload(vertices.data(), vertices.size());
+    indexBuffer->Upload(indices.data(), indices.size());
+    
+    vertexBuffer->Bind();
+    indexBuffer->Bind();
+    //g_renderer.chunkIB->Bind();
+
+    Mat4 transform;
+    //gb_mat4_translate(&transform, { p.p.x, p.p.y, p.p.z });
+    gb_mat4_identity(&transform);
+
+    float scale1D = 1.0f;
+    Vec3 scale = { scale1D, scale1D, scale1D };
+
+    glDisable(GL_CULL_FACE);
+    ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
+    sp->UseShader();
+    sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
+    sp->UpdateUniformMat4("u_view",        1, false, g_camera.view.e);
+    sp->UpdateUniformMat4("u_model",       1, false, transform.e);
+    sp->UpdateUniformVec3("u_scale",       1,        scale.e);
+
+    sp->UpdateUniformVec4("u_color",       1,        color.e);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+    glEnableVertexArrayAttrib(g_renderer.vao, 0);
+    glDisableVertexArrayAttrib(g_renderer.vao, 1);
+    glDisableVertexArrayAttrib(g_renderer.vao, 2);
+    glDisableVertexArrayAttrib(g_renderer.vao, 3);
+
+    glDrawElements(GL_TRIANGLES, (GLuint)vertices.size(), GL_UNSIGNED_INT, 0);
+    g_renderer.numTrianglesDrawn += (uint32)vertices.size();
+    glEnable(GL_CULL_FACE);
+}
+
 void DrawBlock(WorldPos p, Color color, float scale, const Mat4& perspective)
 {
     DrawBlock(p, color, { scale, scale, scale }, perspective);

@@ -432,6 +432,7 @@ int main(int argc, char* argv[])
         }
         
         float cameraSpeed = 0;
+        std::vector<Triangle> debug_trianglesToDraw;
         switch (playerMovementType)
         {
         case MovementType::Fly:
@@ -458,16 +459,17 @@ int main(int argc, char* argv[])
         case MovementType::Collision:
         {
             cameraSpeed = 5.0f * deltaTime;;
+            Vec3 forward = Normalize(Vec3({ g_camera.front.x, 0, g_camera.front.z }));
             if (keyStates[SDLK_LSHIFT].down)
                 cameraSpeed *= 2;
             if (keyStates[SDLK_w].down)
-                g_camera.p.p += (cameraSpeed * g_camera.front);
+                g_camera.p.p += (cameraSpeed * forward);
             if (keyStates[SDLK_s].down)
-                g_camera.p.p -= (cameraSpeed * g_camera.front);
+                g_camera.p.p -= (cameraSpeed * forward);
             if (keyStates[SDLK_a].down)
-                g_camera.p.p -= (Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed);
+                g_camera.p.p -= (Normalize(Cross(forward, g_camera.up)) * cameraSpeed);
             if (keyStates[SDLK_d].down)
-                g_camera.p.p += (Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed);
+                g_camera.p.p += (Normalize(Cross(forward, g_camera.up)) * cameraSpeed);
             //if (keyStates[SDLK_LCTRL].down)
             //    g_camera.p.p.y -= cameraSpeed;
             //if (keyStates[SDLK_SPACE].down)
@@ -507,12 +509,23 @@ int main(int argc, char* argv[])
                 std::vector<Triangle> xTriangles;
                 std::vector<Triangle> yTriangles;
                 std::vector<Triangle> zTriangles;
+                //RegionSampler immediateRegion;
+                //immediateRegion.BuildRegion(ToChunk(referenceGamePosition));
 
                 for (GamePos block : neighborBlocks)
                 {
                     BlockType blockType;
-                    if (g_chunks->GetBlock(blockType, block) && blockType != BlockType::Empty)
+                    //if (g_chunks->GetBlock(blockType, block) || true)
+                    ChunkPos blockChunkP = {};
+                    Vec3Int block_blockP = Convert_GameToBlock(blockChunkP, block);
+                    ChunkIndex blockChunkIndex;
+                    if (g_chunks->GetChunkFromPosition(blockChunkIndex, blockChunkP))
+                    //if (immediateRegion.GetBlock(blockType, ))
                     {
+                        blockType = g_chunks->blocks[blockChunkIndex].e[block_blockP.x][block_blockP.y][block_blockP.z];
+                        if (blockType == BlockType::Empty)
+                            continue;
+
                         WorldPos blockP = ToWorld(block);
 
                         for (int32 i = 0; i <= 1; i++)
@@ -522,12 +535,14 @@ int main(int argc, char* argv[])
                             vertex.p1 = blockP.p + cubeVertices[i].e[1];
                             vertex.p2 = blockP.p + cubeVertices[i].e[2];
                             xTriangles.push_back(vertex);
+                            debug_trianglesToDraw.push_back(vertex);
 
                             vertex = {};
                             vertex.p0 = blockP.p + cubeVertices[i].e[1];
-                            vertex.p1 = blockP.p + cubeVertices[i].e[2];
-                            vertex.p2 = blockP.p + cubeVertices[i].e[3];
+                            vertex.p1 = blockP.p + cubeVertices[i].e[3];
+                            vertex.p2 = blockP.p + cubeVertices[i].e[2];
                             xTriangles.push_back(vertex);
+                            debug_trianglesToDraw.push_back(vertex);
                         }
 
                         for (int32 i = 2; i <= 3 ; i++)
@@ -567,7 +582,7 @@ int main(int argc, char* argv[])
                 for (Triangle t : xTriangles)
                 {
                     // sphere center
-                    Vec3 triangleCenter = (t.p0 + t.p1 + t.p2) / 3;
+                    Vec3 triangleCenter = (t.p0.p + t.p1.p + t.p2.p) / 3;
                     Vec3 top = playerCollider.m_tip.p  - playerCollider.m_radius;
                     Vec3 bot = playerCollider.m_tail.p + playerCollider.m_radius;
                     Vec3 center = {};
@@ -1086,6 +1101,11 @@ int main(int argc, char* argv[])
                 Color temp = Mint;
                 temp.a = 0.6f;
                 DrawBlock(pos, temp, 1.1f, perspective);
+            }
+            if (debugDraw)
+            {
+                if (debug_trianglesToDraw.size())
+                    DrawTriangles(debug_trianglesToDraw, Orange, perspective);
             }
         }
 

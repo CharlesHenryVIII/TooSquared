@@ -212,13 +212,14 @@ struct Rectangle_Int {
     Vec3 r = {a.x - b, a.y - b, a.z - b};
     return r;
 }
-[[nodiscard]] inline Vec3 operator+=(Vec3& a, float b)
+inline void operator+=(Vec3& a, float b)
 {
     a = {a.x + b, a.y + b, a.z + b};
 }
 [[nodiscard]] inline Vec3 operator-=(Vec3& a, float b)
 {
     a = {a.x - b, a.y - b, a.z - b};
+    return a;
 }
 [[nodiscard]] inline bool operator==(Vec3Int a, Vec3Int b)
 {
@@ -751,9 +752,13 @@ struct Frustum {
 };
 
 struct Triangle {
-    Vec3 p0 = {};
-    Vec3 p1 = {};
-    Vec3 p2 = {};
+    WorldPos p0 = {};
+    WorldPos p1 = {};
+    WorldPos p2 = {};
+    Vec3 Normal() const
+    {
+        return Normalize(CrossProduct(p1.p - p0.p, p2.p - p0.p));
+    }
 };
 
 Frustum ComputeFrustum(const Mat4& mvProj);
