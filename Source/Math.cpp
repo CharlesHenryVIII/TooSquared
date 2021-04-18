@@ -312,13 +312,13 @@ bool SphereVsTriangle(const Vec3& center, const float& radius, const Triangle& t
     float dist = DotProduct(center - triangle.p0.p, N);
 
     // can pass through back side of triangle (optional)
-    bool isDoubleSided = false;
-    if (!isDoubleSided && dist > 0)
-    {
-        return false;
-    }
+    //bool isDoubleSided = false;
+    //if (!isDoubleSided && dist > 0)
+    //{
+    //    return false;
+    //}
     // no intersection if 
-    else if (dist < -radius || dist > radius)
+    if (dist < -radius || dist > radius)
     {
         return false;
     }

@@ -2074,7 +2074,7 @@ void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Ma
     float scale1D = 1.0f;
     Vec3 scale = { scale1D, scale1D, scale1D };
 
-    glDisable(GL_CULL_FACE);
+    //glDisable(GL_CULL_FACE);
     ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
     sp->UseShader();
     sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
@@ -2092,7 +2092,7 @@ void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Ma
 
     glDrawElements(GL_TRIANGLES, (GLuint)vertices.size(), GL_UNSIGNED_INT, 0);
     g_renderer.numTrianglesDrawn += (uint32)vertices.size();
-    glEnable(GL_CULL_FACE);
+    //glEnable(GL_CULL_FACE);
 }
 
 void DrawBlock(WorldPos p, Color color, float scale, const Mat4& perspective)

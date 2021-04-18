@@ -751,10 +751,18 @@ struct Frustum {
     Plane e[6];
 };
 
-struct Triangle {
-    WorldPos p0 = {};
-    WorldPos p1 = {};
-    WorldPos p2 = {};
+//typedef union gbVec3 {
+//	struct { float x, y, z; };
+//	struct { float r, g, b; };
+//
+//	gbVec2 xy;
+//	float e[3];
+//} gbVec3;
+
+union Triangle {
+    struct { WorldPos p0, p1, p2; };
+    WorldPos e[3];
+        
     Vec3 Normal() const
     {
         return Normalize(CrossProduct(p1.p - p0.p, p2.p - p0.p));
