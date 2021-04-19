@@ -67,14 +67,6 @@ bool HeavensInterpolation(float& result, float time, float lo, float hi, float i
     return true;
 }
 
-struct Capsule
-{
-    float m_radius = 0;
-    float m_height = 0;
-    WorldPos m_tip;
-    WorldPos m_tail;
-};
-
 enum class MovementType {
     Fly,
     Collision,
@@ -91,61 +83,6 @@ void UpdatePosition(Vec3& position, Vec3& velocity, Vec3& acceleration, const fl
     Vec3 deltaPosition = velocity * dt;
     position += deltaPosition;
 }
-
-struct VertexFace {
-    
-    Vec3 e[4];
-};
-
-const VertexFace cubeVertices[6] = {
-    // +x
-    VertexFace( { 
-    Vec3(1.0,  1.0,  1.0),
-    Vec3(1.0,    0,  1.0),
-    Vec3(1.0,  1.0,    0),
-    Vec3(1.0,    0,    0) 
-    }),
-
-    // -x
-    VertexFace({
-    Vec3(0,  1.0,    0),
-    Vec3(0,    0,    0),
-    Vec3(0,  1.0,  1.0),
-    Vec3(0,    0,  1.0)
-    }),
-
-    // +y
-    VertexFace({
-    Vec3( 1.0,  1.0,  1.0 ),
-    Vec3( 1.0,  1.0,    0 ),
-    Vec3(   0,  1.0,  1.0 ), 
-    Vec3(   0,  1.0,    0 )
-    }),
-
-    // -y
-    VertexFace({
-    Vec3(   0,    0,  1.0 ), 
-    Vec3(   0,    0,    0 ),
-    Vec3( 1.0,    0,  1.0 ),
-    Vec3( 1.0,    0,    0 )
-    }),
-
-    // z
-    VertexFace({
-    Vec3(   0,  1.0,  1.0 ), 
-    Vec3(   0,    0,  1.0 ),
-    Vec3( 1.0,  1.0,  1.0 ),
-    Vec3( 1.0,    0,  1.0 )
-    }),
-
-    // -z
-    VertexFace({
-    Vec3( 1.0,  1.0,    0 ),
-    Vec3( 1.0,    0,    0 ),
-    Vec3(   0,  1.0,    0 ), 
-    Vec3(   0,    0,    0 )
-    })
-};
 
 
 int main(int argc, char* argv[])
@@ -470,10 +407,8 @@ int main(int argc, char* argv[])
                 g_camera.p.p -= (Normalize(Cross(forward, g_camera.up)) * cameraSpeed);
             if (keyStates[SDLK_d].down)
                 g_camera.p.p += (Normalize(Cross(forward, g_camera.up)) * cameraSpeed);
-            //if (keyStates[SDLK_LCTRL].down)
-            //    g_camera.p.p.y -= cameraSpeed;
             if (keyStates[SDLK_SPACE].downThisFrame)
-                g_camera.p.p.y += 1.0f;
+                g_camera.p.p.y += 1.3f;
             if (keyStates[SDLK_z].down)
                 g_camera.p.p.z += cameraSpeed;
             if (keyStates[SDLK_x].down)
@@ -486,13 +421,32 @@ int main(int argc, char* argv[])
             playerCollider.m_tail.p.y -= playerCollider.m_height;
 
 
-            bool topBlocked = false;
-            bool botBlocked = false;
             std::vector<GamePos> neighborBlocks;
             GamePos referenceGamePosition = ToGame(playerCollider.m_tip);
             int32 horizontalOffset = Max(int32(playerCollider.m_radius + 0.5f), 1);
             int32 verticalOffset   = Max(int32(playerCollider.m_tip.p.y - playerCollider.m_tail.p.y + 0.5f), 1);
 
+#if 1
+    
+            {
+                for (int32 x = -horizontalOffset; x <= horizontalOffset; x++)
+                {
+                    for (int32 y = -verticalOffset; y <= verticalOffset; y++)
+                    {
+                        for (int32 z = -horizontalOffset; z <= horizontalOffset; z++)
+                        {
+                            //neighborBlocks.push_back(GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })));
+                            Vec3 outsideOfBlock = {};
+                            if (CapsuleVsBlock(playerCollider, GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })), outsideOfBlock, debug_trianglesToDraw))
+                            {
+                                g_camera.p.p += outsideOfBlock;
+                            }
+                        }
+                    }
+                }
+            }
+
+#else
             {
                 for (int32 x = -horizontalOffset; x <= horizontalOffset; x++)
                 {
@@ -650,6 +604,7 @@ int main(int argc, char* argv[])
                 }
 
             }
+#endif
             
 
             //ChunkPos playerChunk = ToChunk(topBlock);

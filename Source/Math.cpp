@@ -422,6 +422,145 @@ Vec3 ClosestPointOnLineSegment(const Vec3& A, const Vec3& B, const Vec3& Point)
     return A + Min(Max(t, 0.0f), 1.0f) * AB;
 }
 
+struct VertexFace {
+    
+    Vec3 e[4];
+};
+
+const VertexFace cubeVertices[6] = {
+    // +x
+    VertexFace( { 
+    Vec3(1.0,  1.0,  1.0),
+    Vec3(1.0,    0,  1.0),
+    Vec3(1.0,  1.0,    0),
+    Vec3(1.0,    0,    0) 
+    }),
+
+    // -x
+    VertexFace({
+    Vec3(0,  1.0,    0),
+    Vec3(0,    0,    0),
+    Vec3(0,  1.0,  1.0),
+    Vec3(0,    0,  1.0)
+    }),
+
+    // +y
+    VertexFace({
+    Vec3( 1.0,  1.0,  1.0 ),
+    Vec3( 1.0,  1.0,    0 ),
+    Vec3(   0,  1.0,  1.0 ), 
+    Vec3(   0,  1.0,    0 )
+    }),
+
+    // -y
+    VertexFace({
+    Vec3(   0,    0,  1.0 ), 
+    Vec3(   0,    0,    0 ),
+    Vec3( 1.0,    0,  1.0 ),
+    Vec3( 1.0,    0,    0 )
+    }),
+
+    // z
+    VertexFace({
+    Vec3(   0,  1.0,  1.0 ), 
+    Vec3(   0,    0,  1.0 ),
+    Vec3( 1.0,  1.0,  1.0 ),
+    Vec3( 1.0,    0,  1.0 )
+    }),
+
+    // -z
+    VertexFace({
+    Vec3( 1.0,  1.0,    0 ),
+    Vec3( 1.0,    0,    0 ),
+    Vec3(   0,  1.0,    0 ), 
+    Vec3(   0,    0,    0 )
+    })
+};
+
+bool CapsuleVsBlock(Capsule collider, GamePos blockGP, Vec3& toOutside, std::vector<Triangle>& debug_triangles)
+{
+    Triangle triangles[+Face::Count][2] = {};
+    bool behindFaces[+Face::Count] = {};
+
+    BlockType blockType;
+    ChunkPos blockChunkP = {};
+    Vec3Int block_blockP = Convert_GameToBlock(blockChunkP, blockGP);
+    ChunkIndex blockChunkIndex;
+    if (g_chunks->GetChunkFromPosition(blockChunkIndex, blockChunkP))
+    {
+        //checking if there is a block at the target location
+        blockType = g_chunks->blocks[blockChunkIndex].e[block_blockP.x][block_blockP.y][block_blockP.z];
+        if (blockType == BlockType::Empty)
+            return false;
+
+        //variables used
+        WorldPos blockP = ToWorld(blockGP);
+        Vec3 topBound = { collider.m_tip.p.x,  collider.m_tip.p.y  - collider.m_radius, collider.m_tip.p.z };
+        Vec3 botBound = { collider.m_tail.p.x, collider.m_tail.p.y + collider.m_radius, collider.m_tail.p.z };
+        Vec3 sphereCenter = {};
+        sphereCenter.x = Clamp(float(blockGP.p.x) + 0.5f, botBound.x, topBound.x);
+        sphereCenter.y = Clamp(float(blockGP.p.y) + 0.5f, botBound.y, topBound.y);
+        sphereCenter.z = Clamp(float(blockGP.p.z) + 0.5f, botBound.z, topBound.z);
+
+        //Creating vertices for each triangle
+        for (int32 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
+        {
+            triangles[faceIndex][0] = {};
+            triangles[faceIndex][0].p0 = blockP.p + cubeVertices[faceIndex].e[0];
+            triangles[faceIndex][0].p1 = blockP.p + cubeVertices[faceIndex].e[1];
+            triangles[faceIndex][0].p2 = blockP.p + cubeVertices[faceIndex].e[2];
+            debug_triangles.push_back(triangles[faceIndex][0]);
+
+            triangles[faceIndex][1] = {};
+            triangles[faceIndex][1].p0 = blockP.p + cubeVertices[faceIndex].e[1];
+            triangles[faceIndex][1].p1 = blockP.p + cubeVertices[faceIndex].e[3];
+            triangles[faceIndex][1].p2 = blockP.p + cubeVertices[faceIndex].e[2];
+            debug_triangles.push_back(triangles[faceIndex][1]);
+        }
+
+
+        //Check sphere against every triangle
+        for (int32 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
+        {
+            for (int32 i = 0; i < 2; i++)
+            {
+                const Triangle& triangle = triangles[faceIndex][0];
+                Vec3 triangleCenter = triangle.Center();
+
+                Vec3 directionToTriangle = {};
+                float distanceToTriangle = {};
+                behindFaces[faceIndex] |= SphereVsTriangle(sphereCenter, collider.m_radius, triangle, directionToTriangle, distanceToTriangle) && distanceToTriangle > 0.0f;
+            }
+        }
+
+        //Check if we are inside the block
+        for (int32 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
+            if (!behindFaces[faceIndex])
+                return false;
+    
+        //Find vector to outside the block        
+#if 1
+        float distances[+Face::Count] = {};
+        WorldPos blockCenter = blockP.p + 0.5f;
+        toOutside = sphereCenter - blockCenter.p;
+        toOutside = Normalize(toOutside);
+        
+#else
+        float distances[+Face::Count] = {};
+        WorldPos blockCenter = blockP.p + 0.5f;
+        
+        for (int32 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
+        {
+            Vec3 face = blockCenter + (faceNormals[faceIndex] / 2);
+            distances[faceIndex] = Distance(sphereCenter, face);
+        }
+#endif
+
+        return true;
+    }
+    return false;
+}
+
 
 //#include <iostream>
 //#include <stdio.h>
