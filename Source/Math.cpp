@@ -303,7 +303,7 @@ bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec
     return true;
 }
 
-bool SphereVsTriangle(const Vec3& center, const float& radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance)
+bool SphereVsTriangle(const Vec3& center, const float& radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance, bool checkDistanceToTriangle)
 {
     // plane normal
     Vec3 N = Normalize(CrossProduct(triangle.p1.p - triangle.p0.p, triangle.p2.p - triangle.p0.p));
@@ -318,7 +318,7 @@ bool SphereVsTriangle(const Vec3& center, const float& radius, const Triangle& t
     //    return false;
     //}
     // no intersection if 
-    if (dist < -radius || dist > radius)
+    if (checkDistanceToTriangle && (dist < -radius || dist > radius))
     {
         return false;
     }
@@ -413,6 +413,120 @@ bool SphereVsTriangle(const Vec3& center, const float& radius, const Triangle& t
     else
         return false;
 }
+
+
+bool SphereVsBlock(const Vec3& center, const float& radius, const GamePos& blockP)
+{
+    // plane normal
+    Vec3 N = Normalize(CrossProduct(triangle.p1.p - triangle.p0.p, triangle.p2.p - triangle.p0.p));
+
+    // signed distance between sphere and plane
+    float dist = DotProduct(center - triangle.p0.p, N);
+
+    // can pass through back side of triangle (optional)
+    //bool isDoubleSided = false;
+    //if (!isDoubleSided && dist > 0)
+    //{
+    //    return false;
+    //}
+    // no intersection if 
+    if (checkDistanceToTriangle && (dist < -radius || dist > radius))
+    {
+        return false;
+    }
+
+    Vec3 point0 = center - N * dist; // projected sphere center on triangle plane
+
+    // Now determine whether point0 is inside all triangle edges: 
+    Vec3 c0 = CrossProduct(point0 - triangle.p0.p, triangle.p1.p - triangle.p0.p);
+    Vec3 c1 = CrossProduct(point0 - triangle.p1.p, triangle.p2.p - triangle.p1.p);
+    Vec3 c2 = CrossProduct(point0 - triangle.p2.p, triangle.p0.p - triangle.p2.p);
+
+    bool inside = DotProduct(c0, N) <= 0 && DotProduct(c1, N) <= 0 && DotProduct(c2, N) <= 0;
+    bool intersects = false;
+    Vec3 point1 = {};
+    Vec3 point2 = {};
+    Vec3 point3 = {};
+    if (!inside)
+    { 
+        float radiussq = radius * radius; // sphere radius squared
+
+        // Edge 1:
+        Vec3 point1 = ClosestPointOnLineSegment(triangle.p0.p, triangle.p1.p, center);
+        Vec3 v1 = center - point1;
+        float distsq1 = DotProduct(v1, v1);
+        intersects = distsq1 < radiussq;
+
+        // Edge 2:
+        Vec3 point2 = ClosestPointOnLineSegment(triangle.p1.p, triangle.p2.p, center);
+        Vec3 v2 = center - point2;
+        float distsq2 = DotProduct(v2, v2);
+        intersects |= distsq2 < radiussq;
+
+        // Edge 3:
+        Vec3 point3 = ClosestPointOnLineSegment(triangle.p2.p, triangle.p0.p, center);
+        Vec3 v3 = center - point3;
+        float distsq3 = DotProduct(v3, v3);
+        intersects |= distsq3 < radiussq;
+    }
+
+    if (inside || intersects)
+    {
+        Vec3 best_point = point0;
+        Vec3 intersection_vec;
+
+        if (inside)
+        {
+            intersection_vec = center - point0;
+        }
+        else
+        {
+            Vec3 d = center - point1;
+            float best_distsq = DotProduct(d, d);
+            best_point = point1;
+            intersection_vec = d;
+
+            d = center - point2;
+            float distsq = DotProduct(d, d);
+            if (distsq < best_distsq)
+            {
+                distsq = best_distsq;
+                best_point = point2;
+                intersection_vec = d;
+            }
+
+            d = center - point3;
+            distsq = DotProduct(d, d);
+            if (distsq < best_distsq)
+            {
+                distsq = best_distsq;
+                best_point = point3;
+                intersection_vec = d;
+            }
+        }
+
+        float len = Length(intersection_vec);  // vector3 length calculation: 
+        if (len)
+        { 
+            //Vec3 penetration_vec = sqrtf(DotProduct(intersection_vec, intersection_vec));
+            directionToTriangle = intersection_vec / len;  // normalize
+            if (isnan(directionToTriangle.x))
+                int32 i = 10;//issues;
+            directionToTriangle = -directionToTriangle;
+            distance = radius - len; // radius = sphere radius
+        }
+        else
+        {
+            directionToTriangle = {};
+            distance = {};
+        }
+        return true; // intersection success
+    }
+    else
+        return false;
+}
+
+
 
 Vec3 ClosestPointOnLineSegment(const Vec3& A, const Vec3& B, const Vec3& Point)
 {
@@ -525,11 +639,11 @@ bool CapsuleVsBlock(Capsule collider, GamePos blockGP, Vec3& toOutside, std::vec
             for (int32 i = 0; i < 2; i++)
             {
                 const Triangle& triangle = triangles[faceIndex][0];
-                Vec3 triangleCenter = triangle.Center();
+                //Vec3 triangleCenter = triangle.Center();
 
                 Vec3 directionToTriangle = {};
                 float distanceToTriangle = {};
-                behindFaces[faceIndex] |= SphereVsTriangle(sphereCenter, collider.m_radius, triangle, directionToTriangle, distanceToTriangle) && distanceToTriangle > 0.0f;
+                behindFaces[faceIndex] = (behindFaces[faceIndex] || (SphereVsTriangle(sphereCenter, collider.m_radius, triangle, directionToTriangle, distanceToTriangle, false)/* && distanceToTriangle > 0.0f*/));
             }
         }
 
@@ -538,7 +652,7 @@ bool CapsuleVsBlock(Capsule collider, GamePos blockGP, Vec3& toOutside, std::vec
             if (!behindFaces[faceIndex])
                 return false;
     
-        //Find vector to outside the block        
+        //Find vector to outside the block
 #if 1
         float distances[+Face::Count] = {};
         WorldPos blockCenter = blockP.p + 0.5f;
