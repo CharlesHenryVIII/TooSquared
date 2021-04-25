@@ -399,6 +399,8 @@ int main(int argc, char* argv[])
             Vec3 forward = Normalize(Vec3({ g_camera.front.x, 0, g_camera.front.z }));
             if (keyStates[SDLK_LSHIFT].down)
                 cameraSpeed *= 2;
+            if (keyStates[SDLK_LCTRL].down)
+                cameraSpeed /= 2;
             if (keyStates[SDLK_w].down)
                 g_camera.p.p += (cameraSpeed * forward);
             if (keyStates[SDLK_s].down)
