@@ -148,7 +148,7 @@ int main(int argc, char* argv[])
     //}
 
     Capsule playerCollider = {};
-    playerCollider.m_height = 1.8f;
+    playerCollider.m_height = 2.5f;//1.8f;
     playerCollider.m_radius = 0.25f;
     MovementType playerMovementType = MovementType::Fly;
 
@@ -426,20 +426,26 @@ int main(int argc, char* argv[])
             int32 horizontalOffset = Max(int32(playerCollider.m_radius + 0.5f), 1);
             int32 verticalOffset   = Max(int32(playerCollider.m_tip.p.y - playerCollider.m_tail.p.y + 0.5f), 1);
 
-#if 1
+#if 0
     
             {
-                for (int32 x = -horizontalOffset; x <= horizontalOffset; x++)
+               // bool repeatCollisionTest = true;
+               // while (repeatCollisionTest)
                 {
-                    for (int32 y = -verticalOffset; y <= verticalOffset; y++)
+                    //repeatCollisionTest = false;
+                    for (int32 z = -horizontalOffset; z <= horizontalOffset/* && !repeatCollisionTest*/; z++)
                     {
-                        for (int32 z = -horizontalOffset; z <= horizontalOffset; z++)
+                        for (int32 y = -verticalOffset; y <= verticalOffset/* && !repeatCollisionTest*/; y++)
                         {
-                            //neighborBlocks.push_back(GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })));
-                            Vec3 outsideOfBlock = {};
-                            if (CapsuleVsBlock(playerCollider, GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })), outsideOfBlock, debug_trianglesToDraw))
+                            for (int32 x = -horizontalOffset; x <= horizontalOffset/* && !repeatCollisionTest*/; x++)
                             {
-                                g_camera.p.p += outsideOfBlock;
+                                //neighborBlocks.push_back(GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })));
+                                Vec3 outsideOfBlock = {};
+                                if (CapsuleVsBlock(playerCollider, GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })), outsideOfBlock, debug_trianglesToDraw))
+                                {
+                                    g_camera.p.p += outsideOfBlock;
+                                    //repeatCollisionTest = true;
+                                }
                             }
                         }
                     }
@@ -454,159 +460,19 @@ int main(int argc, char* argv[])
                     {
                         for (int32 z = -horizontalOffset; z <= horizontalOffset; z++)
                         {
-                            neighborBlocks.push_back(GamePos(referenceGamePosition.p + Vec3Int({x, y, z})));
+                            //neighborBlocks.push_back(GamePos(referenceGamePosition.p + Vec3Int({x, y, z})));
+                            Vec3 outsideOfBlock = {};
+                            if (CapsuleVsBlock(playerCollider, GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })), outsideOfBlock, debug_trianglesToDraw))
+                            {
+                                g_camera.p.p += outsideOfBlock;
+                            }
                         }
                     }
                 }
                 
-                //generate traingles
-                std::vector<Triangle> xTriangles;
-                std::vector<Triangle> yTriangles;
-                std::vector<Triangle> zTriangles;
-                //RegionSampler immediateRegion;
-                //immediateRegion.BuildRegion(ToChunk(referenceGamePosition));
-
-                for (GamePos block : neighborBlocks)
-                {
-                    BlockType blockType;
-                    //if (g_chunks->GetBlock(blockType, block) || true)
-                    ChunkPos blockChunkP = {};
-                    Vec3Int block_blockP = Convert_GameToBlock(blockChunkP, block);
-                    ChunkIndex blockChunkIndex;
-                    if (g_chunks->GetChunkFromPosition(blockChunkIndex, blockChunkP))
-                    //if (immediateRegion.GetBlock(blockType, ))
-                    {
-                        blockType = g_chunks->blocks[blockChunkIndex].e[block_blockP.x][block_blockP.y][block_blockP.z];
-                        if (blockType == BlockType::Empty)
-                            continue;
-
-                        WorldPos blockP = ToWorld(block);
-
-                        Triangle triangle = {};
-                        for (int32 i = 0; i <= 1; i++)
-                        {
-                            triangle = {};
-                            triangle.e[0] = blockP.p + cubeVertices[i].e[0];
-                            triangle.e[1] = blockP.p + cubeVertices[i].e[1];
-                            triangle.e[2] = blockP.p + cubeVertices[i].e[2];
-                            xTriangles.push_back(triangle);
-                            debug_trianglesToDraw.push_back(triangle);
-
-                            triangle = {};
-                            triangle.e[0] = blockP.p + cubeVertices[i].e[1];
-                            triangle.e[1] = blockP.p + cubeVertices[i].e[3];
-                            triangle.e[2] = blockP.p + cubeVertices[i].e[2];
-                            xTriangles.push_back(triangle);
-                            debug_trianglesToDraw.push_back(triangle);
-                        }
-
-                        for (int32 i = 2; i <= 3 ; i++)
-                        {
-                            triangle = {};
-                            triangle.e[0] = blockP.p + cubeVertices[i].e[0];
-                            triangle.e[1] = blockP.p + cubeVertices[i].e[1];
-                            triangle.e[2] = blockP.p + cubeVertices[i].e[2];
-                            debug_trianglesToDraw.push_back(triangle);
-                            yTriangles.push_back(triangle);
-
-                            triangle = {};
-                            triangle.e[0] = blockP.p + cubeVertices[i].e[1];
-                            triangle.e[1] = blockP.p + cubeVertices[i].e[3];
-                            triangle.e[2] = blockP.p + cubeVertices[i].e[2];
-                            debug_trianglesToDraw.push_back(triangle);
-                            yTriangles.push_back(triangle);
-                        }
-
-                        for (int32 i = 4; i <= 5 ; i++)
-                        {
-                            triangle = {};
-                            triangle.e[0] = blockP.p + cubeVertices[i].e[0];
-                            triangle.e[1] = blockP.p + cubeVertices[i].e[1];
-                            triangle.e[2] = blockP.p + cubeVertices[i].e[2];
-                            debug_trianglesToDraw.push_back(triangle);
-                            zTriangles.push_back(triangle);
-
-                            triangle = {};
-                            triangle.e[0] = blockP.p + cubeVertices[i].e[1];
-                            triangle.e[1] = blockP.p + cubeVertices[i].e[3];
-                            triangle.e[2] = blockP.p + cubeVertices[i].e[2];
-                            debug_trianglesToDraw.push_back(triangle);
-                            zTriangles.push_back(triangle);
-                        }
-                    }
-                }
-
-                //Sphere vs Triangle for horizontal
-                Vec3 topBound = { playerCollider.m_tip.p.x,  playerCollider.m_tip.p.y - playerCollider.m_radius, playerCollider.m_tip.p.z };
-                Vec3 botBound = { playerCollider.m_tail.p.x, playerCollider.m_tail.p.y + playerCollider.m_radius, playerCollider.m_tail.p.z };
-
-                for (const Triangle& t : xTriangles)
-                {
-                    // sphere center
-                    Vec3 triangleCenter = (t.p0.p + t.p1.p + t.p2.p) / 3;
-                    Vec3 center = {};
-                    center.x = Clamp(triangleCenter.x, botBound.x, topBound.x); 
-                    center.y = Clamp(triangleCenter.y, botBound.y, topBound.y); 
-                    center.z = Clamp(triangleCenter.z, botBound.z, topBound.z); 
-
-                    //bool SphereVsTriangle(const Vec3& center, const float& radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance)
-                    Vec3 directionToTriangle = {};
-                    float distanceToTriangle = {};
-                    if (SphereVsTriangle(center, playerCollider.m_radius, t, directionToTriangle, distanceToTriangle) && distanceToTriangle > 0.0f)
-                    {
-                        //Sphere inside triangle
-                        g_camera.p.p.x += (-directionToTriangle.x) * distanceToTriangle;
-                        break;
-                    }
-
-                }
-
-                for (const Triangle& t : yTriangles)
-                {
-                    // sphere center
-                    Vec3 triangleCenter = (t.p0.p + t.p1.p + t.p2.p) / 3;
-                    Vec3 center = {};
-                    center.x = Clamp(triangleCenter.x, botBound.x, topBound.x); 
-                    center.y = Clamp(triangleCenter.y, botBound.y, topBound.y); 
-                    center.z = Clamp(triangleCenter.z, botBound.z, topBound.z); 
-
-                    //bool SphereVsTriangle(const Vec3& center, const float& radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance)
-                    Vec3 directionToTriangle = {};
-                    float distanceToTriangle = {};
-                    if (SphereVsTriangle(center, playerCollider.m_radius, t, directionToTriangle, distanceToTriangle) && distanceToTriangle > 0.0f)
-                    {
-                        //Sphere inside triangle
-                        g_camera.p.p.y += (-directionToTriangle.y) * distanceToTriangle;
-                        break;
-                    }
-
-                }
-
-                for (const Triangle& t : zTriangles)
-                {
-                    // sphere center
-                    Vec3 triangleCenter = (t.p0.p + t.p1.p + t.p2.p) / 3;
-                    Vec3 center = {};
-                    center.x = Clamp(triangleCenter.x, botBound.x, topBound.x); 
-                    center.y = Clamp(triangleCenter.y, botBound.y, topBound.y); 
-                    center.z = Clamp(triangleCenter.z, botBound.z, topBound.z); 
-
-                    //bool SphereVsTriangle(const Vec3& center, const float& radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance)
-                    Vec3 directionToTriangle = {};
-                    float distanceToTriangle = {};
-                    if (SphereVsTriangle(center, playerCollider.m_radius, t, directionToTriangle, distanceToTriangle) && distanceToTriangle > 0.0f)
-                    {
-                        //Sphere inside triangle
-                        g_camera.p.p.z += (-directionToTriangle.z) * distanceToTriangle;
-                        break;
-                    }
-
-                }
 
             }
 #endif
-            
-
             //ChunkPos playerChunk = ToChunk(topBlock);
 
             break;
