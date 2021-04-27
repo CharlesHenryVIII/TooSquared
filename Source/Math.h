@@ -796,6 +796,14 @@ struct Capsule
     float m_height = 0;
     WorldPos m_tip;
     WorldPos m_tail;
+
+    void UpdateTipLocation(const WorldPos& newTipLocation)
+    {
+        m_tip = newTipLocation.p;
+        m_tip.p.y += m_radius;
+        m_tail = m_tip;
+        m_tail.p.y -= m_height;
+    }
 };
 
 bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal);

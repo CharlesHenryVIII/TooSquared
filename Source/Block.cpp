@@ -2240,7 +2240,7 @@ void ChunkUpdateBlocks(ChunkPos p, Vec3Int offset = {})
     }
 }
 
-void SetBlock(GamePos hitBlock, Vec3 hitNormal, BlockType setBlockType)
+void SetBlock(GamePos hitBlock, BlockType setBlockType)
 {
     ChunkPos hitChunkP = ToChunk(hitBlock);
     ChunkIndex hitChunkIndex;

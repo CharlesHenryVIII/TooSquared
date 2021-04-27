@@ -1,14 +1,9 @@
 # TooSquared
 
 ###TODO: 
- * Properly handle chunk location
- * Moving Lighting/Sun
  * Directional, point, clamped/ambient
- * Octave Noise
- * Combined Noise
  * Raycasts
  * Block wireframe on target
- * Block place and removal
  * Operator overloads on WorldPos and ChunkPos
  * Move main loops into a single loop that switches on chunk state?
  * Capture mouse
@@ -18,7 +13,8 @@
  * collision
  * improve chunk update code
  * Added perlin seeding
-
+ * Add proper kinematics
+ * step physics calculations
 
 
 

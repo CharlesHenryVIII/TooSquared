@@ -148,7 +148,7 @@ int main(int argc, char* argv[])
     //}
 
     Capsule playerCollider = {};
-    playerCollider.m_height = 2.5f;//1.8f;
+    playerCollider.m_height = 1.8f;
     playerCollider.m_radius = 0.25f;
     MovementType playerMovementType = MovementType::Fly;
 
@@ -417,10 +417,7 @@ int main(int argc, char* argv[])
                 g_camera.p.p.x += cameraSpeed;
             g_camera.p.p.y -= 0.1f;
 
-            playerCollider.m_tip = g_camera.p;
-            playerCollider.m_tip.p.y += playerCollider.m_radius;
-            playerCollider.m_tail = playerCollider.m_tip;
-            playerCollider.m_tail.p.y -= playerCollider.m_height;
+            playerCollider.UpdateTipLocation(g_camera.p);
 
 
             std::vector<GamePos> neighborBlocks;
@@ -428,33 +425,6 @@ int main(int argc, char* argv[])
             int32 horizontalOffset = Max(int32(playerCollider.m_radius + 0.5f), 1);
             int32 verticalOffset   = Max(int32(playerCollider.m_tip.p.y - playerCollider.m_tail.p.y + 0.5f), 1);
 
-#if 0
-    
-            {
-               // bool repeatCollisionTest = true;
-               // while (repeatCollisionTest)
-                {
-                    //repeatCollisionTest = false;
-                    for (int32 z = -horizontalOffset; z <= horizontalOffset/* && !repeatCollisionTest*/; z++)
-                    {
-                        for (int32 y = -verticalOffset; y <= verticalOffset/* && !repeatCollisionTest*/; y++)
-                        {
-                            for (int32 x = -horizontalOffset; x <= horizontalOffset/* && !repeatCollisionTest*/; x++)
-                            {
-                                //neighborBlocks.push_back(GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })));
-                                Vec3 outsideOfBlock = {};
-                                if (CapsuleVsBlock(playerCollider, GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })), outsideOfBlock, debug_trianglesToDraw))
-                                {
-                                    g_camera.p.p += outsideOfBlock;
-                                    //repeatCollisionTest = true;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-#else
             {
                 for (int32 x = -horizontalOffset; x <= horizontalOffset; x++)
                 {
@@ -467,6 +437,7 @@ int main(int argc, char* argv[])
                             if (CapsuleVsBlock(playerCollider, GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })), outsideOfBlock, debug_trianglesToDraw))
                             {
                                 g_camera.p.p += outsideOfBlock;
+                                playerCollider.UpdateTipLocation(g_camera.p);
                             }
                         }
                     }
@@ -474,8 +445,6 @@ int main(int argc, char* argv[])
                 
 
             }
-#endif
-            //ChunkPos playerChunk = ToChunk(topBlock);
 
             break;
         }
@@ -578,7 +547,7 @@ int main(int argc, char* argv[])
         {
             if (validHit)
             {
-                SetBlock(hitBlock, {}, BlockType::Empty);
+                SetBlock(hitBlock, BlockType::Empty);
             }
         }
         //TODO: Optimize to update corners (max 4 chunks)
@@ -589,7 +558,8 @@ int main(int argc, char* argv[])
             {
                 if (validHit)
                 {
-                    SetBlock(hitBlock, hitNormal, BlockType(c - SDLK_1 + 1));
+                    //SetBlock(hitBlock, hitNormal, BlockType(c - SDLK_1 + 1));
+                    SetBlock({ hitBlock.p.x + int32(hitNormal.x), hitBlock.p.y + int32(hitNormal.y), hitBlock.p.z + int32(hitNormal.z) }, BlockType(c - SDLK_1 + 1));
                     break;
                 }
             }

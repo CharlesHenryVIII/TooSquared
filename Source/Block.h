@@ -297,4 +297,4 @@ void DrawBlock(WorldPos p, Color color, float scale, const Mat4& perspective);
 
 int64 PositionHash(ChunkPos p);
 bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& distance, Vec3& normal);
-void SetBlock(GamePos hitBlock, Vec3 hitNormal, BlockType setBlockType);
+void SetBlock(GamePos hitBlock, BlockType setBlockType);

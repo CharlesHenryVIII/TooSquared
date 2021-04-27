@@ -312,11 +312,11 @@ bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& tr
     float dist = DotProduct(center - triangle.p0.p, N);
 
     // can pass through back side of triangle (optional)
-    //bool isDoubleSided = false;
-    //if (!isDoubleSided && dist > 0)
-    //{
-    //    return false;
-    //}
+    bool isDoubleSided = false;
+    if (!isDoubleSided && dist < 0)
+    {
+        return false;
+    }
     // no intersection if 
     if (checkDistanceToTriangle && (dist < -radius || dist > radius))
     {
@@ -340,19 +340,19 @@ bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& tr
         float radiussq = radius * radius; // sphere radius squared
 
         // Edge 1:
-        Vec3 point1 = ClosestPointOnLineSegment(triangle.p0.p, triangle.p1.p, center);
+        point1 = ClosestPointOnLineSegment(triangle.p0.p, triangle.p1.p, center);
         Vec3 v1 = center - point1;
         float distsq1 = DotProduct(v1, v1);
         intersects = distsq1 < radiussq;
 
         // Edge 2:
-        Vec3 point2 = ClosestPointOnLineSegment(triangle.p1.p, triangle.p2.p, center);
+        point2 = ClosestPointOnLineSegment(triangle.p1.p, triangle.p2.p, center);
         Vec3 v2 = center - point2;
         float distsq2 = DotProduct(v2, v2);
         intersects |= distsq2 < radiussq;
 
         // Edge 3:
-        Vec3 point3 = ClosestPointOnLineSegment(triangle.p2.p, triangle.p0.p, center);
+        point3 = ClosestPointOnLineSegment(triangle.p2.p, triangle.p0.p, center);
         Vec3 v3 = center - point3;
         float distsq3 = DotProduct(v3, v3);
         intersects |= distsq3 < radiussq;
@@ -509,42 +509,6 @@ Vec3 ClosestPointOnLineSegment(const Vec3& A, const Vec3& B, const Vec3& Point)
     return A + Min(Max(t, 0.0f), 1.0f) * AB;
 }
 
-#if 0
-bool CapsuleVsBlock(Capsule collider, GamePos blockGP, Vec3& toOutside, std::vector<Triangle>& debug_triangles)
-{
-    Triangle triangles[+Face::Count][2] = {};
-    bool behindFaces[+Face::Count] = {};
-
-    BlockType blockType;
-    ChunkPos blockChunkP = {};
-    Vec3Int block_blockP = Convert_GameToBlock(blockChunkP, blockGP);
-    ChunkIndex blockChunkIndex;
-    if (g_chunks->GetChunkFromPosition(blockChunkIndex, blockChunkP))
-    {
-        //checking if there is a block at the target location
-        blockType = g_chunks->blocks[blockChunkIndex].e[block_blockP.x][block_blockP.y][block_blockP.z];
-        if (blockType == BlockType::Empty)
-            return false;
-
-        //variables used
-        WorldPos blockP = ToWorld(blockGP);
-        Vec3 topBound = { collider.m_tip.p.x,  collider.m_tip.p.y  - collider.m_radius, collider.m_tip.p.z };
-        Vec3 botBound = { collider.m_tail.p.x, collider.m_tail.p.y + collider.m_radius, collider.m_tail.p.z };
-        Vec3 sphereCenter = {};
-        sphereCenter.x = Clamp(float(blockGP.p.x) + 0.5f, botBound.x, topBound.x);
-        sphereCenter.y = Clamp(float(blockGP.p.y) + 0.5f, botBound.y, topBound.y);
-        sphereCenter.z = Clamp(float(blockGP.p.z) + 0.5f, botBound.z, topBound.z);
-
-        if (SphereVsBlock(sphereCenter, collider.m_radius, blockGP, toOutside, debug_triangles))
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-#else
-
 Vec3 LinePlaneIntersectionVsTriangle(const Vec3& linePlaneIntersection, const Triangle& triangle)
 {
     // Determine whether line_plane_intersection is inside all triangle edges: 
@@ -593,7 +557,6 @@ Vec3 LinePlaneIntersectionVsTriangle(const Vec3& linePlaneIntersection, const Tr
 
 bool CapsuleVsTriangle(const Capsule& collider, const Triangle& triangle, Vec3& directionToTriangle, float& distanceToTriangle, bool checkDistanceToTriangle)
 {
-#if 1
 
     // Compute capsule line endpoints A, B like before in capsule-capsule case:
     Vec3 capsuleNormal = Normalize(collider.m_tip.p - collider.m_tail.p);
@@ -618,29 +581,6 @@ bool CapsuleVsTriangle(const Capsule& collider, const Triangle& triangle, Vec3& 
     if (SphereVsTriangle(sphereCenter, collider.m_radius, triangle, directionToTriangle, distanceToTriangle, checkDistanceToTriangle) && distanceToTriangle > 0.0f)
         return true;
     return false;
-
-#else
-    Vec3 triangleCenter = triangle.Center();
-    Vec3 topBound = { collider.m_tip.p.x,  collider.m_tip.p.y  - collider.m_radius, collider.m_tip.p.z };
-    Vec3 botBound = { collider.m_tail.p.x, collider.m_tail.p.y + collider.m_radius, collider.m_tail.p.z };
-    Vec3 sphereCenter = {};
-    sphereCenter.x = Clamp(triangleCenter.x, botBound.x, topBound.x);
-    sphereCenter.y = Clamp(triangleCenter.y, botBound.y, topBound.y);
-    sphereCenter.z = Clamp(triangleCenter.z, botBound.z, topBound.z);
-
-    //bool SphereVsTriangle(const Vec3& center, const float& radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance)
-    if (SphereVsTriangle(sphereCenter, collider.m_radius, triangle, directionToTriangle, distanceToTriangle, checkDistanceToTriangle) && distanceToTriangle > 0.0f)
-    {
-        //Sphere inside triangle
-        directionToTriangle;// *= distanceToTriangle;
-        float botDistance    = Distance(triangleCenter, collider.m_tail.p);
-        float topDistance    = Distance(triangleCenter, collider.m_tip.p);
-        float centerDistance = Distance(triangleCenter, collider.m_tip.p);
-        distanceToTriangle = Min(distanceToTriangle, collider.m_tip);
-        return true;
-    }
-    return false;
-#endif
 }
 
 bool CapsuleVsBlock(Capsule collider, GamePos blockGP, Vec3& toOutside, std::vector<Triangle>& debug_triangles)
@@ -664,111 +604,83 @@ bool CapsuleVsBlock(Capsule collider, GamePos blockGP, Vec3& toOutside, std::vec
         WorldPos blockP = ToWorld(blockGP);
         Vec3 directionToTriangle = {};
         float distanceToTriangle = {};
-
+        int32 cubeIndices[] = { 0, 1, 2, 1, 3, 2 };
         Triangle triangle = {};
-        //+-X
-        for (int32 i = 0; i <= 1; i++)
-        {
-            triangle = {};
-            triangle.e[0] = blockP.p + cubeVertices[i].e[0];
-            triangle.e[1] = blockP.p + cubeVertices[i].e[1];
-            triangle.e[2] = blockP.p + cubeVertices[i].e[2];
-
-            directionToTriangle = {};
-            distanceToTriangle = {};
-            if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true) && distanceToTriangle > 0.0f)
-            {//Sphere inside triangle
-                toOutside.x += directionToTriangle.x * distanceToTriangle;
-                result = true;
-            }
-            debug_triangles.push_back(triangle);
-
-
-            triangle = {};
-            triangle.e[0] = blockP.p + cubeVertices[i].e[1];
-            triangle.e[1] = blockP.p + cubeVertices[i].e[3];
-            triangle.e[2] = blockP.p + cubeVertices[i].e[2];
-
-            directionToTriangle = {};
-            distanceToTriangle = {};
-            if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true) && distanceToTriangle > 0.0f)
-            {//Sphere inside triangle
-                toOutside.x += directionToTriangle.x * distanceToTriangle;
-                result = true;
-            }
-            debug_triangles.push_back(triangle);
-        }
 
         //+-y
         for (int32 i = 2; i <= 3; i++)
         {
-            triangle = {};
-            triangle.e[0] = blockP.p + cubeVertices[i].e[0];
-            triangle.e[1] = blockP.p + cubeVertices[i].e[1];
-            triangle.e[2] = blockP.p + cubeVertices[i].e[2];
+            for (int32 j = 0; j <= 1; j++)
+            {
+                triangle = {};
+                for (int32 k = 0; k <= 2; k++)
+                {
+                    triangle.e[k] = blockP.p + cubeVertices[i].e[cubeIndices[k + (j * 3)]];
+                }
 
-            directionToTriangle = {};
-            distanceToTriangle = {};
-            if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && distanceToTriangle > 0.0f)
-            {//Sphere inside triangle
-                toOutside.y += directionToTriangle.y * distanceToTriangle;
-                result = true;
+                directionToTriangle = {};
+                distanceToTriangle = {};
+                if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && distanceToTriangle > 0.0f)
+                {//Sphere inside triangle
+                    toOutside.y += directionToTriangle.y * distanceToTriangle;
+                    //collider.UpdateTipLocation(collider.m_tip.p + toOutside);
+                    result = true;
+                    debug_triangles.push_back(triangle);
+                }
             }
-            debug_triangles.push_back(triangle);
+        }
 
-            triangle = {};
-            triangle.e[0] = blockP.p + cubeVertices[i].e[1];
-            triangle.e[1] = blockP.p + cubeVertices[i].e[3];
-            triangle.e[2] = blockP.p + cubeVertices[i].e[2];
+        //+-X
+        for (int32 i = 0; i <= 1; i++)
+        {
+            for (int32 j = 0; j <= 1; j++)
+            {
+                triangle = {};
+                for (int32 k = 0; k <= 2; k++)
+                {
+                    triangle.e[k] = blockP.p + cubeVertices[i].e[cubeIndices[k + (j * 3)]];
+                }
 
-            directionToTriangle = {};
-            distanceToTriangle = {};
-            if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && distanceToTriangle > 0.0f)
-            {//Sphere inside triangle
-                toOutside.y += directionToTriangle.y * distanceToTriangle;
-                result = true;
+                directionToTriangle = {};
+                distanceToTriangle = {};
+                if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && distanceToTriangle > 0.0f)
+                {//Sphere inside triangle
+                    toOutside.x += directionToTriangle.x * distanceToTriangle;
+                    //collider.UpdateTipLocation(collider.m_tip.p + toOutside);
+                    result = true;
+                    debug_triangles.push_back(triangle);
+                }
             }
-            debug_triangles.push_back(triangle);
         }
 
         //+-Z
         for (int32 i = 4; i <= 5; i++)
         {
+            for (int32 j = 0; j <= 1; j++)
+            {
+                triangle = {};
+                for (int32 k = 0; k <= 2; k++)
+                {
+                    triangle.e[k] = blockP.p + cubeVertices[i].e[cubeIndices[k + (j * 3)]];
+                }
 
-            triangle = {};
-            triangle.e[0] = blockP.p + cubeVertices[i].e[0];
-            triangle.e[1] = blockP.p + cubeVertices[i].e[1];
-            triangle.e[2] = blockP.p + cubeVertices[i].e[2];
-
-            directionToTriangle = {};
-            distanceToTriangle = {};
-            if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true) && distanceToTriangle > 0.0f)
-            {//Sphere inside triangle
-                toOutside.z += directionToTriangle.z * distanceToTriangle;
-                result = true;
+                directionToTriangle = {};
+                distanceToTriangle = {};
+                if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && distanceToTriangle > 0.0f)
+                {//Sphere inside triangle
+                    toOutside.z += directionToTriangle.z * distanceToTriangle;
+                    //collider.UpdateTipLocation(collider.m_tip.p + toOutside);
+                    result = true;
+                    debug_triangles.push_back(triangle);
+                }
             }
-            debug_triangles.push_back(triangle);
-
-
-            triangle = {};
-            triangle.e[0] = blockP.p + cubeVertices[i].e[1];
-            triangle.e[1] = blockP.p + cubeVertices[i].e[3];
-            triangle.e[2] = blockP.p + cubeVertices[i].e[2];
-
-            directionToTriangle = {};
-            distanceToTriangle = {};
-            if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true) && distanceToTriangle > 0.0f)
-            {//Sphere inside triangle
-                toOutside.z += directionToTriangle.z * distanceToTriangle;
-                result = true;
-            }
-            debug_triangles.push_back(triangle);
         }
     }
 
     return result;
 }
-#endif
+
+
 
 
 //#include <iostream>
