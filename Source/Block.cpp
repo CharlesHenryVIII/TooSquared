@@ -276,7 +276,7 @@ struct BiomePoints {
 //SRAND IS NOT THREAD SAFE
 void UpdateBiomePoints()
 {
-    ChunkPos cameraP = ToChunk(g_camera.p);
+    ChunkPos cameraP = ToChunk(g_camera.transform.m_p);
     float biLinearThreshold = 0.05f;
 
     for (int32 z = -g_camera.drawDistance + cameraP.p.z; z <= g_camera.drawDistance + cameraP.p.z; z++)
@@ -1687,7 +1687,7 @@ Vec3Int Convert_GameToBlock(ChunkPos& result, GamePos inputP)
 {
     result = ToChunk(inputP);
     GamePos chunkP = ToGame(result);
-    return Abs({ inputP.p.x - chunkP.p.x, inputP.p.y - chunkP.p.y, inputP.p.z - chunkP.p.z });
+    return Abs(Vec3Int({ inputP.p.x - chunkP.p.x, inputP.p.y - chunkP.p.y, inputP.p.z - chunkP.p.z }));
 }
 
 //returns true if the block is within the array
@@ -1978,7 +1978,7 @@ void PreChunkRender(const Mat4& perspective)
     sp->UpdateUniformVec3("u_lightColor",  1,  g_light.c.e);
     sp->UpdateUniformVec3("u_lightP",      1,  g_light.p.e);
 #endif
-    sp->UpdateUniformVec3("u_cameraP",     1,  g_camera.p.p.e);
+    sp->UpdateUniformVec3("u_cameraP",     1,  g_camera.transform.m_p.p.e);
 
     sp->UpdateUniformUint8("u_CHUNK_X", CHUNK_X);
     sp->UpdateUniformUint8("u_CHUNK_Y", CHUNK_Y);
@@ -2248,7 +2248,6 @@ void SetBlock(GamePos hitBlock, BlockType setBlockType)
     {
         ChunkPos trash;
         Vec3Int blockRelP = Convert_GameToBlock(trash, hitBlock);
-        blockRelP += Vec3ToVec3Int(hitNormal);
         GamePos chunkAddLoc = Convert_BlockToGame(hitChunkIndex, blockRelP);
         ChunkPos newChunkPos;
         Vec3Int newBlockRelP = Convert_GameToBlock(newChunkPos, chunkAddLoc);

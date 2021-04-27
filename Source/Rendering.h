@@ -31,7 +31,13 @@ struct Window {
 };
 
 struct Camera {
-    WorldPos p  = { 0.0f, 260.0f, 0.0f };
+    Transform transform = {
+    .m_p = { 0.0f, 260.0f, 0.0f },
+    .m_vel = {},
+    .m_acceleration = {},
+    .m_terminalVel = 200.0f,
+    };
+    //WorldPos p  = { 0.0f, 260.0f, 0.0f };
     Vec3 front  = { 0.0f, 0.0f, -1.0f };
     Vec3 up     = { 0.0f, 1.0f, 0.0f };
     Mat4 view;

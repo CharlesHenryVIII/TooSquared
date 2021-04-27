@@ -72,19 +72,6 @@ enum class MovementType {
     Collision,
 };
 
-void UpdatePosition(Vec3& position, Vec3& velocity, Vec3& acceleration, const float gravity, const float dt, const Vec3& terminalVelocity)
-{
-    velocity.y += gravity * dt;
-    velocity.y = Clamp(velocity.y, -terminalVelocity.y, terminalVelocity.y);
-
-    velocity.x += acceleration.x * dt;
-    velocity.z += acceleration.z * dt;
-
-    Vec3 deltaPosition = velocity * dt;
-    position += deltaPosition;
-}
-
-
 int main(int argc, char* argv[])
 {
     std::unordered_map<int32, Key> keyStates;
@@ -107,7 +94,8 @@ int main(int argc, char* argv[])
 
     g_camera.view;
     WorldPos cOffset = { 1.0f, 1.0f, 1.0f };
-    gb_mat4_look_at(&g_camera.view, { g_camera.p.p.x + cOffset.p.x, g_camera.p.p.y + cOffset.p.y,g_camera.p.p.z + cOffset.p.z }, { g_camera.p.p.x, g_camera.p.p.y, g_camera.p.p.z }, { 0,1,0 });
+    gb_mat4_look_at(&g_camera.view, { g_camera.transform.m_p.p.x + cOffset.p.x, g_camera.transform.m_p.p.y + cOffset.p.y,g_camera.transform.m_p.p.z + cOffset.p.z }, 
+                                    { g_camera.transform.m_p.p.x, g_camera.transform.m_p.p.y, g_camera.transform.m_p.p.z }, { 0,1,0 });
 
     g_chunks = new ChunkArray();
     float loadingTimer = 0.0f;
@@ -147,9 +135,10 @@ int main(int argc, char* argv[])
     //    }
     //}
 
-    Capsule playerCollider = {};
-    playerCollider.m_height = 1.8f;
-    playerCollider.m_radius = 0.25f;
+    Capsule playerCollider = {
+    .m_radius = 0.25f,
+    .m_height = 1.8f,
+    };
     MovementType playerMovementType = MovementType::Fly;
 
     cubesToDraw.reserve(100000);
@@ -158,6 +147,9 @@ int main(int argc, char* argv[])
         totalTime = SDL_GetPerformanceCounter() / freq;
         float deltaTime = float(totalTime - previousTime);// / 10;
         previousTime = totalTime;
+        //TODO: Time stepping for simulation
+        if (deltaTime > (1.0f / 60.0f))
+            deltaTime = (1.0f / 60.0f);
         g_gameData.m_currentTime = fmod(g_gameData.m_currentTime + deltaTime * g_gameData.m_timeScale, 24.0f);
 
         /*********************
@@ -175,9 +167,9 @@ int main(int argc, char* argv[])
             loadingTimer += deltaTime;
         uploadedLastFrame = false;
         {
-            ChunkPos cameraChunk = ToChunk(g_camera.p);
+            ChunkPos cameraChunk = ToChunk(g_camera.transform.m_p);
             SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared P: %i, %i, %i; C: %i, %i; Chunks: %u; Time: %0.2f; Triangles: %u",
-                (int32)floor(g_camera.p.p.x), (int32)floor(g_camera.p.p.y), (int32)floor(g_camera.p.p.z), cameraChunk.p.x, cameraChunk.p.z, g_chunks->chunkCount, loadingTimer, g_renderer.numTrianglesDrawn).c_str());
+                (int32)floor(g_camera.transform.m_p.p.x), (int32)floor(g_camera.transform.m_p.p.y), (int32)floor(g_camera.transform.m_p.p.z), cameraChunk.p.x, cameraChunk.p.z, g_chunks->chunkCount, loadingTimer, g_renderer.numTrianglesDrawn).c_str());
         }
 
         SDL_Event SDLEvent;
@@ -368,56 +360,91 @@ int main(int argc, char* argv[])
             }
         }
         
-        float cameraSpeed = 0;
+        float cameraAcceleration = 0;
+        g_camera.transform.m_acceleration = {};
         std::vector<Triangle> debug_trianglesToDraw;
         switch (playerMovementType)
         {
         case MovementType::Fly:
-            cameraSpeed = 10.0f * deltaTime;
+            cameraAcceleration = 100.0f; // m/s^2
+            g_camera.transform.m_terminalVel = 20.0f;
             if (keyStates[SDLK_LSHIFT].down)
-                cameraSpeed *= 30;
-            if (keyStates[SDLK_w].down)
-                g_camera.p.p += (cameraSpeed * g_camera.front);
-            if (keyStates[SDLK_s].down)
-                g_camera.p.p -= (cameraSpeed * g_camera.front);
-            if (keyStates[SDLK_a].down)
-                g_camera.p.p -= (Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed);
-            if (keyStates[SDLK_d].down)
-                g_camera.p.p += (Normalize(Cross(g_camera.front, g_camera.up)) * cameraSpeed);
+            {
+                cameraAcceleration *= 3;
+                g_camera.transform.m_terminalVel = 100.0f;
+            }
+            {
+                if (keyStates[SDLK_w].down && keyStates[SDLK_s].down)
+                    g_camera.transform.m_acceleration;
+                else if (keyStates[SDLK_w].down)
+                    g_camera.transform.m_acceleration += (cameraAcceleration * g_camera.front);
+                else if (keyStates[SDLK_s].down)
+                    g_camera.transform.m_acceleration -= (cameraAcceleration * g_camera.front);
+            }
+#if 0
+            {
+                if (keyStates[SDLK_w].downThisFrame || keyStates[SDLK_s].upThisFrame)
+                    g_camera.transform.m_acceleration += (cameraAcceleration * g_camera.front);
+                if (keyStates[SDLK_s].downThisFrame || keyStates[SDLK_w].upThisFrame)
+                    g_camera.transform.m_acceleration -= (cameraAcceleration * g_camera.front);
+            }
+#endif
+            {
+                if (keyStates[SDLK_w].down && keyStates[SDLK_s].down)
+                    g_camera.transform.m_acceleration;
+                else if (keyStates[SDLK_a].down)
+                    g_camera.transform.m_acceleration -= (Normalize(Cross(g_camera.front, g_camera.up)) * cameraAcceleration);
+                else if (keyStates[SDLK_d].down)
+                    g_camera.transform.m_acceleration += (Normalize(Cross(g_camera.front, g_camera.up)) * cameraAcceleration);
+            }
+#if 0
+            if (keyStates[SDLK_a].downThisFrame || keyStates[SDLK_d].upThisFrame)
+                g_camera.transform.m_p.p -= (Normalize(Cross(g_camera.front, g_camera.up)) * cameraAcceleration);
+            if (keyStates[SDLK_d].downThisFrame || keyStates[SDLK_a].upThisFrame)
+                g_camera.transform.m_p.p += (Normalize(Cross(g_camera.front, g_camera.up)) * cameraAcceleration);
+        }
+#endif
             if (keyStates[SDLK_LCTRL].down)
-                g_camera.p.p.y -= cameraSpeed;
+                g_camera.transform.m_terminalVel = 10.0f;
             if (keyStates[SDLK_SPACE].down)
-                g_camera.p.p.y += cameraSpeed;
+                g_camera.transform.m_acceleration.y += cameraAcceleration;
             if (keyStates[SDLK_z].down)
-                g_camera.p.p.z += cameraSpeed;
+                g_camera.transform.m_acceleration.z += cameraAcceleration;
             if (keyStates[SDLK_x].down)
-                g_camera.p.p.x += cameraSpeed;
+                g_camera.transform.m_acceleration.x += cameraAcceleration;
+            g_camera.transform.UpdatePosition(deltaTime, { 0.2f, 0.2f, 0.2f }, playerCollider.m_radius * 2 * playerCollider.m_height, 0);
             break;
         case MovementType::Collision:
         {
-            cameraSpeed = 5.0f * deltaTime;
+            cameraAcceleration = 5.0f; // m/s^2
             Vec3 forward = Normalize(Vec3({ g_camera.front.x, 0, g_camera.front.z }));
+            g_camera.transform.m_terminalVel = 20.0f;
             if (keyStates[SDLK_LSHIFT].down)
-                cameraSpeed *= 2;
+            {
+                cameraAcceleration *= 2;
+                g_camera.transform.m_terminalVel = 300.0f;
+            }
             if (keyStates[SDLK_LCTRL].down)
-                cameraSpeed /= 2;
+                cameraAcceleration /= 2;
             if (keyStates[SDLK_w].down)
-                g_camera.p.p += (cameraSpeed * forward);
+                g_camera.transform.m_p.p += (cameraAcceleration * forward);
             if (keyStates[SDLK_s].down)
-                g_camera.p.p -= (cameraSpeed * forward);
+                g_camera.transform.m_p.p -= (cameraAcceleration * forward);
             if (keyStates[SDLK_a].down)
-                g_camera.p.p -= (Normalize(Cross(forward, g_camera.up)) * cameraSpeed);
+                g_camera.transform.m_p.p -= (Normalize(Cross(forward, g_camera.up)) * cameraAcceleration);
             if (keyStates[SDLK_d].down)
-                g_camera.p.p += (Normalize(Cross(forward, g_camera.up)) * cameraSpeed);
+                g_camera.transform.m_p.p += (Normalize(Cross(forward, g_camera.up)) * cameraAcceleration);
             if (keyStates[SDLK_SPACE].downThisFrame)
-                g_camera.p.p.y += 1.3f;
+                g_camera.transform.m_p.p.y += 1.3f;
             if (keyStates[SDLK_z].down)
-                g_camera.p.p.z += cameraSpeed;
+                g_camera.transform.m_p.p.z += cameraAcceleration;
             if (keyStates[SDLK_x].down)
-                g_camera.p.p.x += cameraSpeed;
-            g_camera.p.p.y -= 0.1f;
+                g_camera.transform.m_p.p.x += cameraAcceleration;
+            g_camera.transform.m_p.p.y -= 0.1f;
 
-            playerCollider.UpdateTipLocation(g_camera.p);
+            //g_camera.transform.UpdatePosition(deltaTime);
+
+            playerCollider.UpdateTipLocation(g_camera.transform.m_p);
 
 
             std::vector<GamePos> neighborBlocks;
@@ -436,8 +463,8 @@ int main(int argc, char* argv[])
                             Vec3 outsideOfBlock = {};
                             if (CapsuleVsBlock(playerCollider, GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })), outsideOfBlock, debug_trianglesToDraw))
                             {
-                                g_camera.p.p += outsideOfBlock;
-                                playerCollider.UpdateTipLocation(g_camera.p);
+                                g_camera.transform.m_p.p += outsideOfBlock;
+                                playerCollider.UpdateTipLocation(g_camera.transform.m_p);
                             }
                         }
                     }
@@ -460,8 +487,8 @@ int main(int argc, char* argv[])
         front.z = sin(DegToRad(g_camera.yaw)) * cos(DegToRad(g_camera.pitch));
         g_camera.front = Normalize(front);
 
-        Vec3 lookTarget = g_camera.p.p + g_camera.front;
-        gb_mat4_look_at(&g_camera.view, g_camera.p.p, lookTarget, g_camera.up);
+        Vec3 lookTarget = g_camera.transform.m_p.p + g_camera.front;
+        gb_mat4_look_at(&g_camera.view, g_camera.transform.m_p.p, lookTarget, g_camera.up);
 
         float SunRotationRadians = (((g_gameData.m_currentTime - 6.0f) / 24) * tau);
         float sunRotationCos = cosf(SunRotationRadians);
@@ -507,10 +534,10 @@ int main(int argc, char* argv[])
             RegionSampler localRegion;
             ChunkIndex centerChunkIndex;
             Ray ray = {
-                .origin = g_camera.p.p,
-                .direction = lookTarget - g_camera.p.p,
+                .origin = g_camera.transform.m_p.p,
+                .direction = lookTarget - g_camera.transform.m_p.p,
             };
-            if (g_chunks->GetChunkFromPosition(centerChunkIndex, ToChunk(g_camera.p)))
+            if (g_chunks->GetChunkFromPosition(centerChunkIndex, ToChunk(g_camera.transform.m_p)))
             {
                 //bool RayVsChunk(const Ray & ray, ChunkIndex chunkIndex, GamePos & block, float& distance);
                 GamePos resultPos = {};
@@ -587,7 +614,7 @@ int main(int argc, char* argv[])
 #endif
 
             g_camera.fogDistance = g_camera.drawDistance + 10;
-            ChunkPos cam = ToChunk(g_camera.p);
+            ChunkPos cam = ToChunk(g_camera.transform.m_p);
             for (int32 _drawDistance = 0; _drawDistance < g_camera.drawDistance; _drawDistance++)
             {
                 for (int32 z = -_drawDistance; z <= _drawDistance; z++)
@@ -650,7 +677,7 @@ int main(int argc, char* argv[])
             Mat4 iViewProj;
             gb_mat4_inverse(&iViewProj, &viewProj);
             sp->UpdateUniformMat4("u_inverseViewProjection", 1, false, iViewProj.e);
-            sp->UpdateUniformVec3("u_cameraPosition", 1, g_camera.p.p.e);
+            sp->UpdateUniformVec3("u_cameraPosition", 1, g_camera.transform.m_p.p.e);
             sp->UpdateUniformFloat("u_gameTime", g_gameData.m_currentTime);
             glActiveTexture(GL_TEXTURE1);
             g_renderer.skyBoxNight->Bind();
@@ -703,7 +730,7 @@ int main(int argc, char* argv[])
                             (drawZ < _drawDistance && drawZ > -_drawDistance))
                             continue;
 
-                        ChunkPos cameraChunkP = ToChunk(g_camera.p);
+                        ChunkPos cameraChunkP = ToChunk(g_camera.transform.m_p);
                         ChunkIndex originChunk = 0;
                         ChunkPos drawDistanceChunk = { cameraChunkP.p.x + drawX, 0, cameraChunkP.p.z + drawZ };
                         if (!g_chunks->GetChunkFromPosition(originChunk, drawDistanceChunk))
@@ -754,7 +781,7 @@ int main(int argc, char* argv[])
                 GamePos max = { min.p.x + (int32)CHUNK_X, min.p.y + (int32)CHUNK_Y, min.p.z + (int32)CHUNK_Z };
                 if (IsBoxInFrustum(frustum, ToWorld(min).p.e, ToWorld(max).p.e))
                 {
-                    renderables[numRenderables].d = ManhattanDistance(ToChunk(g_camera.p.p).p, chunkP.p);
+                    renderables[numRenderables].d = ManhattanDistance(ToChunk(g_camera.transform.m_p.p).p, chunkP.p);
                     renderables[numRenderables++].r = i;
                 }
             }
