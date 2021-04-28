@@ -839,32 +839,32 @@ struct Transform {
         m_vel.x += m_acceleration.x * deltaTime;
         m_vel.z += m_acceleration.z * deltaTime;
 
-        float zeroTolerance = 0.1f;
-        if ((m_acceleration.x >= -zeroTolerance && m_acceleration.x <= zeroTolerance) &&
-            (m_acceleration.y >= -zeroTolerance && m_acceleration.y <= zeroTolerance) &&
-            (m_acceleration.z >= -zeroTolerance && m_acceleration.z <= zeroTolerance))
+        float zeroTolerance = 0.25f;
+        //if ((m_acceleration.x >= -zeroTolerance && m_acceleration.x <= zeroTolerance) &&
+        //    (m_acceleration.y >= -zeroTolerance && m_acceleration.y <= zeroTolerance) &&
+        //    (m_acceleration.z >= -zeroTolerance && m_acceleration.z <= zeroTolerance))
         {
         float mass = 1000.0f; //grams
-        Vec3 dragForce = dragCoefficient * ((1.255f * m_vel * m_vel) / 2) * area;
+        Vec3 dragForce = m_vel * dragCoefficient;//dragCoefficient * ((1.255f * m_vel/* * m_vel*/) / 2) * area;
         Vec3 dragVel = dragForce / (mass * deltaTime);
 
-        if (m_vel.x < 0.0f)
-            dragVel.x = -dragVel.x;
-        if (m_vel.y < 0.0f)
-            dragVel.y = -dragVel.y;
-        if (m_vel.z < 0.0f)
-            dragVel.z = -dragVel.z;
+        //if (m_vel.x < 0.0f)
+        //    dragVel.x = -dragVel.x;
+        //if (m_vel.y < 0.0f)
+        //    dragVel.y = -dragVel.y;
+        //if (m_vel.z < 0.0f)
+        //    dragVel.z = -dragVel.z;
 
             m_vel -= dragVel;
             m_vel.x = Clamp(m_vel.x, -m_terminalVel, m_terminalVel);
             m_vel.y = Clamp(m_vel.y, -m_terminalVel, m_terminalVel);
             m_vel.z = Clamp(m_vel.z, -m_terminalVel, m_terminalVel);
 
-            if (m_vel.x <= zeroTolerance && m_vel.x >= zeroTolerance)
+            if (m_vel.x <= zeroTolerance && m_vel.x >= -zeroTolerance)
                 m_vel.x = 0;
-            if (m_vel.y <= zeroTolerance && m_vel.y >= zeroTolerance)
+            if (m_vel.y <= zeroTolerance && m_vel.y >= -zeroTolerance)
                 m_vel.y = 0;
-            if (m_vel.z <= zeroTolerance && m_vel.z >= zeroTolerance)
+            if (m_vel.z <= zeroTolerance && m_vel.z >= -zeroTolerance)
                 m_vel.z = 0;
         }
 

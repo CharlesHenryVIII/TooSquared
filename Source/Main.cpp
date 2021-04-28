@@ -370,10 +370,11 @@ int main(int argc, char* argv[])
             g_camera.transform.m_terminalVel = 20.0f;
             if (keyStates[SDLK_LSHIFT].down)
             {
-                cameraAcceleration *= 3;
-                g_camera.transform.m_terminalVel = 100.0f;
+                cameraAcceleration *= 30;
+                g_camera.transform.m_terminalVel = 800.0f;
             }
             {
+                //Forward
                 if (keyStates[SDLK_w].down && keyStates[SDLK_s].down)
                     g_camera.transform.m_acceleration;
                 else if (keyStates[SDLK_w].down)
@@ -381,29 +382,15 @@ int main(int argc, char* argv[])
                 else if (keyStates[SDLK_s].down)
                     g_camera.transform.m_acceleration -= (cameraAcceleration * g_camera.front);
             }
-#if 0
             {
-                if (keyStates[SDLK_w].downThisFrame || keyStates[SDLK_s].upThisFrame)
-                    g_camera.transform.m_acceleration += (cameraAcceleration * g_camera.front);
-                if (keyStates[SDLK_s].downThisFrame || keyStates[SDLK_w].upThisFrame)
-                    g_camera.transform.m_acceleration -= (cameraAcceleration * g_camera.front);
-            }
-#endif
-            {
-                if (keyStates[SDLK_w].down && keyStates[SDLK_s].down)
+                //Lateral
+                if (keyStates[SDLK_a].down && keyStates[SDLK_d].down)
                     g_camera.transform.m_acceleration;
                 else if (keyStates[SDLK_a].down)
                     g_camera.transform.m_acceleration -= (Normalize(Cross(g_camera.front, g_camera.up)) * cameraAcceleration);
                 else if (keyStates[SDLK_d].down)
                     g_camera.transform.m_acceleration += (Normalize(Cross(g_camera.front, g_camera.up)) * cameraAcceleration);
             }
-#if 0
-            if (keyStates[SDLK_a].downThisFrame || keyStates[SDLK_d].upThisFrame)
-                g_camera.transform.m_p.p -= (Normalize(Cross(g_camera.front, g_camera.up)) * cameraAcceleration);
-            if (keyStates[SDLK_d].downThisFrame || keyStates[SDLK_a].upThisFrame)
-                g_camera.transform.m_p.p += (Normalize(Cross(g_camera.front, g_camera.up)) * cameraAcceleration);
-        }
-#endif
             if (keyStates[SDLK_LCTRL].down)
                 g_camera.transform.m_terminalVel = 10.0f;
             if (keyStates[SDLK_SPACE].down)
@@ -412,37 +399,48 @@ int main(int argc, char* argv[])
                 g_camera.transform.m_acceleration.z += cameraAcceleration;
             if (keyStates[SDLK_x].down)
                 g_camera.transform.m_acceleration.x += cameraAcceleration;
-            g_camera.transform.UpdatePosition(deltaTime, { 0.2f, 0.2f, 0.2f }, playerCollider.m_radius * 2 * playerCollider.m_height, 0);
+            g_camera.transform.UpdatePosition(deltaTime, { 0.9f, 0.9f, 0.9f }, playerCollider.m_radius * 2 * playerCollider.m_height, 0);
             break;
         case MovementType::Collision:
         {
-            cameraAcceleration = 5.0f; // m/s^2
+            cameraAcceleration = 100.0f; // m/s^2
             Vec3 forward = Normalize(Vec3({ g_camera.front.x, 0, g_camera.front.z }));
-            g_camera.transform.m_terminalVel = 20.0f;
+            g_camera.transform.m_terminalVel = 2.0f;
             if (keyStates[SDLK_LSHIFT].down)
             {
-                cameraAcceleration *= 2;
-                g_camera.transform.m_terminalVel = 300.0f;
+                cameraAcceleration *= 2.0f;
+                g_camera.transform.m_terminalVel = 200.0f;
             }
             if (keyStates[SDLK_LCTRL].down)
-                cameraAcceleration /= 2;
-            if (keyStates[SDLK_w].down)
-                g_camera.transform.m_p.p += (cameraAcceleration * forward);
-            if (keyStates[SDLK_s].down)
-                g_camera.transform.m_p.p -= (cameraAcceleration * forward);
-            if (keyStates[SDLK_a].down)
-                g_camera.transform.m_p.p -= (Normalize(Cross(forward, g_camera.up)) * cameraAcceleration);
-            if (keyStates[SDLK_d].down)
-                g_camera.transform.m_p.p += (Normalize(Cross(forward, g_camera.up)) * cameraAcceleration);
+                cameraAcceleration /= 2.0f;
+            {
+                //Forward
+                if (keyStates[SDLK_w].down && keyStates[SDLK_s].down)
+                    g_camera.transform.m_acceleration;
+                else if (keyStates[SDLK_w].down)
+                    g_camera.transform.m_acceleration += (cameraAcceleration * forward);
+                else if (keyStates[SDLK_s].down)
+                    g_camera.transform.m_acceleration -= (cameraAcceleration * forward);
+            }
+            {
+                //Lateral
+                if (keyStates[SDLK_a].down && keyStates[SDLK_d].down)
+                    g_camera.transform.m_acceleration;
+                else if (keyStates[SDLK_a].down)
+                    g_camera.transform.m_acceleration -= (Normalize(Cross(forward, g_camera.up)) * cameraAcceleration);
+                else if (keyStates[SDLK_d].down)
+                    g_camera.transform.m_acceleration += (Normalize(Cross(forward, g_camera.up)) * cameraAcceleration);
+            }
             if (keyStates[SDLK_SPACE].downThisFrame)
-                g_camera.transform.m_p.p.y += 1.3f;
+                g_camera.transform.m_vel.y += 100.0f;
             if (keyStates[SDLK_z].down)
-                g_camera.transform.m_p.p.z += cameraAcceleration;
+                g_camera.transform.m_acceleration.z += cameraAcceleration;
             if (keyStates[SDLK_x].down)
-                g_camera.transform.m_p.p.x += cameraAcceleration;
-            g_camera.transform.m_p.p.y -= 0.1f;
+                g_camera.transform.m_acceleration.x += cameraAcceleration;
+            //Fake gravity:
+            //g_camera.transform.m_p.p.y -= 0.1f;
 
-            //g_camera.transform.UpdatePosition(deltaTime);
+            g_camera.transform.UpdatePosition(deltaTime, { 1.5f, 1.0f, 1.5f }, playerCollider.m_radius * 2 * playerCollider.m_height);
 
             playerCollider.UpdateTipLocation(g_camera.transform.m_p);
 
