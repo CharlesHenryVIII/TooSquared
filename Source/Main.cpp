@@ -367,11 +367,12 @@ int main(int argc, char* argv[])
         {
         case MovementType::Fly:
             cameraAcceleration = 100.0f; // m/s^2
-            g_camera.transform.m_terminalVel = 20.0f;
+            g_camera.transform.m_terminalVel.x = g_camera.transform.m_terminalVel.z = 20.0f;
+            g_camera.transform.m_terminalVel.y = 500.0f;
             if (keyStates[SDLK_LSHIFT].down)
             {
                 cameraAcceleration *= 30;
-                g_camera.transform.m_terminalVel = 800.0f;
+                g_camera.transform.m_terminalVel.x = g_camera.transform.m_terminalVel.z = 800.0f;
             }
             {
                 //Forward
@@ -392,7 +393,7 @@ int main(int argc, char* argv[])
                     g_camera.transform.m_acceleration += (Normalize(Cross(g_camera.front, g_camera.up)) * cameraAcceleration);
             }
             if (keyStates[SDLK_LCTRL].down)
-                g_camera.transform.m_terminalVel = 10.0f;
+                g_camera.transform.m_terminalVel.x = g_camera.transform.m_terminalVel.z = 10.0f;
             if (keyStates[SDLK_SPACE].down)
                 g_camera.transform.m_acceleration.y += cameraAcceleration;
             if (keyStates[SDLK_z].down)
@@ -403,16 +404,17 @@ int main(int argc, char* argv[])
             break;
         case MovementType::Collision:
         {
-            cameraAcceleration = 100.0f; // m/s^2
+            cameraAcceleration = 15.0f; // m/s^2
             Vec3 forward = Normalize(Vec3({ g_camera.front.x, 0, g_camera.front.z }));
-            g_camera.transform.m_terminalVel = 2.0f;
+            g_camera.transform.m_terminalVel.x = g_camera.transform.m_terminalVel.z = 3.0f;
+            g_camera.transform.m_terminalVel.y = 50.0f;
             if (keyStates[SDLK_LSHIFT].down)
             {
-                cameraAcceleration *= 2.0f;
-                g_camera.transform.m_terminalVel = 200.0f;
+                cameraAcceleration = 50.0f;
+                g_camera.transform.m_terminalVel.x = g_camera.transform.m_terminalVel.z = 8.0f;
             }
             if (keyStates[SDLK_LCTRL].down)
-                cameraAcceleration /= 2.0f;
+                cameraAcceleration /= 3.0f;
             {
                 //Forward
                 if (keyStates[SDLK_w].down && keyStates[SDLK_s].down)
@@ -432,15 +434,16 @@ int main(int argc, char* argv[])
                     g_camera.transform.m_acceleration += (Normalize(Cross(forward, g_camera.up)) * cameraAcceleration);
             }
             if (keyStates[SDLK_SPACE].downThisFrame)
-                g_camera.transform.m_vel.y += 100.0f;
+            {
+                g_camera.transform.m_vel.y += 7.0f;
+                g_camera.transform.m_isGrounded = false;
+            }
             if (keyStates[SDLK_z].down)
                 g_camera.transform.m_acceleration.z += cameraAcceleration;
             if (keyStates[SDLK_x].down)
                 g_camera.transform.m_acceleration.x += cameraAcceleration;
-            //Fake gravity:
-            //g_camera.transform.m_p.p.y -= 0.1f;
 
-            g_camera.transform.UpdatePosition(deltaTime, { 1.5f, 1.0f, 1.5f }, playerCollider.m_radius * 2 * playerCollider.m_height);
+            g_camera.transform.UpdatePosition2(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
 
             playerCollider.UpdateTipLocation(g_camera.transform.m_p);
 
@@ -462,6 +465,8 @@ int main(int argc, char* argv[])
                             if (CapsuleVsBlock(playerCollider, GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })), outsideOfBlock, debug_trianglesToDraw))
                             {
                                 g_camera.transform.m_p.p += outsideOfBlock;
+                                g_camera.transform.m_isGrounded = !(outsideOfBlock.y > -0.01f && outsideOfBlock.y < 0.01f);
+
                                 playerCollider.UpdateTipLocation(g_camera.transform.m_p);
                             }
                         }
@@ -845,7 +850,7 @@ int main(int argc, char* argv[])
                 pos.p = pos.p + 0.5f;
                 Color temp = Mint;
                 temp.a = 0.6f;
-                DrawBlock(pos, temp, 1.1f, perspective);
+                //DrawBlock(pos, temp, 1.1f, perspective);
             }
             if (debugDraw)
             {

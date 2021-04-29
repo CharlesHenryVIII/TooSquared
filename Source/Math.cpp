@@ -613,7 +613,7 @@ bool CapsuleVsBlock(Capsule collider, GamePos blockGP, Vec3& toOutside, std::vec
             for (int32 j = 0; j <= 1; j++)
             {
                 triangle = {};
-                for (int32 k = 0; k <= 2; k++)
+                for (int32 k = 0; k < 3; k++)
                 {
                     triangle.e[k] = blockP.p + cubeVertices[i].e[cubeIndices[k + (j * 3)]];
                 }
@@ -623,7 +623,7 @@ bool CapsuleVsBlock(Capsule collider, GamePos blockGP, Vec3& toOutside, std::vec
                 if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && distanceToTriangle > 0.0f)
                 {//Sphere inside triangle
                     toOutside.y += directionToTriangle.y * distanceToTriangle;
-                    //collider.UpdateTipLocation(collider.m_tip.p + toOutside);
+                    collider.UpdateTipLocation(collider.m_tip.p + toOutside);
                     result = true;
                     debug_triangles.push_back(triangle);
                 }
@@ -636,7 +636,7 @@ bool CapsuleVsBlock(Capsule collider, GamePos blockGP, Vec3& toOutside, std::vec
             for (int32 j = 0; j <= 1; j++)
             {
                 triangle = {};
-                for (int32 k = 0; k <= 2; k++)
+                for (int32 k = 0; k < 3; k++)
                 {
                     triangle.e[k] = blockP.p + cubeVertices[i].e[cubeIndices[k + (j * 3)]];
                 }
@@ -659,7 +659,7 @@ bool CapsuleVsBlock(Capsule collider, GamePos blockGP, Vec3& toOutside, std::vec
             for (int32 j = 0; j <= 1; j++)
             {
                 triangle = {};
-                for (int32 k = 0; k <= 2; k++)
+                for (int32 k = 0; k < 3; k++)
                 {
                     triangle.e[k] = blockP.p + cubeVertices[i].e[cubeIndices[k + (j * 3)]];
                 }
