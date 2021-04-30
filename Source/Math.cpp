@@ -159,7 +159,7 @@ float Bilinear(float p00, float p10, float p01, float p11, float x, float y)
 
 [[nodiscard]] GamePos ToGame(WorldPos a)
 {
-    GamePos result = { static_cast<int32>(a.p.x), static_cast<int32>(a.p.y), static_cast<int32>(a.p.z) };
+    GamePos result = { static_cast<int32>(floorf(a.p.x)), static_cast<int32>(floorf(a.p.y)), static_cast<int32>(floorf(a.p.z)) };
     return result;
 }
 [[nodiscard]] ChunkPos ToChunk(WorldPos a)
@@ -576,6 +576,8 @@ bool CapsuleVsTriangle(const Capsule& collider, const Triangle& triangle, Vec3& 
 
     // The center of the best sphere candidate:
     Vec3 sphereCenter = ClosestPointOnLineSegment(A, B, referencePoint);
+    if (triangleNormal.x > 0)
+        int32 debuglmao = 1;
 
     //return (SphereVsTriangle(sphereCenter, collider.m_radius, triangle, directionToTriangle, distanceToTriangle, checkDistanceToTriangle) && distanceToTriangle > 0.0f);
     if (SphereVsTriangle(sphereCenter, collider.m_radius, triangle, directionToTriangle, distanceToTriangle, checkDistanceToTriangle) && distanceToTriangle > 0.0f)
@@ -624,8 +626,8 @@ bool CapsuleVsBlock(Capsule collider, GamePos blockGP, Vec3& toOutside, std::vec
                 {//Sphere inside triangle
                     toOutside.y += directionToTriangle.y * distanceToTriangle;
                     collider.UpdateTipLocation(collider.m_tip.p + toOutside);
-                    result = true;
                     debug_triangles.push_back(triangle);
+                    result = true;
                 }
             }
         }
@@ -648,7 +650,6 @@ bool CapsuleVsBlock(Capsule collider, GamePos blockGP, Vec3& toOutside, std::vec
                     toOutside.x += directionToTriangle.x * distanceToTriangle;
                     //collider.UpdateTipLocation(collider.m_tip.p + toOutside);
                     result = true;
-                    debug_triangles.push_back(triangle);
                 }
             }
         }

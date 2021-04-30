@@ -787,8 +787,7 @@ void InitializeVideo()
 
         if (majorVersionRequest != majorVersionActual && minorVersionRequest != minorVersionActual)
         {
-            DebugPrint("OpenGL could not set recommended version: %i.%i to %i.%i\n",
-                    majorVersionRequest, minorVersionRequest,
+            DebugPrint("OpenGL could not set recommended version: %i.%i to %i.%i\n", majorVersionRequest, minorVersionRequest,
                     majorVersionActual,  minorVersionActual);
             FAIL;
         }

@@ -602,7 +602,7 @@ int main(int argc, char* argv[])
         //gb_mat4_look_at(&testCamera.view, testCamera.p.p, lookatPosition, { 0, 1, 0 });
 
         Mat4 perspective;
-        gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.2f, 2000.0f);
+        gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.1f, 2000.0f);
         Mat4 viewProj = perspective * g_camera.view;//testCamera.view;
 
 
