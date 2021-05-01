@@ -168,8 +168,10 @@ int main(int argc, char* argv[])
         uploadedLastFrame = false;
         {
             ChunkPos cameraChunk = ToChunk(g_camera.transform.m_p);
-            SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared P: %i, %i, %i; C: %i, %i; Chunks: %u; Time: %0.2f; Triangles: %u",
-                (int32)floor(g_camera.transform.m_p.p.x), (int32)floor(g_camera.transform.m_p.p.y), (int32)floor(g_camera.transform.m_p.p.z), cameraChunk.p.x, cameraChunk.p.z, g_chunks->chunkCount, loadingTimer, g_renderer.numTrianglesDrawn).c_str());
+            SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared P: %i, %i, %i; V: %0.2f, %0.2f, %0.2f C: %i, %i; Chunks: %u; Time: %0.2f; Triangles: %u",
+                (int32)floor(g_camera.transform.m_p.p.x), (int32)floor(g_camera.transform.m_p.p.y), (int32)floor(g_camera.transform.m_p.p.z), 
+                g_camera.transform.m_vel.x, g_camera.transform.m_vel.y, g_camera.transform.m_vel.z,
+                cameraChunk.p.x, cameraChunk.p.z, g_chunks->chunkCount, loadingTimer, g_renderer.numTrianglesDrawn).c_str());
         }
 
         SDL_Event SDLEvent;
@@ -452,6 +454,7 @@ int main(int argc, char* argv[])
             GamePos referenceGamePosition = ToGame(playerCollider.m_tip);
             int32 horizontalOffset = Max(int32(playerCollider.m_radius + 0.5f), 1);
             int32 verticalOffset   = Max(int32(playerCollider.m_tip.p.y - playerCollider.m_tail.p.y + 0.5f), 1);
+            g_camera.transform.m_isGrounded = false;
 
             {
                 for (int32 x = -horizontalOffset; x <= horizontalOffset; x++)
@@ -465,9 +468,31 @@ int main(int argc, char* argv[])
                             if (CapsuleVsBlock(playerCollider, GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })), outsideOfBlock, debug_trianglesToDraw))
                             {
                                 g_camera.transform.m_p.p += outsideOfBlock;
-                                g_camera.transform.m_isGrounded = !(outsideOfBlock.y > -0.01f && outsideOfBlock.y < 0.01f);
-
                                 playerCollider.UpdateTipLocation(g_camera.transform.m_p);
+
+                                //g_camera.transform.m_p.p = { playerCollider.m_tip.p.x, playerCollider.m_tip.p.y - playerCollider.m_radius, playerCollider.m_tip.p.z  };
+                                if (g_camera.transform.m_vel.x != 0.0f)
+                                    int32 debug = 1;
+                                if (g_camera.transform.m_vel.y != 0.0f)
+                                    int32 debug = 1;
+                                if (g_camera.transform.m_vel.z != 0.0f)
+                                    int32 debug = 1;
+                                
+#if 0
+                                Vec3 normalForceDirection = Normalize(outsideOfBlock);
+                                Vec3 collisionDirection = normalForceDirection;//-normalForceDirection;
+                                Vec3 dotProductResults = { DotProduct({1, 0, 0}, collisionDirection), DotProduct({0, 1, 0}, collisionDirection), DotProduct({0, 0, 1}, collisionDirection) };
+                                //Vec3 angles = Acos(dotProductResults / (Length(normalForceDirection)));
+                                for (int32 i = 0; i < 3; i++)
+                                {
+                                    if (dotProductResults.e[i] > 0)
+                                        g_camera.transform.m_vel.e[i] = 0;
+                                }
+#endif
+
+
+                                g_camera.transform.m_isGrounded = g_camera.transform.m_isGrounded || !(outsideOfBlock.y > -0.001f && outsideOfBlock.y < 0.001f);
+
                             }
                         }
                     }
@@ -855,7 +880,7 @@ int main(int argc, char* argv[])
             if (debugDraw)
             {
                 if (debug_trianglesToDraw.size())
-                    DrawTriangles(debug_trianglesToDraw, Orange, perspective);
+                    DrawTriangles(debug_trianglesToDraw, Orange, perspective, false);
             }
         }
 

@@ -664,6 +664,10 @@ Atan2f return value:
 {
     return Pythags(a);
 }
+[[nodiscard]] inline Vec3 Acos(Vec3 a)
+{
+    return { acos(a.x), acos(a.y), acos(a.z) };
+}
 
 [[nodiscard]] inline Vec3 Round(const Vec3& a)
 {
@@ -893,9 +897,6 @@ struct Transform {
 
     void UpdatePosition2(float deltaTime, Vec3 dragCoefficient, float area, float gravity = -10.0f)
     {
-        if (m_acceleration.x != 0 || m_acceleration.y != 0 || m_acceleration.z != 0)
-            int32 lmao = 1;
-
         if (m_isGrounded)
             m_vel.y = 0.0f;
 

@@ -2033,7 +2033,7 @@ void CreateVertices::DoThing()
     region.DecrimentRefCount();
 }
 
-void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& perspective)
+void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& perspective, bool depthWrite)
 {
     VertexBuffer* vertexBuffer = new VertexBuffer();
     IndexBuffer* indexBuffer = new IndexBuffer();
@@ -2075,6 +2075,11 @@ void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Ma
     Vec3 scale = { scale1D, scale1D, scale1D };
 
     //glDisable(GL_CULL_FACE);
+    if (!depthWrite)
+    {
+        glDisable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);
+    }
     ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
     sp->UseShader();
     sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
@@ -2092,6 +2097,8 @@ void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Ma
 
     glDrawElements(GL_TRIANGLES, (GLuint)vertices.size(), GL_UNSIGNED_INT, 0);
     g_renderer.numTrianglesDrawn += (uint32)vertices.size();
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
     //glEnable(GL_CULL_FACE);
 }
 

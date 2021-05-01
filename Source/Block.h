@@ -291,7 +291,7 @@ Vec3Int Convert_GameToBlock(ChunkPos& result, GamePos inputP);
 
 void SetBlockSprites();
 void PreChunkRender(const Mat4& perspective);
-void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& perspective);
+void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& perspective, bool depthWrite = true);
 void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective);
 void DrawBlock(WorldPos p, Color color, float scale, const Mat4& perspective);
 

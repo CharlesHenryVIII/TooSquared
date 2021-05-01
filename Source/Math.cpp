@@ -658,7 +658,9 @@ bool CapsuleVsBlock(Capsule collider, GamePos blockGP, Vec3& toOutside, std::vec
                 if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && distanceToTriangle > 0.0f)
                 {//Sphere inside triangle
                     toOutside.x += directionToTriangle.x * distanceToTriangle;
-                    collider.UpdateTipLocation(collider.m_tip.p + toOutside);
+                    //collider.UpdateTipLocation(collider.m_tip.p + toOutside);
+                    //collider.UpdateTipLocation(collider.m_tip.p + directionToTriangle.x * distanceToTriangle);
+                    collider.UpdateTipLocation(collider.m_tip.p + Vec3({ directionToTriangle.x * distanceToTriangle, 0.0f, 0.0f }) );
                     result = true;
                     debug_triangles.push_back(triangle);
                 }
@@ -681,7 +683,9 @@ bool CapsuleVsBlock(Capsule collider, GamePos blockGP, Vec3& toOutside, std::vec
                 if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && distanceToTriangle > 0.0f)
                 {//Sphere inside triangle
                     toOutside.z += directionToTriangle.z * distanceToTriangle;
-                    collider.UpdateTipLocation(collider.m_tip.p + toOutside);
+                    //collider.UpdateTipLocation(collider.m_tip.p + toOutside);
+                    //collider.UpdateTipLocation(collider.m_tip.p + directionToTriangle.z * distanceToTriangle);
+                    collider.UpdateTipLocation(collider.m_tip.p + Vec3({ 0.0f, 0.0f, directionToTriangle.z * distanceToTriangle }) );
                     result = true;
                     debug_triangles.push_back(triangle);
                 }
@@ -704,7 +708,8 @@ bool CapsuleVsBlock(Capsule collider, GamePos blockGP, Vec3& toOutside, std::vec
                 if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && distanceToTriangle > 0.0f)
                 {//Sphere inside triangle
                     toOutside.y += directionToTriangle.y * distanceToTriangle;
-                    collider.UpdateTipLocation(collider.m_tip.p + toOutside);
+                    //collider.UpdateTipLocation(collider.m_tip.p + toOutside);
+                    collider.UpdateTipLocation(collider.m_tip.p + Vec3({ 0.0f, directionToTriangle.y * distanceToTriangle, 0.0f }) );
                     debug_triangles.push_back(triangle);
                     result = true;
                 }
