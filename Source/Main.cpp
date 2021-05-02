@@ -457,6 +457,7 @@ int main(int argc, char* argv[])
             g_camera.transform.m_isGrounded = false;
 
             {
+                BlockSampler blockSampler = {};
                 for (int32 x = -horizontalOffset; x <= horizontalOffset; x++)
                 {
                     for (int32 y = -verticalOffset; y <= verticalOffset; y++)
@@ -465,7 +466,12 @@ int main(int argc, char* argv[])
                         {
                             //neighborBlocks.push_back(GamePos(referenceGamePosition.p + Vec3Int({x, y, z})));
                             Vec3 outsideOfBlock = {};
-                            if (CapsuleVsBlock(playerCollider, GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })), outsideOfBlock, debug_trianglesToDraw))
+                            //Block sample passed into capsuleVsBlock and then collisions are ignored if block is present in the normal direction of the current triangle
+                            if (!(blockSampler.RegionGather(GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })))))
+                                continue;
+
+
+                            if (CapsuleVsBlock(playerCollider, blockSampler, outsideOfBlock, debug_trianglesToDraw))
                             {
                                 g_camera.transform.m_p.p += outsideOfBlock;
                                 playerCollider.UpdateTipLocation(g_camera.transform.m_p);
@@ -489,7 +495,6 @@ int main(int argc, char* argv[])
                                         g_camera.transform.m_vel.e[i] = 0;
                                 }
 #endif
-
 
                                 g_camera.transform.m_isGrounded = g_camera.transform.m_isGrounded || !(outsideOfBlock.y > -0.001f && outsideOfBlock.y < 0.001f);
 

@@ -232,6 +232,12 @@ struct RegionSampler {
     void IncrimentRefCount();
 };
 
+struct BlockSampler {
+    BlockType blocks[+Face::Count] = {};
+    GamePos baseBlock = {};
+    bool RegionGather(GamePos baseBlock);
+};
+
 struct ChunkArray
 {
     enum State {

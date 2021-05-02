@@ -1760,12 +1760,56 @@ void RegionSampler::DecrimentRefCount()
     for (int32 i = 0; i < arrsize(neighbors); i++)
         g_chunks->refs[i]--;
 }
-
 void RegionSampler::IncrimentRefCount()
 {
     g_chunks->refs[center]++;
     for (int32 i = 0; i < arrsize(neighbors); i++)
         g_chunks->refs[i]++;
+}
+
+//TODO: Add error reporting when this fails
+bool BlockSampler::RegionGather(GamePos base)
+{
+    baseBlock = base;
+    bool result = true;
+
+    ChunkPos blockChunkP = {};
+    Vec3Int block_blockP = Convert_GameToBlock(blockChunkP, base);
+    ChunkIndex blockChunkIndex;
+    if (g_chunks->GetChunkFromPosition(blockChunkIndex, blockChunkP))
+    {
+        result = !(g_chunks->blocks[blockChunkIndex].e[block_blockP.x][block_blockP.y][block_blockP.z] == BlockType::Empty);
+    }
+    else
+        result = false;
+
+    if (result)
+    {
+        for (uint8 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
+        {
+            blocks[faceIndex] = BlockType::Empty;
+            Vec3Int faceNormal = { int32(faceNormals[faceIndex].x), int32(faceNormals[faceIndex].y), int32(faceNormals[faceIndex].z) };
+            GamePos checkingBlock = GamePos(base.p + faceNormal);
+
+            ChunkPos blockChunkP = {};
+            Vec3Int block_blockP = Convert_GameToBlock(blockChunkP, checkingBlock);
+            ChunkIndex blockChunkIndex;
+            if (g_chunks->GetChunkFromPosition(blockChunkIndex, blockChunkP))
+            {
+                blocks[faceIndex] = g_chunks->blocks[blockChunkIndex].e[block_blockP.x][block_blockP.y][block_blockP.z];
+            }
+            else if (checkingBlock.p.y < 0 || checkingBlock.p.y >= CHUNK_Y)
+            {
+                blocks[faceIndex] = BlockType::Empty;
+            }
+            else
+            {
+                result = false;
+                break;
+            }
+        }
+    }
+    return result;
 }
 
 //{

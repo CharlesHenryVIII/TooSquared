@@ -618,101 +618,96 @@ bool CapsuleVsTriangle(const Capsule& collider, const Triangle& triangle, Vec3& 
     return false;
 }
 
-bool CapsuleVsBlock(Capsule collider, GamePos blockGP, Vec3& toOutside, std::vector<Triangle>& debug_triangles)
+bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& toOutside, std::vector<Triangle>& debug_triangles)
 {
     //generate traingles
     //RegionSampler immediateRegion;
     //immediateRegion.BuildRegion(ToChunk(referenceGamePosition));
 
     bool result = false;
-    BlockType blockType;
-    ChunkPos blockChunkP = {};
-    Vec3Int block_blockP = Convert_GameToBlock(blockChunkP, blockGP);
-    ChunkIndex blockChunkIndex;
-    if (g_chunks->GetChunkFromPosition(blockChunkIndex, blockChunkP))
-        //if (immediateRegion.GetBlock(blockType, ))
+
+    WorldPos blockP = ToWorld(blockSampler.baseBlock);
+    Vec3 directionToTriangle = {};
+    float distanceToTriangle = {};
+    int32 cubeIndices[] = { 0, 1, 2, 1, 3, 2 };
+    Triangle triangle = {};
+
+    //+-Z
+    for (int32 i = 4; (i < 6); i++)
     {
-        blockType = g_chunks->blocks[blockChunkIndex].e[block_blockP.x][block_blockP.y][block_blockP.z];
-        if (blockType == BlockType::Empty)
-            return false;
-
-        WorldPos blockP = ToWorld(blockGP);
-        Vec3 directionToTriangle = {};
-        float distanceToTriangle = {};
-        int32 cubeIndices[] = { 0, 1, 2, 1, 3, 2 };
-        Triangle triangle = {};
-
-        //+-X
-        for (int32 i = 0; i <= 1; i++)
+        if (blockSampler.blocks[i] != BlockType::Empty)
+            continue;
+        for (int32 j = 0; j <= 1; j++)
         {
-            for (int32 j = 0; j <= 1; j++)
+            triangle = {};
+            for (int32 k = 0; k < 3; k++)
             {
-                triangle = {};
-                for (int32 k = 0; k < 3; k++)
-                {
-                    triangle.e[k] = blockP.p + cubeVertices[i].e[cubeIndices[k + (j * 3)]];
-                }
+                triangle.e[k] = blockP.p + cubeVertices[i].e[cubeIndices[k + (j * 3)]];
+            }
 
-                directionToTriangle = {};
-                distanceToTriangle = {};
-                if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && distanceToTriangle > 0.0f)
-                {//Sphere inside triangle
-                    toOutside.x += directionToTriangle.x * distanceToTriangle;
-                    //collider.UpdateTipLocation(collider.m_tip.p + toOutside);
-                    //collider.UpdateTipLocation(collider.m_tip.p + directionToTriangle.x * distanceToTriangle);
-                    collider.UpdateTipLocation(collider.m_tip.p + Vec3({ directionToTriangle.x * distanceToTriangle, 0.0f, 0.0f }) );
-                    result = true;
-                    debug_triangles.push_back(triangle);
-                }
+            directionToTriangle = {};
+            distanceToTriangle = {};
+            if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && distanceToTriangle > 0.0f)
+            {//Sphere inside triangle
+                toOutside.z += directionToTriangle.z * distanceToTriangle;
+                //collider.UpdateTipLocation(collider.m_tip.p + toOutside);
+                //collider.UpdateTipLocation(collider.m_tip.p + directionToTriangle.z * distanceToTriangle);
+                collider.UpdateTipLocation(collider.m_tip.p + Vec3({ 0.0f, 0.0f, directionToTriangle.z * distanceToTriangle }));
+                result = true;
+                debug_triangles.push_back(triangle);
             }
         }
+    }
 
-        //+-Z
-        for (int32 i = 4; i <= 5; i++)
+    //+-X
+    for (int32 i = 0; (i < 2); i++)
+    {
+        if (blockSampler.blocks[i] != BlockType::Empty)
+            continue;
+        for (int32 j = 0; j <= 1; j++)
         {
-            for (int32 j = 0; j <= 1; j++)
+            triangle = {};
+            for (int32 k = 0; k < 3; k++)
             {
-                triangle = {};
-                for (int32 k = 0; k < 3; k++)
-                {
-                    triangle.e[k] = blockP.p + cubeVertices[i].e[cubeIndices[k + (j * 3)]];
-                }
+                triangle.e[k] = blockP.p + cubeVertices[i].e[cubeIndices[k + (j * 3)]];
+            }
 
-                directionToTriangle = {};
-                distanceToTriangle = {};
-                if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && distanceToTriangle > 0.0f)
-                {//Sphere inside triangle
-                    toOutside.z += directionToTriangle.z * distanceToTriangle;
-                    //collider.UpdateTipLocation(collider.m_tip.p + toOutside);
-                    //collider.UpdateTipLocation(collider.m_tip.p + directionToTriangle.z * distanceToTriangle);
-                    collider.UpdateTipLocation(collider.m_tip.p + Vec3({ 0.0f, 0.0f, directionToTriangle.z * distanceToTriangle }) );
-                    result = true;
-                    debug_triangles.push_back(triangle);
-                }
+            directionToTriangle = {};
+            distanceToTriangle = {};
+            if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && distanceToTriangle > 0.0f)
+            {//Sphere inside triangle
+                toOutside.x += directionToTriangle.x * distanceToTriangle;
+                //collider.UpdateTipLocation(collider.m_tip.p + toOutside);
+                //collider.UpdateTipLocation(collider.m_tip.p + directionToTriangle.x * distanceToTriangle);
+                collider.UpdateTipLocation(collider.m_tip.p + Vec3({ directionToTriangle.x * distanceToTriangle, 0.0f, 0.0f }));
+                result = true;
+                debug_triangles.push_back(triangle);
             }
         }
+    }
 
-        //+-y
-        for (int32 i = 2; i <= 3; i++)
+    //+-y
+    for (int32 i = 2; (i < 4); i++)
+    {
+        if (blockSampler.blocks[i] != BlockType::Empty)
+            continue;
+        for (int32 j = 0; j <= 1; j++)
         {
-            for (int32 j = 0; j <= 1; j++)
+            triangle = {};
+            for (int32 k = 0; k < 3; k++)
             {
-                triangle = {};
-                for (int32 k = 0; k < 3; k++)
-                {
-                    triangle.e[k] = blockP.p + cubeVertices[i].e[cubeIndices[k + (j * 3)]];
-                }
+                triangle.e[k] = blockP.p + cubeVertices[i].e[cubeIndices[k + (j * 3)]];
+            }
 
-                directionToTriangle = {};
-                distanceToTriangle = {};
-                if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && distanceToTriangle > 0.0f)
-                {//Sphere inside triangle
-                    toOutside.y += directionToTriangle.y * distanceToTriangle;
-                    //collider.UpdateTipLocation(collider.m_tip.p + toOutside);
-                    collider.UpdateTipLocation(collider.m_tip.p + Vec3({ 0.0f, directionToTriangle.y * distanceToTriangle, 0.0f }) );
-                    debug_triangles.push_back(triangle);
-                    result = true;
-                }
+            directionToTriangle = {};
+            distanceToTriangle = {};
+            if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && distanceToTriangle > 0.0f)
+            {//Sphere inside triangle
+                toOutside.y += directionToTriangle.y * distanceToTriangle;
+                //collider.UpdateTipLocation(collider.m_tip.p + toOutside);
+                collider.UpdateTipLocation(collider.m_tip.p + Vec3({ 0.0f, directionToTriangle.y * distanceToTriangle, 0.0f }));
+                debug_triangles.push_back(triangle);
+                result = true;
             }
         }
     }
