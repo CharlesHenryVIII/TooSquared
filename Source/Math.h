@@ -898,7 +898,7 @@ struct Transform {
     void UpdatePosition2(float deltaTime, Vec3 dragCoefficient, float area, float gravity = -10.0f)
     {
         if (m_isGrounded)
-            m_vel.y = 0.0f;
+            m_vel.y = Max(m_vel.y, 0.0f);
 
         m_vel.y += (m_acceleration.y + gravity) * deltaTime;
         m_vel.y = Clamp(m_vel.y, -m_terminalVel.y, m_terminalVel.y);
@@ -947,6 +947,6 @@ struct BlockSampler;
 bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal);
 bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance);
 Vec3 ClosestPointOnLineSegment(const Vec3& A, const Vec3& B, const Vec3& Point);
-bool CapsuleVsBlock(Capsule collider, const BlockSampler& region, Vec3& toOutside, std::vector<Triangle>& debug_triangles, bool* dimensionContact);
+bool CapsuleVsBlock(Capsule collider, const BlockSampler& region, Vec3& toOutside, std::vector<Triangle>& debug_triangles);
 
 void QuickSort(uint8* data, const int32 length, const int32 itemSize, int32 (*compare)(const void* a, const void* b));

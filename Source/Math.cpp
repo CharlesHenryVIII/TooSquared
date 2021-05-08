@@ -418,12 +418,12 @@ bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& tr
                 int32 i = 10;//issues;
             //directionToTriangle = -directionToTriangle;
             distance = radius - len; // radius = sphere radius
-            assert(distance >= 0.0f);
-            if (distance < 0)
-            {
-                distance = 0.0f;
-                directionToTriangle = {};
-            }
+            //assert(distance >= 0.0f);
+            //if (distance < 0)
+            //{
+            //    distance = 0.0f;
+            //    directionToTriangle = {};
+            //}
         }
         else
         {
@@ -641,7 +641,7 @@ bool CapsuleVsTriangle(const Capsule& collider, const Triangle& triangle, Vec3& 
     return false;
 }
 
-bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& toOutside, std::vector<Triangle>& debug_triangles, bool* dimensionContact)
+bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& toOutside, std::vector<Triangle>& debug_triangles)
 {
     bool result = false;
 
@@ -650,9 +650,6 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
     float distanceToTriangle = {};
     int32 cubeIndices[] = { 0, 1, 2, 1, 3, 2 };
     Triangle triangle = {};
-    assert(dimensionContact);
-    if (!dimensionContact)
-        return false;
 
     //+-X
     for (int32 i = 0; (i < 2); i++)
@@ -660,7 +657,6 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
         if (blockSampler.blocks[i] != BlockType::Empty)
             continue;
         for (int32 j = 0; j <= 1; j++)
-        //for (int32 j = 0; j < 1; j++)
         {
             triangle = {};
             for (int32 k = 0; k < 3; k++)
@@ -678,7 +674,6 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
                 //collider.UpdateTipLocation(collider.m_tip.p + Vec3({ directionToTriangle.x * distanceToTriangle, 0.0f, 0.0f }));
                 result = true;
                 debug_triangles.push_back(triangle);
-                dimensionContact[0] = true;
             }
         }
     }
@@ -689,7 +684,6 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
         if (blockSampler.blocks[i] != BlockType::Empty)
             continue;
         for (int32 j = 0; j <= 1; j++)
-        //for (int32 j = 0; j < 1; j++)
         {
             triangle = {};
             for (int32 k = 0; k < 3; k++)
@@ -708,12 +702,11 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
                 //collider.UpdateTipLocation(collider.m_tip.p + Vec3({ 0.0f, 0.0f, directionToTriangle.z * distanceToTriangle }));
                 result = true;
                 debug_triangles.push_back(triangle);
-                dimensionContact[2] = true;
             }
         }
     }
 
-    collider.UpdateTipLocation(collider.m_tip.p + toOutside);
+    //collider.UpdateTipLocation(collider.m_tip.p + toOutside);
 
     //+-y
     for (int32 i = 2; (i < 4); i++)
@@ -732,17 +725,17 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
             distanceToTriangle = {};
             if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && (!dimensionContact[1]))
             {//Sphere inside triangle
-                if (distanceToTriangle != 0)
-                    int32 test = 1;
-                toOutside.y += directionToTriangle.y * distanceToTriangle;
-                collider.UpdateTipLocation(collider.m_tip.p + Vec3({ 0.0f, directionToTriangle.y * distanceToTriangle, 0.0f }));
+                if (fabs(directionToTriangle.y * distanceToTriangle) > fabsf(toOutside.y))
+                    toOutside.y = directionToTriangle.y * distanceToTriangle;
+                //toOutside.y += directionToTriangle.y * distanceToTriangle;
                 debug_triangles.push_back(triangle);
                 result = true;
-                dimensionContact[1] = true;
                 break;
             }
         }
     }
+
+    collider.UpdateTipLocation(collider.m_tip.p + Vec3({ 0.0f, directionToTriangle.y * distanceToTriangle, 0.0f }));
 
     return result;
 }

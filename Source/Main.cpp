@@ -168,10 +168,11 @@ int main(int argc, char* argv[])
         uploadedLastFrame = false;
         {
             ChunkPos cameraChunk = ToChunk(g_camera.transform.m_p);
-            SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared P: %i, %i, %i; V: %0.2f, %0.2f, %0.2f C: %i, %i; Chunks: %u; Time: %0.2f; Triangles: %u",
+            SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared P: %i, %i, %i; V: %0.2f, %0.2f, %0.2f C: %i, %i; Chunks: %u; Time: %0.2f; Triangles: %u; grounded: %i",
                 (int32)floor(g_camera.transform.m_p.p.x), (int32)floor(g_camera.transform.m_p.p.y), (int32)floor(g_camera.transform.m_p.p.z), 
                 g_camera.transform.m_vel.x, g_camera.transform.m_vel.y, g_camera.transform.m_vel.z,
-                cameraChunk.p.x, cameraChunk.p.z, g_chunks->chunkCount, loadingTimer, g_renderer.numTrianglesDrawn).c_str());
+                cameraChunk.p.x, cameraChunk.p.z, g_chunks->chunkCount, 
+                loadingTimer, g_renderer.numTrianglesDrawn, g_camera.transform.m_isGrounded).c_str());
         }
 
         SDL_Event SDLEvent;
@@ -457,7 +458,6 @@ int main(int argc, char* argv[])
             g_camera.transform.m_isGrounded = false;
 
             {
-                bool dimensionContact[3] = {};
                 BlockSampler blockSampler = {};
                 for (int32 y = -verticalOffset; y <= verticalOffset; y++)
                 {
@@ -472,7 +472,7 @@ int main(int argc, char* argv[])
                                 continue;
 
 
-                            if (CapsuleVsBlock(playerCollider, blockSampler, outsideOfBlock, debug_trianglesToDraw, dimensionContact))
+                            if (CapsuleVsBlock(playerCollider, blockSampler, outsideOfBlock, debug_trianglesToDraw))
                             {
                                 g_camera.transform.m_p.p += outsideOfBlock;
                                 playerCollider.UpdateTipLocation(g_camera.transform.m_p);
@@ -497,7 +497,21 @@ int main(int argc, char* argv[])
                                 }
 #endif
 
-                                g_camera.transform.m_isGrounded = g_camera.transform.m_isGrounded || !(outsideOfBlock.y > -0.001f && outsideOfBlock.y < 0.001f);
+                                float boundaryValue = 0.001f;
+                                if (outsideOfBlock.y < -boundaryValue || outsideOfBlock.y > boundaryValue)
+                                {
+                                    if (outsideOfBlock.y > 0.0f && g_camera.transform.m_vel.y < 0.0f)
+                                    {
+                                        g_camera.transform.m_isGrounded = true;
+                                    }
+                                    if (outsideOfBlock.y < 0.0f && g_camera.transform.m_vel.y > 0.0f)
+                                    {
+                                        g_camera.transform.m_vel.y = 0;
+                                    }
+                                }
+
+
+                                 //= g_camera.transform.m_isGrounded || grounded;//!(outsideOfBlock.y > -boundaryValue && outsideOfBlock.y < boundaryValue);
 
                             }
                         }
