@@ -457,10 +457,11 @@ int main(int argc, char* argv[])
             g_camera.transform.m_isGrounded = false;
 
             {
+                bool dimensionContact[3] = {};
                 BlockSampler blockSampler = {};
-                for (int32 x = -horizontalOffset; x <= horizontalOffset; x++)
+                for (int32 y = -verticalOffset; y <= verticalOffset; y++)
                 {
-                    for (int32 y = -verticalOffset; y <= verticalOffset; y++)
+                    for (int32 x = -horizontalOffset; x <= horizontalOffset; x++)
                     {
                         for (int32 z = -horizontalOffset; z <= horizontalOffset; z++)
                         {
@@ -471,7 +472,7 @@ int main(int argc, char* argv[])
                                 continue;
 
 
-                            if (CapsuleVsBlock(playerCollider, blockSampler, outsideOfBlock, debug_trianglesToDraw))
+                            if (CapsuleVsBlock(playerCollider, blockSampler, outsideOfBlock, debug_trianglesToDraw, dimensionContact))
                             {
                                 g_camera.transform.m_p.p += outsideOfBlock;
                                 playerCollider.UpdateTipLocation(g_camera.transform.m_p);
