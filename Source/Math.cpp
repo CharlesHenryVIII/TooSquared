@@ -419,11 +419,12 @@ bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& tr
             //directionToTriangle = -directionToTriangle;
             distance = radius - len; // radius = sphere radius
             //assert(distance >= 0.0f);
-            //if (distance < 0)
-            //{
-            //    distance = 0.0f;
-            //    directionToTriangle = {};
-            //}
+            if (distance < 0)
+            {
+                return false;
+                //distance = 0.0001f;
+                //directionToTriangle = { 0.000001f, 0.000001f, 0.000001f };
+            }
         }
         else
         {
@@ -619,6 +620,10 @@ bool CapsuleVsTriangle(const Capsule& collider, const Triangle& triangle, Vec3& 
     if (SphereVsTriangle(sphereCenter, collider.m_radius, triangle, directionToTriangle, distanceToTriangle))// && distanceToTriangle > 0.0f)
     {
         //Need to capture if the distance is zero then we are inside the triangle;
+
+        assert(DotProduct(triangleNormal, { directionToTriangle.x, 0.0f, 0.0f }) >= 0.0f);
+        assert(DotProduct(triangleNormal, { 0.0f, directionToTriangle.y, 0.0f }) >= 0.0f);
+        assert(DotProduct(triangleNormal, { 0.0f, 0.0f, directionToTriangle.z }) >= 0.0f);
 
         if ((Distance(sphereCenter, collider.m_tail.p) > collider.m_radius) && (Distance(sphereCenter, collider.m_tip.p) > collider.m_radius) && 
             distanceToTriangle == 0.0f && (triangleNormal.x == 0 && triangleNormal.z == 0) && checkDistanceToTriangle)
