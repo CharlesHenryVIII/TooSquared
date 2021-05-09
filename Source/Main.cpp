@@ -446,6 +446,7 @@ int main(int argc, char* argv[])
             if (keyStates[SDLK_x].down)
                 g_camera.transform.m_acceleration.x += cameraAcceleration;
 
+            //g_camera.transform.UpdateDeltaPosition(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
             g_camera.transform.UpdatePosition2(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
 
             playerCollider.UpdateTipLocation(g_camera.transform.m_p);
@@ -459,44 +460,100 @@ int main(int argc, char* argv[])
 
             {
                 BlockSampler blockSampler = {};
+#if 0
+                //BroadPhase finding collision objects:
+                Capsule& pc = playerCollider;
+                float rad = playerCollider.m_radius;
+                Range xRange = { inf, -inf };
+                Range zRange = { inf, -inf };
+                Range yRange = { inf, -inf };
+                
+
+                //Finding X Min
+                xRange.min = Min(pc.m_tip.p.x - rad, pc.m_tip.p.x + g_camera.transform.m_pDelta.p.x - rad);
+                //Finding X Max
+                xRange.max = Max(pc.m_tip.p.x + rad, pc.m_tip.p.x + g_camera.transform.m_pDelta.p.x + rad);
+
+                //Finding Z Min
+                zRange.min = Min(pc.m_tip.p.z - rad, pc.m_tip.p.z + g_camera.transform.m_pDelta.p.z - rad);
+                //Finding Z Max
+                zRange.max = Max(pc.m_tip.p.z + rad, pc.m_tip.p.z + g_camera.transform.m_pDelta.p.z + rad);
+                   
+                //Finding Y Min
+                yRange.min = Min(pc.m_tail.p.y, pc.m_tail.p.y + g_camera.transform.m_pDelta.p.y);
+                //Finding Y Max
+                yRange.max = Max(pc.m_tip.p.y, pc.m_tip.p.y + g_camera.transform.m_pDelta.p.y);
+
+                Vec3 minRangeFloat = { xRange.min, yRange.min, zRange.min };
+                Vec3 maxRangeFloat = { xRange.max, yRange.max, zRange.max };
+                GamePos minRange = ToGame(WorldPos(minRangeFloat));
+                GamePos maxRange = ToGame(WorldPos(maxRangeFloat));
+
+                //TEMP
+                //TODO: move to an appropriate place
+                g_camera.transform.m_p.p += g_camera.transform.m_pDelta.p;
+
+                //Collision is checked and calculated
+                for (int32 x = minRange.p.x; x <= maxRange.p.x; x++)
+                {
+                    for (int32 y = minRange.p.y; y <= maxRange.p.y; y++)
+                    {
+                        for (int32 z = minRange.p.z; z <= maxRange.p.z; z++)
+                        {
+                            if (!(blockSampler.RegionGather(GamePos(Vec3Int({ x, y, z })))))
+                                continue;
+#else
                 for (int32 y = -verticalOffset; y <= verticalOffset; y++)
                 {
                     for (int32 x = -horizontalOffset; x <= horizontalOffset; x++)
                     {
                         for (int32 z = -horizontalOffset; z <= horizontalOffset; z++)
                         {
-                            //neighborBlocks.push_back(GamePos(referenceGamePosition.p + Vec3Int({x, y, z})));
-                            Vec3 outsideOfBlock = {};
-                            //Block sample passed into capsuleVsBlock and then collisions are ignored if block is present in the normal direction of the current triangle
                             if (!(blockSampler.RegionGather(GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })))))
                                 continue;
-
-
+#endif
+                            Vec3 outsideOfBlock = {};
                             if (CapsuleVsBlock(playerCollider, blockSampler, outsideOfBlock, debug_trianglesToDraw))
                             {
                                 g_camera.transform.m_p.p += outsideOfBlock;
                                 playerCollider.UpdateTipLocation(g_camera.transform.m_p);
 
-                                //g_camera.transform.m_p.p = { playerCollider.m_tip.p.x, playerCollider.m_tip.p.y - playerCollider.m_radius, playerCollider.m_tip.p.z  };
                                 if (g_camera.transform.m_vel.x != 0.0f)
                                     int32 debug = 1;
                                 if (g_camera.transform.m_vel.y != 0.0f)
                                     int32 debug = 1;
                                 if (g_camera.transform.m_vel.z != 0.0f)
                                     int32 debug = 1;
-                                
-#if 0
+
+#if 1
                                 Vec3 normalForceDirection = Normalize(outsideOfBlock);
                                 Vec3 collisionDirection = normalForceDirection;//-normalForceDirection;
-                                Vec3 dotProductResults = { DotProduct({1, 0, 0}, collisionDirection), DotProduct({0, 1, 0}, collisionDirection), DotProduct({0, 0, 1}, collisionDirection) };
+                                Vec3 dotProductResults = { DotProduct(Vec3({ g_camera.transform.m_vel.x, 0.0f, 0.0f }), collisionDirection), 
+                                                           DotProduct(Vec3({ 0.0f, g_camera.transform.m_vel.y, 0.0f }), collisionDirection), 
+                                                           DotProduct(Vec3({ 0.0f, 0.0f, g_camera.transform.m_vel.z }), collisionDirection) };
                                 //Vec3 angles = Acos(dotProductResults / (Length(normalForceDirection)));
-                                for (int32 i = 0; i < 3; i++)
+                                //for (int32 i = 0; i < 3; i++)
+                                //{
+                                //    if (dotProductResults.e[i] < 0.0f)
+                                //    {
+                                //        g_camera.transform.m_vel.e[i] = 0.0f;
+                                //    }
+                                //}
+                                if (dotProductResults.x < 0.0f)
                                 {
-                                    if (dotProductResults.e[i] > 0)
-                                        g_camera.transform.m_vel.e[i] = 0;
+                                    g_camera.transform.m_vel.x = 0.0f;
                                 }
-#endif
-
+                                if (dotProductResults.y < 0.0f)
+                                {
+                                    if (g_camera.transform.m_vel.y < 0.0f)
+                                        g_camera.transform.m_isGrounded = true;
+                                    g_camera.transform.m_vel.y = 0.0f;
+                                }
+                                if (dotProductResults.z < 0.0f)
+                                {
+                                    g_camera.transform.m_vel.z = 0.0f;
+                                }
+#else
                                 float boundaryValue = 0.001f;
                                 if (outsideOfBlock.y < -boundaryValue || outsideOfBlock.y > boundaryValue)
                                 {
@@ -509,16 +566,12 @@ int main(int argc, char* argv[])
                                         g_camera.transform.m_vel.y = 0;
                                     }
                                 }
-
-
-                                 //= g_camera.transform.m_isGrounded || grounded;//!(outsideOfBlock.y > -boundaryValue && outsideOfBlock.y < boundaryValue);
+#endif
 
                             }
                         }
                     }
                 }
-                
-
             }
 
             break;

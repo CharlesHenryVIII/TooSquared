@@ -836,6 +836,7 @@ struct RigidBody {
 
 struct Transform {
     WorldPos m_p = {};
+    WorldPos m_pDelta = {};
     Vec3 m_vel = {};
     Vec3 m_acceleration = {};
     //Vec3 m_rot = {};
@@ -893,6 +894,52 @@ struct Transform {
         //Velocity and position will be local for Audio and Particle actors
         Vec3 deltaP = m_vel * deltaTime;
         m_p.p += deltaP;
+    }
+
+    void UpdateDeltaPosition(float deltaTime, Vec3 dragCoefficient, float area, float gravity = -10.0f)
+    {
+        if (m_isGrounded)
+            m_vel.y = Max(m_vel.y, 0.0f);
+
+        m_vel.y += (m_acceleration.y + gravity) * deltaTime;
+        m_vel.y = Clamp(m_vel.y, -m_terminalVel.y, m_terminalVel.y);
+
+        m_vel.x += m_acceleration.x * deltaTime;
+        m_vel.z += m_acceleration.z * deltaTime;
+
+        float zeroTolerance = 0.25f;
+        //if ((m_acceleration.x >= -zeroTolerance && m_acceleration.x <= zeroTolerance) &&
+        //    (m_acceleration.y >= -zeroTolerance && m_acceleration.y <= zeroTolerance) &&
+        //    (m_acceleration.z >= -zeroTolerance && m_acceleration.z <= zeroTolerance))
+        {
+        float mass = 1000.0f; //grams
+        Vec3 dragForce = m_vel * dragCoefficient;//dragCoefficient * ((1.255f * m_vel/* * m_vel*/) / 2) * area;
+        Vec3 dragVel = dragForce / (mass * deltaTime);
+
+        dragVel = m_vel * dragCoefficient * deltaTime;
+
+        //if (m_vel.x < 0.0f)
+        //    dragVel.x = -dragVel.x;
+        //if (m_vel.y < 0.0f)
+        //    dragVel.y = -dragVel.y;
+        //if (m_vel.z < 0.0f)
+        //    dragVel.z = -dragVel.z;
+
+            m_vel -= dragVel;
+            m_vel.x = Clamp(m_vel.x, -m_terminalVel.x, m_terminalVel.x);
+            m_vel.y = Clamp(m_vel.y, -m_terminalVel.y, m_terminalVel.y);
+            m_vel.z = Clamp(m_vel.z, -m_terminalVel.z, m_terminalVel.z);
+
+            //if (m_vel.x <= zeroTolerance && m_vel.x >= -zeroTolerance)
+            //    m_vel.x = 0;
+            //if (m_vel.y <= zeroTolerance && m_vel.y >= -zeroTolerance)
+            //    m_vel.y = 0;
+            //if (m_vel.z <= zeroTolerance && m_vel.z >= -zeroTolerance)
+            //    m_vel.z = 0;
+        }
+
+        //Velocity and position will be local for Audio and Particle actors
+        m_pDelta = m_vel * deltaTime;
     }
 
     void UpdatePosition2(float deltaTime, Vec3 dragCoefficient, float area, float gravity = -10.0f)

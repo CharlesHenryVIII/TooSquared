@@ -33,6 +33,7 @@ struct Window {
 struct Camera {
     Transform transform = {
     .m_p = { 0.0f, 260.0f, 0.0f },
+    .m_pDelta = { 0.0f, 260.0f, 0.0f },
     .m_vel = {},
     .m_acceleration = {},
     .m_terminalVel = 200.0f,
