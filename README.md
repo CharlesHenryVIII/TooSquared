@@ -6,11 +6,9 @@
  * Block wireframe on target
  * Operator overloads on WorldPos and ChunkPos
  * Move main loops into a single loop that switches on chunk state?
- * Capture mouse
  * Curser/reticle
  * optimize block creation and deletion
  * Render water correctly
- * collision
  * improve chunk update code
  * Added perlin seeding
  * Add proper kinematics

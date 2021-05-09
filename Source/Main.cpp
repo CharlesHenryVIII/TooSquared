@@ -211,9 +211,13 @@ int main(int argc, char* argv[])
                 if (g_window.hasAttention)
                 {
                     g_mouse.pDelta.x += (static_cast<float>(SDLEvent.motion.x) - g_mouse.pos.x);
-                    g_mouse.pos.x = SDLEvent.motion.x;
                     g_mouse.pDelta.y += (static_cast<float>(SDLEvent.motion.y) - g_mouse.pos.y);// reversed since y-coordinates go from bottom to top
-                    g_mouse.pos.y = SDLEvent.motion.y;
+
+                    SDL_WarpMouseInWindow(g_window.SDL_Context, g_window.size.x / 2, g_window.size.y / 2);
+                    //g_mouse.pos.x = SDLEvent.motion.x;
+                    //g_mouse.pos.y = SDLEvent.motion.y;
+                    g_mouse.pos.x = g_window.size.x / 2;
+                    g_mouse.pos.y = g_window.size.y / 2;
                 }
                 break;
             }
@@ -244,6 +248,7 @@ int main(int argc, char* argv[])
                     g_mouse.pDelta = {};
                     SDL_GetMouseState(&g_mouse.pos.x, &g_mouse.pos.y);
                     SDL_CaptureMouse(SDL_TRUE);
+                    SDL_ShowCursor(SDL_DISABLE);
                     break;
                 }
                 case SDL_WINDOWEVENT_LEAVE:
@@ -340,10 +345,11 @@ int main(int argc, char* argv[])
         g_mouse.pDelta *= sensitivity;
 
 
-        if (keyStates[SDL_BUTTON_LEFT].down)
+        //if (keyStates[SDL_BUTTON_LEFT].down)
         {
-            g_camera.yaw += g_mouse.pDelta.x;
-            g_camera.pitch -= g_mouse.pDelta.y;
+            float mouseSensativity = 0.4f;
+            g_camera.yaw += g_mouse.pDelta.x * mouseSensativity;
+            g_camera.pitch -= g_mouse.pDelta.y * mouseSensativity;
         }
 
         if (keyStates[SDLK_t].downThisFrame)
@@ -539,20 +545,23 @@ int main(int argc, char* argv[])
                                 //        g_camera.transform.m_vel.e[i] = 0.0f;
                                 //    }
                                 //}
-                                //improve to include deflection/angle of collision not just collision in that direction
-                                if (dotProductResults.x < 0.0f)
+
                                 {
-                                    g_camera.transform.m_vel.x = 0.0f;
-                                }
-                                if (dotProductResults.y < 0.0f)
-                                {
-                                    if (g_camera.transform.m_vel.y < 0.0f)
-                                        g_camera.transform.m_isGrounded = true;
-                                    g_camera.transform.m_vel.y = 0.0f;
-                                }
-                                if (dotProductResults.z < 0.0f)
-                                {
-                                    g_camera.transform.m_vel.z = 0.0f;
+                                    //TODO: improve to include deflection/angle of collision not just collision in that direction
+                                    if (dotProductResults.x < 0.0f)
+                                    {
+                                        g_camera.transform.m_vel.x = 0.0f;
+                                    }
+                                    if (dotProductResults.y < 0.0f)
+                                    {
+                                        if (g_camera.transform.m_vel.y < 0.0f)
+                                            g_camera.transform.m_isGrounded = true;
+                                        g_camera.transform.m_vel.y = 0.0f;
+                                    }
+                                    if (dotProductResults.z < 0.0f)
+                                    {
+                                        g_camera.transform.m_vel.z = 0.0f;
+                                    }
                                 }
 #else
                                 float boundaryValue = 0.001f;
