@@ -653,7 +653,7 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
     Triangle triangle = {};
 
 
-#if 0
+#if 1
 
     for (int32 faceIndex : faceIndices)
     {
@@ -673,12 +673,17 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
             {//Sphere inside triangle
                 Vec3 offset = {};
                 int32 dimension = faceIndex / 2;
+
+#if 1
+                if (fabs(directionToTriangle.e[dimension] * distanceToTriangle) > fabsf(toOutside.e[dimension]))
+                    offset.e[dimension] = directionToTriangle.e[dimension] * distanceToTriangle;
+#else
                 offset.e[dimension] = directionToTriangle.e[dimension] * distanceToTriangle;
-                //Vec3 offset = { 0.0f, 0.0f, directionToTriangle.z * distanceToTriangle };
+#endif
                 toOutside += offset;
-                collider.UpdateTipLocation(collider.m_tip.p + offset);
-                result = true;
+                //collider.UpdateTipLocation(collider.m_tip.p + offset);
                 debug_triangles.push_back(triangle);
+                result = true;
             }
         }
     }
@@ -704,9 +709,8 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
                 //toOutside.x += directionToTriangle.x * distanceToTriangle;
                 if (fabs(directionToTriangle.x * distanceToTriangle) > fabsf(toOutside.x))
                     toOutside.x = directionToTriangle.x * distanceToTriangle;
-                //collider.UpdateTipLocation(collider.m_tip.p + Vec3({ directionToTriangle.x * distanceToTriangle, 0.0f, 0.0f }));
-                result = true;
                 debug_triangles.push_back(triangle);
+                result = true;
             }
         }
     }
@@ -728,13 +732,11 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
             distanceToTriangle = {};
             if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && !dimensionContact[2])
             {//Sphere inside triangle
+                //toOutside.z += directionToTriangle.z * distanceToTriangle;
                 if (fabs(directionToTriangle.z * distanceToTriangle) > fabsf(toOutside.z))
                     toOutside.z = directionToTriangle.z * distanceToTriangle;
-
-                //toOutside.z += directionToTriangle.z * distanceToTriangle;
-                //collider.UpdateTipLocation(collider.m_tip.p + Vec3({ 0.0f, 0.0f, directionToTriangle.z * distanceToTriangle }));
-                result = true;
                 debug_triangles.push_back(triangle);
+                result = true;
             }
         }
     }
@@ -758,12 +760,11 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
             distanceToTriangle = {};
             if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && (!dimensionContact[1]))
             {//Sphere inside triangle
-                //if (fabs(directionToTriangle.y * distanceToTriangle) > fabsf(toOutside.y))
-                //    toOutside.y = directionToTriangle.y * distanceToTriangle;
-                toOutside.y += directionToTriangle.y * distanceToTriangle;
+                //toOutside.y += directionToTriangle.y * distanceToTriangle;
+                if (fabs(directionToTriangle.y * distanceToTriangle) > fabsf(toOutside.y))
+                    toOutside.y = directionToTriangle.y * distanceToTriangle;
                 debug_triangles.push_back(triangle);
                 result = true;
-                break;
             }
         }
     }

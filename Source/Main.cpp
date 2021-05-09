@@ -539,6 +539,7 @@ int main(int argc, char* argv[])
                                 //        g_camera.transform.m_vel.e[i] = 0.0f;
                                 //    }
                                 //}
+                                //improve to include deflection/angle of collision not just collision in that direction
                                 if (dotProductResults.x < 0.0f)
                                 {
                                     g_camera.transform.m_vel.x = 0.0f;
