@@ -5,11 +5,16 @@
 
 bool g_running = true;
 
+int ScopeTimer::tabLevel = 0;
+
 #if ENABLE_PROFILE
 ScopeTimer::~ScopeTimer()
 {
     float duration = GetTimer() - start;
-    DebugPrint("%s took %f ms\n", name, duration);
+    if (tabInUse)
+        tabLevel--;
+    std::string tabString(tabLevel, ' ');
+    DebugPrint("%s%s took %f ms\n", tabString.c_str(), name, duration);
 }
 #endif
 

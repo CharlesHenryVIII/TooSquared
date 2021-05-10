@@ -70,6 +70,17 @@ void ChunkArray::ClearChunk(ChunkIndex index)
     flags[index] = {};
     refs[index] = {};
 
+    if (index == highestActiveChunk)
+    {
+        ChunkIndex newHighest = 0;
+        for (ChunkIndex i = 0; i < highestActiveChunk; i++)
+        {
+            if (active[i])
+                newHighest = i;
+        }
+        highestActiveChunk = newHighest;
+    }
+
     g_chunks->chunkCount--;
 
     //delete vertexBuffer[index];
@@ -89,6 +100,7 @@ ChunkIndex ChunkArray::AddChunk(ChunkPos position)
             g_chunks->chunkCount++;
             g_chunks->chunkPosTable[PositionHash(position)] = i;
             g_chunks->p[i] = position;
+            highestActiveChunk = Max(i, highestActiveChunk);
             return i;
         }
     }
@@ -2079,8 +2091,8 @@ void CreateVertices::DoThing()
 
 void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& perspective, bool depthWrite)
 {
-    VertexBuffer* vertexBuffer = new VertexBuffer();
-    IndexBuffer* indexBuffer = new IndexBuffer();
+    VertexBuffer vertexBuffer;
+    IndexBuffer indexBuffer;
 
     std::vector<Vertex> vertices;
     std::vector<uint32> indices;
@@ -2104,11 +2116,11 @@ void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Ma
         indices.push_back(i * 3 + 1);
         indices.push_back(i * 3 + 2);
     }
-    vertexBuffer->Upload(vertices.data(), vertices.size());
-    indexBuffer->Upload(indices.data(), indices.size());
+    vertexBuffer.Upload(vertices.data(), vertices.size());
+    indexBuffer.Upload(indices.data(), indices.size());
     
-    vertexBuffer->Bind();
-    indexBuffer->Bind();
+    vertexBuffer.Bind();
+    indexBuffer.Bind();
     //g_renderer.chunkIB->Bind();
 
     Mat4 transform;
@@ -2230,7 +2242,6 @@ void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective)
     g_renderer.numTrianglesDrawn += 36 / 3;
 }
 
-
 bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& distance, Vec3& normal)
 {
     distance = inf;
@@ -2238,37 +2249,56 @@ bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& di
     AABB chunkBox;
     chunkBox.min = ToWorld(g_chunks->p[chunkIndex]).p;
     chunkBox.max = { chunkBox.min.x + CHUNK_X, chunkBox.min.y + CHUNK_Y, chunkBox.min.z + CHUNK_Z };
-
-    float chunkDistance;
-    Vec3 chunkIntersection;
-    Vec3 chunkNormalResult;
-    if (!RayVsAABB(ray, chunkBox, chunkDistance, chunkIntersection, chunkNormalResult))
-        return false;
-
-    for (int32 x = 0; x < CHUNK_X; x++)
     {
-        for (int32 y = 0; y < CHUNK_Y; y++)
+        PROFILE_SCOPE_TAB("RayVsChunk()/RayVsAABB()");
+        if (!RayVsAABB(ray, chunkBox))
+            return false;
+    }
+
+    PROFILE_SCOPE_TAB("RayVsChunk/BlockLoop");
+    for (int32 z = 0; z < CHUNK_Z; z++)
+    {
+        GamePos blockPZ = Convert_BlockToGame(chunkIndex, { 0, 0, z });
+        AABB boxZ;
+        boxZ.min = ToWorld(blockPZ).p;
+        boxZ.max = boxZ.min;
+        boxZ.max.x += float(CHUNK_X);
+        boxZ.max.y += float(CHUNK_Y);
+
+        if (RayVsAABB(ray, boxZ))
         {
-            for (int32 z = 0; z < CHUNK_Z; z++)
+            for (int32 y = 0; y < CHUNK_Y; y++)
             {
-                if (g_chunks->blocks[chunkIndex].e[x][y][z] != BlockType::Empty)
+                GamePos blockPY = Convert_BlockToGame(chunkIndex, { 0, y, z });
+                AABB boxY;
+                boxY.min = ToWorld(blockPY).p;
+                boxY.max = boxY.min;
+                boxY.max.x += float(CHUNK_X);
+
+                if (RayVsAABB(ray, boxY))
                 {
-                    GamePos blockP = Convert_BlockToGame(chunkIndex, { x, y, z });
-
-                    AABB box;
-                    box.min = ToWorld(blockP).p;
-                    box.max = box.min + 1.0f;
-
-                    float minDistanceToHit;
-                    Vec3 intersectionPoint = {};
-                    Vec3 normalFace;
-                    if (RayVsAABB(ray, box, minDistanceToHit, intersectionPoint, normalFace))
+                    for (int32 x = 0; x < CHUNK_X; x++)
                     {
-                        if (minDistanceToHit < distance)
-                        { 
-                            block = blockP;
-                            distance = minDistanceToHit;
-                            normal = normalFace;
+                        if (g_chunks->blocks[chunkIndex].e[x][y][z] != BlockType::Empty)
+                        {
+                            GamePos blockP = Convert_BlockToGame(chunkIndex, { x, y, z });
+
+                            AABB boxX;
+                            boxX.min = ToWorld(blockP).p;
+                            boxX.max = boxX.min + 1.0f;
+
+                            float minDistanceToHit;
+                            Vec3 intersectionPoint = {};
+                            Vec3 normalFace;
+                            if (RayVsAABB(ray, boxX, minDistanceToHit, intersectionPoint, normalFace))
+                            {
+                                if (minDistanceToHit < distance)
+                                {
+                                    block = blockP;
+                                    distance = minDistanceToHit;
+                                    normal = normalFace;
+                                }
+                            }
                         }
                     }
                 }

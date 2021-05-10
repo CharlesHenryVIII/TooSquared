@@ -264,6 +264,8 @@ struct ChunkArray
     ChunkType                               chunkType[MAX_CHUNKS] = {};
     TerrainType                             terrainType[MAX_CHUNKS] = {};
 
+    ChunkIndex highestActiveChunk;
+
     bool GetChunkFromPosition(ChunkIndex& result, ChunkPos p);
     void ClearChunk(ChunkIndex index);
     ChunkIndex AddChunk(ChunkPos position);

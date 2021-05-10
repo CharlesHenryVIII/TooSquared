@@ -443,13 +443,18 @@ void ShaderProgram::UseShader()
 #endif
 }
 
+//TODO: Put somewhere appropriate
+#ifdef _DEBUGPRINT
+#define DEBUGLOG(...) DebugPrint(__VA_ARGS__)
+#else
+#define DEBUGLOG(...) ((void)0)
+#endif
+
 void ShaderProgram::UpdateUniformMat4(const char* name, GLsizei count, GLboolean transpose, const GLfloat* value)
 {
     GLint loc = glGetUniformLocation(m_handle, name);
     glUniformMatrix4fv(loc, count, transpose, value);
-#ifdef _DEBUGPRINT
-    DebugPrint("Shader Uniform Updated %s\n", name);
-#endif
+    DEBUGLOG("Shader Uniform Updated %s\n", name);
 }
 
 void ShaderProgram::UpdateUniformVec4(const char* name, GLsizei count, const GLfloat* value)

@@ -47,7 +47,6 @@ struct ExitScopeHelp
 
 #define Defer auto TS_CONCAT(defer__, __LINE__) = ExitScopeHelp() + [&]()
 
-
 #define ENABLE_PROFILE 1
 #if ENABLE_PROFILE
 float GetTimer();
@@ -55,11 +54,18 @@ struct ScopeTimer
 {
     const char* name;
     float start;
+    static int tabLevel;
+    int tabInUse;
 
-    ScopeTimer(const char* name_)
+    ScopeTimer(const char* name_, int _tabLevel = 0)
         : name(name_)
     {
         start = GetTimer();
+        tabInUse = _tabLevel;
+        if (tabInUse)
+        {
+            tabLevel++;
+        }
     }
 
     ~ScopeTimer();
@@ -67,9 +73,14 @@ struct ScopeTimer
 
 #define PROFILE_FUNCTION() ScopeTimer TS_CONCAT(__timer_, __COUNTER__)(__FUNCTION__)
 #define PROFILE_SCOPE(name) ScopeTimer TS_CONCAT(__timer_, __COUNTER__)(name)
+#define PROFILE_SCOPE_TAB(name) ScopeTimer TS_CONCAT(__timer_, __COUNTER__)(name, 1)
+
 #else
 #define PROFILE_FUNCTION() (void)0
 #define PROFILE_SCOPE(...) (void)0
+#define PROFILE_SCOPE_TAB(...) (void)0
+
+
 #endif
 
 

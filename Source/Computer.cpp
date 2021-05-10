@@ -76,7 +76,6 @@ int32 MultiThreading::ThreadFunction(void* data)
             continue;
 
         {
-            //PROFILE_SCOPE("THREAD JOB: ");
             job->DoThing();
         }
 

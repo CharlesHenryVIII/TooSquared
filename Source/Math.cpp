@@ -303,6 +303,14 @@ bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec
     return true;
 }
 
+bool RayVsAABB(const Ray& ray, const AABB& box)
+{
+    float min; 
+    Vec3 intersect;
+    Vec3 normal;
+    return RayVsAABB(ray, box, min, intersect, normal);
+}
+
 bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance)
 {
     // plane normal
@@ -640,6 +648,7 @@ bool CapsuleVsTriangle(const Capsule& collider, const Triangle& triangle, Vec3& 
     }
     return false;
 }
+
 
 bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& toOutside, std::vector<Triangle>& debug_triangles)
 {
