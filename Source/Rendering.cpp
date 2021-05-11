@@ -64,19 +64,27 @@ int32 CreateMessageWindow(SDL_MessageBoxButtonData* buttons, int32 numOfButtons,
 
 Texture::Texture(TextureParams tp)
 {
+    if (tp.samples > 1)
+    {
+        m_target = GL_TEXTURE_2D_MULTISAMPLE;
+    }
+
     glGenTextures(1, &m_handle);
     Bind();
 
-    if (tp.minFilter)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, tp.minFilter);
-    if (tp.magFilter)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, tp.magFilter);
-    if (tp.wrapS)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, tp.wrapS);
-    if (tp.wrapT)
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, tp.wrapT);
+    if (m_target != GL_TEXTURE_2D_MULTISAMPLE)
+    {
+        glTexParameteri(m_target, GL_TEXTURE_MIN_FILTER, tp.minFilter);
+        glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, tp.magFilter);
+        glTexParameteri(m_target, GL_TEXTURE_WRAP_S, tp.wrapS);
+        glTexParameteri(m_target, GL_TEXTURE_WRAP_T, tp.wrapT);
+    }
 
-    glTexImage2D(GL_TEXTURE_2D, 0, tp.internalFormat, tp.size.x, tp.size.y, 0, tp.internalFormat, tp.type, tp.data);
+    if (tp.samples == 1)
+        glTexImage2D(GL_TEXTURE_2D, 0, tp.internalFormat, tp.size.x, tp.size.y, 0, tp.format, tp.type, tp.data);
+    else
+        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, tp.samples, tp.internalFormat, tp.size.x, tp.size.y, GL_TRUE); // NOTE: Could change to GL_FALSE to use custom sample locations
+
     m_size = tp.size;
 #ifdef _DEBUGPRINT
     DebugPrint("Texture Created\n");
@@ -89,11 +97,11 @@ Texture::Texture(const char* fileLocation)
 
     glGenTextures(1, &m_handle);
     Bind();
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, m_size.x, m_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_data);
+    glTexParameteri(m_target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(m_target, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(m_target, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexImage2D(m_target, 0, GL_RGBA, m_size.x, m_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_data);
 #ifdef _DEBUGPRINT
     DebugPrint("Texture Created\n");
 #endif
@@ -107,7 +115,7 @@ Texture::~Texture()
 
 void Texture::Bind()
 {
-    glBindTexture(GL_TEXTURE_2D, m_handle);
+    glBindTexture(m_target, m_handle);
 #ifdef _DEBUGPRINT
     DebugPrint("Texture Bound\n");
 #endif
@@ -551,7 +559,7 @@ void VertexBuffer::Upload(Vertex_Chunk* vertices, size_t count)
 
 double s_lastShaderUpdateTime = 0;
 double s_incrimentalTime = 0;
-void RenderUpdate(float deltaTime)
+void RenderUpdate(Vec2Int windowSize, float deltaTime)
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     g_renderer.numTrianglesDrawn = 0;
@@ -567,6 +575,10 @@ void RenderUpdate(float deltaTime)
     s_incrimentalTime += deltaTime;
 
 
+    UpdateFrameBuffers(windowSize, g_renderer.msaaEnabled ? g_renderer.maxMSAASamples : 1);
+    g_renderer.sceneTarget->Bind();
+    glViewport(0, 0, windowSize.x, windowSize.y);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
 Rect GetRectFromSprite(uint32 i)
@@ -715,50 +727,66 @@ FrameBuffer::FrameBuffer()
     Bind();
 }
 
-void UpdateFrameBuffer(Vec2Int size)
+void FrameBuffer::CreateTextures(Vec2Int size, uint32 samples)
 {
-    if (g_renderer.backBuffer == nullptr)
-    {
-        g_renderer.backBuffer = new FrameBuffer();
-    }
-    FrameBuffer* fb = g_renderer.backBuffer;
-    if (fb->m_size.x == size.x && fb->m_size.y == size.y)
-        return;
+    if (m_color && m_color->m_handle)
+        delete m_color;
+    if (m_depth && m_depth->m_handle)
+        delete m_depth;
 
-    fb->m_size = size;
+    m_size = size;
+    m_samples = samples;
 
-    fb->Bind();
-    if (fb->m_color && fb->m_color->m_handle)
-        delete fb->m_color;
-    if (fb->m_depth && fb->m_depth->m_handle)
-        delete fb->m_depth;
     Texture::TextureParams tp = {};
+    tp.samples = samples;
     tp.size = size;
-    fb->m_color = new Texture(tp);
+    tp.internalFormat = GL_RGB;
+    m_color = new Texture(tp);
     tp.internalFormat = GL_DEPTH_COMPONENT;
     tp.format = GL_DEPTH_COMPONENT;
-    fb->m_depth = new Texture(tp);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fb->m_color->m_handle, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, fb->m_depth->m_handle, 0);
+    m_depth = new Texture(tp);
+
+    Bind();
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_color->m_target, m_color->m_handle, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_depth->m_target, m_depth->m_handle, 0);
 
     GLint err = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (err != GL_FRAMEBUFFER_COMPLETE)
     {
-        DebugPrint("Error: Frame buffer error: %s", stderr);
+        DebugPrint("Error: Frame buffer error: %d", err);
         assert(false);
     }
-
-    Vertex verticees[] = 
-    {
-        {-1.0,  1.0, 0, 0.0f, 1.0f },
-        {-1.0, -1.0, 0, 0.0f, 0.0f },
-        { 1.0,  1.0, 0, 1.0f, 1.0f },
-        { 1.0, -1.0, 0, 1.0f, 0.0f },
-    };
-
-    fb->m_vertexBuffer.Upload(verticees, arrsize(verticees));
 }
 
+void UpdateFrameBuffers(Vec2Int size, uint32 samples)
+{
+    if (g_renderer.sceneTarget == nullptr)
+    {
+        g_renderer.sceneTarget = new FrameBuffer();
+        g_renderer.postTarget = new FrameBuffer();
+    }
+
+    FrameBuffer* scene = g_renderer.sceneTarget;
+    FrameBuffer* post = g_renderer.postTarget;
+    if (scene->m_size.x == size.x && scene->m_size.y == size.y && scene->m_samples == samples)
+        return;
+
+    scene->CreateTextures(size, samples);
+    post->CreateTextures(size, 1);
+}
+
+// Copying the multisampled framebuffer to a standard texture resolves the multiple samples per pixel. This must be done before using the
+// framebuffer for any read operations.
+void ResolveMSAAFramebuffer()
+{
+    FrameBuffer* scene = g_renderer.sceneTarget;
+    FrameBuffer* post = g_renderer.postTarget;
+    assert(post && scene);
+
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, scene->m_handle);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, post->m_handle);
+    glBlitFramebuffer(0, 0, scene->m_size.x, scene->m_size.y, 0, 0, scene->m_size.x, scene->m_size.y, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+}
 
 void InitializeVideo()
 {
@@ -854,4 +882,17 @@ void InitializeVideo()
     g_renderer.chunkIB = new IndexBuffer();
     FillIndexBuffer(g_renderer.chunkIB);
 
+    g_renderer.msaaEnabled = true;
+    glGetIntegerv(GL_MAX_SAMPLES, &g_renderer.maxMSAASamples);
+    g_renderer.maxMSAASamples = Min(g_renderer.maxMSAASamples, 16);
+
+    Vertex verticees[] =
+    {
+        {-1.0,  1.0, 0, 0.0f, 1.0f },
+        {-1.0, -1.0, 0, 0.0f, 0.0f },
+        { 1.0,  1.0, 0, 1.0f, 1.0f },
+        { 1.0, -1.0, 0, 1.0f, 0.0f },
+    };
+    g_renderer.postVertexBuffer = new VertexBuffer();
+    g_renderer.postVertexBuffer->Upload(verticees, arrsize(verticees));
 }

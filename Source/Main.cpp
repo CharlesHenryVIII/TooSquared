@@ -328,6 +328,8 @@ int main(int argc, char* argv[])
 
         if (keyStates[SDLK_c].downThisFrame)
             TEST_CREATE_AND_UPLOAD_CHUNKS = !TEST_CREATE_AND_UPLOAD_CHUNKS;
+        if (keyStates[SDLK_v].downThisFrame)
+            g_renderer.msaaEnabled = !g_renderer.msaaEnabled;
         if (keyStates[SDLK_m].downThisFrame)
         {
             switch (multiThreading.threads)
@@ -781,13 +783,8 @@ int main(int argc, char* argv[])
                 }
             }
         }
-        Vec2Int windowSizeThing = { g_window.size.x * 2, g_window.size.y * 2 };
-        UpdateFrameBuffer(windowSizeThing);
-        RenderUpdate(deltaTime);
-        g_renderer.backBuffer->Bind();
-        glViewport(0, 0, windowSizeThing.x, windowSizeThing.y);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        RenderUpdate(g_window.size, deltaTime);
 
         //SKYBOX
         {
@@ -810,8 +807,6 @@ int main(int argc, char* argv[])
             g_renderer.skyBoxNight->Bind();
             glActiveTexture(GL_TEXTURE0);
             g_renderer.skyBoxDay->Bind();
-
-            g_renderer.backBuffer->m_vertexBuffer.Bind();
 
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
             glEnableVertexArrayAttrib(g_renderer.vao, 0);
@@ -1011,12 +1006,13 @@ int main(int argc, char* argv[])
         //});
         //frameTimes.push_back(static_cast<float>(renderTotalTime));
 
+        ResolveMSAAFramebuffer();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glDisable(GL_DEPTH_TEST);
         glViewport(0, 0, g_window.size.x, g_window.size.y);
-        glBindTexture(GL_TEXTURE_2D, g_renderer.backBuffer->m_color->m_handle);
+        g_renderer.postTarget->m_color->Bind();
         g_renderer.programs[+Shader::BufferCopy]->UseShader();
-        g_renderer.backBuffer->m_vertexBuffer.Bind();
+        g_renderer.postVertexBuffer->Bind();
 
         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
         glEnableVertexArrayAttrib(g_renderer.vao, 0);
