@@ -102,6 +102,7 @@ public:
         GLint  internalFormat = GL_RGBA;
         GLenum format = GL_RGBA;
         GLenum type = GL_UNSIGNED_BYTE;
+        uint32 samples = 1;
 
         void* data = nullptr;
     };
@@ -111,6 +112,7 @@ public:
     int32 m_bytesPerPixel = 0;//bytes per pixel
     uint8* m_data = {};
     GLuint m_handle = {};
+    GLenum m_target = GL_TEXTURE_2D;
 
 
     Texture(Texture::TextureParams tp);
@@ -221,13 +223,12 @@ public:
     GLuint m_handle = 0;
     Texture* m_color = nullptr;
     Texture* m_depth = nullptr;
-    //GLuint colorHandle;
-    //GLuint depthHandle;
     Vec2Int m_size = {};
-    VertexBuffer m_vertexBuffer;
+    uint32  m_samples = 1;
 
     FrameBuffer();
     void Bind();
+    void CreateTextures(Vec2Int size, uint32 samples);
 };
 
 struct Renderer {
@@ -238,13 +239,17 @@ struct Renderer {
     GLuint vao;
     IndexBuffer* chunkIB;
     TextureArray* spriteTextArray;
-    FrameBuffer* backBuffer = nullptr;
+    FrameBuffer* sceneTarget = nullptr;
+    FrameBuffer* postTarget  = nullptr;
+    VertexBuffer* postVertexBuffer;
     VertexBuffer* cubeVertexBuffer;
     uint32 numTrianglesDrawn = 0;
     TextureCube* skyBoxNight;
     TextureCube* skyBoxDay;
     Light_Direction sunLight;
     Light_Direction moonLight;
+    bool msaaEnabled = false;
+    int32 maxMSAASamples = 1;
 };
 
 const uint32 pixelsPerBlock = 16;
@@ -254,6 +259,7 @@ struct Block;
 
 int32 CreateMessageWindow(SDL_MessageBoxButtonData* buttons, int32 numOfButtons, ts_MessageBox type, const char* title, const char* message);
 Rect GetRectFromSprite(uint32 i);
-void RenderUpdate(float deltaTime);
+void RenderUpdate(Vec2Int windowSize, float deltaTime);
 void InitializeVideo();
-void UpdateFrameBuffer(Vec2Int size);
+void UpdateFrameBuffers(Vec2Int size, uint32 samples);
+void ResolveMSAAFramebuffer();
