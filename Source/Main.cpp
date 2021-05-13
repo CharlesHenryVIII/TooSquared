@@ -420,6 +420,7 @@ int main(int argc, char* argv[])
                 Vec3 forward = Normalize(Vec3({ g_camera.front.x, 0, g_camera.front.z }));
                 g_camera.transform.m_terminalVel.x = g_camera.transform.m_terminalVel.z = 3.0f;
                 g_camera.transform.m_terminalVel.y = 50.0f;
+
                 if (keyStates[SDLK_LSHIFT].down)
                 {
                     cameraAcceleration = 50.0f;
@@ -454,66 +455,40 @@ int main(int argc, char* argv[])
                     g_camera.transform.m_acceleration.z += cameraAcceleration;
                 if (keyStates[SDLK_x].down)
                     g_camera.transform.m_acceleration.x += cameraAcceleration;
+                if (keyStates[SDLK_PLUS].downThisFrame)
+                    g_camera.transform.m_vel.y += 10;
+                if (keyStates[SDLK_MINUS].downThisFrame)
+                    g_camera.transform.m_vel.y -= 10;
 
-                //g_camera.transform.UpdateDeltaPosition(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
-                g_camera.transform.UpdatePosition2(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
-
+                g_camera.transform.UpdateDeltaPosition(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
+                //g_camera.transform.UpdatePosition2(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
                 playerCollider.UpdateTipLocation(g_camera.transform.m_p);
 
-
-                std::vector<GamePos> neighborBlocks;
-                GamePos referenceGamePosition = ToGame(playerCollider.m_tip);
-                int32 horizontalOffset = Max(int32(playerCollider.m_radius + 0.5f), 1);
-                int32 verticalOffset = Max(int32(playerCollider.m_tip.p.y - playerCollider.m_tail.p.y + 0.5f), 1);
-                g_camera.transform.m_isGrounded = false;
-
+                while (g_camera.transform.m_pDelta.p.x != 0.0f || g_camera.transform.m_pDelta.p.y != 0.0f || g_camera.transform.m_pDelta.p.z != 0.0f)
                 {
+
+                    {
+                        Vec3 pDelta = {};
+                        float clampVal = 0.1f;
+                        pDelta.x = Clamp(g_camera.transform.m_pDelta.p.x, -clampVal, clampVal);
+                        pDelta.y = Clamp(g_camera.transform.m_pDelta.p.y, -clampVal, clampVal);
+                        pDelta.z = Clamp(g_camera.transform.m_pDelta.p.z, -clampVal, clampVal);
+
+                        g_camera.transform.m_p.p      += pDelta;
+                        g_camera.transform.m_pDelta.p -= pDelta;
+                    }
+
+
 
                     PROFILE_SCOPE_TAB("Collision Update");
                     BlockSampler blockSampler = {};
-#if 0
-                    //BroadPhase finding collision objects:
-                    Capsule& pc = playerCollider;
-                    float rad = playerCollider.m_radius;
-                    Range xRange = { inf, -inf };
-                    Range zRange = { inf, -inf };
-                    Range yRange = { inf, -inf };
 
+                    std::vector<GamePos> neighborBlocks;
+                    GamePos referenceGamePosition = ToGame(playerCollider.m_tip);
+                    int32 horizontalOffset = Max(int32(playerCollider.m_radius + 0.5f), 1);
+                    int32 verticalOffset = Max(int32(playerCollider.m_tip.p.y - playerCollider.m_tail.p.y + 0.5f), 1);
+                    g_camera.transform.m_isGrounded = false;
 
-                    //Finding X Min
-                    xRange.min = Min(pc.m_tip.p.x - rad, pc.m_tip.p.x + g_camera.transform.m_pDelta.p.x - rad);
-                    //Finding X Max
-                    xRange.max = Max(pc.m_tip.p.x + rad, pc.m_tip.p.x + g_camera.transform.m_pDelta.p.x + rad);
-
-                    //Finding Z Min
-                    zRange.min = Min(pc.m_tip.p.z - rad, pc.m_tip.p.z + g_camera.transform.m_pDelta.p.z - rad);
-                    //Finding Z Max
-                    zRange.max = Max(pc.m_tip.p.z + rad, pc.m_tip.p.z + g_camera.transform.m_pDelta.p.z + rad);
-
-                    //Finding Y Min
-                    yRange.min = Min(pc.m_tail.p.y, pc.m_tail.p.y + g_camera.transform.m_pDelta.p.y);
-                    //Finding Y Max
-                    yRange.max = Max(pc.m_tip.p.y, pc.m_tip.p.y + g_camera.transform.m_pDelta.p.y);
-
-                    Vec3 minRangeFloat = { xRange.min, yRange.min, zRange.min };
-                    Vec3 maxRangeFloat = { xRange.max, yRange.max, zRange.max };
-                    GamePos minRange = ToGame(WorldPos(minRangeFloat));
-                    GamePos maxRange = ToGame(WorldPos(maxRangeFloat));
-
-                    //TEMP
-                    //TODO: move to an appropriate place
-                    g_camera.transform.m_p.p += g_camera.transform.m_pDelta.p;
-
-                    //Collision is checked and calculated
-                    for (int32 x = minRange.p.x; x <= maxRange.p.x; x++)
-                    {
-                        for (int32 y = minRange.p.y; y <= maxRange.p.y; y++)
-                        {
-                            for (int32 z = minRange.p.z; z <= maxRange.p.z; z++)
-                            {
-                                if (!(blockSampler.RegionGather(GamePos(Vec3Int({ x, y, z })))))
-                                    continue;
-#else
                     for (int32 y = -verticalOffset; y <= verticalOffset; y++)
                     {
                         for (int32 x = -horizontalOffset; x <= horizontalOffset; x++)
@@ -522,19 +497,11 @@ int main(int argc, char* argv[])
                             {
                                 if (!(blockSampler.RegionGather(GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })))))
                                     continue;
-#endif
                                 Vec3 outsideOfBlock = {};
                                 if (CapsuleVsBlock(playerCollider, blockSampler, outsideOfBlock, debug_trianglesToDraw))
                                 {
                                     g_camera.transform.m_p.p += outsideOfBlock;
                                     playerCollider.UpdateTipLocation(g_camera.transform.m_p);
-
-                                    if (g_camera.transform.m_vel.x != 0.0f)
-                                        int32 debug = 1;
-                                    if (g_camera.transform.m_vel.y != 0.0f)
-                                        int32 debug = 1;
-                                    if (g_camera.transform.m_vel.z != 0.0f)
-                                        int32 debug = 1;
 
 #if 1
                                     Vec3 normalForceDirection = Normalize(outsideOfBlock);
@@ -588,6 +555,7 @@ int main(int argc, char* argv[])
                         }
                     }
                 }
+
 
                 break;
             }
@@ -975,7 +943,7 @@ int main(int argc, char* argv[])
                 pos.p = pos.p + 0.5f;
                 Color temp = Mint;
                 temp.a = 0.6f;
-                //DrawBlock(pos, temp, 1.1f, perspective);
+                DrawBlock(pos, temp, 1.1f, perspective);
             }
             if (debugDraw)
             {

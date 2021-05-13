@@ -5,9 +5,8 @@
 
 bool g_running = true;
 
-int ScopeTimer::tabLevel = 0;
-
 #if ENABLE_PROFILE
+int ScopeTimer::tabLevel = 0;
 ScopeTimer::~ScopeTimer()
 {
     float duration = GetTimer() - start;

@@ -2264,6 +2264,7 @@ bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& di
         boxZ.max = boxZ.min;
         boxZ.max.x += float(CHUNK_X);
         boxZ.max.y += float(CHUNK_Y);
+        boxZ.max.z += 1.0f;
 
         if (RayVsAABB(ray, boxZ))
         {
@@ -2274,6 +2275,8 @@ bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& di
                 boxY.min = ToWorld(blockPY).p;
                 boxY.max = boxY.min;
                 boxY.max.x += float(CHUNK_X);
+                boxY.max.y += 1.0f;
+                boxY.max.z += 1.0f;
 
                 if (RayVsAABB(ray, boxY))
                 {

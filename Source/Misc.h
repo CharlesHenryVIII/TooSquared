@@ -47,7 +47,7 @@ struct ExitScopeHelp
 
 #define Defer auto TS_CONCAT(defer__, __LINE__) = ExitScopeHelp() + [&]()
 
-#define ENABLE_PROFILE 1
+#define ENABLE_PROFILE 0
 #if ENABLE_PROFILE
 float GetTimer();
 struct ScopeTimer

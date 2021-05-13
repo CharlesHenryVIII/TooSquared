@@ -908,35 +908,16 @@ struct Transform {
         m_vel.z += m_acceleration.z * deltaTime;
 
         float zeroTolerance = 0.25f;
-        //if ((m_acceleration.x >= -zeroTolerance && m_acceleration.x <= zeroTolerance) &&
-        //    (m_acceleration.y >= -zeroTolerance && m_acceleration.y <= zeroTolerance) &&
-        //    (m_acceleration.z >= -zeroTolerance && m_acceleration.z <= zeroTolerance))
-        {
         float mass = 1000.0f; //grams
         Vec3 dragForce = m_vel * dragCoefficient;//dragCoefficient * ((1.255f * m_vel/* * m_vel*/) / 2) * area;
         Vec3 dragVel = dragForce / (mass * deltaTime);
 
         dragVel = m_vel * dragCoefficient * deltaTime;
 
-        //if (m_vel.x < 0.0f)
-        //    dragVel.x = -dragVel.x;
-        //if (m_vel.y < 0.0f)
-        //    dragVel.y = -dragVel.y;
-        //if (m_vel.z < 0.0f)
-        //    dragVel.z = -dragVel.z;
-
-            m_vel -= dragVel;
-            m_vel.x = Clamp(m_vel.x, -m_terminalVel.x, m_terminalVel.x);
-            m_vel.y = Clamp(m_vel.y, -m_terminalVel.y, m_terminalVel.y);
-            m_vel.z = Clamp(m_vel.z, -m_terminalVel.z, m_terminalVel.z);
-
-            //if (m_vel.x <= zeroTolerance && m_vel.x >= -zeroTolerance)
-            //    m_vel.x = 0;
-            //if (m_vel.y <= zeroTolerance && m_vel.y >= -zeroTolerance)
-            //    m_vel.y = 0;
-            //if (m_vel.z <= zeroTolerance && m_vel.z >= -zeroTolerance)
-            //    m_vel.z = 0;
-        }
+        m_vel -= dragVel;
+        m_vel.x = Clamp(m_vel.x, -m_terminalVel.x, m_terminalVel.x);
+        m_vel.y = Clamp(m_vel.y, -m_terminalVel.y, m_terminalVel.y);
+        m_vel.z = Clamp(m_vel.z, -m_terminalVel.z, m_terminalVel.z);
 
         //Velocity and position will be local for Audio and Particle actors
         m_pDelta = m_vel * deltaTime;
