@@ -8,6 +8,8 @@
 #include <vector>
 #include <unordered_map>
 
+#define FASTCHUNKRELOAD 1
+
 
 enum class BlockType : uint8 {
     Empty,

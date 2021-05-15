@@ -334,26 +334,11 @@ bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& tr
     Vec3 point0 = center - N * dist; // projected sphere center on triangle plane
 
     // Now determine whether point0 is inside all triangle edges: 
-    bool inside = false;
-#if 1
-    Vec3 max = {};
-    max.x = Max(triangle.p0.p.x, Max(triangle.p1.p.x, triangle.p2.p.x));
-    max.y = Max(triangle.p0.p.y, Max(triangle.p1.p.y, triangle.p2.p.y));
-    max.z = Max(triangle.p0.p.z, Max(triangle.p1.p.z, triangle.p2.p.z));
-    Vec3 min = {inf, inf, inf};
-    min.x = Min(triangle.p0.p.x, Min(triangle.p1.p.x, triangle.p2.p.x));
-    min.y = Min(triangle.p0.p.y, Min(triangle.p1.p.y, triangle.p2.p.y));
-    min.z = Min(triangle.p0.p.z, Min(triangle.p1.p.z, triangle.p2.p.z));
-    inside = ((point0.x >= min.x && point0.x <= max.x) &&
-              (point0.y >= min.y && point0.y <= max.y) &&
-              (point0.z >= min.z && point0.z <= max.z));
-#else
     Vec3 c0 = CrossProduct(point0 - triangle.p0.p, triangle.p1.p - triangle.p0.p);
     Vec3 c1 = CrossProduct(point0 - triangle.p1.p, triangle.p2.p - triangle.p1.p);
     Vec3 c2 = CrossProduct(point0 - triangle.p2.p, triangle.p0.p - triangle.p2.p);
+    bool inside = DotProduct(c0, N) <= 0 && DotProduct(c1, N) <= 0 && DotProduct(c2, N) <= 0;
 
-    inside = DotProduct(c0, N) <= 0 && DotProduct(c1, N) <= 0 && DotProduct(c2, N) <= 0;
-#endif
     bool intersects = false;
     Vec3 point1 = {};
     Vec3 point2 = {};
@@ -828,7 +813,6 @@ bool CapsuleVsWorldBlocks(Capsule capsuleCollider, Vec3 in_positionDelta, Vec3& 
                         out_positionDelta += outsideOfBlock;
                         capsuleCollider.UpdateLocation(outsideOfBlock);
                         result = true;
-
 
                     }
                 }

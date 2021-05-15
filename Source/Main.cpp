@@ -466,16 +466,16 @@ int main(int argc, char* argv[])
                 playerCollider.UpdateMidTipLocation(g_camera.transform.m_p);
                 //g_camera.transform.UpdatePosition2(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
 
-#if 1
                 g_camera.transform.m_p.p += g_camera.transform.m_pDelta.p;
                 Vec3 deltaPosition = {};
                 g_camera.transform.m_isGrounded = false;
                 if (CapsuleVsWorldBlocks(playerCollider, g_camera.transform.m_pDelta.p, deltaPosition, debug_trianglesToDraw))
                 {
+                    //Update Position
                     g_camera.transform.m_p.p += deltaPosition;
                     g_camera.transform.m_pDelta = {};
 
-#if 1
+                    //Zero velocity going into a collision
                     Vec3 normalForceDirection = Normalize(deltaPosition);
                     Vec3 collisionDirection = normalForceDirection;//-normalForceDirection;
                     Vec3 dotProductResults = { DotProduct(Vec3({ g_camera.transform.m_vel.x, 0.0f, 0.0f }), collisionDirection),
@@ -497,113 +497,7 @@ int main(int argc, char* argv[])
                     {
                         g_camera.transform.m_vel.z = 0.0f;
                     }
-#else
-                    float boundaryValue = 0.001f;
-                    if (outsideOfBlock.y < -boundaryValue || outsideOfBlock.y > boundaryValue)
-                    {
-                        if (outsideOfBlock.y > 0.0f && g_camera.transform.m_vel.y < 0.0f)
-                        {
-                            g_camera.transform.m_isGrounded = true;
-                        }
-                        if (outsideOfBlock.y < 0.0f && g_camera.transform.m_vel.y > 0.0f)
-                        {
-                            g_camera.transform.m_vel.y = 0;
-                        }
-                    }
-#endif
                 }
-                else
-                {
-                }
-
-                
-#else
-
-
-                while (g_camera.transform.m_pDelta.p.x != 0.0f || g_camera.transform.m_pDelta.p.y != 0.0f || g_camera.transform.m_pDelta.p.z != 0.0f)
-                {
-
-                    {
-                        Vec3 pDelta = {};
-                        float clampVal = 0.3f;
-                        pDelta.x = Clamp(g_camera.transform.m_pDelta.p.x, -clampVal, clampVal);
-                        pDelta.y = Clamp(g_camera.transform.m_pDelta.p.y, -clampVal, clampVal);
-                        pDelta.z = Clamp(g_camera.transform.m_pDelta.p.z, -clampVal, clampVal);
-
-                        g_camera.transform.m_p.p      += pDelta;
-                        g_camera.transform.m_pDelta.p -= pDelta;
-                        playerCollider.UpdateMidTipLocation(g_camera.transform.m_p);
-                    }
-
-
-                    PROFILE_SCOPE_TAB("Collision Update");
-                    BlockSampler blockSampler = {};
-
-                    std::vector<GamePos> neighborBlocks;
-                    GamePos referenceGamePosition = ToGame(playerCollider.m_tip);
-                    int32 horizontalOffset = Max(int32(playerCollider.m_radius + 0.5f), 1);
-                    int32 verticalOffset = Max(int32(playerCollider.m_tip.p.y - playerCollider.m_tail.p.y + 0.5f), 1);
-                    g_camera.transform.m_isGrounded = false;
-
-                    for (int32 y = -verticalOffset; y <= verticalOffset; y++)
-                    {
-                        for (int32 x = -horizontalOffset; x <= horizontalOffset; x++)
-                        {
-                            for (int32 z = -horizontalOffset; z <= horizontalOffset; z++)
-                            {
-                                if (!(blockSampler.RegionGather(GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })))))
-                                    continue;
-                                Vec3 outsideOfBlock = {};
-                                if (CapsuleVsBlock(playerCollider, blockSampler, outsideOfBlock, debug_trianglesToDraw))
-                                {
-                                    g_camera.transform.m_p.p += outsideOfBlock;
-                                    playerCollider.UpdateMidTipLocation(g_camera.transform.m_p);
-
-#if 1
-                                    Vec3 normalForceDirection = Normalize(outsideOfBlock);
-                                    Vec3 collisionDirection = normalForceDirection;//-normalForceDirection;
-                                    Vec3 dotProductResults = { DotProduct(Vec3({ g_camera.transform.m_vel.x, 0.0f, 0.0f }), collisionDirection),
-                                                               DotProduct(Vec3({ 0.0f, g_camera.transform.m_vel.y, 0.0f }), collisionDirection),
-                                                               DotProduct(Vec3({ 0.0f, 0.0f, g_camera.transform.m_vel.z }), collisionDirection) };
-
-                                    {
-                                        //TODO: improve to include deflection/angle of collision not just collision in that direction
-                                        if (dotProductResults.x < 0.0f)
-                                        {
-                                            g_camera.transform.m_vel.x = 0.0f;
-                                        }
-                                        if (dotProductResults.y < 0.0f)
-                                        {
-                                            if (g_camera.transform.m_vel.y < 0.0f)
-                                                g_camera.transform.m_isGrounded = true;
-                                            g_camera.transform.m_vel.y = 0.0f;
-                                        }
-                                        if (dotProductResults.z < 0.0f)
-                                        {
-                                            g_camera.transform.m_vel.z = 0.0f;
-                                        }
-                                    }
-#else
-                                    float boundaryValue = 0.001f;
-                                    if (outsideOfBlock.y < -boundaryValue || outsideOfBlock.y > boundaryValue)
-                                    {
-                                        if (outsideOfBlock.y > 0.0f && g_camera.transform.m_vel.y < 0.0f)
-                                        {
-                                            g_camera.transform.m_isGrounded = true;
-                                        }
-                                        if (outsideOfBlock.y < 0.0f && g_camera.transform.m_vel.y > 0.0f)
-                                        {
-                                            g_camera.transform.m_vel.y = 0;
-                                        }
-                                    }
-#endif
-
-                                }
-                            }
-                        }
-                    }
-                }
-#endif
 
 
                 break;

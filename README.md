@@ -1,19 +1,18 @@
 # TooSquared
 
 ###TODO: 
- * Directional, point, clamped/ambient
- * Raycasts
+ * Optimize block creation and deletion
+ * Saving chunks to disk
+
+ * Directional, point
  * Block wireframe on target
  * Operator overloads on WorldPos and ChunkPos
  * Move main loops into a single loop that switches on chunk state?
  * Curser/reticle
- * optimize block creation and deletion
  * Render water correctly
- * improve chunk update code
  * Added perlin seeding
  * move physics off of transform and onto seperate physics object
 	* Rigid Body includes mass, drag, angular drag, uses gravity, kinematic, interpolation, collision detection { Unity Game Engine }
-
 
 
 

@@ -1981,18 +1981,18 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
             Vec3Int b = *(&vertexBlocksToCheck[faceIndex].e0 + (vertIndex + 1));
             Vec3Int c = a + b;
 
-            BlockType at = BlockType::Empty;
-            BlockType bt = BlockType::Empty;
-            BlockType ct = BlockType::Empty;
-            region.GetBlock(at, blockP + blockN + a);
-            region.GetBlock(bt, blockP + blockN + b);
-            region.GetBlock(ct, blockP + blockN + c);
+            BlockType aType = BlockType::Empty;
+            BlockType bType = BlockType::Empty;
+            BlockType cType = BlockType::Empty;
+            region.GetBlock(aType, blockP + blockN + a);
+            region.GetBlock(bType, blockP + blockN + b);
+            region.GetBlock(cType, blockP + blockN + c);
 
-            if (at != BlockType::Empty)
+            if (aType != BlockType::Empty)
                 vert.nAndConnectedVertices += 1;
-            if (bt != BlockType::Empty)
+            if (bType != BlockType::Empty)
                 vert.nAndConnectedVertices += 1;
-            if (ct != BlockType::Empty)
+            if (cType != BlockType::Empty)
                 vert.nAndConnectedVertices += 1;
 
             vertIndex += 2;
@@ -2005,8 +2005,10 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
 void ChunkArray::UploadChunk(ChunkIndex i)
 {
     vertexBuffer[i].Upload(faceVertices[i].data(), faceVertices[i].size());
+#if FASTCHUNKRELOAD == 0
     std::vector<Vertex_Chunk> faces;
     faceVertices[i].swap(faces);
+#endif
     g_chunks->state[i] = ChunkArray::Uploaded;
 }
 
@@ -2323,11 +2325,39 @@ void ChunkUpdateBlocks(ChunkPos p, Vec3Int offset = {})
         g_chunks->BuildChunkVertices(regionUpdate);
     }
 }
-
 void SetBlock(GamePos hitBlock, BlockType setBlockType)
 {
+    PROFILE_SCOPE_TAB("SetBlock");
+#if 1
+    ChunkPos hitChunkPos;
+    Vec3Int hitBlockRelP = Convert_GameToBlock(hitChunkPos, hitBlock);
+
+    ChunkIndex hitChunkIndex;
+    if (g_chunks->GetChunkFromPosition(hitChunkIndex, hitChunkPos) && (hitBlock.p.y >= 0) && (hitBlock.p.y < CHUNK_Y))
+    {
+        PROFILE_SCOPE_TAB("SetBlock Success");
+
+        g_chunks->blocks[hitChunkIndex].e[hitBlockRelP.x][hitBlockRelP.y][hitBlockRelP.z] = setBlockType;
+        g_chunks->height[hitChunkIndex] = Max((uint16)(hitBlockRelP.y + 1), g_chunks->height[hitChunkIndex]);
+        RegionSampler regionUpdate;
+        regionUpdate.RegionGather(hitChunkIndex);
+        g_chunks->state[hitChunkIndex] = ChunkArray::VertexLoading;
+        g_chunks->BuildChunkVertices(regionUpdate);
+
+        if (hitBlockRelP.x == CHUNK_X - 1)
+            ChunkUpdateBlocks(hitChunkPos, { 1,  0,  0 });
+        if (hitBlockRelP.x == 0)
+            ChunkUpdateBlocks(hitChunkPos, { -1,  0,  0 });
+        if (hitBlockRelP.z == CHUNK_Z - 1)
+            ChunkUpdateBlocks(hitChunkPos, { 0,  0,  1 });
+        if (hitBlockRelP.z == 0)
+            ChunkUpdateBlocks(hitChunkPos, { 0,  0, -1 });
+    }
+
+#else
     ChunkPos hitChunkP = ToChunk(hitBlock);
     ChunkIndex hitChunkIndex;
+    g_chunks->GetBlock();
     if (g_chunks->GetChunkFromPosition(hitChunkIndex, hitChunkP))
     {
         ChunkPos trash;
@@ -2349,16 +2379,17 @@ void SetBlock(GamePos hitBlock, BlockType setBlockType)
             g_chunks->state[hitChunkIndex] = ChunkArray::VertexLoading;
             g_chunks->BuildChunkVertices(regionUpdate);
         }
-
         if (blockRelP.x == CHUNK_X - 1)
-            ChunkUpdateBlocks(newChunkPos, {  1,  0,  0 });
+            ChunkUpdateBlocks(hitChunkPos, {  1,  0,  0 });
         if (blockRelP.x == 0)
-            ChunkUpdateBlocks(newChunkPos, { -1,  0,  0 });
+            ChunkUpdateBlocks(hitChunkPos, { -1,  0,  0 });
         if (blockRelP.z == CHUNK_Z - 1)
-            ChunkUpdateBlocks(newChunkPos, {  0,  0,  1 });
+            ChunkUpdateBlocks(hitChunkPos, {  0,  0,  1 });
         if (blockRelP.z == 0)
-            ChunkUpdateBlocks(newChunkPos, {  0,  0, -1 });
+            ChunkUpdateBlocks(hitChunkPos, {  0,  0, -1 });
     }
+#endif
+
 }
 
 bool ChunkArray::GetBlock(BlockType& blockType, const GamePos& blockP)
