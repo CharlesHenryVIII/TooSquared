@@ -177,6 +177,7 @@
   <ItemGroup>
     <ClInclude Include="Source\Block.h" />
     <ClInclude Include="Source\Computer.h" />
+    <ClInclude Include="Source\Main.h" />
     <ClInclude Include="Source\Math.h" />
     <ClInclude Include="Source\Misc.h" />
     <ClInclude Include="Source\Noise.h" />

@@ -11,8 +11,6 @@
  * Render water correctly
  * improve chunk update code
  * Added perlin seeding
- * Add proper kinematics
- * step physics calculations
  * move physics off of transform and onto seperate physics object
 	* Rigid Body includes mass, drag, angular drag, uses gravity, kinematic, interpolation, collision detection { Unity Game Engine }
 

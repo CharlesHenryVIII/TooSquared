@@ -779,8 +779,62 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
     }
 #endif
 
-    collider.UpdateTipLocation(collider.m_tip.p + Vec3({ 0.0f, directionToTriangle.y * distanceToTriangle, 0.0f }));
+    collider.UpdateMidTipLocation(collider.m_tip.p + Vec3({ 0.0f, directionToTriangle.y * distanceToTriangle, 0.0f }));
 
+    return result;
+}
+
+bool CapsuleVsWorldBlocks(Capsule capsuleCollider, Vec3 in_positionDelta, Vec3& out_positionDelta, std::vector<Triangle>& debug_trianglesToDraw)
+{
+    assert(OnMainThread());
+    bool result = false;
+
+    while (in_positionDelta.x != 0.0f || in_positionDelta.y != 0.0f || in_positionDelta.z != 0.0f)
+    {
+
+        {
+            Vec3 pDelta = {};
+            float clampVal = 0.3f;
+            pDelta.x = Clamp(in_positionDelta.x, -clampVal, clampVal);
+            pDelta.y = Clamp(in_positionDelta.y, -clampVal, clampVal);
+            pDelta.z = Clamp(in_positionDelta.z, -clampVal, clampVal);
+
+            //g_camera.transform.m_p.p += pDelta;
+            in_positionDelta -= pDelta;
+            capsuleCollider.UpdateLocation(pDelta);
+        }
+
+
+        PROFILE_SCOPE_TAB("Collision Update");
+        BlockSampler blockSampler = {};
+
+        std::vector<GamePos> neighborBlocks;
+        GamePos referenceGamePosition = ToGame(capsuleCollider.m_tip);
+        int32 horizontalOffset = Max(int32(capsuleCollider.m_radius + 0.5f), 1);
+        int32 verticalOffset = Max(int32(capsuleCollider.m_tip.p.y - capsuleCollider.m_tail.p.y + 0.5f), 1);
+        //g_camera.transform.m_isGrounded = false;
+
+        for (int32 y = -verticalOffset; y <= verticalOffset; y++)
+        {
+            for (int32 x = -horizontalOffset; x <= horizontalOffset; x++)
+            {
+                for (int32 z = -horizontalOffset; z <= horizontalOffset; z++)
+                {
+                    if (!(blockSampler.RegionGather(GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })))))
+                        continue;
+                    Vec3 outsideOfBlock = {};
+                    if (CapsuleVsBlock(capsuleCollider, blockSampler, outsideOfBlock, debug_trianglesToDraw))
+                    {
+                        out_positionDelta += outsideOfBlock;
+                        capsuleCollider.UpdateLocation(outsideOfBlock);
+                        result = true;
+
+
+                    }
+                }
+            }
+        }
+    }
     return result;
 }
 

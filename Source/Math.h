@@ -809,12 +809,17 @@ struct Capsule
     WorldPos m_tip;
     WorldPos m_tail;
 
-    void UpdateTipLocation(const WorldPos& newTipLocation)
+    void UpdateMidTipLocation(const WorldPos& newTipLocation)
     {
         m_tip = newTipLocation.p;
         m_tip.p.y += m_radius;
         m_tail = m_tip;
         m_tail.p.y -= m_height;
+    }
+    void UpdateLocation(const WorldPos& positionDelta)
+    {
+        m_tip.p += positionDelta.p;
+        m_tail.p += positionDelta.p;
     }
 };
 
@@ -977,5 +982,6 @@ bool RayVsAABB(const Ray& ray, const AABB& box);
 bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance);
 Vec3 ClosestPointOnLineSegment(const Vec3& A, const Vec3& B, const Vec3& Point);
 bool CapsuleVsBlock(Capsule collider, const BlockSampler& region, Vec3& toOutside, std::vector<Triangle>& debug_triangles);
+bool CapsuleVsWorldBlocks(Capsule capsuleCollider, Vec3 in_positionDelta, Vec3& out_positionDelta, std::vector<Triangle>& debug_trianglesToDraw);
 
 void QuickSort(uint8* data, const int32 length, const int32 itemSize, int32 (*compare)(const void* a, const void* b));

@@ -463,23 +463,77 @@ int main(int argc, char* argv[])
                     g_camera.transform.m_vel.y -= 10;
 
                 g_camera.transform.UpdateDeltaPosition(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
+                playerCollider.UpdateMidTipLocation(g_camera.transform.m_p);
                 //g_camera.transform.UpdatePosition2(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
-                playerCollider.UpdateTipLocation(g_camera.transform.m_p);
+
+#if 1
+                g_camera.transform.m_p.p += g_camera.transform.m_pDelta.p;
+                Vec3 deltaPosition = {};
+                g_camera.transform.m_isGrounded = false;
+                if (CapsuleVsWorldBlocks(playerCollider, g_camera.transform.m_pDelta.p, deltaPosition, debug_trianglesToDraw))
+                {
+                    g_camera.transform.m_p.p += deltaPosition;
+                    g_camera.transform.m_pDelta = {};
+
+#if 1
+                    Vec3 normalForceDirection = Normalize(deltaPosition);
+                    Vec3 collisionDirection = normalForceDirection;//-normalForceDirection;
+                    Vec3 dotProductResults = { DotProduct(Vec3({ g_camera.transform.m_vel.x, 0.0f, 0.0f }), collisionDirection),
+                                               DotProduct(Vec3({ 0.0f, g_camera.transform.m_vel.y, 0.0f }), collisionDirection),
+                                               DotProduct(Vec3({ 0.0f, 0.0f, g_camera.transform.m_vel.z }), collisionDirection) };
+
+                    //TODO: improve to include deflection/angle of collision not just collision in that direction
+                    if (dotProductResults.x < 0.0f)
+                    {
+                        g_camera.transform.m_vel.x = 0.0f;
+                    }
+                    if (dotProductResults.y < 0.0f)
+                    {
+                        if (g_camera.transform.m_vel.y < 0.0f)
+                            g_camera.transform.m_isGrounded = true;
+                        g_camera.transform.m_vel.y = 0.0f;
+                    }
+                    if (dotProductResults.z < 0.0f)
+                    {
+                        g_camera.transform.m_vel.z = 0.0f;
+                    }
+#else
+                    float boundaryValue = 0.001f;
+                    if (outsideOfBlock.y < -boundaryValue || outsideOfBlock.y > boundaryValue)
+                    {
+                        if (outsideOfBlock.y > 0.0f && g_camera.transform.m_vel.y < 0.0f)
+                        {
+                            g_camera.transform.m_isGrounded = true;
+                        }
+                        if (outsideOfBlock.y < 0.0f && g_camera.transform.m_vel.y > 0.0f)
+                        {
+                            g_camera.transform.m_vel.y = 0;
+                        }
+                    }
+#endif
+                }
+                else
+                {
+                }
+
+                
+#else
+
 
                 while (g_camera.transform.m_pDelta.p.x != 0.0f || g_camera.transform.m_pDelta.p.y != 0.0f || g_camera.transform.m_pDelta.p.z != 0.0f)
                 {
 
                     {
                         Vec3 pDelta = {};
-                        float clampVal = 0.1f;
+                        float clampVal = 0.3f;
                         pDelta.x = Clamp(g_camera.transform.m_pDelta.p.x, -clampVal, clampVal);
                         pDelta.y = Clamp(g_camera.transform.m_pDelta.p.y, -clampVal, clampVal);
                         pDelta.z = Clamp(g_camera.transform.m_pDelta.p.z, -clampVal, clampVal);
 
                         g_camera.transform.m_p.p      += pDelta;
                         g_camera.transform.m_pDelta.p -= pDelta;
+                        playerCollider.UpdateMidTipLocation(g_camera.transform.m_p);
                     }
-
 
 
                     PROFILE_SCOPE_TAB("Collision Update");
@@ -503,7 +557,7 @@ int main(int argc, char* argv[])
                                 if (CapsuleVsBlock(playerCollider, blockSampler, outsideOfBlock, debug_trianglesToDraw))
                                 {
                                     g_camera.transform.m_p.p += outsideOfBlock;
-                                    playerCollider.UpdateTipLocation(g_camera.transform.m_p);
+                                    playerCollider.UpdateMidTipLocation(g_camera.transform.m_p);
 
 #if 1
                                     Vec3 normalForceDirection = Normalize(outsideOfBlock);
@@ -511,14 +565,6 @@ int main(int argc, char* argv[])
                                     Vec3 dotProductResults = { DotProduct(Vec3({ g_camera.transform.m_vel.x, 0.0f, 0.0f }), collisionDirection),
                                                                DotProduct(Vec3({ 0.0f, g_camera.transform.m_vel.y, 0.0f }), collisionDirection),
                                                                DotProduct(Vec3({ 0.0f, 0.0f, g_camera.transform.m_vel.z }), collisionDirection) };
-                                    //Vec3 angles = Acos(dotProductResults / (Length(normalForceDirection)));
-                                    //for (int32 i = 0; i < 3; i++)
-                                    //{
-                                    //    if (dotProductResults.e[i] < 0.0f)
-                                    //    {
-                                    //        g_camera.transform.m_vel.e[i] = 0.0f;
-                                    //    }
-                                    //}
 
                                     {
                                         //TODO: improve to include deflection/angle of collision not just collision in that direction
@@ -557,6 +603,7 @@ int main(int argc, char* argv[])
                         }
                     }
                 }
+#endif
 
 
                 break;
