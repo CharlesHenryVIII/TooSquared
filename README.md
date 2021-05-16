@@ -3,6 +3,8 @@
 ###TODO: 
  * Optimize block creation and deletion
  * Saving chunks to disk
+ * imGUI
+ * UI
 
  * Directional, point
  * Block wireframe on target
@@ -40,4 +42,3 @@ Ocataves = 16
 f = 1
 a = 1
 t = 0
-

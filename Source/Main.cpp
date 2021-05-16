@@ -79,7 +79,6 @@ int main(int argc, char* argv[])
     MultiThreading& multiThreading = MultiThreading::GetInstance();
     Camera testCamera;
 
-
     double freq = double(SDL_GetPerformanceFrequency()); //HZ
     double totalTime = SDL_GetPerformanceCounter() / freq; //sec
     double previousTime = totalTime;

@@ -1895,6 +1895,11 @@ void PrintTimers()
 #define PRINTTIMER() \
 PrintTimers()
 
+uint16 CreateBlockIndex(Vec3Int pos)
+{
+    return pos.z * CHUNK_Z + pos.y * CHUNK_Y + pos.x;
+}
+
 
 void ChunkArray::BuildChunkVertices(RegionSampler region)
 {
@@ -1937,9 +1942,9 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                             Vec3 offset = { static_cast<float>(x + realP.p.x), static_cast<float>(y + realP.p.y), static_cast<float>(z + realP.p.z) };
 
                             f.a.blockIndex =
-                            f.b.blockIndex = 
-                            f.c.blockIndex = 
-                            f.d.blockIndex = z * CHUNK_Z + y * CHUNK_Y + x;
+                            f.b.blockIndex =
+                            f.c.blockIndex =
+                            f.d.blockIndex = CreateBlockIndex({ x, y, z });
 
                             f.a.spriteIndex =
                             f.b.spriteIndex =
@@ -2247,12 +2252,14 @@ void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective)
 bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& distance, Vec3& normal)
 {
     distance = inf;
+    int32 rayCheckCount = 0;
 
     AABB chunkBox;
     chunkBox.min = ToWorld(g_chunks->p[chunkIndex]).p;
     chunkBox.max = { chunkBox.min.x + CHUNK_X, chunkBox.min.y + CHUNK_Y, chunkBox.min.z + CHUNK_Z };
     {
         PROFILE_SCOPE_TAB("RayVsChunk()/RayVsAABB()");
+        rayCheckCount++;
         if (!RayVsAABB(ray, chunkBox))
             return false;
     }
@@ -2268,6 +2275,7 @@ bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& di
         boxZ.max.y += float(CHUNK_Y);
         boxZ.max.z += 1.0f;
 
+        rayCheckCount++;
         if (RayVsAABB(ray, boxZ))
         {
             for (int32 y = 0; y < CHUNK_Y; y++)
@@ -2280,6 +2288,7 @@ bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& di
                 boxY.max.y += 1.0f;
                 boxY.max.z += 1.0f;
 
+                rayCheckCount++;
                 if (RayVsAABB(ray, boxY))
                 {
                     for (int32 x = 0; x < CHUNK_X; x++)
@@ -2295,6 +2304,7 @@ bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& di
                             float minDistanceToHit;
                             Vec3 intersectionPoint = {};
                             Vec3 normalFace;
+                            rayCheckCount++;
                             if (RayVsAABB(ray, boxX, minDistanceToHit, intersectionPoint, normalFace))
                             {
                                 if (minDistanceToHit < distance)
@@ -2328,17 +2338,95 @@ void ChunkUpdateBlocks(ChunkPos p, Vec3Int offset = {})
 void SetBlock(GamePos hitBlock, BlockType setBlockType)
 {
     PROFILE_SCOPE_TAB("SetBlock");
-#if 1
+
     ChunkPos hitChunkPos;
     Vec3Int hitBlockRelP = Convert_GameToBlock(hitChunkPos, hitBlock);
-
     ChunkIndex hitChunkIndex;
     if (g_chunks->GetChunkFromPosition(hitChunkIndex, hitChunkPos) && (hitBlock.p.y >= 0) && (hitBlock.p.y < CHUNK_Y))
     {
         PROFILE_SCOPE_TAB("SetBlock Success");
 
+#if FASTCHUNKRELOAD == 1
+
         g_chunks->blocks[hitChunkIndex].e[hitBlockRelP.x][hitBlockRelP.y][hitBlockRelP.z] = setBlockType;
         g_chunks->height[hitChunkIndex] = Max((uint16)(hitBlockRelP.y + 1), g_chunks->height[hitChunkIndex]);
+
+        switch (setBlockType)
+        {
+        case BlockType::Empty:
+        {
+            //Handles see through blocks that needs to add vertices to the neighbors
+
+            //Removes the vertices at the newly empty block
+            std::vector<int32> vertexIndices;
+            for (int32 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
+            {
+                int32 vertexIndex;
+                if (g_chunks->GetVertexIndex(vertexIndex, hitChunkIndex, hitBlock, faceIndex))
+                {
+                    vertexIndices.push_back(vertexIndex);
+                }
+            }
+            for (int32 i = 0; i < vertexIndices.size(); i++)
+            {
+                g_chunks->faceVertices[hitChunkIndex].erase(g_chunks->faceVertices[hitChunkIndex].begin() + vertexIndices[i] - i);
+                g_chunks->uploadedIndexCount[hitChunkIndex] -= 6;
+            }
+
+
+
+            //Adds vertices to the neighbor blocks that are not empty
+            BlockSampler blockSample;
+            blockSample.RegionGather(hitBlock);
+            int32 verticesAdded = 0;
+
+            for (int32 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
+            {
+                if (blockSample.blocks[faceIndex] != BlockType::Empty)
+                {
+                    //Create vertices at this location
+                    int32 vertexIndex;
+                    assert(!(g_chunks->GetVertexIndex(vertexIndex, hitChunkIndex, hitBlock, faceIndex)));
+
+                    //g_chunks->faceVertices[hitChunkIndex][vertexIndex];
+
+
+                    GamePos newBlock;
+                    newBlock.p.x = blockSample.baseBlock.p.x + static_cast<int32>(faceNormals[faceIndex].x);
+                    newBlock.p.y = blockSample.baseBlock.p.y + static_cast<int32>(faceNormals[faceIndex].y);
+                    newBlock.p.z = blockSample.baseBlock.p.z + static_cast<int32>(faceNormals[faceIndex].z);
+
+                    ChunkPos newBlockChunkPosition;
+                    Vec3Int block_baseP = Convert_GameToBlock(newBlockChunkPosition, newBlock);
+                    ChunkIndex newChunkIndex;
+                    if (g_chunks->GetChunkFromPosition(newChunkIndex, newBlockChunkPosition))
+                    {
+                        Vertex_Chunk vertexChunk;
+                        vertexChunk.blockIndex = CreateBlockIndex({});
+                        vertexChunk.spriteIndex = faceSprites[+blockSample.blocks[faceIndex]].faceSprites[faceIndex];;
+                        vertexChunk.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
+
+                        g_chunks->faceVertices[newChunkIndex].insert(g_chunks->faceVertices[newChunkIndex].begin() + vertexIndices[verticesAdded] - verticesAdded, vertexChunk);
+                        g_chunks->uploadedIndexCount[newChunkIndex] += 6;
+                        verticesAdded++;
+                    }
+                }
+            }
+
+            break;
+        }
+        default:
+        {
+            //Handles the normal blocks that need to remove the edges that have blocks next to it
+
+            break;
+        }
+        }
+
+#else
+        g_chunks->blocks[hitChunkIndex].e[hitBlockRelP.x][hitBlockRelP.y][hitBlockRelP.z] = setBlockType;
+        g_chunks->height[hitChunkIndex] = Max((uint16)(hitBlockRelP.y + 1), g_chunks->height[hitChunkIndex]);
+
         RegionSampler regionUpdate;
         regionUpdate.RegionGather(hitChunkIndex);
         g_chunks->state[hitChunkIndex] = ChunkArray::VertexLoading;
@@ -2352,43 +2440,8 @@ void SetBlock(GamePos hitBlock, BlockType setBlockType)
             ChunkUpdateBlocks(hitChunkPos, { 0,  0,  1 });
         if (hitBlockRelP.z == 0)
             ChunkUpdateBlocks(hitChunkPos, { 0,  0, -1 });
-    }
-
-#else
-    ChunkPos hitChunkP = ToChunk(hitBlock);
-    ChunkIndex hitChunkIndex;
-    g_chunks->GetBlock();
-    if (g_chunks->GetChunkFromPosition(hitChunkIndex, hitChunkP))
-    {
-        ChunkPos trash;
-        Vec3Int blockRelP = Convert_GameToBlock(trash, hitBlock);
-        GamePos chunkAddLoc = Convert_BlockToGame(hitChunkIndex, blockRelP);
-        ChunkPos newChunkPos;
-        Vec3Int newBlockRelP = Convert_GameToBlock(newChunkPos, chunkAddLoc);
-
-        ChunkIndex newChunkIndex;
-        if (g_chunks->GetChunkFromPosition(newChunkIndex, newChunkPos))
-        {
-            hitChunkIndex = newChunkIndex;
-            blockRelP = newBlockRelP;
-
-            g_chunks->blocks[hitChunkIndex].e[blockRelP.x][blockRelP.y][blockRelP.z] = setBlockType;
-            g_chunks->height[hitChunkIndex] = Max((uint16)(blockRelP.y + 1), g_chunks->height[hitChunkIndex]);
-            RegionSampler regionUpdate;
-            regionUpdate.RegionGather(hitChunkIndex);
-            g_chunks->state[hitChunkIndex] = ChunkArray::VertexLoading;
-            g_chunks->BuildChunkVertices(regionUpdate);
-        }
-        if (blockRelP.x == CHUNK_X - 1)
-            ChunkUpdateBlocks(hitChunkPos, {  1,  0,  0 });
-        if (blockRelP.x == 0)
-            ChunkUpdateBlocks(hitChunkPos, { -1,  0,  0 });
-        if (blockRelP.z == CHUNK_Z - 1)
-            ChunkUpdateBlocks(hitChunkPos, {  0,  0,  1 });
-        if (blockRelP.z == 0)
-            ChunkUpdateBlocks(hitChunkPos, {  0,  0, -1 });
-    }
 #endif
+    }
 
 }
 
