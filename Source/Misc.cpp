@@ -4,6 +4,8 @@
 #include "WinInterop.h"
 
 bool g_running = true;
+char* g_ClipboardTextData = NULL;
+
 
 #if ENABLE_PROFILE
 int ScopeTimer::tabLevel = 0;

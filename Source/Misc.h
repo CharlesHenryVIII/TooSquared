@@ -85,4 +85,5 @@ struct ScopeTimer
 
 
 extern bool g_running;
+extern char* g_ClipboardTextData;
 uint64_t GetCurrentTime();

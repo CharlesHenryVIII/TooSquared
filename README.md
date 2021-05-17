@@ -1,9 +1,9 @@
 # TooSquared
 
 ###TODO: 
+ * imGUI
  * Optimize block creation and deletion
  * Saving chunks to disk
- * imGUI
  * UI
 
  * Directional, point

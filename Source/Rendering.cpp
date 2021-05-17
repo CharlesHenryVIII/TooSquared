@@ -1,8 +1,13 @@
 #include "Rendering.h"
 #include "Misc.h"
-#include "STB/stb_image.h"
 #include "Block.h"
 #include "WinInterop.h"
+#include "Input.h"
+
+#include "STB/stb_image.h"
+#include "imgui-master/imgui.h"
+#include "SDL/include/SDL.h"
+#include "SDL/include/SDL_syswm.h"
 
 Renderer g_renderer;
 Window g_window;
@@ -788,6 +793,8 @@ void ResolveMSAAFramebuffer()
     glBlitFramebuffer(0, 0, scene->m_size.x, scene->m_size.y, 0, 0, scene->m_size.x, scene->m_size.y, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 }
 
+
+
 void InitializeVideo()
 {
     SDL_Init(SDL_INIT_VIDEO);
@@ -801,7 +808,7 @@ void InitializeVideo()
         g_window.pos.y = g_window.size.y / 2;
     }
 
-    uint32 windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI | /*SDL_WINDOW_MOUSE_CAPTURE | *//*SDL_WINDOW_MOUSE_FOCUS | */SDL_WINDOW_INPUT_GRABBED;
+    uint32 windowFlags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI /*SDL_WINDOW_MOUSE_CAPTURE | *//*SDL_WINDOW_MOUSE_FOCUS | *//*SDL_WINDOW_INPUT_GRABBED*/;
 
     g_window.SDL_Context = SDL_CreateWindow("TooSquared", g_window.pos.x, g_window.pos.y, g_window.size.x, g_window.size.y, windowFlags);
     /* Create an OpenGL context associated with the window. */
@@ -837,7 +844,6 @@ void InitializeVideo()
         DebugPrint("Error: %s\n", glewGetErrorString(err));
     }
     DebugPrint("Status: Using GLEW %s\n", glewGetString(GLEW_VERSION));
-    SDL_ShowCursor(SDL_DISABLE);
 
     stbi_set_flip_vertically_on_load(true);
     glEnable(GL_BLEND);

@@ -1,7 +1,7 @@
 #define GB_MATH_IMPLEMENTATION
 #define STB_IMAGE_IMPLEMENTATION
 //#define _DEBUGPRINT
-#include "SDL/include/SDL.h"
+#include "SDL.h"
 #include "Math.h"
 #include "glew.h"
 #include "STB/stb_image.h"
@@ -11,23 +11,43 @@
 #include "Computer.h"
 #include "WinInterop.h"
 #include "Noise.h"
+#include "Input.h"
+
+#include "imgui.h"
+#include "imgui_impl_sdl.h"
+#include "imgui_impl_opengl3.h"
 
 #include <unordered_map>
 #include <vector>
 #include <algorithm>
 
-struct Key {
-    bool down;
-    bool downPrevFrame;
-    bool downThisFrame;
-    bool upThisFrame;
-};
-
-struct Mouse {
-    Vec2Int pos = {};
-    Vec2 pDelta = {};
-    Vec2Int wheel = {}; //Y for vertical rotations, X for Horizontal rotations/movement
-}g_mouse;
+#if defined(IMGUI_IMPL_OPENGL_ES2)
+#include <GLES2/gl2.h>
+// About Desktop OpenGL function loaders:
+//  Modern desktop OpenGL doesn't have a standard portable header file to load OpenGL function pointers.
+//  Helper libraries are often used for this purpose! Here we are supporting a few common ones (gl3w, glew, glad).
+//  You may use another loader/header of your choice (glext, glLoadGen, etc.), or chose to manually implement your own.
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GL3W)
+#include <GL/gl3w.h>            // Initialize with gl3wInit()
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLEW)
+#include <GL/glew.h>            // Initialize with glewInit()
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD)
+#include <glad/glad.h>          // Initialize with gladLoadGL()
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLAD2)
+#include <glad/gl.h>            // Initialize with gladLoadGL(...) or gladLoaderLoadGL()
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLBINDING2)
+#define GLFW_INCLUDE_NONE       // GLFW including OpenGL headers causes ambiguity or multiple definition errors.
+#include <glbinding/Binding.h>  // Initialize with glbinding::Binding::initialize()
+#include <glbinding/gl/gl.h>
+using namespace gl;
+#elif defined(IMGUI_IMPL_OPENGL_LOADER_GLBINDING3)
+#define GLFW_INCLUDE_NONE       // GLFW including OpenGL headers causes ambiguity or multiple definition errors.
+#include <glbinding/glbinding.h>// Initialize with glbinding::initialize()
+#include <glbinding/gl/gl.h>
+using namespace gl;
+#else
+#include IMGUI_IMPL_OPENGL_LOADER_CUSTOM
+#endif
 
 struct GameData {
     float m_currentTime = 12.0f;
@@ -74,7 +94,6 @@ enum class MovementType {
 
 int main(int argc, char* argv[])
 {
-    std::unordered_map<int32, Key> keyStates;
     InitializeVideo();
     MultiThreading& multiThreading = MultiThreading::GetInstance();
     Camera testCamera;
@@ -93,7 +112,7 @@ int main(int argc, char* argv[])
 
     g_camera.view;
     WorldPos cOffset = { 1.0f, 1.0f, 1.0f };
-    gb_mat4_look_at(&g_camera.view, { g_camera.transform.m_p.p.x + cOffset.p.x, g_camera.transform.m_p.p.y + cOffset.p.y,g_camera.transform.m_p.p.z + cOffset.p.z }, 
+    gb_mat4_look_at(&g_camera.view, { g_camera.transform.m_p.p.x + cOffset.p.x, g_camera.transform.m_p.p.y + cOffset.p.y,g_camera.transform.m_p.p.z + cOffset.p.z },
                                     { g_camera.transform.m_p.p.x, g_camera.transform.m_p.p.y, g_camera.transform.m_p.p.z }, { 0,1,0 });
 
     g_chunks = new ChunkArray();
@@ -101,6 +120,52 @@ int main(int argc, char* argv[])
     bool uploadedLastFrame = false;
     bool debugDraw = false;
     bool TEST_CREATE_AND_UPLOAD_CHUNKS = true;
+
+
+    // GL 3.0 + GLSL 130
+    const char* glsl_version = "#version 130";
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+
+    // Setup Dear ImGui context
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+    ImGuiIO& io = ImGui::GetIO(); (void)io;
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+
+    // Setup Dear ImGui style
+    ImGui::StyleColorsDark();
+    //ImGui::StyleColorsClassic();
+
+    // Setup Platform/Renderer backends
+    ImGui_ImplSDL2_InitForOpenGL(g_window.SDL_Context, g_renderer.GL_Context);
+    ImGui_ImplOpenGL3_Init(glsl_version);
+
+    // Load Fonts
+    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
+    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
+    // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
+    // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
+    // - Read 'docs/FONTS.md' for more instructions and details.
+    // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
+    //io.Fonts->AddFontDefault();
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
+    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
+    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
+    //IM_ASSERT(font != NULL);
+
+    // Our state
+    bool show_demo_window = true;
+    bool show_another_window = false;
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+
+    ImGuiIO& imGuiIO = ImGui::GetIO();
 
     //int32 area = 10;
     //for (int32 y = -area; y <= area; y++)
@@ -134,11 +199,15 @@ int main(int argc, char* argv[])
     //    }
     //}
 
+    ;
+
     Capsule playerCollider = {
     .m_radius = 0.25f,
     .m_height = 1.8f,
     };
     MovementType playerMovementType = MovementType::Fly;
+
+    bool g_cursorEngaged = true;
 
     cubesToDraw.reserve(100000);
     while (g_running)
@@ -175,49 +244,57 @@ int main(int argc, char* argv[])
                 loadingTimer, g_renderer.numTrianglesDrawn, g_camera.transform.m_isGrounded).c_str());
         }
 
+
         SDL_Event SDLEvent;
         g_mouse.pDelta = {};
         while (SDL_PollEvent(&SDLEvent))
         {
+            ImGui_ImplSDL2_ProcessEvent(&SDLEvent);
+
             switch (SDLEvent.type)
             {
             case SDL_QUIT:
                 g_running = false;
                 break;
             case SDL_KEYDOWN:
-            {
-                if (g_window.hasAttention)
-                {
-                    int mods = 0;
-                    keyStates[SDLEvent.key.keysym.sym].down = true;
-                }
-                break;
-            }
             case SDL_KEYUP:
                 if (g_window.hasAttention)
                 {
-                    keyStates[SDLEvent.key.keysym.sym].down = false;
+                    if (!imGuiIO.WantCaptureKeyboard)
+                    {
+                        keyStates[SDLEvent.key.keysym.sym].down = (SDLEvent.type == SDL_KEYDOWN);
+                    }
                 }
                 break;
             case SDL_MOUSEBUTTONDOWN:
             case SDL_MOUSEBUTTONUP:
                 if (g_window.hasAttention)
                 {
-                    keyStates[SDLEvent.button.button].down = SDLEvent.button.state;
+                    if(!imGuiIO.WantCaptureMouse)
+                    {
+                        keyStates[SDLEvent.button.button].down = SDLEvent.button.state;
+                    }
                 }
                 break;
             case SDL_MOUSEMOTION:
             {
                 if (g_window.hasAttention)
                 {
-                    g_mouse.pDelta.x += (static_cast<float>(SDLEvent.motion.x) - g_mouse.pos.x);
-                    g_mouse.pDelta.y += (static_cast<float>(SDLEvent.motion.y) - g_mouse.pos.y);// reversed since y-coordinates go from bottom to top
+                    if (!imGuiIO.WantCaptureMouse)
+                    {
+                        if (g_cursorEngaged)
+                        {
+                            g_mouse.pDelta.x += (static_cast<float>(SDLEvent.motion.x) - g_mouse.pos.x);
+                            g_mouse.pDelta.y += (static_cast<float>(SDLEvent.motion.y) - g_mouse.pos.y);// reversed since y-coordinates go from bottom to top
 
-                    SDL_WarpMouseInWindow(g_window.SDL_Context, g_window.size.x / 2, g_window.size.y / 2);
-                    //g_mouse.pos.x = SDLEvent.motion.x;
-                    //g_mouse.pos.y = SDLEvent.motion.y;
-                    g_mouse.pos.x = g_window.size.x / 2;
-                    g_mouse.pos.y = g_window.size.y / 2;
+                            SDL_WarpMouseInWindow(g_window.SDL_Context, g_window.size.x / 2, g_window.size.y / 2);
+                            //g_mouse.pos.x = SDLEvent.motion.x;
+                            //g_mouse.pos.y = SDLEvent.motion.y;
+                            g_mouse.pos.x = g_window.size.x / 2;
+                            g_mouse.pos.y = g_window.size.y / 2;
+                        }
+
+                    }
                 }
                 break;
             }
@@ -225,8 +302,11 @@ int main(int argc, char* argv[])
             {
                 if (g_window.hasAttention)
                 {
-                    g_mouse.wheel.x = SDLEvent.wheel.x;
-                    g_mouse.wheel.y = SDLEvent.wheel.y;
+                    if(!imGuiIO.WantCaptureMouse)
+                    {
+                        g_mouse.wheel.x = SDLEvent.wheel.x;
+                        g_mouse.wheel.y = SDLEvent.wheel.y;
+                    }
                 }
                 break;
             }
@@ -247,8 +327,12 @@ int main(int argc, char* argv[])
                     g_window.hasAttention = true;
                     g_mouse.pDelta = {};
                     SDL_GetMouseState(&g_mouse.pos.x, &g_mouse.pos.y);
-                    SDL_CaptureMouse(SDL_TRUE);
-                    SDL_ShowCursor(SDL_DISABLE);
+                    if (g_cursorEngaged)
+                    {
+                        SDL_CaptureMouse(SDL_TRUE);
+                        SDL_ShowCursor(SDL_DISABLE);
+                    }
+
                     break;
                 }
                 case SDL_WINDOWEVENT_LEAVE:
@@ -306,7 +390,6 @@ int main(int argc, char* argv[])
             }
             key.second.downPrevFrame = key.second.down;
         }
-
 
         if (keyStates[SDLK_ESCAPE].down)
             g_running = false;
@@ -369,6 +452,59 @@ int main(int argc, char* argv[])
             {
                 g_gameData.m_timeScale *= 10;
             }
+        }
+        if (keyStates[SDLK_e].downThisFrame)
+        {
+            g_cursorEngaged = !g_cursorEngaged;
+            if (g_cursorEngaged)
+                SDL_ShowCursor(SDL_DISABLE);
+            else
+                SDL_ShowCursor(SDL_ENABLE);
+        }
+
+        {
+            // Start the Dear ImGui frame
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplSDL2_NewFrame(g_window.SDL_Context);
+            ImGui::NewFrame();
+
+            // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+            if (show_demo_window)
+                ImGui::ShowDemoWindow(&show_demo_window);
+
+            // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
+            {
+                static float f = 0.0f;
+                static int counter = 0;
+
+                ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
+
+                ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
+                ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
+                ImGui::Checkbox("Another Window", &show_another_window);
+
+                ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+                ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
+
+                if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
+                    counter++;
+                ImGui::SameLine();
+                ImGui::Text("counter = %d", counter);
+
+                ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+                ImGui::End();
+            }
+
+            // 3. Show another simple window.
+            if (show_another_window)
+            {
+                ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
+                ImGui::Text("Hello from another window!");
+                if (ImGui::Button("Close Me"))
+                    show_another_window = false;
+                ImGui::End();
+            }
+
         }
 
 
@@ -456,10 +592,6 @@ int main(int argc, char* argv[])
                     g_camera.transform.m_acceleration.z += cameraAcceleration;
                 if (keyStates[SDLK_x].down)
                     g_camera.transform.m_acceleration.x += cameraAcceleration;
-                if (keyStates[SDLK_PLUS].downThisFrame)
-                    g_camera.transform.m_vel.y += 10;
-                if (keyStates[SDLK_MINUS].downThisFrame)
-                    g_camera.transform.m_vel.y -= 10;
 
                 g_camera.transform.UpdateDeltaPosition(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
                 playerCollider.UpdateMidTipLocation(g_camera.transform.m_p);
@@ -723,7 +855,7 @@ int main(int argc, char* argv[])
             glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
             glEnableVertexArrayAttrib(g_renderer.vao, 2);
             glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-            
+
             glDepthMask(GL_TRUE);
             //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         }
@@ -930,8 +1062,22 @@ int main(int argc, char* argv[])
         glEnableVertexArrayAttrib(g_renderer.vao, 2);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
+        ImGui::Render();
+        //glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+        //glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+        //glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
         SDL_GL_SwapWindow(g_window.SDL_Context);
         glEnable(GL_DEPTH_TEST);
     }
+    // Cleanup
+    ImGui_ImplOpenGL3_Shutdown();
+    ImGui_ImplSDL2_Shutdown();
+    ImGui::DestroyContext();
+
+    SDL_GL_DeleteContext(g_renderer.GL_Context);
+    SDL_DestroyWindow(g_window.SDL_Context);
+    SDL_Quit();
     return 0;
 }

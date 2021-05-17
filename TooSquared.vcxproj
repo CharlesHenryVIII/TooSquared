@@ -120,14 +120,14 @@
       <ConformanceMode>true</ConformanceMode>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>Contrib;Contrib/Glew/include;Contrib/Glew/include/GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>Contrib;Contrib/Glew/include;Contrib/Glew/include/GL;Contrib/imgui-master;Contrib/SDL/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>SDL2.lib;SDL2main.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>Contrib\SDL\lib\x64;Contrib/Glew/src;Contrib/Glew/include</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>Contrib\SDL\lib\x64;Contrib/Glew/src;Contrib/Glew/include;Contrib\imgui-master</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -140,7 +140,7 @@
       <ConformanceMode>true</ConformanceMode>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>Contrib;Contrib/Glew/include;Contrib/Glew/include/GL;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>Contrib;Contrib/Glew/include;Contrib/Glew/include/GL;Contrib/imgui-master;Contrib/SDL/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
@@ -149,13 +149,21 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>SDL2.lib;SDL2main.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>Contrib\SDL\lib\x64;Contrib/Glew/src;Contrib/Glew/include</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>Contrib\SDL\lib\x64;Contrib/Glew/src;Contrib/Glew/include;Contrib\imgui-master</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Contrib\Glew\src\glew.c" />
+    <ClCompile Include="Contrib\imgui-master\imgui.cpp" />
+    <ClCompile Include="Contrib\imgui-master\imgui_demo.cpp" />
+    <ClCompile Include="Contrib\imgui-master\imgui_draw.cpp" />
+    <ClCompile Include="Contrib\imgui-master\imgui_tables.cpp" />
+    <ClCompile Include="Contrib\imgui-master\imgui_widgets.cpp" />
     <ClCompile Include="Source\Block.cpp" />
     <ClCompile Include="Source\Computer.cpp" />
+    <ClCompile Include="Source\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="Source\imgui_impl_sdl.cpp" />
+    <ClCompile Include="Source\Input.cpp" />
     <ClCompile Include="Source\Main.cpp" />
     <ClCompile Include="Source\Math.cpp" />
     <ClCompile Include="Source\Misc.cpp" />
@@ -175,8 +183,17 @@
     <None Include="Source\Shaders\Sun.vert" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Contrib\imgui-master\imconfig.h" />
+    <ClInclude Include="Contrib\imgui-master\imgui.h" />
+    <ClInclude Include="Contrib\imgui-master\imgui_internal.h" />
+    <ClInclude Include="Contrib\imgui-master\imstb_rectpack.h" />
+    <ClInclude Include="Contrib\imgui-master\imstb_textedit.h" />
+    <ClInclude Include="Contrib\imgui-master\imstb_truetype.h" />
     <ClInclude Include="Source\Block.h" />
     <ClInclude Include="Source\Computer.h" />
+    <ClInclude Include="Source\imgui_impl_opengl3.h" />
+    <ClInclude Include="Source\imgui_impl_sdl.h" />
+    <ClInclude Include="Source\Input.h" />
     <ClInclude Include="Source\Main.h" />
     <ClInclude Include="Source\Math.h" />
     <ClInclude Include="Source\Misc.h" />
