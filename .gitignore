@@ -4,6 +4,10 @@ Debug/
 .vs/
 x64/
 Assets/
+Contrib/imgui-master/backends/
+Contrib/imgui-master/docs/
+Contrib/imgui-master/examples/
+Contrib/imgui-master/misc/
 
 # Prerequisites
 *.d

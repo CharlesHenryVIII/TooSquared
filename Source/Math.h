@@ -77,6 +77,11 @@ struct Vertex {
     Vec3 n;
 };
 
+struct Vertex_UI {
+    Vec2 p;
+    Vec2 uv;
+};
+
 //Originally 32 Bytes
 //TODO: convert to 4 bytes by slaming connected vertices and n together
 #pragma pack(push, 1)
@@ -104,6 +109,22 @@ union Vec3Int {
 union Vec2d {
     struct { double x, y; };
     double e[2];
+};
+
+struct RectInt {
+    Vec2Int botLeft = {};
+    Vec2Int topRight = {};
+
+    int32 Width()
+    {
+        return topRight.x - botLeft.x;
+    }
+
+    int32 Height()
+    {
+        return topRight.y - botLeft.y;
+    }
+
 };
 
 struct Rect {

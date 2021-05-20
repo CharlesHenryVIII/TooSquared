@@ -79,6 +79,7 @@ enum class Shader : uint32 {
     Cube,
     BufferCopy,
     Sun,
+    UI,
     Count,
 };
 ENUMOPS(Shader);
@@ -89,6 +90,7 @@ public:
         Invalid,
         Minecraft,
         Test,
+        Plain,
         Count,
     };
     ENUMOPS(T);
@@ -117,6 +119,7 @@ public:
 
     Texture(Texture::TextureParams tp);
     Texture(const char* fileLocation);
+    Texture(uint8* data, Vec2Int size);//, int32 m_bytesPerPixel = 2);
     ~Texture();
     void Bind();
 };
@@ -163,6 +166,7 @@ public:
     void UpdateUniformMat4(const char* name, GLsizei count, GLboolean transpose, const GLfloat* value);
     void UpdateUniformVec4(const char* name, GLsizei count, const GLfloat* value);
     void UpdateUniformVec3(const char* name, GLsizei count, const GLfloat* value);
+    void UpdateUniformVec2(const char* name, GLsizei count, const GLfloat* value);
     void UpdateUniformFloat(const char* name, GLfloat value);
     void UpdateUniformUint8(const char* name, GLuint value);
 };
@@ -211,6 +215,7 @@ public:
         : GpuBuffer(GL_ARRAY_BUFFER)
     { }
     void Upload(Vertex* vertices, size_t count);
+    void Upload(Vertex_UI* vertices, size_t count);
     void Upload(Vertex_Chunk* vertices, size_t count);
 };
 
@@ -263,3 +268,6 @@ void RenderUpdate(Vec2Int windowSize, float deltaTime);
 void InitializeVideo();
 void UpdateFrameBuffers(Vec2Int size, uint32 samples);
 void ResolveMSAAFramebuffer();
+void UI_AddDrawCall(RectInt sourceRect, RectInt _destRect, Color colorMod, Texture::T textureType);
+void UI_AddDrawCall(RectInt _sourceRect, Rect destRect, Color colorMod, Texture::T textureType);
+void UI_Render();

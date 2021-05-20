@@ -2247,6 +2247,48 @@ void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective)
     g_renderer.numTrianglesDrawn += 36 / 3;
 }
 
+void Draw2DSquare(Rect rect, Color color)
+{
+    std::unique_ptr<VertexBuffer> vertexBuffer = std::make_unique<VertexBuffer>();
+
+    Vertex vertices[4] = {};
+    vertices[0].p = { rect.botLeft.x,  rect.topRight.y, 1.5f };
+    vertices[1].p = { rect.botLeft.x,  rect.botLeft.y,  1.5f };
+    vertices[2].p = { rect.topRight.x, rect.topRight.y, 1.5f };
+    vertices[3].p = { rect.topRight.x, rect.botLeft.y,  1.5f };
+
+    vertexBuffer->Upload(vertices, arrsize(vertices));
+
+    vertexBuffer->Bind();
+    uint32 indices[] = { 0, 1, 2, 1, 3, 2 };
+
+    std::unique_ptr<IndexBuffer> indexBuffer = std::make_unique<IndexBuffer>();
+    indexBuffer->Upload(indices, arrsize(indices));
+    indexBuffer->Bind();
+
+    Mat4 perspective, view, transform, scale;
+    gb_mat4_identity(&perspective);
+    view, transform, scale = perspective;
+
+    ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
+    sp->UseShader();
+    sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
+    sp->UpdateUniformMat4("u_view",        1, false, view.e);
+    sp->UpdateUniformMat4("u_model",       1, false, transform.e);
+    sp->UpdateUniformVec3("u_scale",       1,        scale.e);
+    sp->UpdateUniformVec4("u_color",       1,        color.e);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+    glEnableVertexArrayAttrib(g_renderer.vao, 0);
+    glDisableVertexArrayAttrib(g_renderer.vao, 1);
+    glDisableVertexArrayAttrib(g_renderer.vao, 2);
+    glDisableVertexArrayAttrib(g_renderer.vao, 3);
+
+    glDrawElements(GL_TRIANGLES, arrsize(indices), GL_UNSIGNED_INT, 0);
+    g_renderer.numTrianglesDrawn += arrsize(indices);
+}
+            //Draw2DSquare(horz);
+
 bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& distance, Vec3& normal)
 {
     distance = inf;

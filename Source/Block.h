@@ -302,6 +302,7 @@ void PreChunkRender(const Mat4& perspective);
 void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& perspective, bool depthWrite = true);
 void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective);
 void DrawBlock(WorldPos p, Color color, float scale, const Mat4& perspective);
+void Draw2DSquare(Rect rect, Color color);
 
 int64 PositionHash(ChunkPos p);
 bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& distance, Vec3& normal);

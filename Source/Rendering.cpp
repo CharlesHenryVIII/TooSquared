@@ -112,6 +112,24 @@ Texture::Texture(const char* fileLocation)
 #endif
 }
 
+Texture::Texture(uint8* data, Vec2Int size)//, int32 m_bytesPerPixel)
+{
+    m_data = data;
+    m_size = size;
+    m_bytesPerPixel = 4;
+
+    glGenTextures(1, &m_handle);
+    Bind();
+    glTexParameteri(m_target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(m_target, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(m_target, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexImage2D(m_target, 0, GL_RGBA, m_size.x, m_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_data);
+#ifdef _DEBUGPRINT
+    DebugPrint("Texture Created\n");
+#endif
+}
+
 Texture::~Texture()
 {
     glDeleteTextures(1, &m_handle);
@@ -488,6 +506,15 @@ void ShaderProgram::UpdateUniformVec3(const char* name, GLsizei count, const GLf
 #endif
 }
 
+void ShaderProgram::UpdateUniformVec2(const char* name, GLsizei count, const GLfloat* value)
+{
+    GLint loc = glGetUniformLocation(m_handle, name);
+    glUniform2fv(loc, count, value);
+#ifdef _DEBUGPRINT
+    DebugPrint("Shader Uniform Updated %s\n", name);
+#endif
+}
+
 void ShaderProgram::UpdateUniformFloat(const char* name, GLfloat value)
 {
     GLint loc = glGetUniformLocation(m_handle, name);
@@ -548,6 +575,13 @@ void IndexBuffer::Upload(uint32* indices, size_t count)
 }
 
 void VertexBuffer::Upload(Vertex* vertices, size_t count)
+{
+    UploadData(vertices, sizeof(vertices[0]) * count);
+#ifdef _DEBUGPRINT
+    DebugPrint("Vertex Buffer Upload,size %i\n", count);
+#endif
+}
+void VertexBuffer::Upload(Vertex_UI* vertices, size_t count)
 {
     UploadData(vertices, sizeof(vertices[0]) * count);
 #ifdef _DEBUGPRINT
@@ -656,70 +690,6 @@ void FillIndexBuffer(IndexBuffer* ib)
     ib->Upload(arr.data(), amount);
 }
 
-//void SSOAUpdate()
-//{
-//	Texture::TextureParams tp = {};
-//	tp.minFilter = GL_NEAREST;
-//	tp.magFilter = GL_NEAREST;
-//	tp.wrapS = GL_CLAMP_TO_EDGE;
-//	tp.wrapT = GL_CLAMP_TO_EDGE;
-//	tp.internalFormat = GL_RGBA16F;
-//	Texture* t = new Texture(tp);
-//
-//	//std::uniform_real_distribution<float> randomFloats(0.0, 1.0); // random floats between [0.0, 1.0]
-//	//std::default_random_engine generator;
-//	std::vector<Vec3> ssaoKernel;
-//	for (unsigned int i = 0; i < 64; ++i)
-//	{
-//		Vec3 sample = {
-//			RandomFloat(0.0f, 1.0f) * 2.0f - 1.0f,
-//			RandomFloat(0.0f, 1.0f) * 2.0f - 1.0f,
-//			RandomFloat(0.0f, 1.0f) * 2.0f - 1.0f
-//		};
-//		sample = Normalize(sample);
-//		sample *= RandomFloat(0.0f, 1.0f);
-//		//ssaoKernel.push_back(sample);
-//		float scale = (float)i / 64.0;
-//		scale = Lerp(0.1f, 1.0f, scale * scale);
-//		sample *= scale;
-//		ssaoKernel.push_back(sample);
-//	}
-//
-//	std::vector<Vec3> ssaoNoise;
-//	for (unsigned int i = 0; i < 16; i++)
-//	{
-//		Vec3 noise = {
-//			RandomFloat(0.0f, 1.0f) * 2.0 - 1.0,
-//			RandomFloat(0.0f, 1.0f) * 2.0 - 1.0,
-//			0.0f};
-//		ssaoNoise.push_back(noise);
-//	}
-//	Texture::TextureParams tp2 = {
-//		.size = { 4, 4 },
-//		.minFilter = GL_NEAREST,
-//		.magFilter = GL_NEAREST,
-//		.internalFormat = GL_RGBA16F,
-//		.format = GL_RGB,
-//		.type = GL_FLOAT,
-//		.data = &ssaoNoise[0],
-//	};
-//	Texture* noiseTexture = new Texture(tp2);
-//
-//	FrameBuffer ssaoFBO = FrameBuffer();
-//	Texture::TextureParams tp3 = {
-//		.minFilter = GL_NEAREST,
-//		.magFilter = GL_NEAREST,
-//		.wrapS = 0,
-//		.wrapT = 0,
-//		.internalFormat = GL_RED,
-//		.format = GL_RED,
-//		.type = GL_FLOAT,
-//	};
-//	ssaoFBO.m_color = new Texture(tp3);
-//	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ssaoFBO.m_color->m_handle, 0);
-//
-//	
-//}
 
 void FrameBuffer::Bind()
 {
@@ -794,6 +764,121 @@ void ResolveMSAAFramebuffer()
 }
 
 
+VertexBuffer* UI_VertexBuffer = nullptr;
+
+struct UI_DrawCall {
+    int32 vertexIndex = 0;
+    Color colorMod = { 1.0f, 1.0f, 1.0f, 1.0f };
+    Texture::T texture;
+};
+
+std::vector<UI_DrawCall> UI_DrawCalls;
+std::vector<Vertex_UI> UI_Vertices;
+
+void UI_AddDrawCall(RectInt sourceRect, RectInt _destRect, Color colorMod, Texture::T textureType)
+{
+    Rect destRect;
+    destRect.botLeft.x  = _destRect.botLeft.x  / float(g_window.size.x);
+    destRect.botLeft.y  = _destRect.botLeft.y  / float(g_window.size.y);
+    destRect.topRight.x = _destRect.topRight.x / float(g_window.size.x);
+    destRect.topRight.y = _destRect.topRight.y / float(g_window.size.y);
+    
+    UI_AddDrawCall(sourceRect, destRect, colorMod, textureType);
+}
+
+void UI_AddDrawCall(RectInt _sourceRect, Rect destRect, Color colorMod, Texture::T textureType)
+{
+    //destRect.botLeft.y  = destRect.botLeft.y  - 1.0f;
+    //destRect.topRight.y = destRect.topRight.y - 1.0f;
+
+    Vec2Int textureSize = g_renderer.textures[textureType]->m_size;
+    Rect sourceRect;
+
+    if ((_sourceRect.botLeft.x == 0) && (_sourceRect.botLeft.y == 0) && (_sourceRect.topRight.x == 0) && (_sourceRect.topRight.y == 0))
+    {
+        _sourceRect.botLeft = {};
+        _sourceRect.topRight = { textureSize.x, textureSize.y };
+    }
+
+    sourceRect.botLeft.x  = _sourceRect.botLeft.x  / float(textureSize.x);
+    sourceRect.botLeft.y  = _sourceRect.botLeft.y  / float(textureSize.y);
+    sourceRect.topRight.x = _sourceRect.topRight.x / float(textureSize.x);
+    sourceRect.topRight.y = _sourceRect.topRight.y / float(textureSize.y);
+
+    UI_DrawCall drawCall;
+    drawCall.vertexIndex = int32(UI_Vertices.size());
+
+    Vec2 p0 = { destRect.botLeft.x,  destRect.topRight.y };
+    Vec2 p1 = { destRect.botLeft.x,  destRect.botLeft.y  };
+    Vec2 p2 = { destRect.topRight.x, destRect.topRight.y };
+    Vec2 p3 = { destRect.topRight.x, destRect.botLeft.y  };
+
+    Vec2 uv0 = { sourceRect.botLeft.x,  sourceRect.topRight.y };
+    Vec2 uv1 = { sourceRect.botLeft.x,  sourceRect.botLeft.y  };
+    Vec2 uv2 = { sourceRect.topRight.x, sourceRect.topRight.y };
+    Vec2 uv3 = { sourceRect.topRight.x, sourceRect.botLeft.y  };
+
+    Vertex_UI v0;
+    v0.p  = p0;
+    v0.uv = uv0;
+    Vertex_UI v1;
+    v1.p  = p1;
+    v1.uv = uv1;
+    Vertex_UI v2;
+    v2.p  = p2;
+    v2.uv = uv2;
+    Vertex_UI v3;
+    v3.p  = p3;
+    v3.uv = uv3;
+
+    UI_Vertices.push_back(v0);
+    UI_Vertices.push_back(v1);
+    UI_Vertices.push_back(v2);
+    UI_Vertices.push_back(v3);
+
+    drawCall.colorMod = colorMod;
+    drawCall.texture = textureType;
+    UI_DrawCalls.push_back(drawCall);
+}
+
+void UI_Render()
+{
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+
+    UI_VertexBuffer->Bind();
+    UI_VertexBuffer->Upload(UI_Vertices.data(), UI_Vertices.size());
+
+    ShaderProgram* sp = g_renderer.programs[+Shader::UI];
+    sp->UseShader();
+
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex_UI), (void*)offsetof(Vertex_UI, p));
+    glEnableVertexArrayAttrib(g_renderer.vao, 0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex_UI), (void*)offsetof(Vertex_UI, uv));
+    glEnableVertexArrayAttrib(g_renderer.vao, 1);
+    glDisableVertexArrayAttrib(g_renderer.vao, 2);
+    glDisableVertexArrayAttrib(g_renderer.vao, 3);
+
+    for (auto& drawCall : UI_DrawCalls)
+    {
+        Vec2 scale = { 1.0f, 1.0f };
+        sp->UpdateUniformVec2("u_scale", 1, scale.e);
+        sp->UpdateUniformVec4("u_color", 1, drawCall.colorMod.e);
+
+        g_renderer.textures[drawCall.texture]->Bind();
+
+        glDrawArrays(GL_TRIANGLE_STRIP, drawCall.vertexIndex, 4);
+        g_renderer.numTrianglesDrawn += 2;
+    }
+    UI_Vertices.clear();
+    UI_DrawCalls.clear();
+
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
+}
+
+
+uint8 s_pixelTextureData[] = { 255, 255, 255, 255 };
 
 void InitializeVideo()
 {
@@ -868,14 +953,17 @@ void InitializeVideo()
 #else
     g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png");
     g_renderer.spriteTextArray = new TextureArray("Assets/MinecraftSpriteSheet20120215.png");
+#endif
     //g_renderer.skyBox = new TextureCube("Assets/skybox.dds");
     g_renderer.skyBoxNight = new TextureCube("Assets/skyboxNight.dds");
     g_renderer.skyBoxDay = new TextureCube("Assets/sky.dds");//DayMinecraftSkybox2.dds");
-#endif
+    g_renderer.textures[Texture::T::Plain] = new Texture(s_pixelTextureData, { 1, 1 });
+
     g_renderer.programs[+Shader::Chunk] = new ShaderProgram("Source/Shaders/Chunk.vert", "Source/Shaders/Chunk.frag");
     g_renderer.programs[+Shader::Cube] = new ShaderProgram("Source/Shaders/Cube.vert", "Source/Shaders/Cube.frag");
     g_renderer.programs[+Shader::BufferCopy] = new ShaderProgram("Source/Shaders/BufferCopy.vert", "Source/Shaders/BufferCopy.frag");
     g_renderer.programs[+Shader::Sun] = new ShaderProgram("Source/Shaders/Sun.vert", "Source/Shaders/Sun.frag");
+    g_renderer.programs[+Shader::UI] = new ShaderProgram("Source/Shaders/UI.vert", "Source/Shaders/UI.frag");
 
 #if DIRECTIONALLIGHT == 1
     g_renderer.sunLight.d = Normalize(Vec3({  0.0f, -1.0f,  0.0f }));
@@ -901,4 +989,6 @@ void InitializeVideo()
     };
     g_renderer.postVertexBuffer = new VertexBuffer();
     g_renderer.postVertexBuffer->Upload(verticees, arrsize(verticees));
+
+    UI_VertexBuffer = new VertexBuffer();
 }

@@ -160,7 +160,7 @@ int main(int argc, char* argv[])
     //IM_ASSERT(font != NULL);
 
     // Our state
-    bool show_demo_window = true;
+    bool show_demo_window = false;
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
@@ -1046,6 +1046,25 @@ int main(int argc, char* argv[])
         //});
         //frameTimes.push_back(static_cast<float>(renderTotalTime));
 
+        {
+            //TODO: scale with the width of the monitor
+
+            Vec2 crosshair = { 0.005f, 0.03f };
+            Rect vert;
+            vert.botLeft  = Vec2({ 0, 0 }) - crosshair;
+            vert.topRight = Vec2({ 0, 0 }) + crosshair;
+            Rect horz;
+            horz.botLeft  = Vec2({ 0, 0 }) - Vec2({ crosshair.y, crosshair.x });
+            horz.topRight = Vec2({ 0, 0 }) + Vec2({ crosshair.y, crosshair.x });
+            Color crosshairColor = { 0.4f, 0.4f, 0.4f, 0.4f };
+
+            UI_AddDrawCall({}, vert, crosshairColor, Texture::T::Plain);
+            UI_AddDrawCall({}, horz, crosshairColor, Texture::T::Plain);
+            //Draw2DSquare(vert, crosshairColor);
+            //Draw2DSquare(horz, crosshairColor);
+            UI_Render();
+        }
+
         ResolveMSAAFramebuffer();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glDisable(GL_DEPTH_TEST);
@@ -1062,11 +1081,15 @@ int main(int argc, char* argv[])
         glEnableVertexArrayAttrib(g_renderer.vao, 2);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
+
         ImGui::Render();
         //glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
         //glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
         //glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+        if (g_cursorEngaged)
+            SDL_ShowCursor(SDL_DISABLE);
 
         SDL_GL_SwapWindow(g_window.SDL_Context);
         glEnable(GL_DEPTH_TEST);
