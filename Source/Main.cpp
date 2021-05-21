@@ -1048,20 +1048,46 @@ int main(int argc, char* argv[])
 
         {
             //TODO: scale with the width of the monitor
-
-            Vec2 crosshair = { 0.005f, 0.03f };
-            Rect vert;
-            vert.botLeft  = Vec2({ 0, 0 }) - crosshair;
-            vert.topRight = Vec2({ 0, 0 }) + crosshair;
-            Rect horz;
-            horz.botLeft  = Vec2({ 0, 0 }) - Vec2({ crosshair.y, crosshair.x });
-            horz.topRight = Vec2({ 0, 0 }) + Vec2({ crosshair.y, crosshair.x });
             Color crosshairColor = { 0.4f, 0.4f, 0.4f, 0.4f };
+            int32 lineThickness = 7;
+            int32 lineBounds = 30;
 
-            UI_AddDrawCall({}, vert, crosshairColor, Texture::T::Plain);
-            UI_AddDrawCall({}, horz, crosshairColor, Texture::T::Plain);
-            //Draw2DSquare(vert, crosshairColor);
-            //Draw2DSquare(horz, crosshairColor);
+            Vec2Int screenSizeHalf = g_window.size / 2;
+
+            float screenSizeScale = {};
+            Vec2 screenSizeRatio = { g_window.size.x / 2560.0f , g_window.size.y / 1440.0f };
+            screenSizeScale = Min(screenSizeRatio.x, screenSizeRatio.y);
+            
+            RectInt center;
+            {
+                int32 halfLineThickness = int32((lineThickness / 2.0f) * screenSizeScale);
+                center.botLeft = screenSizeHalf - Vec2Int({ halfLineThickness,  halfLineThickness });
+                center.topRight = screenSizeHalf + Vec2Int({ halfLineThickness,  halfLineThickness });
+            }
+
+            int32 halfLineBounds = int32((lineBounds / 2.0f) * screenSizeScale);
+            RectInt left;
+            left.botLeft  = { screenSizeHalf.x - halfLineBounds,  center.botLeft.y };
+            left.topRight = { center.botLeft.x, center.topRight.y };
+
+            RectInt top;
+            top.botLeft  = left.topRight;
+            top.topRight = { center.topRight.x, screenSizeHalf.y + halfLineBounds };
+
+            RectInt right;
+            right.botLeft  = { center.topRight.x, center.botLeft.y };
+            right.topRight = { screenSizeHalf.x + halfLineBounds,    center.topRight.y };
+
+            RectInt bot;
+            bot.botLeft  = { center.botLeft.x,  screenSizeHalf.y - halfLineBounds};
+            bot.topRight = right.botLeft;
+
+            UI_AddDrawCall({}, center, crosshairColor, Texture::T::Plain);
+            UI_AddDrawCall({}, left,   crosshairColor, Texture::T::Plain);
+            UI_AddDrawCall({}, top,    crosshairColor, Texture::T::Plain);
+            UI_AddDrawCall({}, right,  crosshairColor, Texture::T::Plain);
+            UI_AddDrawCall({}, bot,    crosshairColor, Texture::T::Plain);
+
             UI_Render();
         }
 

@@ -778,19 +778,16 @@ std::vector<Vertex_UI> UI_Vertices;
 void UI_AddDrawCall(RectInt sourceRect, RectInt _destRect, Color colorMod, Texture::T textureType)
 {
     Rect destRect;
-    destRect.botLeft.x  = _destRect.botLeft.x  / float(g_window.size.x);
-    destRect.botLeft.y  = _destRect.botLeft.y  / float(g_window.size.y);
-    destRect.topRight.x = _destRect.topRight.x / float(g_window.size.x);
-    destRect.topRight.y = _destRect.topRight.y / float(g_window.size.y);
+    destRect.botLeft.x  = (_destRect.botLeft.x  / float(g_window.size.x)) * 2.0f - 1.0f;
+    destRect.botLeft.y  = (_destRect.botLeft.y  / float(g_window.size.y)) * 2.0f - 1.0f;
+    destRect.topRight.x = (_destRect.topRight.x / float(g_window.size.x)) * 2.0f - 1.0f;
+    destRect.topRight.y = (_destRect.topRight.y / float(g_window.size.y)) * 2.0f - 1.0f;
     
     UI_AddDrawCall(sourceRect, destRect, colorMod, textureType);
 }
 
 void UI_AddDrawCall(RectInt _sourceRect, Rect destRect, Color colorMod, Texture::T textureType)
 {
-    //destRect.botLeft.y  = destRect.botLeft.y  - 1.0f;
-    //destRect.topRight.y = destRect.topRight.y - 1.0f;
-
     Vec2Int textureSize = g_renderer.textures[textureType]->m_size;
     Rect sourceRect;
 
