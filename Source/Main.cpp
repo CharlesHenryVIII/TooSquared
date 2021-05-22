@@ -457,6 +457,57 @@ int main(int argc, char* argv[])
             ImGui_ImplSDL2_NewFrame(g_window.SDL_Context);
             ImGui::NewFrame();
 
+#if 1
+            const float PAD = 5.0f;
+            ImGuiIO& io = ImGui::GetIO();
+            ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | 
+                                           ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
+
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+            ImVec2 window_pos;//, window_pos_pivot;
+            window_pos.x = work_pos.x + PAD;
+            window_pos.y = work_pos.y + PAD;
+            //window_pos_pivot.x = window_pos_pivot.y = 0.0f;
+            ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, {});
+
+            ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+            if (ImGui::Begin("Transform Information", nullptr, windowFlags))
+            {
+                ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders;
+                if (ImGui::BeginTable("Position Info", 4, flags))
+                {
+                    ImGui::TableSetupColumn("Type");
+                    ImGui::TableSetupColumn("X");
+                    ImGui::TableSetupColumn("Y");
+                    ImGui::TableSetupColumn("Z");
+                    ImGui::TableHeadersRow();
+
+                    GenericImGuiTable("World", "%+08.2f", g_camera.transform.m_p.p.e);
+                    GamePos cameraGameP = ToGame(g_camera.transform.m_p);
+                    GenericImGuiTable("Game", "%i", cameraGameP.p.e);
+                    ChunkPos cameraChunk = ToChunk(g_camera.transform.m_p);
+                    GenericImGuiTable("Chunk", "%i", cameraChunk.p.e);
+
+                    ImGui::EndTable();
+                }
+                if (ImGui::BeginTable("Movement", 4, flags))
+                {
+                    ImGui::TableSetupColumn("Type");
+                    ImGui::TableSetupColumn("X");
+                    ImGui::TableSetupColumn("Y");
+                    ImGui::TableSetupColumn("Z");
+                    ImGui::TableHeadersRow();
+
+                    GenericImGuiTable("Vel",   "%+08.2f", g_camera.transform.m_vel.e);
+                    GenericImGuiTable("Accel", "%+08.2f", g_camera.transform.m_acceleration.e);
+                    ImGui::EndTable();
+                }
+                ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+            }
+            ImGui::End();
+
+#else
             ImGui::Begin("Transform Information");
             ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders;
             if (ImGui::BeginTable("Position Info", 4, flags))
@@ -488,6 +539,7 @@ int main(int argc, char* argv[])
                 ImGui::EndTable();
             }
             ImGui::End();
+#endif
         }
 
         {
