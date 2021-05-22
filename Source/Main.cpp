@@ -49,9 +49,22 @@ using namespace gl;
 #include IMGUI_IMPL_OPENGL_LOADER_CUSTOM
 #endif
 
+enum class TimeOfDay : int32 {
+    Midnight,
+    Morning,
+    Afternoon,
+    Evening,
+    Count,
+};
+ENUMOPS(TimeOfDay);
+float s_timesOfDay[+TimeOfDay::Count] = { 0.0f, 7.0f, 10.0f, 17.0f };
+const char* s_timesOfDayNames[+TimeOfDay::Count] = { "Midnight", "Morning", "Afternoon", "Evening" };
+
 struct GameData {
     float m_currentTime = 12.0f;
     float m_timeScale = 1.0f;
+    TimeOfDay m_timeOfDay = TimeOfDay::Afternoon;
+    bool m_gameTimePlaying = false;
 }g_gameData;
 
 //returns false if out of range
@@ -92,6 +105,30 @@ enum class MovementType {
     Collision,
 };
 
+enum class DebugOptions : uint32 {
+    None = 0,
+    ChunkStatus = BIT(0),
+    CollisionTriangles = BIT(1),
+    LookatBlock = BIT(2),
+    Enabled = BIT(14),
+    All = ChunkStatus | CollisionTriangles | LookatBlock,
+    Count,
+};
+ENUMOPS(DebugOptions);
+
+static void HelpMarker(const char* desc)
+{
+    ImGui::TextDisabled("(?)");
+    if (ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
+
 int main(int argc, char* argv[])
 {
     InitializeVideo();
@@ -118,7 +155,8 @@ int main(int argc, char* argv[])
     g_chunks = new ChunkArray();
     float loadingTimer = 0.0f;
     bool uploadedLastFrame = false;
-    bool debugDraw = false;
+    //bool debugDraw = false;
+    uint32 s_debugFlags = +DebugOptions::LookatBlock | +DebugOptions::Enabled;
     bool TEST_CREATE_AND_UPLOAD_CHUNKS = true;
 
 
@@ -185,7 +223,8 @@ int main(int argc, char* argv[])
         //TODO: Time stepping for simulation
         if (deltaTime > (1.0f / 60.0f))
             deltaTime = (1.0f / 60.0f);
-        g_gameData.m_currentTime = fmod(g_gameData.m_currentTime + deltaTime * g_gameData.m_timeScale, 24.0f);
+        if (g_gameData.m_gameTimePlaying)
+            g_gameData.m_currentTime = fmod(g_gameData.m_currentTime + deltaTime * g_gameData.m_timeScale, 24.0f);
 
         /*********************
          *
@@ -360,7 +399,7 @@ int main(int argc, char* argv[])
         if (keyStates[SDLK_ESCAPE].down)
             g_running = false;
         if (keyStates[SDLK_BACKQUOTE].downThisFrame)
-            debugDraw = !debugDraw;
+            s_debugFlags ^= +DebugOptions::Enabled;
         if (keyStates[SDLK_0].downThisFrame)
         {
             switch (playerMovementType)
@@ -403,22 +442,6 @@ int main(int argc, char* argv[])
             g_camera.pitch -= g_mouse.pDelta.y * mouseSensativity;
         }
 
-        if (keyStates[SDLK_t].downThisFrame)
-        {
-            if (keyStates[SDLK_LSHIFT].down)
-            {
-                g_gameData.m_timeScale /= 10;
-            }
-            else if (keyStates[SDLK_LCTRL].down)
-            {
-                g_gameData.m_currentTime = 10;
-                g_gameData.m_timeScale = 0;
-            }
-            else
-            {
-                g_gameData.m_timeScale *= 10;
-            }
-        }
         if (keyStates[SDLK_e].downThisFrame)
         {
             g_cursorEngaged = !g_cursorEngaged;
@@ -444,7 +467,7 @@ int main(int argc, char* argv[])
                 ImGui::TableSetupColumn("Z");
                 ImGui::TableHeadersRow();
 
-                GenericImGuiTable("Game", "%.2f", g_camera.transform.m_p.p.e);
+                GenericImGuiTable("World", "%.2f", g_camera.transform.m_p.p.e);
                 GamePos cameraGameP = ToGame(g_camera.transform.m_p);
                 GenericImGuiTable("Game", "%i", cameraGameP.p.e);
                 ChunkPos cameraChunk = ToChunk(g_camera.transform.m_p);
@@ -463,6 +486,62 @@ int main(int argc, char* argv[])
                 GenericImGuiTable("Vel", "%.2f", g_camera.transform.m_vel.e);
                 GenericImGuiTable("Accel", "%.2f", g_camera.transform.m_acceleration.e);
                 ImGui::EndTable();
+            }
+            ImGui::End();
+        }
+
+        {
+            ImGui::Begin("Debug");
+
+            if (ImGui::TreeNode("Drawing"))
+            {
+                ImGui::CheckboxFlags("Enable Debug Drawing", &s_debugFlags, +DebugOptions::Enabled);
+                ImGui::SameLine(); HelpMarker("Key: '`'");
+
+                ImGui::Indent();
+                ImGui::CheckboxFlags("All", &s_debugFlags, +DebugOptions::All);
+
+                ImGui::Indent();
+                ImGui::CheckboxFlags("Chunk Status", &s_debugFlags, +DebugOptions::ChunkStatus);
+                ImGui::CheckboxFlags("Collision Triangles", &s_debugFlags, +DebugOptions::CollisionTriangles);
+                ImGui::CheckboxFlags("Raycast Block", &s_debugFlags, +DebugOptions::LookatBlock);
+                ImGui::Unindent();
+                ImGui::Unindent();
+                ImGui::TreePop();
+            }
+
+            if (ImGui::TreeNode("Game Time"))
+            {
+                if (ImGui::Button("Reset Values"))
+                {
+                    g_gameData.m_timeOfDay = TimeOfDay::Afternoon;
+                    g_gameData.m_currentTime = s_timesOfDay[+g_gameData.m_timeOfDay];
+                    g_gameData.m_timeScale = 1.0f;
+                    g_gameData.m_gameTimePlaying = false;
+                }
+
+                ImGui::PushItemWidth(100);
+                ImGui::SliderFloat("Current Time", &g_gameData.m_currentTime, 0.0f, 24.0f, "%.2f");
+                ImGui::PopItemWidth();
+
+                if (ImGui::Checkbox("Use Time Scale", &g_gameData.m_gameTimePlaying) && !g_gameData.m_gameTimePlaying)
+                {
+                    g_gameData.m_currentTime = s_timesOfDay[+g_gameData.m_timeOfDay];
+                }
+
+                ImGui::PushItemWidth(100);
+                if (ImGui::SliderInt("Time Of Day", reinterpret_cast<int32*>(&g_gameData.m_timeOfDay), 0, +TimeOfDay::Count - 1, s_timesOfDayNames[+g_gameData.m_timeOfDay]) &&
+                    !g_gameData.m_gameTimePlaying)
+                {
+                    g_gameData.m_currentTime = s_timesOfDay[+g_gameData.m_timeOfDay];
+                }
+                ImGui::PopItemWidth();
+
+                ImGui::PushItemWidth(100);
+                ImGui::SliderFloat("Time Scale", &g_gameData.m_timeScale, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+                ImGui::PopItemWidth();
+
+                ImGui::TreePop();
             }
             ImGui::End();
         }
@@ -973,49 +1052,55 @@ int main(int argc, char* argv[])
             PROFILE_SCOPE_TAB("Debug Code");
             //DrawBlock(testCamera.p.p, { 0, 1, 0, 1 }, 5.0f, perspective);
             //DrawBlock(lookatPosition, { 1, 0, 0, 1 }, 5.0f, perspective);
-            if (debugDraw)
+            if (s_debugFlags & +DebugOptions::Enabled)
             {
-                for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+                if (s_debugFlags & +DebugOptions::ChunkStatus)
                 {
-                    if (!g_chunks->active[i])
-                        continue;
+                    for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+                    {
+                        if (!g_chunks->active[i])
+                            continue;
 
-                    Color colors[] = {
-                        { 1, 0, 0, 0.4f },//Red    //Unloaded,
-                        { 0, 1, 0, 0.4f },//Green  //BlocksLoading,
-                        { 0, 0, 1, 0.4f },//Blue   //BlocksLoaded,
-                        { 1, 1, 0, 0.4f },//Yellow //VertexLoading,
-                        { 1, 0, 1, 0.4f },//Purple //VertexLoaded,
-                        { 1, 1, 1, 0.4f },//White  //Uploaded,
-                    };
+                        Color colors[] = {
+                            { 1, 0, 0, 0.4f },//Red    //Unloaded,
+                            { 0, 1, 0, 0.4f },//Green  //BlocksLoading,
+                            { 0, 0, 1, 0.4f },//Blue   //BlocksLoaded,
+                            { 1, 1, 0, 0.4f },//Yellow //VertexLoading,
+                            { 1, 0, 1, 0.4f },//Purple //VertexLoaded,
+                            { 1, 1, 1, 0.4f },//White  //Uploaded,
+                        };
 
-                    WorldPos chunkP = ToWorld(Convert_ChunkIndexToGame(i));
-                    chunkP.p.x += CHUNK_X / 2.0f;
-                    chunkP.p.y = float(g_chunks->height[i] + 1);
-                    //chunkP.p.y = CHUNK_Y;
-                    chunkP.p.z += CHUNK_Z / 2.0f;
-                    Vec3 size = { CHUNK_X / 4.0f, 1, CHUNK_Z / 4.0f };
+                        WorldPos chunkP = ToWorld(Convert_ChunkIndexToGame(i));
+                        chunkP.p.x += CHUNK_X / 2.0f;
+                        chunkP.p.y = float(g_chunks->height[i] + 1);
+                        //chunkP.p.y = CHUNK_Y;
+                        chunkP.p.z += CHUNK_Z / 2.0f;
+                        Vec3 size = { CHUNK_X / 4.0f, 1, CHUNK_Z / 4.0f };
 
-                    DrawBlock(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, perspective);
+                        DrawBlock(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, perspective);
+                    }
                 }
                 for (WorldPos p : cubesToDraw)
                 {
                     DrawBlock(p, Red, 2.0f, perspective);
                 }
-            }
-            if (validHit)
-            {
-                WorldPos pos;
-                pos = ToWorld(hitBlock);
-                pos.p = pos.p + 0.5f;
-                Color temp = Mint;
-                temp.a = 0.6f;
-                DrawBlock(pos, temp, 1.1f, perspective);
-            }
-            if (debugDraw)
-            {
-                if (debug_trianglesToDraw.size())
-                    DrawTriangles(debug_trianglesToDraw, Orange, perspective, false);
+                if (s_debugFlags & +DebugOptions::LookatBlock)
+                {
+                    if (validHit)
+                    {
+                        WorldPos pos;
+                        pos = ToWorld(hitBlock);
+                        pos.p = pos.p + 0.5f;
+                        Color temp = Mint;
+                        temp.a = 0.6f;
+                        DrawBlock(pos, temp, 1.1f, perspective);
+                    }
+                }
+                if (s_debugFlags & +DebugOptions::CollisionTriangles)
+                {
+                    if (debug_trianglesToDraw.size())
+                        DrawTriangles(debug_trianglesToDraw, Orange, perspective, false);
+                }
             }
         }
 
@@ -1047,8 +1132,7 @@ int main(int argc, char* argv[])
         //frameTimes.push_back(static_cast<float>(renderTotalTime));
 
         {
-            //TODO: scale with the width of the monitor
-            Color crosshairColor = { 0.4f, 0.4f, 0.4f, 0.4f };
+            Color crosshairColor = { 0.5f, 0.5f, 0.5f, 0.5f };
             int32 lineThickness = 7;
             int32 lineBounds = 30;
 
