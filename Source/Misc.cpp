@@ -32,3 +32,4 @@ uint64 GetCurrentTime()
 {
     return ((SDL_GetPerformanceCounter() - ct) * 1000 * 1000 * 1000) / f; //nano seconds
 }
+

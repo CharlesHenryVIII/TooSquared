@@ -167,40 +167,6 @@ int main(int argc, char* argv[])
 
     ImGuiIO& imGuiIO = ImGui::GetIO();
 
-    //int32 area = 10;
-    //for (int32 y = -area; y <= area; y++)
-    //{
-    //    for (int32 x = -area; x <= area; x++)
-    //    {
-    //        //Vec3 a = Voronoi_DAndP(Vec2({ float(x), float(y) }) / float(INT_MAX));
-    //        Vec3 a = Voronoi_DAndP(Vec2({ float(x), float(y) }));
-    //        DebugPrint("%i, %i : %0.3f, %0.3f, W: %0.3f \n", x, y, a.x, a.y, a.z);
-    //    }
-    //}
-
-    //float area = 0.1f;
-    //for (float y = 0; y <= area + FLT_EPSILON; y += 0.001f)
-    //{
-    //    for (float x = 0; x <= area + FLT_EPSILON; x += 0.001f)
-    //    {
-    //        //Vec3 a = Voronoi_DAndP(Vec2({ float(x), float(y) }) / float(INT_MAX));
-    //        Vec3 a = Voronoi_DAndP(100 * Vec2({ x, y }));
-    //        DebugPrint("%+0.6f, %+0.6f : %+0.6f, %+0.6f, W: %+0.6f \n", x, y, a.y, a.z, a.x);
-    //    }
-    //}
-
-
-    //const float testSize = 10.0f;
-    //for (float x = -testSize; x <= testSize; x += 0.1f)
-    //{
-    //    for (float y = -testSize; y <= testSize; y += 0.1f)
-    //    {
-    //        DebugPrint("VoronoiNoise at %+05.1f, %+05.1f: %+05.4f\n", x, y, VoronoiNoise({ x, y }, 1.0f, 0.0f));
-    //    }
-    //}
-
-    ;
-
     Capsule playerCollider = {
     .m_radius = 0.25f,
     .m_height = 1.8f,
@@ -237,12 +203,12 @@ int main(int argc, char* argv[])
         uploadedLastFrame = false;
         {
             ChunkPos cameraChunk = ToChunk(g_camera.transform.m_p);
-            SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared P: %i, %i, %i; V: %0.2f, %0.2f, %0.2f C: %i, %i; Chunks: %u; Time: %0.2f; Triangles: %u; grounded: %i",
-                (int32)floor(g_camera.transform.m_p.p.x), (int32)floor(g_camera.transform.m_p.p.y), (int32)floor(g_camera.transform.m_p.p.z),
+            SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared V: %0.2f, %0.2f, %0.2f; Chunks: %u; Time: %0.2f; Triangles: %u; grounded: %i",
                 g_camera.transform.m_vel.x, g_camera.transform.m_vel.y, g_camera.transform.m_vel.z,
-                cameraChunk.p.x, cameraChunk.p.z, g_chunks->chunkCount,
+                g_chunks->chunkCount,
                 loadingTimer, g_renderer.numTrianglesDrawn, g_camera.transform.m_isGrounded).c_str());
         }
+
 
 
         SDL_Event SDLEvent;
@@ -468,6 +434,40 @@ int main(int argc, char* argv[])
             ImGui_ImplSDL2_NewFrame(g_window.SDL_Context);
             ImGui::NewFrame();
 
+            ImGui::Begin("Transform Information");
+            ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders;
+            if (ImGui::BeginTable("Position Info", 4, flags))
+            {
+                ImGui::TableSetupColumn("Type");
+                ImGui::TableSetupColumn("X");
+                ImGui::TableSetupColumn("Y");
+                ImGui::TableSetupColumn("Z");
+                ImGui::TableHeadersRow();
+
+                GenericImGuiTable("Game", "%.2f", g_camera.transform.m_p.p.e);
+                GamePos cameraGameP = ToGame(g_camera.transform.m_p);
+                GenericImGuiTable("Game", "%i", cameraGameP.p.e);
+                ChunkPos cameraChunk = ToChunk(g_camera.transform.m_p);
+                GenericImGuiTable("Chunk", "%i", cameraChunk.p.e);
+
+                ImGui::EndTable();
+            }
+            if (ImGui::BeginTable("Movement", 4, flags))
+            {
+                ImGui::TableSetupColumn("Type");
+                ImGui::TableSetupColumn("X");
+                ImGui::TableSetupColumn("Y");
+                ImGui::TableSetupColumn("Z");
+                ImGui::TableHeadersRow();
+
+                GenericImGuiTable("Vel", "%.2f", g_camera.transform.m_vel.e);
+                GenericImGuiTable("Accel", "%.2f", g_camera.transform.m_acceleration.e);
+                ImGui::EndTable();
+            }
+            ImGui::End();
+        }
+
+        {
             // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
             if (show_demo_window)
                 ImGui::ShowDemoWindow(&show_demo_window);

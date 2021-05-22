@@ -10,7 +10,6 @@
  * Block wireframe on target
  * Operator overloads on WorldPos and ChunkPos
  * Move main loops into a single loop that switches on chunk state?
- * Curser/reticle
  * Render water correctly
  * Added perlin seeding
  * move physics off of transform and onto seperate physics object

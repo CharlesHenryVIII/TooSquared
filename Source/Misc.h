@@ -1,4 +1,8 @@
 #pragma once
+#include "WinInterop.h"
+
+#include "imgui.h"
+
 #include <type_traits>
 #include <string>
 
@@ -87,3 +91,17 @@ struct ScopeTimer
 extern bool g_running;
 extern char* g_ClipboardTextData;
 uint64_t GetCurrentTime();
+
+template <typename T>
+void GenericImGuiTable(const std::string& title, const std::string& fmt, T* firstValue)
+{
+    ImGui::TableNextRow();
+    ImGui::TableSetColumnIndex(0);
+    ImGui::TextUnformatted(title.data());
+    for (int32 column = 0; column < 3; column++)
+    {
+        ImGui::TableSetColumnIndex(column + 1);
+        std::string string = ToString(fmt.c_str(), firstValue[column]);
+        ImGui::TextUnformatted(string.data());
+    }
+}
