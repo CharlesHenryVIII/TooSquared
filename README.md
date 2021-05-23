@@ -13,7 +13,7 @@
  * Added perlin seeding
  * move physics off of transform and onto seperate physics object
 	* Rigid Body includes mass, drag, angular drag, uses gravity, kinematic, interpolation, collision detection { Unity Game Engine }
-
+ * Convert from key inputs to action keys.  Do not trigger action keys when the g_cursorEngaged is false
 
 
 

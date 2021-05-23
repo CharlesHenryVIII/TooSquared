@@ -12,6 +12,7 @@
 #include "WinInterop.h"
 #include "Noise.h"
 #include "Input.h"
+#include "Gameplay.h"
 
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
@@ -160,6 +161,12 @@ int main(int argc, char* argv[])
     bool TEST_CREATE_AND_UPLOAD_CHUNKS = true;
 
 
+
+
+    //___________
+    //IMGUI SETUP
+    //___________
+
     // GL 3.0 + GLSL 130
     const char* glsl_version = "#version 130";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
@@ -181,35 +188,28 @@ int main(int argc, char* argv[])
     // Setup Platform/Renderer backends
     ImGui_ImplSDL2_InitForOpenGL(g_window.SDL_Context, g_renderer.GL_Context);
     ImGui_ImplOpenGL3_Init(glsl_version);
-
-    // Load Fonts
-    // - If no fonts are loaded, dear imgui will use the default font. You can also load multiple fonts and use ImGui::PushFont()/PopFont() to select them.
-    // - AddFontFromFileTTF() will return the ImFont* so you can store it if you need to select the font among multiple.
-    // - If the file cannot be loaded, the function will return NULL. Please handle those errors in your application (e.g. use an assertion, or display an error and quit).
-    // - The fonts will be rasterized at a given size (w/ oversampling) and stored into a texture when calling ImFontAtlas::Build()/GetTexDataAsXXXX(), which ImGui_ImplXXXX_NewFrame below will call.
-    // - Read 'docs/FONTS.md' for more instructions and details.
-    // - Remember that in C/C++ if you want to include a backslash \ in a string literal you need to write a double backslash \\ !
-    //io.Fonts->AddFontDefault();
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf", 16.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf", 15.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf", 16.0f);
-    //io.Fonts->AddFontFromFileTTF("../../misc/fonts/ProggyTiny.ttf", 10.0f);
-    //ImFont* font = io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf", 18.0f, NULL, io.Fonts->GetGlyphRangesJapanese());
-    //IM_ASSERT(font != NULL);
-
-    // Our state
     bool show_demo_window = false;
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-
-
     ImGuiIO& imGuiIO = ImGui::GetIO();
 
+
+
+
+
+    //_______________
+    //Player Types TO BE MOVED LATER
+    //_______________
+
+    Inventory playerInventory = {};
     Capsule playerCollider = {
     .m_radius = 0.25f,
     .m_height = 1.8f,
     };
     MovementType playerMovementType = MovementType::Fly;
+
+
+
 
     bool g_cursorEngaged = true;
 
@@ -400,7 +400,7 @@ int main(int argc, char* argv[])
             g_running = false;
         if (keyStates[SDLK_BACKQUOTE].downThisFrame)
             s_debugFlags ^= +DebugOptions::Enabled;
-        if (keyStates[SDLK_0].downThisFrame)
+        if (keyStates[SDLK_0].downThisFrame && g_cursorEngaged)
         {
             switch (playerMovementType)
             {
@@ -457,7 +457,6 @@ int main(int argc, char* argv[])
             ImGui_ImplSDL2_NewFrame(g_window.SDL_Context);
             ImGui::NewFrame();
 
-#if 1
             const float PAD = 5.0f;
             ImGuiIO& io = ImGui::GetIO();
             ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | 
@@ -507,39 +506,6 @@ int main(int argc, char* argv[])
             }
             ImGui::End();
 
-#else
-            ImGui::Begin("Transform Information");
-            ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders;
-            if (ImGui::BeginTable("Position Info", 4, flags))
-            {
-                ImGui::TableSetupColumn("Type");
-                ImGui::TableSetupColumn("X");
-                ImGui::TableSetupColumn("Y");
-                ImGui::TableSetupColumn("Z");
-                ImGui::TableHeadersRow();
-
-                GenericImGuiTable("World", "%.2f", g_camera.transform.m_p.p.e);
-                GamePos cameraGameP = ToGame(g_camera.transform.m_p);
-                GenericImGuiTable("Game", "%i", cameraGameP.p.e);
-                ChunkPos cameraChunk = ToChunk(g_camera.transform.m_p);
-                GenericImGuiTable("Chunk", "%i", cameraChunk.p.e);
-
-                ImGui::EndTable();
-            }
-            if (ImGui::BeginTable("Movement", 4, flags))
-            {
-                ImGui::TableSetupColumn("Type");
-                ImGui::TableSetupColumn("X");
-                ImGui::TableSetupColumn("Y");
-                ImGui::TableSetupColumn("Z");
-                ImGui::TableHeadersRow();
-
-                GenericImGuiTable("Vel", "%.2f", g_camera.transform.m_vel.e);
-                GenericImGuiTable("Accel", "%.2f", g_camera.transform.m_acceleration.e);
-                ImGui::EndTable();
-            }
-            ImGui::End();
-#endif
         }
 
         {
@@ -599,6 +565,62 @@ int main(int argc, char* argv[])
         }
 
         {
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+            ImVec2 window_pos;//, window_pos_pivot;
+            window_pos.x = 0;
+            window_pos.y = viewport->WorkSize.y - 50;
+            ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, {});
+
+            ImGui::SetNextWindowBgAlpha(0.75f); // Transparent background
+            ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | 
+                                           ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
+            ImGui::Begin("Block Hotbar", nullptr, windowFlags);
+
+            ImGuiTableFlags flags = ImGuiTableFlags_Borders;
+            if (ImGui::BeginTable("Position Info", MAX_SLOTS, flags))
+            {
+                ImU32 hotCellColor = ImGui::GetColorU32(ImVec4(0.5f, 0.5f, 1.0f, 0.65f));
+
+                for (int32 i = 0; i < MAX_SLOTS; i++)
+                {
+                    ImGui::TableSetupColumn(ToString("%i", i).c_str());
+                    if (i == playerInventory.m_slotSelected)
+                    {
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
+                    }
+                }
+
+                ImGui::TableNextRow();
+                for (int32 i = 0; i < MAX_SLOTS; i++)
+                {
+                    ImGui::TableSetColumnIndex(i);
+                    ImGui::TextUnformatted(ToString("%i", playerInventory.m_slots[i].m_block).c_str());
+                    if (i == playerInventory.m_slotSelected)
+                    {
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
+                    }
+                }
+
+                ImGui::TableNextRow();
+                for (int32 i = 0; i < MAX_SLOTS; i++)
+                {
+                    ImGui::TableSetColumnIndex(i);
+                    ImGui::TextUnformatted(ToString("%i", playerInventory.m_slots[i].m_count).c_str());
+                    if (i == playerInventory.m_slotSelected)
+                    {
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
+                    }
+                }
+
+
+                ImGui::EndTable();
+            }
+
+            ImGui::End();
+        }
+
+        {
             // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
             if (show_demo_window)
                 ImGui::ShowDemoWindow(&show_demo_window);
@@ -642,6 +664,7 @@ int main(int argc, char* argv[])
         float cameraAcceleration = 0;
         g_camera.transform.m_acceleration = {};
         std::vector<Triangle> debug_trianglesToDraw;
+        if (g_cursorEngaged)
         {
             switch (playerMovementType)
             {
@@ -868,28 +891,76 @@ int main(int argc, char* argv[])
             }
         }
 
-        //TODO: Optimize to update corners (max 4 chunks)
-        if (keyStates[SDL_BUTTON_RIGHT].downThisFrame)
+        if (g_cursorEngaged)
         {
-            if (validHit)
+            //TODO: improve
+            if (g_mouse.wheel.y > 0)
             {
-                SetBlock(hitBlock, BlockType::Empty);
+                playerInventory.m_slotSelected = (playerInventory.m_slotSelected + 1) % MAX_SLOTS;
             }
-        }
-        //TODO: Optimize to update corners (max 4 chunks)
-        for (int32 c = SDLK_1; c <= SDLK_9; c++)
-        {
-            //if (keyStates[c].downThisFrame)
-            if (keyStates[c].downThisFrame)
+            else if (g_mouse.wheel.y > 0)
+            {
+                if (playerInventory.m_slotSelected = (playerInventory.m_slotSelected - 1) < 0)
+                    playerInventory.m_slotSelected = MAX_SLOTS;
+            }
+            for (int32 c = SDLK_1; c <= SDLK_8; c++)
+            {
+                if (keyStates[c].downThisFrame)
+                {
+                    assert((c - SDLK_1) < MAX_SLOTS);
+                    assert((c - SDLK_1) >= 0);
+                    playerInventory.m_slotSelected = c - SDLK_1;
+                }
+            }
+
+            //TODO: Optimize to update corners (max 4 chunks)
+            if (keyStates[SDL_BUTTON_RIGHT].downThisFrame)
             {
                 if (validHit)
                 {
-                    //SetBlock(hitBlock, hitNormal, BlockType(c - SDLK_1 + 1));
-                    SetBlock({ hitBlock.p.x + int32(hitNormal.x), hitBlock.p.y + int32(hitNormal.y), hitBlock.p.z + int32(hitNormal.z) }, BlockType(c - SDLK_1 + 1));
-                    break;
+                    BlockType collectedBlockType = BlockType::Empty;
+                    if (g_chunks->GetBlock(collectedBlockType, hitBlock))
+                    {
+                        assert(collectedBlockType != BlockType::Empty);
+                        SetBlock(hitBlock, BlockType::Empty);
+                        if (auto overflow = playerInventory.Add(collectedBlockType, 1))
+                        {
+                            //do something with the excess
+                        }
+                        //TODO: add feature to drop block if block could not be picked up
+                    }
+                }
+            }
+            else if (keyStates[SDL_BUTTON_LEFT].downThisFrame)
+            {
+                if (validHit)
+                {
+                    InventorySlot& slot = playerInventory.HotSlot();
+                    if (slot.m_count)
+                    {
+                        assert(slot.m_block != BlockType::Empty);
+                        SetBlock({ hitBlock.p.x + int32(hitNormal.x), hitBlock.p.y + int32(hitNormal.y), hitBlock.p.z + int32(hitNormal.z) }, slot.m_block);
+                        //Why must i put this stupid uint8 in here for auto to determine the type -_-
+                        playerInventory.Remove(uint8(1));
+                    }
                 }
             }
         }
+
+        ////TODO: Optimize to update corners (max 4 chunks)
+        //for (int32 c = SDLK_1; c <= SDLK_9; c++)
+        //{
+        //    //if (keyStates[c].downThisFrame)
+        //    if (keyStates[c].downThisFrame && g_cursorEngaged)
+        //    {
+        //        if (validHit)
+        //        {
+        //            //SetBlock(hitBlock, hitNormal, BlockType(c - SDLK_1 + 1));
+        //            SetBlock({ hitBlock.p.x + int32(hitNormal.x), hitBlock.p.y + int32(hitNormal.y), hitBlock.p.z + int32(hitNormal.z) }, BlockType(c - SDLK_1 + 1));
+        //            break;
+        //        }
+        //    }
+        //}
 
         //testCamera.p = { 0, 100, 0 };
         //gb_mat4_look_at(&g_camera.view, g_camera.p.p, testCamera.p.p, {0, 1, 0});

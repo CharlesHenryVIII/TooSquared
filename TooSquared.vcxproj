@@ -161,6 +161,7 @@
     <ClCompile Include="Contrib\imgui-master\imgui_widgets.cpp" />
     <ClCompile Include="Source\Block.cpp" />
     <ClCompile Include="Source\Computer.cpp" />
+    <ClCompile Include="Source\Gameplay.cpp" />
     <ClCompile Include="Source\imgui_impl_opengl3.cpp" />
     <ClCompile Include="Source\imgui_impl_sdl.cpp" />
     <ClCompile Include="Source\Input.cpp" />
@@ -191,6 +192,7 @@
     <ClInclude Include="Contrib\imgui-master\imstb_truetype.h" />
     <ClInclude Include="Source\Block.h" />
     <ClInclude Include="Source\Computer.h" />
+    <ClInclude Include="Source\Gameplay.h" />
     <ClInclude Include="Source\imgui_impl_opengl3.h" />
     <ClInclude Include="Source\imgui_impl_sdl.h" />
     <ClInclude Include="Source\Input.h" />

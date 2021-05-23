@@ -72,6 +72,9 @@
     <ClCompile Include="Source\imgui_impl_opengl3.cpp">
       <Filter>Source Files\imGui</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Gameplay.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md">
@@ -153,6 +156,9 @@
     </ClInclude>
     <ClInclude Include="Source\imgui_impl_sdl.h">
       <Filter>Source Files\imGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Gameplay.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

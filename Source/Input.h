@@ -24,3 +24,8 @@ struct Mouse {
     bool canUseGlobalState = true;
 };
 extern Mouse g_mouse;
+
+
+//g_actions[ACTION_MAIN].held
+//g_actions[ACTION_MAIN].pressed
+//g_actions[ACTION_MAIN].realeased
