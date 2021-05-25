@@ -201,28 +201,21 @@ static const VertexBlockCheck vertexBlocksToCheck[+Face::Count] = {
     },
 };
 
-struct BlockSprites
-{
-    uint8 faceSprites[+Face::Count] = {
-        defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation,
-        defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation };
-};
-
-static BlockSprites faceSprites[+BlockType::Count];
+BlockSprites blockSprites[+BlockType::Count];
 
 void SetMultipleBlockSprites(BlockType bt, uint32 v)
 {
     for (uint32 i = 0; i < +Face::Count; i++)
     {
-        faceSprites[+bt].faceSprites[i] = v;
+        blockSprites[+bt].faceSprites[i] = v;
     }
 }
 void SetBlockSprites()
 {
     SetMultipleBlockSprites(BlockType::Dirt, 2);
     SetMultipleBlockSprites(BlockType::Grass, 3);
-    faceSprites[+BlockType::Grass].faceSprites[+Face::Top] = 0;
-    faceSprites[+BlockType::Grass].faceSprites[+Face::Bot] = 2;
+    blockSprites[+BlockType::Grass].faceSprites[+Face::Top] = 0;
+    blockSprites[+BlockType::Grass].faceSprites[+Face::Bot] = 2;
 
     SetMultipleBlockSprites(BlockType::Stone, 1);
     SetMultipleBlockSprites(BlockType::IronBlock, 22);
@@ -231,15 +224,15 @@ void SetBlockSprites()
     SetMultipleBlockSprites(BlockType::Sand, 18);
     SetMultipleBlockSprites(BlockType::Snow, 66);
     SetMultipleBlockSprites(BlockType::Wood, 20);
-    faceSprites[+BlockType::Wood].faceSprites[+Face::Top] = 21;
-    faceSprites[+BlockType::Wood].faceSprites[+Face::Bot] = 21;
+    blockSprites[+BlockType::Wood].faceSprites[+Face::Top] = 21;
+    blockSprites[+BlockType::Wood].faceSprites[+Face::Bot] = 21;
     SetMultipleBlockSprites(BlockType::Ice, 67);
     SetMultipleBlockSprites(BlockType::Obsidian, 37);
     SetMultipleBlockSprites(BlockType::Leaves, 53);
     SetMultipleBlockSprites(BlockType::MossyCobblestone, 36);
     SetMultipleBlockSprites(BlockType::TNT, 8);
-    faceSprites[+BlockType::TNT].faceSprites[+Face::Top] = 9;
-    faceSprites[+BlockType::TNT].faceSprites[+Face::Bot] = 10;
+    blockSprites[+BlockType::TNT].faceSprites[+Face::Top] = 9;
+    blockSprites[+BlockType::TNT].faceSprites[+Face::Bot] = 10;
     SetMultipleBlockSprites(BlockType::Water, 255);
     SetMultipleBlockSprites(BlockType::Bedrock, 17);
 }
@@ -1949,7 +1942,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                             f.a.spriteIndex =
                             f.b.spriteIndex =
                             f.c.spriteIndex =
-                            f.d.spriteIndex = faceSprites[+currentBlockType].faceSprites[faceIndex];
+                            f.d.spriteIndex = blockSprites[+currentBlockType].faceSprites[faceIndex];
 
                             f.a.nAndConnectedVertices = 
                             f.b.nAndConnectedVertices = 

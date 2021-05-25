@@ -459,7 +459,7 @@ int main(int argc, char* argv[])
 
             const float PAD = 5.0f;
             ImGuiIO& io = ImGui::GetIO();
-            ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | 
+            ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
                                            ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
 
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -568,12 +568,12 @@ int main(int argc, char* argv[])
             const ImGuiViewport* viewport = ImGui::GetMainViewport();
             ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
             ImVec2 window_pos;//, window_pos_pivot;
-            window_pos.x = 0;
-            window_pos.y = viewport->WorkSize.y - 50;
+            window_pos.x = (viewport->WorkSize.x / 2) - 175;
+            window_pos.y = viewport->WorkSize.y - 75;
             ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, {});
 
             ImGui::SetNextWindowBgAlpha(0.75f); // Transparent background
-            ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | 
+            ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
                                            ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
             ImGui::Begin("Block Hotbar", nullptr, windowFlags);
 
@@ -595,18 +595,41 @@ int main(int argc, char* argv[])
                 for (int32 i = 0; i < MAX_SLOTS; i++)
                 {
                     ImGui::TableSetColumnIndex(i);
-                    ImGui::TextUnformatted(ToString("%i", playerInventory.m_slots[i].m_block).c_str());
+                    ImGui::TextUnformatted(ToString("%03i", playerInventory.m_slots[i].m_count).c_str());
                     if (i == playerInventory.m_slotSelected)
                     {
                         ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
                     }
                 }
 
+                //(ImTextureID)(intptr_t)g_FontTexture
+                ImTextureID imMinecraftTextureID = (ImTextureID)(intptr_t)g_renderer.textures[Texture::Minecraft]->m_handle;//ImGui::Image();
+                Texture* imMinecraftTexture = g_renderer.textures[Texture::Minecraft];
+                RectInt UVs = {};
+                ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);   // No tint
+                ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); // 50% opaque white
+                int32 spritesPerSide = 16;
+                float sizeOnScreen = 32;
+
                 ImGui::TableNextRow();
                 for (int32 i = 0; i < MAX_SLOTS; i++)
                 {
                     ImGui::TableSetColumnIndex(i);
-                    ImGui::TextUnformatted(ToString("%i", playerInventory.m_slots[i].m_count).c_str());
+                    //ImGui::TextUnformatted(ToString("%2i", playerInventory.m_slots[i].m_block).c_str());
+                    auto blockIndex = blockSprites[+playerInventory.m_slots[i].m_block].faceSprites[+Face::Top];
+                    if (playerInventory.m_slots[i].m_block == BlockType::Empty)
+                        blockIndex = 31;
+
+                    int32 x = blockIndex % spritesPerSide;
+                    int32 y = blockIndex / spritesPerSide;
+                    Vec2Int pixelsPerSprite = imMinecraftTexture->m_size / spritesPerSide;
+                    UVs.botLeft  = { x * pixelsPerSprite.x, (spritesPerSide - y) * pixelsPerSprite.y };
+                    UVs.topRight = { UVs.botLeft.x + pixelsPerSprite.x, UVs.botLeft.y - pixelsPerSprite.y };
+                    ImVec2 uvMin = { UVs.botLeft.x / float(imMinecraftTexture->m_size.x), UVs.botLeft.y / float(imMinecraftTexture->m_size.y) };
+                    ImVec2 uvMax = { UVs.topRight.x / float(imMinecraftTexture->m_size.x), UVs.topRight.y / float(imMinecraftTexture->m_size.y) };
+
+                    ImGui::Image(imMinecraftTextureID, ImVec2(sizeOnScreen, sizeOnScreen), uvMin, uvMax, tint_col, border_col);
+
                     if (i == playerInventory.m_slotSelected)
                     {
                         ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
@@ -1264,7 +1287,7 @@ int main(int argc, char* argv[])
             float screenSizeScale = {};
             Vec2 screenSizeRatio = { g_window.size.x / 2560.0f , g_window.size.y / 1440.0f };
             screenSizeScale = Min(screenSizeRatio.x, screenSizeRatio.y);
-            
+
             RectInt center;
             {
                 int32 halfLineThickness = int32((lineThickness / 2.0f) * screenSizeScale);

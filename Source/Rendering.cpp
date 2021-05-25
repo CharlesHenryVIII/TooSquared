@@ -162,8 +162,9 @@ TextureArray::TextureArray(const char* fileLocation)
     //glTexImage2D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
     uint32 mipMapLevels = 5;
-    uint32 height = 16;
-    uint32 width = 16;
+    m_spritesPerSide = { 16, 16 };
+    uint32 height = m_spritesPerSide.y;
+    uint32 width = m_spritesPerSide.x;
     uint32 depth = 256;
 
     glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipMapLevels, GL_RGBA8, width, height, depth);

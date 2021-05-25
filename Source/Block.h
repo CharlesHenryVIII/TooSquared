@@ -216,6 +216,16 @@ struct FireBlock : public Block {
     }
 };
 
+struct BlockSprites
+{
+    uint8 faceSprites[+Face::Count] = {
+        defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation,
+        defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation };
+};
+
+extern BlockSprites blockSprites[+BlockType::Count];
+
+
 constexpr uint32 MAX_CHUNKS = 20000;
 typedef uint32 ChunkIndex;
 

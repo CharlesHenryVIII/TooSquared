@@ -129,6 +129,7 @@ public:
 
     Vec2Int m_size = {};
     GLuint m_handle = {};
+    Vec2Int m_spritesPerSide;
 
 
     TextureArray(const char* fileLocation);
