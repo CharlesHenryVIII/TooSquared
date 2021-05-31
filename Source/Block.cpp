@@ -2059,6 +2059,30 @@ void CreateVertices::DoThing()
     region.DecrimentRefCount();
 }
 
+Rect GetUVsFromBlockType(BlockType block)
+{
+    int32 spritesPerSide = 16;
+    Texture* texture = g_renderer.textures[Texture::Minecraft];
+
+    auto blockIndex = blockSprites[+block].faceSprites[+Face::Top];
+    if (block == BlockType::Empty)
+        blockIndex = 31;
+
+    int32 x = blockIndex % spritesPerSide;
+    int32 y = blockIndex / spritesPerSide;
+    Vec2Int pixelsPerSprite = texture->m_size / spritesPerSide;
+    RectInt UVs = {
+        .botLeft  = { x * pixelsPerSprite.x, (spritesPerSide - y) * pixelsPerSprite.y },
+        .topRight = { UVs.botLeft.x + pixelsPerSprite.x, UVs.botLeft.y - pixelsPerSprite.y },
+    };
+    Rect result = {
+        .botLeft  = { UVs.botLeft.x  / float(texture->m_size.x), UVs.botLeft.y  / float(texture->m_size.y) },
+        .topRight = { UVs.topRight.x / float(texture->m_size.x), UVs.topRight.y / float(texture->m_size.y) },
+    };
+    return result;
+}
+
+//The UV's are not setup to accept real images
 void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& perspective, Camera* camera, bool depthWrite)
 {
     assert(camera);
@@ -2074,14 +2098,18 @@ void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Ma
     {
         Vertex a = {};
         Vec3 normal = triangles[i].Normal();
-        a.p = triangles[i].p0.p;
-        a.p += normal * 0.03f;
+
+        //this is to bring the triangle outside of the object and avoid Z-Fighting
+        Vec3 normalPlusOffset = normal * 0.03f;
+
+        a.p = triangles[i].p0.p + normalPlusOffset;
+        a.uv = { 0.0f, 0.0f };
         vertices.push_back(a);
-        a.p = triangles[i].p1.p;
-        a.p += normal * 0.03f;
+        a.p = triangles[i].p1.p + normalPlusOffset;
+        a.uv = { 1.0f, 0.0f };
         vertices.push_back(a);
-        a.p = triangles[i].p2.p;
-        a.p += normal * 0.03f;
+        a.p = triangles[i].p2.p + normalPlusOffset;
+        a.uv = { 1.0f, 1.0f };
         vertices.push_back(a);
         indices.push_back(i * 3 + 0);
         indices.push_back(i * 3 + 1);
@@ -2107,6 +2135,7 @@ void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Ma
         glDisable(GL_DEPTH_TEST);
         glDepthMask(GL_FALSE);
     }
+    g_renderer.textures[Texture::T::Plain]->Bind();
     ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
     sp->UseShader();
     sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
@@ -2118,7 +2147,8 @@ void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Ma
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
     glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glDisableVertexArrayAttrib(g_renderer.vao, 1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+    glEnableVertexArrayAttrib(g_renderer.vao, 1);
     glDisableVertexArrayAttrib(g_renderer.vao, 2);
     glDisableVertexArrayAttrib(g_renderer.vao, 3);
 
@@ -2129,60 +2159,74 @@ void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Ma
     //glEnable(GL_CULL_FACE);
 }
 
-void DrawBlock(WorldPos p, Color color, float scale, const Mat4& perspective, Camera* camera)
+void DrawCube(WorldPos p, Color color, float scale, const Mat4& perspective, Camera* camera, Texture::T textureType)
 {
-    DrawBlock(p, color, { scale, scale, scale }, perspective, camera);
+    DrawCube(p, color, { scale, scale, scale }, perspective, camera, textureType);
 }
 
-void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective, Camera* camera)
+void DrawCube(WorldPos p, Color color, Vec3  scale, const Mat4& perspective, Camera* camera, Texture::T textureType)
 {
     if (g_renderer.cubeVertexBuffer == nullptr)
     {
         const Vec3 cubeVertices[] = {
             // +x
-            gb_vec3(1.0, 1.0, 1.0),
-            gb_vec3(1.0, 0, 1.0),
-            gb_vec3(1.0, 1.0, 0),
-            gb_vec3(1.0, 0, 0),
+            gb_vec3(1.0f, 1.0f, 1.0f),
+            gb_vec3(1.0f, 0.0f, 1.0f),
+            gb_vec3(1.0f, 1.0f, 0.0f),
+            gb_vec3(1.0f, 0.0f, 0.0f),
 
             // -x
-            gb_vec3(0, 1.0, 0),
-            gb_vec3(0, 0, 0),
-            gb_vec3(0, 1.0, 1.0),
-            gb_vec3(0, 0, 1.0),
+            gb_vec3(0.0f, 1.0f, 0.0f),
+            gb_vec3(0.0f, 0.0f, 0.0f),
+            gb_vec3(0.0f, 1.0f, 1.0f),
+            gb_vec3(0.0f, 0.0f, 1.0f),
 
             // +y
-            gb_vec3(1.0, 1.0, 1.0),
-            gb_vec3(1.0, 1.0, 0),
-            gb_vec3(0, 1.0, 1.0),
-            gb_vec3(0, 1.0, 0),
+            gb_vec3(1.0f, 1.0f, 1.0f),
+            gb_vec3(1.0f, 1.0f, 0.0f),
+            gb_vec3(0.0f, 1.0f, 1.0f),
+            gb_vec3(0.0f, 1.0f, 0.0f),
 
             // -y
-            gb_vec3(0, 0, 1.0),
-            gb_vec3(0, 0, 0),
-            gb_vec3(1.0, 0, 1.0),
-            gb_vec3(1.0, 0, 0),
+            gb_vec3(0.0f, 0.0f, 1.0f),
+            gb_vec3(0.0f, 0.0f, 0.0f),
+            gb_vec3(1.0f, 0.0f, 1.0f),
+            gb_vec3(1.0f, 0.0f, 0.0f),
 
             // z
-            gb_vec3(0, 1.0, 1.0),
-            gb_vec3(0, 0, 1.0),
-            gb_vec3(1.0, 1.0, 1.0),
-            gb_vec3(1.0, 0, 1.0),
+            gb_vec3(0.0f, 1.0f, 1.0f),
+            gb_vec3(0.0f, 0.0f, 1.0f),
+            gb_vec3(1.0f, 1.0f, 1.0f),
+            gb_vec3(1.0f, 0.0f, 1.0f),
 
             // -z
-            gb_vec3(1.0, 1.0, 0),
-            gb_vec3(1.0, 0, 0),
-            gb_vec3(0, 1.0, 0),
-            gb_vec3(0, 0, 0),
+            gb_vec3(1.0f, 1.0f, 0.0f),
+            gb_vec3(1.0f, 0.0f, 0.0f),
+            gb_vec3(0.0f, 1.0f, 0.0f),
+            gb_vec3(0.0f, 0.0f, 0.0f),
         };
+
+        const Vec2 faceUV[4] = {
+            Vec2(0, 1),
+            Vec2(0, 0),
+            Vec2(1, 1),
+            Vec2(1, 0)
+        };
+
 
         g_renderer.cubeVertexBuffer = new VertexBuffer();
 
         Vertex vertices[arrsize(cubeVertices)] = {};
+        Vec2 uvOffset = { 1.0f, 1.0f };
 
         for (int32 i = 0; i < arrsize(cubeVertices); i++)
         {
-            vertices[i].p = cubeVertices[i] - 0.5f;
+            vertices[i].p  = cubeVertices[i] - 0.5f;
+
+            auto spriteIndex = blockSprites[+textureType].faceSprites[i / 4];
+            Rect UVSquare = GetUVsFromBlockType((BlockType)spriteIndex);
+            vertices[i].uv.x = Lerp(UVSquare.botLeft.x, UVSquare.topRight.x, faceUV[i % 4].x);
+            vertices[i].uv.y = Lerp(UVSquare.botLeft.y, UVSquare.topRight.y, faceUV[i % 4].y);
         }
 
         g_renderer.cubeVertexBuffer->Upload(vertices, arrsize(vertices));
@@ -2193,7 +2237,7 @@ void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective, Cam
 
     Mat4 transform;
     gb_mat4_translate(&transform, { p.p.x, p.p.y, p.p.z });
-
+    g_renderer.textures[textureType]->Bind();
     ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
     sp->UseShader();
     sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
@@ -2205,7 +2249,8 @@ void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective, Cam
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
     glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glDisableVertexArrayAttrib(g_renderer.vao, 1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+    glEnableVertexArrayAttrib(g_renderer.vao, 1);
     glDisableVertexArrayAttrib(g_renderer.vao, 2);
     glDisableVertexArrayAttrib(g_renderer.vao, 3);
 
@@ -2222,6 +2267,10 @@ void Draw2DSquare(Rect rect, Color color)
     vertices[1].p = { rect.botLeft.x,  rect.botLeft.y,  1.5f };
     vertices[2].p = { rect.topRight.x, rect.topRight.y, 1.5f };
     vertices[3].p = { rect.topRight.x, rect.botLeft.y,  1.5f };
+    vertices[0].uv = { 0, 1 };
+    vertices[1].uv = { 0, 0 };
+    vertices[2].uv = { 1, 1 };
+    vertices[3].uv = { 1, 0 };
 
     vertexBuffer->Upload(vertices, arrsize(vertices));
 
@@ -2236,6 +2285,7 @@ void Draw2DSquare(Rect rect, Color color)
     gb_mat4_identity(&perspective);
     view, transform, scale = perspective;
 
+    g_renderer.textures[Texture::T::Plain]->Bind();
     ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
     sp->UseShader();
     sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
@@ -2246,7 +2296,8 @@ void Draw2DSquare(Rect rect, Color color)
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
     glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glDisableVertexArrayAttrib(g_renderer.vao, 1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+    glEnableVertexArrayAttrib(g_renderer.vao, 1);
     glDisableVertexArrayAttrib(g_renderer.vao, 2);
     glDisableVertexArrayAttrib(g_renderer.vao, 3);
 

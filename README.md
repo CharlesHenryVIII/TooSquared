@@ -3,9 +3,8 @@
 ###TODO: 
  * Optimize block creation and deletion
  * Saving chunks to disk
- * UI
 
- * Directional, point
+ * Directional and point lighting
  * Block wireframe on target
  * Operator overloads on WorldPos and ChunkPos
  * Move main loops into a single loop that switches on chunk state?

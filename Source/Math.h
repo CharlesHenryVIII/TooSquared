@@ -872,8 +872,8 @@ struct Transform {
     WorldPos m_pDelta = {};
     Vec3 m_vel = {};
     Vec3 m_acceleration = {};
-    //Vec3 m_rot = {};
-    //Vec3 m_scale = {};
+    Vec3 m_rot = {};
+    Vec3 m_scale = {};
     Vec3 m_terminalVel = {};
     bool m_isGrounded = false;
 

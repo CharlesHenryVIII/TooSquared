@@ -310,9 +310,10 @@ Vec3Int Convert_GameToBlock(ChunkPos& result, GamePos inputP);
 struct Camera;
 void SetBlockSprites();
 void PreChunkRender(const Mat4& perspective, Camera* camera);
+Rect GetUVsFromBlockType(BlockType block);
 void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& perspective, Camera* camera, bool depthWrite = true);
-void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective, Camera* camera);
-void DrawBlock(WorldPos p, Color color, float scale, const Mat4& perspective, Camera* camera);
+void DrawCube(WorldPos p, Color color, Vec3 scale,  const Mat4& perspective, Camera* camera, Texture::T textureType = Texture::T::Plain);
+void DrawCube(WorldPos p, Color color, float scale, const Mat4& perspective, Camera* camera, Texture::T textureType = Texture::T::Plain);
 void Draw2DSquare(Rect rect, Color color);
 
 int64 PositionHash(ChunkPos p);

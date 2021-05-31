@@ -200,6 +200,13 @@ void Player::InputUpdate(float dt, CommandHandler& commands)
 void Player::Update(float dt)
 {
 
+    //switch (m_movementType)
+    //{
+    //case MovementType::Fly:
+    //    break;
+    //case MovementType::Collision:
+    //    break;
+    //}
 }
 
 void Player::Render(float dt)
@@ -214,9 +221,15 @@ void Camera::Update(float dt)
 
 }
 
+
 //Items
+void Item::Render(float dt)
+{
+    //DrawCube();
+}
 
-
+    
+//Entitys
 void Entitys::Add(Entity* entity)
 {
     list.push_back(entity);

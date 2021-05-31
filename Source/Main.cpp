@@ -601,11 +601,8 @@ int main(int argc, char* argv[])
 
                 //(ImTextureID)(intptr_t)g_FontTexture
                 ImTextureID imMinecraftTextureID = (ImTextureID)(intptr_t)g_renderer.textures[Texture::Minecraft]->m_handle;//ImGui::Image();
-                Texture* imMinecraftTexture = g_renderer.textures[Texture::Minecraft];
-                RectInt UVs = {};
                 ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);   // No tint
                 ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); // 50% opaque white
-                int32 spritesPerSide = 16;
                 float sizeOnScreen = 32;
 
                 ImGui::TableNextRow();
@@ -613,19 +610,12 @@ int main(int argc, char* argv[])
                 {
                     ImGui::TableSetColumnIndex(i);
                     //ImGui::TextUnformatted(ToString("%2i", playerInventory.m_slots[i].m_block).c_str());
-                    auto blockIndex = blockSprites[+player->m_inventory.m_slots[i].m_block].faceSprites[+Face::Top];
-                    if (player->m_inventory.m_slots[i].m_block == BlockType::Empty)
-                        blockIndex = 31;
 
-                    int32 x = blockIndex % spritesPerSide;
-                    int32 y = blockIndex / spritesPerSide;
-                    Vec2Int pixelsPerSprite = imMinecraftTexture->m_size / spritesPerSide;
-                    UVs.botLeft  = { x * pixelsPerSprite.x, (spritesPerSide - y) * pixelsPerSprite.y };
-                    UVs.topRight = { UVs.botLeft.x + pixelsPerSprite.x, UVs.botLeft.y - pixelsPerSprite.y };
-                    ImVec2 uvMin = { UVs.botLeft.x / float(imMinecraftTexture->m_size.x), UVs.botLeft.y / float(imMinecraftTexture->m_size.y) };
-                    ImVec2 uvMax = { UVs.topRight.x / float(imMinecraftTexture->m_size.x), UVs.topRight.y / float(imMinecraftTexture->m_size.y) };
-
-                    ImGui::Image(imMinecraftTextureID, ImVec2(sizeOnScreen, sizeOnScreen), uvMin, uvMax, tint_col, border_col);
+                    Rect uvResult = GetUVsFromBlockType(player->m_inventory.m_slots[i].m_block);
+                    ImGui::Image(imMinecraftTextureID, ImVec2(sizeOnScreen, sizeOnScreen), 
+                                                       ImVec2(uvResult.botLeft.x,  uvResult.botLeft.y), 
+                                                       ImVec2(uvResult.topRight.x, uvResult.topRight.y), 
+                                                       tint_col, border_col);
 
                     if (i == player->m_inventory.m_slotSelected)
                     {
@@ -685,55 +675,6 @@ int main(int argc, char* argv[])
 
 
 
-#if 0
-        //make sure that when pitch is out of bounds, screen doesn't get flipped
-        playerCamera->m_pitch = Clamp<float>(playerCamera->m_pitch, -89.0f, 89.0f);
-        Vec3 lookTarget = {};
-        {
-            Vec3 front = {};
-            front.x = cos(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
-            front.y = sin(DegToRad(playerCamera->m_pitch));
-            front.z = sin(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
-            playerCamera->m_front = Normalize(front);
-
-            lookTarget = player->m_transform.m_p.p + playerCamera->m_front;
-            gb_mat4_look_at(&playerCamera->m_view, player->m_transform.m_p.p, lookTarget, playerCamera->m_up);
-
-            float SunRotationRadians = (((g_gameData.m_currentTime - 6.0f) / 24) * tau);
-            float sunRotationCos = cosf(SunRotationRadians);
-            g_renderer.sunLight.d = Normalize(Vec3({ -sunRotationCos, -sinf(SunRotationRadians),  0.0f }));
-            g_renderer.moonLight.d = -g_renderer.sunLight.d;
-            const Color sunTransitionColor = { 220 / 255.0f,  90 / 255.0f,  40 / 255.0f, 1.0f };
-            const Color moonTransitionColor = { 80 / 255.0f,  80 / 255.0f,  90 / 255.0f, 1.0f };
-
-            //TODO: Fix this garbage shit:
-            {
-
-                float percentOfSun = 0;
-                if (HeavensInterpolation(percentOfSun, g_gameData.m_currentTime, 5.9f, 18.1f, 6.1f, 17.9f))
-                {
-                    g_renderer.sunLight.c.r = Lerp<float>(Lerp<float>(White.r, sunTransitionColor.r, 1 - percentOfSun), 0.0f, 1 - percentOfSun);
-                    g_renderer.sunLight.c.g = Lerp<float>(Lerp<float>(White.g, sunTransitionColor.g, 1 - percentOfSun), 0.0f, 1 - percentOfSun);
-                    g_renderer.sunLight.c.b = Lerp<float>(Lerp<float>(White.b, sunTransitionColor.b, 1 - percentOfSun), 0.0f, 1 - percentOfSun);
-                }
-                else
-                    g_renderer.sunLight.c = { 0, 0, 0 };
-
-                float percentOfMoon = 0;
-                //percentOfMoon = 1 - percentOfSun;
-                if (HeavensInterpolation(percentOfMoon, fmodf(g_gameData.m_currentTime + 12.0f, 24.0f), 5.9f, 18.1f, 6.1f, 17.9f))
-                {
-                    g_renderer.moonLight.c.r = Lerp<float>(moonTransitionColor.r, {}, 1 - percentOfMoon);
-                    g_renderer.moonLight.c.g = Lerp<float>(moonTransitionColor.g, {}, 1 - percentOfMoon);
-                    g_renderer.moonLight.c.b = Lerp<float>(moonTransitionColor.b, {}, 1 - percentOfMoon);
-                }
-                else
-                    g_renderer.moonLight.c = { 0, 0, 0 };
-
-            }
-        }
-        //END OF GARBAGE?
-#else
         //make sure that when pitch is out of bounds, screen doesn't get flipped
         playerCamera->m_pitch = Clamp<float>(playerCamera->m_pitch, -89.0f, 89.0f);
         Vec3 lookTarget = {};
@@ -782,7 +723,6 @@ int main(int argc, char* argv[])
             }
         }
         //END OF GARBAGE?
-#endif
 
         {
             PROFILE_SCOPE("Entity Update");
@@ -795,53 +735,6 @@ int main(int argc, char* argv[])
         bool validHit = false;
         Vec3 hitNormal;
 
-#if 0
-        {
-            PROFILE_SCOPE_TAB("Raycast");
-            RegionSampler localRegion;
-            ChunkIndex centerChunkIndex;
-            Ray ray = {
-                .origin = playerCamera->RealWorldPos().p,
-                .direction = lookTarget - ray.origin,
-            };
-            if (g_chunks->GetChunkFromPosition(centerChunkIndex, ToChunk(player->m_transform.m_p.p)))
-            {
-                //bool RayVsChunk(const Ray & ray, ChunkIndex chunkIndex, GamePos & block, float& distance);
-                GamePos resultPos = {};
-                float distance;
-                {
-                    PROFILE_SCOPE_TAB("RayVsChunk");
-                    if (RayVsChunk(ray, centerChunkIndex, resultPos, distance, hitNormal))
-                    {
-                        hitBlock = resultPos;
-                        validHit = (distance < 5.0f);
-                    }
-                }
-
-                PROFILE_SCOPE_TAB("Ray Neighbor gather and loop");
-                if (!validHit && localRegion.RegionGather(centerChunkIndex))
-                {
-                    PROFILE_SCOPE_TAB("Ray Neighbor loop");
-                    for (ChunkIndex neighbor : localRegion.neighbors)
-                    {
-                        float distanceComparison;
-                        Vec3 neighborNormal;
-                        PROFILE_SCOPE_TAB("RayVsChunk2");
-                        if (RayVsChunk(ray, neighbor, resultPos, distanceComparison, neighborNormal))
-                        {
-                            if (distanceComparison < distance)
-                            {
-                                hitBlock = resultPos;
-                                distance = distanceComparison;
-                                hitNormal = neighborNormal;
-                            }
-                        }
-                    }
-                    validHit = (distance < 5.0f);
-                }
-            }
-        }
-#else
         {
             PROFILE_SCOPE_TAB("Raycast");
             RegionSampler localRegion;
@@ -888,7 +781,6 @@ int main(int argc, char* argv[])
                 }
             }
         }
-#endif
 
         if (g_cursorEngaged)
         {
@@ -1176,8 +1068,8 @@ int main(int argc, char* argv[])
 
         {
             PROFILE_SCOPE_TAB("Debug Code");
-            //DrawBlock(testCamera.p.p, { 0, 1, 0, 1 }, 5.0f, perspective);
-            //DrawBlock(lookatPosition, { 1, 0, 0, 1 }, 5.0f, perspective);
+            //DrawCube(testCamera.p.p, { 0, 1, 0, 1 }, 5.0f, perspective);
+            //DrawCube(lookatPosition, { 1, 0, 0, 1 }, 5.0f, perspective);
             if (s_debugFlags & +DebugOptions::Enabled)
             {
                 if (s_debugFlags & +DebugOptions::ChunkStatus)
@@ -1203,12 +1095,12 @@ int main(int argc, char* argv[])
                         chunkP.p.z += CHUNK_Z / 2.0f;
                         Vec3 size = { CHUNK_X / 4.0f, 1, CHUNK_Z / 4.0f };
 
-                        DrawBlock(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, playerCamera->m_perspective, playerCamera);
+                        DrawCube(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, playerCamera->m_perspective, playerCamera);
                     }
                 }
                 for (WorldPos p : cubesToDraw)
                 {
-                    DrawBlock(p, Red, 2.0f, playerCamera->m_perspective, playerCamera);
+                    DrawCube(p, Red, 2.0f, playerCamera->m_perspective, playerCamera);
                 }
                 if (s_debugFlags & +DebugOptions::LookatBlock)
                 {
@@ -1219,7 +1111,7 @@ int main(int argc, char* argv[])
                         pos.p = pos.p + 0.5f;
                         Color temp = Mint;
                         temp.a = 0.6f;
-                        DrawBlock(pos, temp, 1.1f, playerCamera->m_perspective, playerCamera);
+                        DrawCube(pos, temp, 1.1f, playerCamera->m_perspective, playerCamera);
                     }
                 }
                 if (s_debugFlags & +DebugOptions::CollisionTriangles)

@@ -77,7 +77,7 @@ struct Item : public Entity
 {
     ENTITYBOILERPLATE(Item);
     BlockType type;
-
+    void Render(float dt) override;
 };
 
 struct Entitys {
