@@ -75,6 +75,12 @@
     <ClCompile Include="Source\Gameplay.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Entity.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source\Inventory.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md">
@@ -158,6 +164,12 @@
       <Filter>Source Files\imGui</Filter>
     </ClInclude>
     <ClInclude Include="Source\Gameplay.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Entity.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Inventory.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

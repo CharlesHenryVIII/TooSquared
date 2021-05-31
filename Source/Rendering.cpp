@@ -11,7 +11,7 @@
 
 Renderer g_renderer;
 Window g_window;
-Camera g_camera;
+//Camera g_camera;
 #if DIRECTIONALLIGHT == 1
 //Light_Direction g_light;
 #else

@@ -48,7 +48,7 @@
 //    // should usually terminate quickly; on average (assuming all bounds are
 //    // equally likely), 82.25% of the time, we can expect it to require just
 //    // one iteration.  In the worst case, someone passes a bound of 2^31 + 1
-//    // (i.e., 2147483649), which invalidates almost 50% of the range.  In 
+//    // (i.e., 2147483649), which invalidates almost 50% of the range.  In
 //    // practice, bounds are typically small and only a tiny amount of the range
 //    // is eliminated.
 //    for (;;) {
@@ -170,7 +170,7 @@ float Bilinear(float p00, float p10, float p01, float p11, float x, float y)
 static void matd_mul(float out[4][4], float src1[4][4], float src2[4][4])
 {
    int i,j,k;
-   for (j=0; j < 4; ++j) 
+   for (j=0; j < 4; ++j)
       for (i=0; i < 4; ++i) {
          float t=0;
          for (k=0; k < 4; ++k)
@@ -305,12 +305,13 @@ bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec
 
 bool RayVsAABB(const Ray& ray, const AABB& box)
 {
-    float min; 
+    float min;
     Vec3 intersect;
     Vec3 normal;
     return RayVsAABB(ray, box, min, intersect, normal);
 }
 
+//https://wickedengine.net/2020/04/26/capsule-collision-detection/
 bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance)
 {
     // plane normal
@@ -325,7 +326,7 @@ bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& tr
     {
         return false;
     }
-    // no intersection if 
+    // no intersection if
     if ((dist < -radius || dist > radius))
     {
         return false;
@@ -333,7 +334,7 @@ bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& tr
 
     Vec3 point0 = center - N * dist; // projected sphere center on triangle plane
 
-    // Now determine whether point0 is inside all triangle edges: 
+    // Now determine whether point0 is inside all triangle edges:
     Vec3 c0 = CrossProduct(point0 - triangle.p0.p, triangle.p1.p - triangle.p0.p);
     Vec3 c1 = CrossProduct(point0 - triangle.p1.p, triangle.p2.p - triangle.p1.p);
     Vec3 c2 = CrossProduct(point0 - triangle.p2.p, triangle.p0.p - triangle.p2.p);
@@ -344,7 +345,7 @@ bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& tr
     Vec3 point2 = {};
     Vec3 point3 = {};
     if (!inside)
-    { 
+    {
         float radiussq = radius * radius; // sphere radius squared
 
         // Edge 1:
@@ -401,13 +402,13 @@ bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& tr
             }
         }
 
-        float len = Length(intersectionVector);  // vector3 length calculation: 
+        float len = Length(intersectionVector);  // vector3 length calculation:
         if (radius <= len)
         {
             return false;
         }
         else if (len)
-        { 
+        {
             directionToTriangle = intersectionVector / len;  // normalize
             assert(!isnan(directionToTriangle.x));
             assert(!isnan(directionToTriangle.y));
@@ -426,17 +427,17 @@ bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& tr
 }
 
 struct VertexFace {
-    
+
     Vec3 e[4];
 };
 
 const VertexFace cubeVertices[6] = {
     // +x
-    VertexFace( { 
+    VertexFace( {
     Vec3(1.0,  1.0,  1.0),
     Vec3(1.0,    0,  1.0),
     Vec3(1.0,  1.0,    0),
-    Vec3(1.0,    0,    0) 
+    Vec3(1.0,    0,    0)
     }),
 
     // -x
@@ -451,13 +452,13 @@ const VertexFace cubeVertices[6] = {
     VertexFace({
     Vec3( 1.0,  1.0,  1.0 ),
     Vec3( 1.0,  1.0,    0 ),
-    Vec3(   0,  1.0,  1.0 ), 
+    Vec3(   0,  1.0,  1.0 ),
     Vec3(   0,  1.0,    0 )
     }),
 
     // -y
     VertexFace({
-    Vec3(   0,    0,  1.0 ), 
+    Vec3(   0,    0,  1.0 ),
     Vec3(   0,    0,    0 ),
     Vec3( 1.0,    0,  1.0 ),
     Vec3( 1.0,    0,    0 )
@@ -465,7 +466,7 @@ const VertexFace cubeVertices[6] = {
 
     // z
     VertexFace({
-    Vec3(   0,  1.0,  1.0 ), 
+    Vec3(   0,  1.0,  1.0 ),
     Vec3(   0,    0,  1.0 ),
     Vec3( 1.0,  1.0,  1.0 ),
     Vec3( 1.0,    0,  1.0 )
@@ -475,7 +476,7 @@ const VertexFace cubeVertices[6] = {
     VertexFace({
     Vec3( 1.0,  1.0,    0 ),
     Vec3( 1.0,    0,    0 ),
-    Vec3(   0,  1.0,    0 ), 
+    Vec3(   0,  1.0,    0 ),
     Vec3(   0,    0,    0 )
     })
 };
@@ -521,7 +522,7 @@ Vec3 ClosestPointOnLineSegment(const Vec3& A, const Vec3& B, const Vec3& Point)
 
 Vec3 LinePlaneIntersectionVsTriangle(const Vec3& linePlaneIntersection, const Triangle& triangle)
 {
-    // Determine whether line_plane_intersection is inside all triangle edges: 
+    // Determine whether line_plane_intersection is inside all triangle edges:
     Vec3 triangleNormal = triangle.Normal();
     bool inside = false;
 
@@ -535,8 +536,8 @@ Vec3 LinePlaneIntersectionVsTriangle(const Vec3& linePlaneIntersection, const Tr
     min.x = Min(triangle.p0.p.x, Min(triangle.p1.p.x, triangle.p2.p.x));
     min.y = Min(triangle.p0.p.y, Min(triangle.p1.p.y, triangle.p2.p.y));
     min.z = Min(triangle.p0.p.z, Min(triangle.p1.p.z, triangle.p2.p.z));
-    inside = (linePlaneIntersection.x > min.x && linePlaneIntersection.x < max.x) && 
-            (linePlaneIntersection.y > min.y && linePlaneIntersection.y < max.y) && 
+    inside = (linePlaneIntersection.x > min.x && linePlaneIntersection.x < max.x) &&
+            (linePlaneIntersection.y > min.y && linePlaneIntersection.y < max.y) &&
             (linePlaneIntersection.z > min.z && linePlaneIntersection.z < max.z);
 #else
 
@@ -613,7 +614,7 @@ bool CapsuleVsTriangle(const Capsule& collider, const Triangle& triangle, Vec3& 
         assert(DotProduct(triangleNormal, { 0.0f, directionToTriangle.y, 0.0f }) >= 0.0f);
         assert(DotProduct(triangleNormal, { 0.0f, 0.0f, directionToTriangle.z }) >= 0.0f);
 
-        if ((Distance(sphereCenter, collider.m_tail.p) > collider.m_radius) && (Distance(sphereCenter, collider.m_tip.p) > collider.m_radius) && 
+        if ((Distance(sphereCenter, collider.m_tail.p) > collider.m_radius) && (Distance(sphereCenter, collider.m_tip.p) > collider.m_radius) &&
             distanceToTriangle == 0.0f && (triangleNormal.x == 0 && triangleNormal.z == 0) && checkDistanceToTriangle)
         {
             Vec3 capsulePoint = {};
@@ -839,12 +840,12 @@ int ComparisonFunction(const void* a, const void* b)
 
 void Swap(void* a, void* b, const int32 size)
 {
-    
+
     uint8* c = (uint8*)a;
     uint8* d = (uint8*)b;
     for (int32 i = 0; i < size; i++)
     {
-        
+
         uint8 temp = c[i];
         c[i] = d[i];
         d[i] = temp;

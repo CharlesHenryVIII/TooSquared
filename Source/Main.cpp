@@ -13,6 +13,7 @@
 #include "Noise.h"
 #include "Input.h"
 #include "Gameplay.h"
+#include "Entity.h"
 
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
@@ -101,11 +102,6 @@ bool HeavensInterpolation(float& result, float time, float lo, float hi, float i
     return true;
 }
 
-enum class MovementType {
-    Fly,
-    Collision,
-};
-
 enum class DebugOptions : uint32 {
     None = 0,
     ChunkStatus = BIT(0),
@@ -134,7 +130,6 @@ int main(int argc, char* argv[])
 {
     InitializeVideo();
     MultiThreading& multiThreading = MultiThreading::GetInstance();
-    Camera testCamera;
 
     double freq = double(SDL_GetPerformanceFrequency()); //HZ
     double totalTime = SDL_GetPerformanceCounter() / freq; //sec
@@ -148,12 +143,28 @@ int main(int argc, char* argv[])
     NoiseInit();
     SetBlockSprites();
 
-    g_camera.view;
-    WorldPos cOffset = { 1.0f, 1.0f, 1.0f };
-    gb_mat4_look_at(&g_camera.view, { g_camera.transform.m_p.p.x + cOffset.p.x, g_camera.transform.m_p.p.y + cOffset.p.y,g_camera.transform.m_p.p.z + cOffset.p.z },
-                                    { g_camera.transform.m_p.p.x, g_camera.transform.m_p.p.y, g_camera.transform.m_p.p.z }, { 0,1,0 });
-
+    //Initilizers
     g_chunks = new ChunkArray();
+    CommandHandler playerInput;
+    Player* player = g_entityList.New<Player>();
+    player->m_transform.m_p.p = {0, 150, 0};
+    player->m_inputID = playerInput.ID;
+    Camera* playerCamera = g_entityList.New<Camera>();
+    {
+        playerCamera->m_parent = player->m_ID;
+        player->m_children.push_back(playerCamera->m_ID);
+    }
+    playerCamera->m_transform.m_p.p.y = player->m_collider.m_height - player->m_collider.m_radius;
+    playerCamera->m_transform.m_p.p.x = playerCamera->m_transform.m_p.p.z = 0;
+    //
+
+    {
+        WorldPos cOffset = { 1.0f, 0.0f, 1.0f };
+        gb_mat4_look_at(&playerCamera->m_view, 
+                        player->m_transform.m_p.p,//{ g_camera.transform.m_p.p.x + cOffset.p.x, g_camera.transform.m_p.p.y + cOffset.p.y,g_camera.transform.m_p.p.z + cOffset.p.z },
+                        player->m_transform.m_p.p + cOffset.p/*{ g_camera.transform.m_p.p.x, g_camera.transform.m_p.p.y, g_camera.transform.m_p.p.z }*/, { 0,1,0 });
+    }
+
     float loadingTimer = 0.0f;
     bool uploadedLastFrame = false;
     //bool debugDraw = false;
@@ -201,12 +212,12 @@ int main(int argc, char* argv[])
     //Player Types TO BE MOVED LATER
     //_______________
 
-    Inventory playerInventory = {};
-    Capsule playerCollider = {
-    .m_radius = 0.25f,
-    .m_height = 1.8f,
-    };
-    MovementType playerMovementType = MovementType::Fly;
+    //Inventory playerInventory = {};
+    //Capsule playerCollider = {
+    //.m_radius = 0.25f,
+    //.m_height = 1.8f,
+    //};
+    //MovementType playerMovementType = MovementType::Fly;
 
 
 
@@ -235,23 +246,21 @@ int main(int argc, char* argv[])
         Vec2Int newMouseLocation = {};
 
 
-        g_mouse.pDelta = { 0, 0 };
+        playerInput.mouse.pDelta = { 0, 0 };
 
         if (multiThreading.GetJobsInFlight() > 0 || uploadedLastFrame)
             loadingTimer += deltaTime;
         uploadedLastFrame = false;
         {
-            ChunkPos cameraChunk = ToChunk(g_camera.transform.m_p);
-            SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared V: %0.2f, %0.2f, %0.2f; Chunks: %u; Time: %0.2f; Triangles: %u; grounded: %i",
-                g_camera.transform.m_vel.x, g_camera.transform.m_vel.y, g_camera.transform.m_vel.z,
+            SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared Chunks: %u; Time: %0.2f; Triangles: %u; grounded: %i",
                 g_chunks->chunkCount,
-                loadingTimer, g_renderer.numTrianglesDrawn, g_camera.transform.m_isGrounded).c_str());
+                loadingTimer, g_renderer.numTrianglesDrawn, player->m_transform.m_isGrounded).c_str());
         }
 
 
 
         SDL_Event SDLEvent;
-        g_mouse.pDelta = {};
+        playerInput.mouse.pDelta = {};
         while (SDL_PollEvent(&SDLEvent))
         {
             ImGui_ImplSDL2_ProcessEvent(&SDLEvent);
@@ -267,7 +276,7 @@ int main(int argc, char* argv[])
                 {
                     if (!imGuiIO.WantCaptureKeyboard)
                     {
-                        keyStates[SDLEvent.key.keysym.sym].down = (SDLEvent.type == SDL_KEYDOWN);
+                        playerInput.keyStates[SDLEvent.key.keysym.sym].down = (SDLEvent.type == SDL_KEYDOWN);
                     }
                 }
                 break;
@@ -277,7 +286,7 @@ int main(int argc, char* argv[])
                 {
                     if(!imGuiIO.WantCaptureMouse)
                     {
-                        keyStates[SDLEvent.button.button].down = SDLEvent.button.state;
+                        playerInput.keyStates[SDLEvent.button.button].down = SDLEvent.button.state;
                     }
                 }
                 break;
@@ -289,14 +298,14 @@ int main(int argc, char* argv[])
                     {
                         if (g_cursorEngaged)
                         {
-                            g_mouse.pDelta.x += (static_cast<float>(SDLEvent.motion.x) - g_mouse.pos.x);
-                            g_mouse.pDelta.y += (static_cast<float>(SDLEvent.motion.y) - g_mouse.pos.y);// reversed since y-coordinates go from bottom to top
+                            playerInput.mouse.pDelta.x += (static_cast<float>(SDLEvent.motion.x) - playerInput.mouse.pos.x);
+                            playerInput.mouse.pDelta.y += (static_cast<float>(SDLEvent.motion.y) - playerInput.mouse.pos.y);// reversed since y-coordinates go from bottom to top
 
                             SDL_WarpMouseInWindow(g_window.SDL_Context, g_window.size.x / 2, g_window.size.y / 2);
-                            //g_mouse.pos.x = SDLEvent.motion.x;
-                            //g_mouse.pos.y = SDLEvent.motion.y;
-                            g_mouse.pos.x = g_window.size.x / 2;
-                            g_mouse.pos.y = g_window.size.y / 2;
+                            //playerInput.mouse.pos.x = SDLEvent.motion.x;
+                            //playerInput.mouse.pos.y = SDLEvent.motion.y;
+                            playerInput.mouse.pos.x = g_window.size.x / 2;
+                            playerInput.mouse.pos.y = g_window.size.y / 2;
                         }
 
                     }
@@ -309,8 +318,8 @@ int main(int argc, char* argv[])
                 {
                     if(!imGuiIO.WantCaptureMouse)
                     {
-                        g_mouse.wheel.x = SDLEvent.wheel.x;
-                        g_mouse.wheel.y = SDLEvent.wheel.y;
+                        playerInput.mouse.wheel.x = SDLEvent.wheel.x;
+                        playerInput.mouse.wheel.y = SDLEvent.wheel.y;
                     }
                 }
                 break;
@@ -330,8 +339,8 @@ int main(int argc, char* argv[])
                 case SDL_WINDOWEVENT_FOCUS_GAINED:
                 {
                     g_window.hasAttention = true;
-                    g_mouse.pDelta = {};
-                    SDL_GetMouseState(&g_mouse.pos.x, &g_mouse.pos.y);
+                    playerInput.mouse.pDelta = {};
+                    SDL_GetMouseState(&playerInput.mouse.pos.x, &playerInput.mouse.pos.y);
                     if (g_cursorEngaged)
                     {
                         SDL_CaptureMouse(SDL_TRUE);
@@ -362,7 +371,7 @@ int main(int argc, char* argv[])
          *
          ********/
 
-        for (auto& key : keyStates)
+        for (auto& key : playerInput.keyStates)
         {
             if (key.second.down)
             {
@@ -396,28 +405,18 @@ int main(int argc, char* argv[])
             key.second.downPrevFrame = key.second.down;
         }
 
-        if (keyStates[SDLK_ESCAPE].down)
-            g_running = false;
-        if (keyStates[SDLK_BACKQUOTE].downThisFrame)
-            s_debugFlags ^= +DebugOptions::Enabled;
-        if (keyStates[SDLK_0].downThisFrame && g_cursorEngaged)
-        {
-            switch (playerMovementType)
-            {
-            case MovementType::Fly:
-                playerMovementType = MovementType::Collision;
-                break;
-            case MovementType::Collision:
-                playerMovementType = MovementType::Fly;
-                break;
-            }
-        }
 
-        if (keyStates[SDLK_c].downThisFrame)
+
+
+        if (playerInput.keyStates[SDLK_ESCAPE].down)
+            g_running = false;
+        if (playerInput.keyStates[SDLK_BACKQUOTE].downThisFrame)
+            s_debugFlags ^= +DebugOptions::Enabled;
+        if (playerInput.keyStates[SDLK_c].downThisFrame)
             TEST_CREATE_AND_UPLOAD_CHUNKS = !TEST_CREATE_AND_UPLOAD_CHUNKS;
-        if (keyStates[SDLK_v].downThisFrame)
+        if (playerInput.keyStates[SDLK_v].downThisFrame)
             g_renderer.msaaEnabled = !g_renderer.msaaEnabled;
-        if (keyStates[SDLK_m].downThisFrame)
+        if (playerInput.keyStates[SDLK_m].downThisFrame)
         {
             switch (multiThreading.threads)
             {
@@ -432,17 +431,17 @@ int main(int argc, char* argv[])
 
         // change this value to your liking
         float sensitivity = 0.3f;
-        g_mouse.pDelta *= sensitivity;
+        playerInput.mouse.pDelta *= sensitivity;
 
 
-        //if (keyStates[SDL_BUTTON_LEFT].down)
+        //if (playerInput.keyStates[SDL_BUTTON_LEFT].down)
         {
             float mouseSensativity = 0.4f;
-            g_camera.yaw += g_mouse.pDelta.x * mouseSensativity;
-            g_camera.pitch -= g_mouse.pDelta.y * mouseSensativity;
+            playerCamera->m_yaw += playerInput.mouse.pDelta.x * mouseSensativity;
+            playerCamera->m_pitch -= playerInput.mouse.pDelta.y * mouseSensativity;
         }
 
-        if (keyStates[SDLK_e].downThisFrame)
+        if (playerInput.keyStates[SDLK_e].downThisFrame)
         {
             g_cursorEngaged = !g_cursorEngaged;
             if (g_cursorEngaged)
@@ -482,11 +481,9 @@ int main(int argc, char* argv[])
                     ImGui::TableSetupColumn("Z");
                     ImGui::TableHeadersRow();
 
-                    GenericImGuiTable("World", "%+08.2f", g_camera.transform.m_p.p.e);
-                    GamePos cameraGameP = ToGame(g_camera.transform.m_p);
-                    GenericImGuiTable("Game", "%i", cameraGameP.p.e);
-                    ChunkPos cameraChunk = ToChunk(g_camera.transform.m_p);
-                    GenericImGuiTable("Chunk", "%i", cameraChunk.p.e);
+                    GenericImGuiTable("World", "%+08.2f", player->m_transform.m_p.p.e);
+                    GenericImGuiTable("Game", "%i", ToGame(player->m_transform.m_p).p.e);
+                    GenericImGuiTable("Chunk", "%i", ToChunk(player->m_transform.m_p).p.e);
 
                     ImGui::EndTable();
                 }
@@ -498,8 +495,8 @@ int main(int argc, char* argv[])
                     ImGui::TableSetupColumn("Z");
                     ImGui::TableHeadersRow();
 
-                    GenericImGuiTable("Vel",   "%+08.2f", g_camera.transform.m_vel.e);
-                    GenericImGuiTable("Accel", "%+08.2f", g_camera.transform.m_acceleration.e);
+                    GenericImGuiTable("Vel",   "%+08.2f", player->m_transform.m_vel.e);
+                    GenericImGuiTable("Accel", "%+08.2f", player->m_transform.m_acceleration.e);
                     ImGui::EndTable();
                 }
                 ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -585,7 +582,7 @@ int main(int argc, char* argv[])
                 for (int32 i = 0; i < MAX_SLOTS; i++)
                 {
                     ImGui::TableSetupColumn(ToString("%i", i).c_str());
-                    if (i == playerInventory.m_slotSelected)
+                    if (i == player->m_inventory.m_slotSelected)
                     {
                         ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
                     }
@@ -595,8 +592,8 @@ int main(int argc, char* argv[])
                 for (int32 i = 0; i < MAX_SLOTS; i++)
                 {
                     ImGui::TableSetColumnIndex(i);
-                    ImGui::TextUnformatted(ToString("%03i", playerInventory.m_slots[i].m_count).c_str());
-                    if (i == playerInventory.m_slotSelected)
+                    ImGui::TextUnformatted(ToString("%03i", player->m_inventory.m_slots[i].m_count).c_str());
+                    if (i == player->m_inventory.m_slotSelected)
                     {
                         ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
                     }
@@ -616,8 +613,8 @@ int main(int argc, char* argv[])
                 {
                     ImGui::TableSetColumnIndex(i);
                     //ImGui::TextUnformatted(ToString("%2i", playerInventory.m_slots[i].m_block).c_str());
-                    auto blockIndex = blockSprites[+playerInventory.m_slots[i].m_block].faceSprites[+Face::Top];
-                    if (playerInventory.m_slots[i].m_block == BlockType::Empty)
+                    auto blockIndex = blockSprites[+player->m_inventory.m_slots[i].m_block].faceSprites[+Face::Top];
+                    if (player->m_inventory.m_slots[i].m_block == BlockType::Empty)
                         blockIndex = 31;
 
                     int32 x = blockIndex % spritesPerSide;
@@ -630,7 +627,7 @@ int main(int argc, char* argv[])
 
                     ImGui::Image(imMinecraftTextureID, ImVec2(sizeOnScreen, sizeOnScreen), uvMin, uvMax, tint_col, border_col);
 
-                    if (i == playerInventory.m_slotSelected)
+                    if (i == player->m_inventory.m_slotSelected)
                     {
                         ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
                     }
@@ -683,149 +680,24 @@ int main(int argc, char* argv[])
 
         }
 
-
-        float cameraAcceleration = 0;
-        g_camera.transform.m_acceleration = {};
-        std::vector<Triangle> debug_trianglesToDraw;
         if (g_cursorEngaged)
-        {
-            switch (playerMovementType)
-            {
-            case MovementType::Fly:
-                cameraAcceleration = 100.0f; // m/s^2
-                g_camera.transform.m_terminalVel.x = g_camera.transform.m_terminalVel.z = 20.0f;
-                g_camera.transform.m_terminalVel.y = 500.0f;
-                if (keyStates[SDLK_LSHIFT].down)
-                {
-                    cameraAcceleration *= 30;
-                    g_camera.transform.m_terminalVel.x = g_camera.transform.m_terminalVel.z = 800.0f;
-                }
-                {
-                    //Forward
-                    if (keyStates[SDLK_w].down && keyStates[SDLK_s].down)
-                        g_camera.transform.m_acceleration;
-                    else if (keyStates[SDLK_w].down)
-                        g_camera.transform.m_acceleration += (cameraAcceleration * g_camera.front);
-                    else if (keyStates[SDLK_s].down)
-                        g_camera.transform.m_acceleration -= (cameraAcceleration * g_camera.front);
-                }
-                {
-                    //Lateral
-                    if (keyStates[SDLK_a].down && keyStates[SDLK_d].down)
-                        g_camera.transform.m_acceleration;
-                    else if (keyStates[SDLK_a].down)
-                        g_camera.transform.m_acceleration -= (Normalize(Cross(g_camera.front, g_camera.up)) * cameraAcceleration);
-                    else if (keyStates[SDLK_d].down)
-                        g_camera.transform.m_acceleration += (Normalize(Cross(g_camera.front, g_camera.up)) * cameraAcceleration);
-                }
-                if (keyStates[SDLK_LCTRL].down)
-                    g_camera.transform.m_terminalVel.x = g_camera.transform.m_terminalVel.z = 10.0f;
-                if (keyStates[SDLK_SPACE].down)
-                    g_camera.transform.m_acceleration.y += cameraAcceleration;
-                if (keyStates[SDLK_z].down)
-                    g_camera.transform.m_acceleration.z += cameraAcceleration;
-                if (keyStates[SDLK_x].down)
-                    g_camera.transform.m_acceleration.x += cameraAcceleration;
-                g_camera.transform.UpdatePosition(deltaTime, { 0.9f, 0.9f, 0.9f }, playerCollider.m_radius * 2 * playerCollider.m_height, 0);
-                break;
-            case MovementType::Collision:
-            {
-                cameraAcceleration = 15.0f; // m/s^2
-                Vec3 forward = Normalize(Vec3({ g_camera.front.x, 0, g_camera.front.z }));
-                g_camera.transform.m_terminalVel.x = g_camera.transform.m_terminalVel.z = 3.0f;
-                g_camera.transform.m_terminalVel.y = 50.0f;
-
-                if (keyStates[SDLK_LSHIFT].down)
-                {
-                    cameraAcceleration = 50.0f;
-                    g_camera.transform.m_terminalVel.x = g_camera.transform.m_terminalVel.z = 8.0f;
-                }
-                if (keyStates[SDLK_LCTRL].down)
-                    cameraAcceleration /= 3.0f;
-                {
-                    //Forward
-                    if (keyStates[SDLK_w].down && keyStates[SDLK_s].down)
-                        g_camera.transform.m_acceleration;
-                    else if (keyStates[SDLK_w].down)
-                        g_camera.transform.m_acceleration += (cameraAcceleration * forward);
-                    else if (keyStates[SDLK_s].down)
-                        g_camera.transform.m_acceleration -= (cameraAcceleration * forward);
-                }
-                {
-                    //Lateral
-                    if (keyStates[SDLK_a].down && keyStates[SDLK_d].down)
-                        g_camera.transform.m_acceleration;
-                    else if (keyStates[SDLK_a].down)
-                        g_camera.transform.m_acceleration -= (Normalize(Cross(forward, g_camera.up)) * cameraAcceleration);
-                    else if (keyStates[SDLK_d].down)
-                        g_camera.transform.m_acceleration += (Normalize(Cross(forward, g_camera.up)) * cameraAcceleration);
-                }
-                if (keyStates[SDLK_SPACE].downThisFrame)
-                {
-                    g_camera.transform.m_vel.y += 7.0f;
-                    g_camera.transform.m_isGrounded = false;
-                }
-                if (keyStates[SDLK_z].down)
-                    g_camera.transform.m_acceleration.z += cameraAcceleration;
-                if (keyStates[SDLK_x].down)
-                    g_camera.transform.m_acceleration.x += cameraAcceleration;
-
-                g_camera.transform.UpdateDeltaPosition(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
-                playerCollider.UpdateMidTipLocation(g_camera.transform.m_p);
-                //g_camera.transform.UpdatePosition2(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
-
-                g_camera.transform.m_p.p += g_camera.transform.m_pDelta.p;
-                Vec3 deltaPosition = {};
-                g_camera.transform.m_isGrounded = false;
-                if (CapsuleVsWorldBlocks(playerCollider, g_camera.transform.m_pDelta.p, deltaPosition, debug_trianglesToDraw))
-                {
-                    //Update Position
-                    g_camera.transform.m_p.p += deltaPosition;
-                    g_camera.transform.m_pDelta = {};
-
-                    //Zero velocity going into a collision
-                    Vec3 normalForceDirection = Normalize(deltaPosition);
-                    Vec3 collisionDirection = normalForceDirection;//-normalForceDirection;
-                    Vec3 dotProductResults = { DotProduct(Vec3({ g_camera.transform.m_vel.x, 0.0f, 0.0f }), collisionDirection),
-                                               DotProduct(Vec3({ 0.0f, g_camera.transform.m_vel.y, 0.0f }), collisionDirection),
-                                               DotProduct(Vec3({ 0.0f, 0.0f, g_camera.transform.m_vel.z }), collisionDirection) };
-
-                    //TODO: improve to include deflection/angle of collision not just collision in that direction
-                    if (dotProductResults.x < 0.0f)
-                    {
-                        g_camera.transform.m_vel.x = 0.0f;
-                    }
-                    if (dotProductResults.y < 0.0f)
-                    {
-                        if (g_camera.transform.m_vel.y < 0.0f)
-                            g_camera.transform.m_isGrounded = true;
-                        g_camera.transform.m_vel.y = 0.0f;
-                    }
-                    if (dotProductResults.z < 0.0f)
-                    {
-                        g_camera.transform.m_vel.z = 0.0f;
-                    }
-                }
+            g_entityList.InputUpdate(deltaTime, playerInput);
 
 
-                break;
-            }
-            }
-        }
 
-
+#if 0
         //make sure that when pitch is out of bounds, screen doesn't get flipped
-        g_camera.pitch = Clamp<float>(g_camera.pitch, -89.0f, 89.0f);
+        playerCamera->m_pitch = Clamp<float>(playerCamera->m_pitch, -89.0f, 89.0f);
         Vec3 lookTarget = {};
         {
             Vec3 front = {};
-            front.x = cos(DegToRad(g_camera.yaw)) * cos(DegToRad(g_camera.pitch));
-            front.y = sin(DegToRad(g_camera.pitch));
-            front.z = sin(DegToRad(g_camera.yaw)) * cos(DegToRad(g_camera.pitch));
-            g_camera.front = Normalize(front);
+            front.x = cos(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
+            front.y = sin(DegToRad(playerCamera->m_pitch));
+            front.z = sin(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
+            playerCamera->m_front = Normalize(front);
 
-            lookTarget = g_camera.transform.m_p.p + g_camera.front;
-            gb_mat4_look_at(&g_camera.view, g_camera.transform.m_p.p, lookTarget, g_camera.up);
+            lookTarget = player->m_transform.m_p.p + playerCamera->m_front;
+            gb_mat4_look_at(&playerCamera->m_view, player->m_transform.m_p.p, lookTarget, playerCamera->m_up);
 
             float SunRotationRadians = (((g_gameData.m_currentTime - 6.0f) / 24) * tau);
             float sunRotationCos = cosf(SunRotationRadians);
@@ -861,6 +733,61 @@ int main(int argc, char* argv[])
             }
         }
         //END OF GARBAGE?
+#else
+        //make sure that when pitch is out of bounds, screen doesn't get flipped
+        playerCamera->m_pitch = Clamp<float>(playerCamera->m_pitch, -89.0f, 89.0f);
+        Vec3 lookTarget = {};
+        {
+            Vec3 front = {};
+            front.x = cos(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
+            front.y = sin(DegToRad(playerCamera->m_pitch));
+            front.z = sin(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
+            playerCamera->m_front = Normalize(front);
+
+            WorldPos cameraRealWorldPosition = playerCamera->RealWorldPos().p;
+            lookTarget = cameraRealWorldPosition.p + playerCamera->m_front;
+            gb_mat4_look_at(&playerCamera->m_view, cameraRealWorldPosition.p, lookTarget, playerCamera->m_up);
+
+            float SunRotationRadians = (((g_gameData.m_currentTime - 6.0f) / 24) * tau);
+            float sunRotationCos = cosf(SunRotationRadians);
+            g_renderer.sunLight.d = Normalize(Vec3({ -sunRotationCos, -sinf(SunRotationRadians),  0.0f }));
+            g_renderer.moonLight.d = -g_renderer.sunLight.d;
+            const Color sunTransitionColor = { 220 / 255.0f,  90 / 255.0f,  40 / 255.0f, 1.0f };
+            const Color moonTransitionColor = { 80 / 255.0f,  80 / 255.0f,  90 / 255.0f, 1.0f };
+
+            //TODO: Fix this garbage shit:
+            {
+
+                float percentOfSun = 0;
+                if (HeavensInterpolation(percentOfSun, g_gameData.m_currentTime, 5.9f, 18.1f, 6.1f, 17.9f))
+                {
+                    g_renderer.sunLight.c.r = Lerp<float>(Lerp<float>(White.r, sunTransitionColor.r, 1 - percentOfSun), 0.0f, 1 - percentOfSun);
+                    g_renderer.sunLight.c.g = Lerp<float>(Lerp<float>(White.g, sunTransitionColor.g, 1 - percentOfSun), 0.0f, 1 - percentOfSun);
+                    g_renderer.sunLight.c.b = Lerp<float>(Lerp<float>(White.b, sunTransitionColor.b, 1 - percentOfSun), 0.0f, 1 - percentOfSun);
+                }
+                else
+                    g_renderer.sunLight.c = { 0, 0, 0 };
+
+                float percentOfMoon = 0;
+                //percentOfMoon = 1 - percentOfSun;
+                if (HeavensInterpolation(percentOfMoon, fmodf(g_gameData.m_currentTime + 12.0f, 24.0f), 5.9f, 18.1f, 6.1f, 17.9f))
+                {
+                    g_renderer.moonLight.c.r = Lerp<float>(moonTransitionColor.r, {}, 1 - percentOfMoon);
+                    g_renderer.moonLight.c.g = Lerp<float>(moonTransitionColor.g, {}, 1 - percentOfMoon);
+                    g_renderer.moonLight.c.b = Lerp<float>(moonTransitionColor.b, {}, 1 - percentOfMoon);
+                }
+                else
+                    g_renderer.moonLight.c = { 0, 0, 0 };
+
+            }
+        }
+        //END OF GARBAGE?
+#endif
+
+        {
+            PROFILE_SCOPE("Entity Update");
+            g_entityList.Update(deltaTime);
+        }
 
 
 
@@ -868,15 +795,16 @@ int main(int argc, char* argv[])
         bool validHit = false;
         Vec3 hitNormal;
 
+#if 0
         {
             PROFILE_SCOPE_TAB("Raycast");
             RegionSampler localRegion;
             ChunkIndex centerChunkIndex;
             Ray ray = {
-                .origin = g_camera.transform.m_p.p,
-                .direction = lookTarget - g_camera.transform.m_p.p,
+                .origin = playerCamera->RealWorldPos().p,
+                .direction = lookTarget - ray.origin,
             };
-            if (g_chunks->GetChunkFromPosition(centerChunkIndex, ToChunk(g_camera.transform.m_p)))
+            if (g_chunks->GetChunkFromPosition(centerChunkIndex, ToChunk(player->m_transform.m_p.p)))
             {
                 //bool RayVsChunk(const Ray & ray, ChunkIndex chunkIndex, GamePos & block, float& distance);
                 GamePos resultPos = {};
@@ -913,31 +841,79 @@ int main(int argc, char* argv[])
                 }
             }
         }
+#else
+        {
+            PROFILE_SCOPE_TAB("Raycast");
+            RegionSampler localRegion;
+            ChunkIndex centerChunkIndex;
+            WorldPos cameraRealWorldPosition = playerCamera->RealWorldPos();
+            Ray ray = {
+                .origin = cameraRealWorldPosition.p,
+                .direction = lookTarget - cameraRealWorldPosition.p,
+            };
+            if (g_chunks->GetChunkFromPosition(centerChunkIndex, ToChunk(cameraRealWorldPosition)))
+            {
+                //bool RayVsChunk(const Ray & ray, ChunkIndex chunkIndex, GamePos & block, float& distance);
+                GamePos resultPos = {};
+                float distance;
+                {
+                    PROFILE_SCOPE_TAB("RayVsChunk");
+                    if (RayVsChunk(ray, centerChunkIndex, resultPos, distance, hitNormal))
+                    {
+                        hitBlock = resultPos;
+                        validHit = (distance < 5.0f);
+                    }
+                }
+
+                PROFILE_SCOPE_TAB("Ray Neighbor gather and loop");
+                if (!validHit && localRegion.RegionGather(centerChunkIndex))
+                {
+                    PROFILE_SCOPE_TAB("Ray Neighbor loop");
+                    for (ChunkIndex neighbor : localRegion.neighbors)
+                    {
+                        float distanceComparison;
+                        Vec3 neighborNormal;
+                        PROFILE_SCOPE_TAB("RayVsChunk2");
+                        if (RayVsChunk(ray, neighbor, resultPos, distanceComparison, neighborNormal))
+                        {
+                            if (distanceComparison < distance)
+                            {
+                                hitBlock = resultPos;
+                                distance = distanceComparison;
+                                hitNormal = neighborNormal;
+                            }
+                        }
+                    }
+                    validHit = (distance < 5.0f);
+                }
+            }
+        }
+#endif
 
         if (g_cursorEngaged)
         {
             //TODO: improve
-            if (g_mouse.wheel.y > 0)
+            if (playerInput.mouse.wheel.y > 0)
             {
-                playerInventory.m_slotSelected = (playerInventory.m_slotSelected + 1) % MAX_SLOTS;
+                player->m_inventory.m_slotSelected = (player->m_inventory.m_slotSelected + 1) % MAX_SLOTS;
             }
-            else if (g_mouse.wheel.y > 0)
+            else if (playerInput.mouse.wheel.y > 0)
             {
-                if (playerInventory.m_slotSelected = (playerInventory.m_slotSelected - 1) < 0)
-                    playerInventory.m_slotSelected = MAX_SLOTS;
+                if (player->m_inventory.m_slotSelected = (player->m_inventory.m_slotSelected - 1) < 0)
+                    player->m_inventory.m_slotSelected = MAX_SLOTS;
             }
             for (int32 c = SDLK_1; c <= SDLK_8; c++)
             {
-                if (keyStates[c].downThisFrame)
+                if (playerInput.keyStates[c].downThisFrame)
                 {
                     assert((c - SDLK_1) < MAX_SLOTS);
                     assert((c - SDLK_1) >= 0);
-                    playerInventory.m_slotSelected = c - SDLK_1;
+                    player->m_inventory.m_slotSelected = c - SDLK_1;
                 }
             }
 
             //TODO: Optimize to update corners (max 4 chunks)
-            if (keyStates[SDL_BUTTON_RIGHT].downThisFrame)
+            if (playerInput.keyStates[SDL_BUTTON_RIGHT].downThisFrame)
             {
                 if (validHit)
                 {
@@ -946,7 +922,7 @@ int main(int argc, char* argv[])
                     {
                         assert(collectedBlockType != BlockType::Empty);
                         SetBlock(hitBlock, BlockType::Empty);
-                        if (auto overflow = playerInventory.Add(collectedBlockType, 1))
+                        if (auto overflow = player->m_inventory.Add(collectedBlockType, 1))
                         {
                             //do something with the excess
                         }
@@ -954,17 +930,17 @@ int main(int argc, char* argv[])
                     }
                 }
             }
-            else if (keyStates[SDL_BUTTON_LEFT].downThisFrame)
+            else if (playerInput.keyStates[SDL_BUTTON_LEFT].downThisFrame)
             {
                 if (validHit)
                 {
-                    InventorySlot& slot = playerInventory.HotSlot();
+                    InventorySlot& slot = player->m_inventory.HotSlot();
                     if (slot.m_count)
                     {
                         assert(slot.m_block != BlockType::Empty);
                         SetBlock({ hitBlock.p.x + int32(hitNormal.x), hitBlock.p.y + int32(hitNormal.y), hitBlock.p.z + int32(hitNormal.z) }, slot.m_block);
                         //Why must i put this stupid uint8 in here for auto to determine the type -_-
-                        playerInventory.Remove(uint8(1));
+                        player->m_inventory.Remove(uint8(1));
                     }
                 }
             }
@@ -973,8 +949,8 @@ int main(int argc, char* argv[])
         ////TODO: Optimize to update corners (max 4 chunks)
         //for (int32 c = SDLK_1; c <= SDLK_9; c++)
         //{
-        //    //if (keyStates[c].downThisFrame)
-        //    if (keyStates[c].downThisFrame && g_cursorEngaged)
+        //    //if (playerInput.keyStates[c].downThisFrame)
+        //    if (playerInput.keyStates[c].downThisFrame && g_cursorEngaged)
         //    {
         //        if (validHit)
         //        {
@@ -991,9 +967,8 @@ int main(int argc, char* argv[])
         //Vec3 lookatPosition = { (float)sin(totalTime / 10) * 100, 100, (float)cos(totalTime / 10) * 100};
         //gb_mat4_look_at(&testCamera.view, testCamera.p.p, lookatPosition, { 0, 1, 0 });
 
-        Mat4 perspective;
-        gb_mat4_perspective(&perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.1f, 2000.0f);
-        Mat4 viewProj = perspective * g_camera.view;//testCamera.view;
+        gb_mat4_perspective(&playerCamera->m_perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.1f, 2000.0f);
+        playerCamera->m_viewProj = playerCamera->m_perspective * playerCamera->m_view;
 
 
 
@@ -1001,14 +976,14 @@ int main(int argc, char* argv[])
             PROFILE_SCOPE_TAB("Camera Position Chunk Update");
 
 #ifdef _DEBUG
-            g_camera.drawDistance = 10;
+            playerCamera->m_drawDistance = 10;
 #elif NDEBUG
-            g_camera.drawDistance = 20;//60;
+            playerCamera->m_drawDistance = 20;//60;
 #endif
 
-            g_camera.fogDistance = g_camera.drawDistance + 10;
-            ChunkPos cam = ToChunk(g_camera.transform.m_p);
-            for (int32 _drawDistance = 0; _drawDistance < g_camera.drawDistance; _drawDistance++)
+            playerCamera->m_fogDistance = playerCamera->m_drawDistance + 10;
+            ChunkPos playerChunkPos = ToChunk(player->m_transform.m_p);
+            for (int32 _drawDistance = 0; _drawDistance < playerCamera->m_drawDistance; _drawDistance++)
             {
                 for (int32 z = -_drawDistance; z <= _drawDistance; z++)
                 {
@@ -1017,7 +992,7 @@ int main(int argc, char* argv[])
                         if (z == _drawDistance || x ==  _drawDistance ||
                            z == -_drawDistance || x == -_drawDistance)
                         {
-                            ChunkPos newBlockP = { cam.p.x + x, 0, cam.p.z + z };
+                            ChunkPos newBlockP = { playerChunkPos.p.x + x, 0, playerChunkPos.p.z + z };
                             ChunkIndex funcResult;
                             if (TEST_CREATE_AND_UPLOAD_CHUNKS)
                             if (!g_chunks->GetChunkFromPosition(funcResult, newBlockP))
@@ -1031,14 +1006,14 @@ int main(int argc, char* argv[])
 
             {
                 PROFILE_SCOPE_TAB("Chunk Delete Check");
-                if (g_camera.fogDistance)
+                if (playerCamera->m_fogDistance)
                 {
                     for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
                     {
                         if (g_chunks->active[i])
                         {
-                            if (((g_chunks->p[i].p.x > cam.p.x + g_camera.fogDistance || g_chunks->p[i].p.z > cam.p.z + g_camera.fogDistance) ||
-                                (g_chunks->p[i].p.x < cam.p.x - g_camera.fogDistance || g_chunks->p[i].p.z < cam.p.z - g_camera.fogDistance)) ||
+                            if (((g_chunks->p[i].p.x > playerChunkPos.p.x + playerCamera->m_fogDistance || g_chunks->p[i].p.z > playerChunkPos.p.z + playerCamera->m_fogDistance) ||
+                                (g_chunks->p[i].p.x < playerChunkPos.p.x - playerCamera->m_fogDistance || g_chunks->p[i].p.z < playerChunkPos.p.z - playerCamera->m_fogDistance)) ||
                                 !TEST_CREATE_AND_UPLOAD_CHUNKS)
                             {
                                 g_chunks->flags[i] |= CHUNK_TODELETE;
@@ -1064,9 +1039,9 @@ int main(int argc, char* argv[])
             sp->UpdateUniformVec3("u_directionalLightMoon_d", 1, g_renderer.moonLight.d.e);
             sp->UpdateUniformVec3("u_moonColor", 1, g_renderer.moonLight.c.e);
             Mat4 iViewProj;
-            gb_mat4_inverse(&iViewProj, &viewProj);
+            gb_mat4_inverse(&iViewProj, &playerCamera->m_viewProj);
             sp->UpdateUniformMat4("u_inverseViewProjection", 1, false, iViewProj.e);
-            sp->UpdateUniformVec3("u_cameraPosition", 1, g_camera.transform.m_p.p.e);
+            sp->UpdateUniformVec3("u_cameraPosition", 1, playerCamera->RealWorldPos().p.e);
             sp->UpdateUniformFloat("u_gameTime", g_gameData.m_currentTime);
             glActiveTexture(GL_TEXTURE1);
             g_renderer.skyBoxNight->Bind();
@@ -1083,6 +1058,11 @@ int main(int argc, char* argv[])
 
             glDepthMask(GL_TRUE);
             //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        }
+
+        {
+            PROFILE_SCOPE("Entity Render");
+            g_entityList.Update(deltaTime);
         }
 
         {
@@ -1107,7 +1087,7 @@ int main(int argc, char* argv[])
         {
             PROFILE_SCOPE_TAB("Chunk Loading Vertex Loop");
 
-            for (int32 _drawDistance = 0; _drawDistance < g_camera.drawDistance; _drawDistance++)
+            for (int32 _drawDistance = 0; _drawDistance < playerCamera->m_drawDistance; _drawDistance++)
             {
                 for (int32 drawZ = -_drawDistance; drawZ <= _drawDistance; drawZ++)
                 {
@@ -1117,7 +1097,7 @@ int main(int argc, char* argv[])
                             (drawZ < _drawDistance && drawZ > -_drawDistance))
                             continue;
 
-                        ChunkPos cameraChunkP = ToChunk(g_camera.transform.m_p);
+                        ChunkPos cameraChunkP = playerCamera->RealChunkPos();
                         ChunkIndex originChunk = 0;
                         ChunkPos drawDistanceChunk = { cameraChunkP.p.x + drawX, 0, cameraChunkP.p.z + drawZ };
                         if (!g_chunks->GetChunkFromPosition(originChunk, drawDistanceChunk))
@@ -1155,9 +1135,9 @@ int main(int argc, char* argv[])
             };
             Renderable renderables[MAX_CHUNKS];
             int32 numRenderables = 0;
-            Frustum frustum = ComputeFrustum(viewProj);
+            Frustum frustum = ComputeFrustum(playerCamera->m_viewProj);
             int32 uploadCount = 0;
-            PreChunkRender(perspective);
+            PreChunkRender(playerCamera->m_perspective, playerCamera);
             for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
             {
                 if (!g_chunks->active[i])
@@ -1168,7 +1148,7 @@ int main(int argc, char* argv[])
                 GamePos max = { min.p.x + (int32)CHUNK_X, min.p.y + (int32)CHUNK_Y, min.p.z + (int32)CHUNK_Z };
                 if (IsBoxInFrustum(frustum, ToWorld(min).p.e, ToWorld(max).p.e))
                 {
-                    renderables[numRenderables].d = ManhattanDistance(ToChunk(g_camera.transform.m_p.p).p, chunkP.p);
+                    renderables[numRenderables].d = ManhattanDistance(ToChunk(playerCamera->RealWorldPos().p).p, chunkP.p);
                     renderables[numRenderables++].r = i;
                 }
             }
@@ -1223,12 +1203,12 @@ int main(int argc, char* argv[])
                         chunkP.p.z += CHUNK_Z / 2.0f;
                         Vec3 size = { CHUNK_X / 4.0f, 1, CHUNK_Z / 4.0f };
 
-                        DrawBlock(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, perspective);
+                        DrawBlock(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, playerCamera->m_perspective, playerCamera);
                     }
                 }
                 for (WorldPos p : cubesToDraw)
                 {
-                    DrawBlock(p, Red, 2.0f, perspective);
+                    DrawBlock(p, Red, 2.0f, playerCamera->m_perspective, playerCamera);
                 }
                 if (s_debugFlags & +DebugOptions::LookatBlock)
                 {
@@ -1239,13 +1219,16 @@ int main(int argc, char* argv[])
                         pos.p = pos.p + 0.5f;
                         Color temp = Mint;
                         temp.a = 0.6f;
-                        DrawBlock(pos, temp, 1.1f, perspective);
+                        DrawBlock(pos, temp, 1.1f, playerCamera->m_perspective, playerCamera);
                     }
                 }
                 if (s_debugFlags & +DebugOptions::CollisionTriangles)
                 {
-                    if (debug_trianglesToDraw.size())
-                        DrawTriangles(debug_trianglesToDraw, Orange, perspective, false);
+                    if (player->m_collider.m_collidedTriangles.size())
+                    {
+                        DrawTriangles(player->m_collider.m_collidedTriangles, Orange, playerCamera->m_perspective, playerCamera, false);
+                        player->m_collider.m_collidedTriangles.clear();
+                    }
                 }
             }
         }
@@ -1267,6 +1250,11 @@ int main(int argc, char* argv[])
                     g_chunks->ClearChunk(i);
                 }
             }
+        }
+
+        {
+            PROFILE_SCOPE("Entity Deletion");
+            g_entityList.CleanUp();
         }
         //gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
 

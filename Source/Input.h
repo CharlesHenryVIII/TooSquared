@@ -14,7 +14,7 @@ struct Key {
     bool downThisFrame;
     bool upThisFrame;
 };
-extern std::unordered_map<int32, Key> keyStates;
+//extern std::unordered_map<int32, Key> keyStates;
 
 struct Mouse {
     Vec2Int pos = {};
@@ -23,8 +23,14 @@ struct Mouse {
     SDL_Cursor* cursors[ImGuiMouseCursor_COUNT] = {};
     bool canUseGlobalState = true;
 };
-extern Mouse g_mouse;
+//extern Mouse g_mouse;
 
+static uint32 s_currentID = 0;
+struct CommandHandler {
+    std::unordered_map<int32, Key> keyStates;
+    Mouse mouse = {};
+    uint32 ID = ++s_currentID;
+};
 
 //g_actions[ACTION_MAIN].held
 //g_actions[ACTION_MAIN].pressed

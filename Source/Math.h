@@ -829,6 +829,7 @@ struct Capsule
     float m_height = 0;
     WorldPos m_tip;
     WorldPos m_tail;
+    std::vector<Triangle> m_collidedTriangles;
 
     void UpdateMidTipLocation(const WorldPos& newTipLocation)
     {
@@ -836,6 +837,12 @@ struct Capsule
         m_tip.p.y += m_radius;
         m_tail = m_tip;
         m_tail.p.y -= m_height;
+    }
+    void UpdateTailLocation(const WorldPos& loc)
+    {
+        m_tail.p = loc.p;
+        m_tip.p = m_tail.p;
+        m_tip.p.y += m_radius;
     }
     void UpdateLocation(const WorldPos& positionDelta)
     {
@@ -870,58 +877,6 @@ struct Transform {
     Vec3 m_terminalVel = {};
     bool m_isGrounded = false;
 
-    void UpdatePosition(float deltaTime, Vec3 dragCoefficient, float area, float gravity = -10.0f)
-    {
-        //assert(dragCoefficient.x >= 0.0f && dragCoefficient.x <= 1.0f);
-        //assert(dragCoefficient.y >= 0.0f && dragCoefficient.y <= 1.0f);
-        //assert(dragCoefficient.z >= 0.0f && dragCoefficient.z <= 1.0f);
-        //dragCoefficient.x = Clamp(dragCoefficient.x, 0.0f, 1.0f);
-        //dragCoefficient.y = Clamp(dragCoefficient.y, 0.0f, 1.0f);
-        //dragCoefficient.z = Clamp(dragCoefficient.z, 0.0f, 1.0f);
-
-        if (m_acceleration.x != 0 || m_acceleration.y != 0 || m_acceleration.z != 0)
-            int32 lmao = 1;
-
-        m_vel.y += (m_acceleration.y + gravity) * deltaTime;
-        m_vel.y = Clamp(m_vel.y, -m_terminalVel.y, m_terminalVel.y);
-
-        m_vel.x += m_acceleration.x * deltaTime;
-        m_vel.z += m_acceleration.z * deltaTime;
-
-        float zeroTolerance = 0.25f;
-        //if ((m_acceleration.x >= -zeroTolerance && m_acceleration.x <= zeroTolerance) &&
-        //    (m_acceleration.y >= -zeroTolerance && m_acceleration.y <= zeroTolerance) &&
-        //    (m_acceleration.z >= -zeroTolerance && m_acceleration.z <= zeroTolerance))
-        {
-        float mass = 1000.0f; //grams
-        Vec3 dragForce = m_vel * dragCoefficient;//dragCoefficient * ((1.255f * m_vel/* * m_vel*/) / 2) * area;
-        Vec3 dragVel = dragForce / (mass * deltaTime);
-
-        //if (m_vel.x < 0.0f)
-        //    dragVel.x = -dragVel.x;
-        //if (m_vel.y < 0.0f)
-        //    dragVel.y = -dragVel.y;
-        //if (m_vel.z < 0.0f)
-        //    dragVel.z = -dragVel.z;
-
-            m_vel -= dragVel;
-            m_vel.x = Clamp(m_vel.x, -m_terminalVel.x, m_terminalVel.x);
-            m_vel.y = Clamp(m_vel.y, -m_terminalVel.y, m_terminalVel.y);
-            m_vel.z = Clamp(m_vel.z, -m_terminalVel.z, m_terminalVel.z);
-
-            if (m_vel.x <= zeroTolerance && m_vel.x >= -zeroTolerance)
-                m_vel.x = 0;
-            if (m_vel.y <= zeroTolerance && m_vel.y >= -zeroTolerance)
-                m_vel.y = 0;
-            if (m_vel.z <= zeroTolerance && m_vel.z >= -zeroTolerance)
-                m_vel.z = 0;
-        }
-
-        //Velocity and position will be local for Audio and Particle actors
-        Vec3 deltaP = m_vel * deltaTime;
-        m_p.p += deltaP;
-    }
-
     void UpdateDeltaPosition(float deltaTime, Vec3 dragCoefficient, float area, float gravity = -10.0f)
     {
         if (m_isGrounded)
@@ -947,53 +902,6 @@ struct Transform {
 
         //Velocity and position will be local for Audio and Particle actors
         m_pDelta = m_vel * deltaTime;
-    }
-
-    void UpdatePosition2(float deltaTime, Vec3 dragCoefficient, float area, float gravity = -10.0f)
-    {
-        if (m_isGrounded)
-            m_vel.y = Max(m_vel.y, 0.0f);
-
-        m_vel.y += (m_acceleration.y + gravity) * deltaTime;
-        m_vel.y = Clamp(m_vel.y, -m_terminalVel.y, m_terminalVel.y);
-
-        m_vel.x += m_acceleration.x * deltaTime;
-        m_vel.z += m_acceleration.z * deltaTime;
-
-        float zeroTolerance = 0.25f;
-        //if ((m_acceleration.x >= -zeroTolerance && m_acceleration.x <= zeroTolerance) &&
-        //    (m_acceleration.y >= -zeroTolerance && m_acceleration.y <= zeroTolerance) &&
-        //    (m_acceleration.z >= -zeroTolerance && m_acceleration.z <= zeroTolerance))
-        {
-        float mass = 1000.0f; //grams
-        Vec3 dragForce = m_vel * dragCoefficient;//dragCoefficient * ((1.255f * m_vel/* * m_vel*/) / 2) * area;
-        Vec3 dragVel = dragForce / (mass * deltaTime);
-
-        dragVel = m_vel * dragCoefficient * deltaTime;
-
-        //if (m_vel.x < 0.0f)
-        //    dragVel.x = -dragVel.x;
-        //if (m_vel.y < 0.0f)
-        //    dragVel.y = -dragVel.y;
-        //if (m_vel.z < 0.0f)
-        //    dragVel.z = -dragVel.z;
-
-            m_vel -= dragVel;
-            m_vel.x = Clamp(m_vel.x, -m_terminalVel.x, m_terminalVel.x);
-            m_vel.y = Clamp(m_vel.y, -m_terminalVel.y, m_terminalVel.y);
-            m_vel.z = Clamp(m_vel.z, -m_terminalVel.z, m_terminalVel.z);
-
-            //if (m_vel.x <= zeroTolerance && m_vel.x >= -zeroTolerance)
-            //    m_vel.x = 0;
-            //if (m_vel.y <= zeroTolerance && m_vel.y >= -zeroTolerance)
-            //    m_vel.y = 0;
-            //if (m_vel.z <= zeroTolerance && m_vel.z >= -zeroTolerance)
-            //    m_vel.z = 0;
-        }
-
-        //Velocity and position will be local for Audio and Particle actors
-        Vec3 deltaP = m_vel * deltaTime;
-        m_p.p += deltaP;
     }
 };
 

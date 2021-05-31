@@ -307,11 +307,12 @@ GamePos Convert_ChunkIndexToGame(ChunkIndex i);
 GamePos Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP);
 Vec3Int Convert_GameToBlock(ChunkPos& result, GamePos inputP);
 
+struct Camera;
 void SetBlockSprites();
-void PreChunkRender(const Mat4& perspective);
-void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& perspective, bool depthWrite = true);
-void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective);
-void DrawBlock(WorldPos p, Color color, float scale, const Mat4& perspective);
+void PreChunkRender(const Mat4& perspective, Camera* camera);
+void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& perspective, Camera* camera, bool depthWrite = true);
+void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective, Camera* camera);
+void DrawBlock(WorldPos p, Color color, float scale, const Mat4& perspective, Camera* camera);
 void Draw2DSquare(Rect rect, Color color);
 
 int64 PositionHash(ChunkPos p);

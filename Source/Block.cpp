@@ -3,6 +3,7 @@
 #include "Noise.h"
 #include "Computer.h"
 #include "Misc.h"
+#include "Entity.h"
 
 #include <unordered_map>
 
@@ -275,35 +276,6 @@ struct BiomePoints {
     ChunkPos pos;
     BiomeType biome;
 };
-//std::vector<BiomePoints> s_biomePoints;
-
-//TODO:!!!
-//SRAND IS NOT THREAD SAFE
-void UpdateBiomePoints()
-{
-    ChunkPos cameraP = ToChunk(g_camera.transform.m_p);
-    float biLinearThreshold = 0.05f;
-
-    for (int32 z = -g_camera.drawDistance + cameraP.p.z; z <= g_camera.drawDistance + cameraP.p.z; z++)
-    {
-        for (int32 x = -g_camera.drawDistance + cameraP.p.x; z <= g_camera.drawDistance + cameraP.p.x; x++)
-        {
-            //float vor = VoronoiNoise({ x, z }, 1.0f, -2.0f);
-            //if ((vor > 0.5f - biLinearThreshold) && (vor < 0.5f + biLinearThreshold))
-
-            float vor = VoronoiNoise({ float(x), float(z) }, 1.0f, -3.0f);
-            if (vor)
-            {
-                int64 hash = PositionHash({ x, 0, z });
-                if (s_biomePoints.find(hash) == s_biomePoints.end())
-                {
-                    srand(uint32(hash));
-                    s_biomePoints[hash] = BiomeType(rand() % +BiomeType::Count);
-                }
-            }
-        }
-    }
-}
 
 #define stb_lerp(t,a,b)               ( (a) + (t) * (float) ((b)-(a)) )
 #define stb_unlerp(t,a,b)             ( ((t) - (a)) / (float) ((b) - (a)) )
@@ -2008,7 +1980,7 @@ void ChunkArray::UploadChunk(ChunkIndex i)
     g_chunks->state[i] = ChunkArray::Uploaded;
 }
 
-void PreChunkRender(const Mat4& perspective)
+void PreChunkRender(const Mat4& perspective, Camera* camera)
 {
     assert(g_renderer.chunkIB);
     if (g_renderer.chunkIB)
@@ -2021,7 +1993,7 @@ void PreChunkRender(const Mat4& perspective)
 
     ShaderProgram* sp = g_renderer.programs[+Shader::Chunk];
     sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
-    sp->UpdateUniformMat4("u_view",        1, false, g_camera.view.e);
+    sp->UpdateUniformMat4("u_view",        1, false, camera->m_view.e);
 
 #if DIRECTIONALLIGHT == 1
     sp->UpdateUniformVec3("u_directionalLight_d",  1,  g_renderer.sunLight.d.e);
@@ -2032,7 +2004,7 @@ void PreChunkRender(const Mat4& perspective)
     sp->UpdateUniformVec3("u_lightColor",  1,  g_light.c.e);
     sp->UpdateUniformVec3("u_lightP",      1,  g_light.p.e);
 #endif
-    sp->UpdateUniformVec3("u_cameraP",     1,  g_camera.transform.m_p.p.e);
+    sp->UpdateUniformVec3("u_cameraP",     1,  camera->RealWorldPos().p.e);
 
     sp->UpdateUniformUint8("u_CHUNK_X", CHUNK_X);
     sp->UpdateUniformUint8("u_CHUNK_Y", CHUNK_Y);
@@ -2087,8 +2059,9 @@ void CreateVertices::DoThing()
     region.DecrimentRefCount();
 }
 
-void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& perspective, bool depthWrite)
+void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& perspective, Camera* camera, bool depthWrite)
 {
+    assert(camera);
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
 
@@ -2137,7 +2110,7 @@ void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Ma
     ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
     sp->UseShader();
     sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
-    sp->UpdateUniformMat4("u_view",        1, false, g_camera.view.e);
+    sp->UpdateUniformMat4("u_view",        1, false, camera->m_view.e);
     sp->UpdateUniformMat4("u_model",       1, false, transform.e);
     sp->UpdateUniformVec3("u_scale",       1,        scale.e);
 
@@ -2156,12 +2129,12 @@ void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Ma
     //glEnable(GL_CULL_FACE);
 }
 
-void DrawBlock(WorldPos p, Color color, float scale, const Mat4& perspective)
+void DrawBlock(WorldPos p, Color color, float scale, const Mat4& perspective, Camera* camera)
 {
-    DrawBlock(p, color, { scale, scale, scale }, perspective);
+    DrawBlock(p, color, { scale, scale, scale }, perspective, camera);
 }
 
-void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective)
+void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective, Camera* camera)
 {
     if (g_renderer.cubeVertexBuffer == nullptr)
     {
@@ -2224,7 +2197,7 @@ void DrawBlock(WorldPos p, Color color, Vec3 scale, const Mat4& perspective)
     ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
     sp->UseShader();
     sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
-    sp->UpdateUniformMat4("u_view",        1, false, g_camera.view.e);
+    sp->UpdateUniformMat4("u_view",        1, false, camera->m_view.e);
     sp->UpdateUniformMat4("u_model",       1, false, transform.e);
     sp->UpdateUniformVec3("u_scale",       1,        scale.e);
 
