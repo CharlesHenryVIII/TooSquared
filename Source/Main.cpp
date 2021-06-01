@@ -610,8 +610,11 @@ int main(int argc, char* argv[])
                 {
                     ImGui::TableSetColumnIndex(i);
                     //ImGui::TextUnformatted(ToString("%2i", playerInventory.m_slots[i].m_block).c_str());
+                    auto spriteIndex = 31;
+                    if (player->m_inventory.m_slots[i].m_block != BlockType::Empty)
+                        spriteIndex = blockSprites[+player->m_inventory.m_slots[i].m_block].faceSprites[+Face::Right];
 
-                    Rect uvResult = GetUVsFromBlockType(player->m_inventory.m_slots[i].m_block);
+                    Rect uvResult = GetUVsFromIndex(spriteIndex);
                     ImGui::Image(imMinecraftTextureID, ImVec2(sizeOnScreen, sizeOnScreen), 
                                                        ImVec2(uvResult.botLeft.x,  uvResult.botLeft.y), 
                                                        ImVec2(uvResult.topRight.x, uvResult.topRight.y), 
@@ -814,6 +817,10 @@ int main(int argc, char* argv[])
                     {
                         assert(collectedBlockType != BlockType::Empty);
                         SetBlock(hitBlock, BlockType::Empty);
+                        Item* item = g_entityList.New<Item>();
+                        item->m_transform.m_p.p = ToWorld(hitBlock).p;
+                        item->m_transform.m_p.p += { 0.5f, 0.5f, 0.5f };
+                        item->m_type = collectedBlockType;
                         if (auto overflow = player->m_inventory.Add(collectedBlockType, 1))
                         {
                             //do something with the excess
@@ -1095,12 +1102,12 @@ int main(int argc, char* argv[])
                         chunkP.p.z += CHUNK_Z / 2.0f;
                         Vec3 size = { CHUNK_X / 4.0f, 1, CHUNK_Z / 4.0f };
 
-                        DrawCube(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, playerCamera->m_perspective, playerCamera);
+                        DrawCube(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, playerCamera);
                     }
                 }
                 for (WorldPos p : cubesToDraw)
                 {
-                    DrawCube(p, Red, 2.0f, playerCamera->m_perspective, playerCamera);
+                    DrawCube(p, Red, 2.0f, playerCamera);
                 }
                 if (s_debugFlags & +DebugOptions::LookatBlock)
                 {
@@ -1111,14 +1118,14 @@ int main(int argc, char* argv[])
                         pos.p = pos.p + 0.5f;
                         Color temp = Mint;
                         temp.a = 0.6f;
-                        DrawCube(pos, temp, 1.1f, playerCamera->m_perspective, playerCamera);
+                        DrawCube(pos, temp, 1.1f, playerCamera);
                     }
                 }
                 if (s_debugFlags & +DebugOptions::CollisionTriangles)
                 {
                     if (player->m_collider.m_collidedTriangles.size())
                     {
-                        DrawTriangles(player->m_collider.m_collidedTriangles, Orange, playerCamera->m_perspective, playerCamera, false);
+                        DrawTriangles(player->m_collider.m_collidedTriangles, Orange, playerCamera, false);
                         player->m_collider.m_collidedTriangles.clear();
                     }
                 }
@@ -1142,6 +1149,11 @@ int main(int argc, char* argv[])
                     g_chunks->ClearChunk(i);
                 }
             }
+        }
+
+        {
+            PROFILE_SCOPE("Entity Render");
+            g_entityList.Render(deltaTime, playerCamera);
         }
 
         {

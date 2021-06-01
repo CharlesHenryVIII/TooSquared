@@ -31,7 +31,7 @@ struct Entity
     virtual EntityType GetType() = 0;
     virtual void InputUpdate(float dt, CommandHandler& commands) {};
     virtual void Update(float dt) = 0;
-    virtual void Render(float dt) {};
+    virtual void Render(float dt, Camera* camera) {};
     WorldPos RealWorldPos();
     GamePos  RealGamePos();
     ChunkPos RealChunkPos();
@@ -53,7 +53,7 @@ struct Player : public Entity
     void Init() override;
     void InputUpdate(float dt, CommandHandler& commands) override;
     void Update(float dt) override;
-    void Render(float dt) override;
+    void Render(float dt, Camera* camera) override;
 };
 
 struct Camera : public Entity
@@ -76,8 +76,10 @@ struct Camera : public Entity
 struct Item : public Entity 
 {
     ENTITYBOILERPLATE(Item);
-    BlockType type;
-    void Render(float dt) override;
+    BlockType m_type;
+    static VertexBuffer m_vertexBuffer;
+    void Update(float dt);
+    void Render(float dt, Camera* camera) override;
 };
 
 struct Entitys {
@@ -114,6 +116,6 @@ struct Entitys {
     void CleanUp();
     void InputUpdate(float deltaTime, CommandHandler& commands);
     void Update(float deltaTime);
-    void Render(float deltaTime);
+    void Render(float deltaTime, Camera* camera);
 };
 extern Entitys g_entityList;

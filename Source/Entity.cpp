@@ -209,7 +209,7 @@ void Player::Update(float dt)
     //}
 }
 
-void Player::Render(float dt)
+void Player::Render(float dt, Camera* camera)
 {
 
 }
@@ -223,9 +223,15 @@ void Camera::Update(float dt)
 
 
 //Items
-void Item::Render(float dt)
+void Item::Render(float dt, Camera* camera)
 {
-    //DrawCube();
+    float scale = 0.5f;
+    SlowDrawCube(m_transform.m_p, White, scale, camera, Texture::T::Minecraft, m_type);
+}
+
+void Item::Update(float dt)
+{
+    //null
 }
 
     
@@ -243,11 +249,11 @@ void Entitys::Update(float dt)
     }
 }
 
-void Entitys::Render(float dt)
+void Entitys::Render(float dt, Camera* camera)
 {
     for (auto e : list)
     {
-        e->Render(dt);
+        e->Render(dt, camera);
     }
 }
 

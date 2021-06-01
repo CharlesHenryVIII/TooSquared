@@ -534,6 +534,15 @@ void ShaderProgram::UpdateUniformUint8(const char* name, GLuint value)
 #endif
 }
 
+void ShaderProgram::UpdateUniformUintStream(const char* name, GLsizei count, GLuint* values)
+{
+    GLint loc = glGetUniformLocation(m_handle, name);
+    glUniform1uiv(loc, count, values);
+#ifdef _DEBUGPRINT
+    DebugPrint("Shader Uniform Updated %s\n", name);
+#endif
+}
+
 void GpuBuffer::UploadData(void* data, size_t size)
 {
     Bind();
