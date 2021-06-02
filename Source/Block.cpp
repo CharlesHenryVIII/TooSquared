@@ -2199,12 +2199,12 @@ static const Vec2 faceUV[4] = {
     Vec2{ 1, 0 }
 };
 
-void SlowDrawCube(WorldPos p, Color color, float scale, Camera* camera, Texture::T textureType, BlockType blockType)
+void DrawBlock(WorldPos p, Color color, float scale, Camera* camera, Texture::T textureType, BlockType blockType)
 {
-    SlowDrawCube(p, color, { scale, scale, scale }, camera, textureType, blockType);
+    DrawBlock(p, color, { scale, scale, scale }, camera, textureType, blockType);
 }
 
-void SlowDrawCube(WorldPos p, Color color, Vec3 scale, Camera* camera, Texture::T textureType, BlockType blockType)
+void DrawBlock(WorldPos p, Color color, Vec3 scale, Camera* camera, Texture::T textureType, BlockType blockType)
 {
     std::unique_ptr<VertexBuffer> vb = std::make_unique<VertexBuffer>();
 

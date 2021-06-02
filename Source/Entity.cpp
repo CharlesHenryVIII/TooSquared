@@ -226,7 +226,7 @@ void Camera::Update(float dt)
 void Item::Render(float dt, Camera* camera)
 {
     float scale = 0.5f;
-    SlowDrawCube(m_transform.m_p, White, scale, camera, Texture::T::Minecraft, m_type);
+    DrawBlock(m_transform.m_p, White, scale, camera, Texture::T::Minecraft, m_type);
 }
 
 void Item::Update(float dt)

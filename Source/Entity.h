@@ -73,6 +73,8 @@ struct Camera : public Entity
     void Update(float dt);
 };
 
+
+
 struct Item : public Entity 
 {
     ENTITYBOILERPLATE(Item);
