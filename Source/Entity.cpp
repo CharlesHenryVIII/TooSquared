@@ -1,6 +1,7 @@
 #include "Entity.h"
 
 Entitys g_entityList;
+Items   g_items;
 
 WorldPos Entity::RealWorldPos()
 {
@@ -199,6 +200,14 @@ void Player::InputUpdate(float dt, CommandHandler& commands)
 
 void Player::Update(float dt)
 {
+    for (auto& i : g_items.m_items)
+    {
+        if (Distance(i.m_transform.m_p.p, this->m_transform.m_p.p) < 1.5f)
+        {
+            m_inventory.Add(i.m_type, 1);
+            i.m_lootable = false;
+        }
+    }
 
     //switch (m_movementType)
     //{
@@ -223,15 +232,52 @@ void Camera::Update(float dt)
 
 
 //Items
-void Item::Render(float dt, Camera* camera)
+void Items::Add(BlockType blockType, WorldPos position)
 {
-    float scale = 0.5f;
-    DrawBlock(m_transform.m_p, White, scale, camera, Texture::T::Minecraft, m_type);
+    Item newItem;
+    newItem.m_transform.m_p.p = position.p;
+    newItem.m_type = blockType;
+    m_items.push_back(newItem);
 }
 
-void Item::Update(float dt)
+void Items::Update(float dt)
 {
-    //null
+    std::erase_if(m_items,
+        [](Item& i)
+        {
+            return (!i.m_lootable);
+        });
+
+    for (auto& e : m_items)
+    {
+        GamePos blockInsideP = ToGame(e.m_transform.m_p.p);
+        GamePos blockBelowP = blockInsideP;
+        blockBelowP.p.y = Max(0, blockBelowP.p.y - 1);
+        BlockType blockInsideType;
+        BlockType blockBelowType;
+        bool moved = false;
+        while (g_chunks->GetBlock(blockInsideType, blockInsideP) && blockInsideType != BlockType::Empty)
+        {
+            e.m_transform.m_p.p.y += 1.0f;
+            blockInsideP.p.y += 1;
+            moved = true;
+        }
+        if (!moved)
+        {
+            while (g_chunks->GetBlock(blockBelowType, blockBelowP) && blockBelowType == BlockType::Empty)
+            {
+                e.m_transform.m_p.p.y -= 1.0f;
+                blockBelowP.p.y -= 1;
+            }
+        }
+    }
+}
+
+void Items::Render(float dt, Camera* camera)
+{
+    float scale = 0.5f;
+    for (auto i : m_items)
+        DrawBlock(i.m_transform.m_p, White, scale, camera, Texture::T::Minecraft, i.m_type);
 }
 
     

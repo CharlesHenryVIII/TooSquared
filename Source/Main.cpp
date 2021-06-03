@@ -728,6 +728,11 @@ int main(int argc, char* argv[])
         //END OF GARBAGE?
 
         {
+            PROFILE_SCOPE("Items Update");
+            g_items.Update(deltaTime);
+        }
+
+        {
             PROFILE_SCOPE("Entity Update");
             g_entityList.Update(deltaTime);
         }
@@ -817,15 +822,12 @@ int main(int argc, char* argv[])
                     {
                         assert(collectedBlockType != BlockType::Empty);
                         SetBlock(hitBlock, BlockType::Empty);
-                        Item* item = g_entityList.New<Item>();
-                        item->m_transform.m_p.p = ToWorld(hitBlock).p;
-                        item->m_transform.m_p.p += { 0.5f, 0.5f, 0.5f };
-                        item->m_type = collectedBlockType;
-                        if (auto overflow = player->m_inventory.Add(collectedBlockType, 1))
-                        {
-                            //do something with the excess
-                        }
+                        g_items.Add(collectedBlockType, ToWorld(hitBlock).p + 0.5f);
                         //TODO: add feature to drop block if block could not be picked up
+                        //if (auto overflow = player->m_inventory.Add(collectedBlockType, 1))
+                        //{
+                        //    //do something with the excess
+                        //}
                     }
                 }
             }
@@ -960,8 +962,13 @@ int main(int argc, char* argv[])
         }
 
         {
+            PROFILE_SCOPE("Items Render");
+            g_items.Render(deltaTime, playerCamera);
+        }
+
+        {
             PROFILE_SCOPE("Entity Render");
-            g_entityList.Update(deltaTime);
+            g_entityList.Render(deltaTime, playerCamera);
         }
 
         {
@@ -1149,11 +1156,6 @@ int main(int argc, char* argv[])
                     g_chunks->ClearChunk(i);
                 }
             }
-        }
-
-        {
-            PROFILE_SCOPE("Entity Render");
-            g_entityList.Render(deltaTime, playerCamera);
         }
 
         {

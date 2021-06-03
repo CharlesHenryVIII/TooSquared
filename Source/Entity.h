@@ -13,7 +13,6 @@ enum class MovementType {
 enum class EntityType {
     Player,
     Camera,
-    Item,
 };
 
 typedef uint32 EntityID;
@@ -73,17 +72,6 @@ struct Camera : public Entity
     void Update(float dt);
 };
 
-
-
-struct Item : public Entity 
-{
-    ENTITYBOILERPLATE(Item);
-    BlockType m_type;
-    static VertexBuffer m_vertexBuffer;
-    void Update(float dt);
-    void Render(float dt, Camera* camera) override;
-};
-
 struct Entitys {
 
     std::vector<Entity*> list;
@@ -120,4 +108,20 @@ struct Entitys {
     void Update(float deltaTime);
     void Render(float deltaTime, Camera* camera);
 };
+
+struct Item
+{
+    BlockType m_type;
+    Transform m_transform;
+    bool m_lootable = true;
+};
+
+struct Items
+{
+    std::vector<Item> m_items;
+    void Add(BlockType blockType, WorldPos position);
+    void Update(float deltaTime);
+    void Render(float deltaTime, Camera* camera);
+};
+extern Items g_items;
 extern Entitys g_entityList;
