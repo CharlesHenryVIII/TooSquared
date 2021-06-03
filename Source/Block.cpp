@@ -2123,7 +2123,7 @@ void DrawTriangles(const std::vector<Triangle>& triangles, Color color, Camera* 
     //g_renderer.chunkIB->Bind();
 
     Mat4 transform;
-    //gb_mat4_translate(&transform, { p.p.x, p.p.y, p.p.z });
+    //gb_mat4_translate(&modelMatrix, { p.p.x, p.p.y, p.p.z });
     gb_mat4_identity(&transform);
 
     float scale1D = 1.0f;
@@ -2199,12 +2199,12 @@ static const Vec2 faceUV[4] = {
     Vec2{ 1, 0 }
 };
 
-void DrawBlock(WorldPos p, Color color, float scale, Camera* camera, Texture::T textureType, BlockType blockType)
+void DrawBlock(Transform& tran, Color color, float scale, Camera* camera, Texture::T textureType, BlockType blockType)
 {
-    DrawBlock(p, color, { scale, scale, scale }, camera, textureType, blockType);
+    DrawBlock(tran, color, { scale, scale, scale }, camera, textureType, blockType);
 }
 
-void DrawBlock(WorldPos p, Color color, Vec3 scale, Camera* camera, Texture::T textureType, BlockType blockType)
+void DrawBlock(Transform& tran, Color color, Vec3 scale, Camera* camera, Texture::T textureType, BlockType blockType)
 {
     std::unique_ptr<VertexBuffer> vb = std::make_unique<VertexBuffer>();
 
@@ -2212,7 +2212,7 @@ void DrawBlock(WorldPos p, Color color, Vec3 scale, Camera* camera, Texture::T t
 
     for (int32 i = 0; i < arrsize(cubeVertices); i++)
     {
-        vertices[i].p  = cubeVertices[i] - 0.5f;
+        vertices[i].p = cubeVertices[i] - 0.5f;
         auto spriteIndex = blockSprites[+blockType].faceSprites[i / 4];
         //TODO: Refactor this garbago:
         Rect UVSquare = GetUVsFromIndex(spriteIndex);
@@ -2223,14 +2223,17 @@ void DrawBlock(WorldPos p, Color color, Vec3 scale, Camera* camera, Texture::T t
     vb->Upload(vertices, arrsize(vertices));
     g_renderer.chunkIB->Bind();
 
-    Mat4 transform;
-    gb_mat4_translate(&transform, { p.p.x, p.p.y, p.p.z });
+    Mat4 modelMatrix;
+    gb_mat4_translate(&modelMatrix, tran.m_p.p);//{ tran.m_p.p.x, tran.m_p.p.y, tran.m_p.p.z });
+    Mat4 rotation;
+    gb_mat4_rotate(&rotation, { 0, 1.0f, 0 }, tran.m_rot.y);
+    modelMatrix = modelMatrix * rotation;
     ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
     sp->UseShader();
     g_renderer.textures[textureType]->Bind();
     sp->UpdateUniformMat4("u_perspective", 1, false, camera->m_perspective.e);
     sp->UpdateUniformMat4("u_view",        1, false, camera->m_view.e);
-    sp->UpdateUniformMat4("u_model",       1, false, transform.e);
+    sp->UpdateUniformMat4("u_model",       1, false, modelMatrix.e);
     sp->UpdateUniformVec3("u_scale",       1,        scale.e);
     sp->UpdateUniformVec4("u_color",       1,        color.e);
 

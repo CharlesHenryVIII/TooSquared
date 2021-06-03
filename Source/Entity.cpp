@@ -271,13 +271,20 @@ void Items::Update(float dt)
             }
         }
     }
+
+    //Apply angular velocity
+    float angularVelocity = tau / 5; // rads per second
+    for (auto& e : m_items)
+    {
+        e.m_transform.m_rot.y += dt * angularVelocity;
+    }
 }
 
 void Items::Render(float dt, Camera* camera)
 {
     float scale = 0.5f;
     for (auto i : m_items)
-        DrawBlock(i.m_transform.m_p, White, scale, camera, Texture::T::Minecraft, i.m_type);
+        DrawBlock(i.m_transform, White, scale, camera, Texture::T::Minecraft, i.m_type);
 }
 
     
