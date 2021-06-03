@@ -842,7 +842,7 @@ struct Capsule
     {
         m_tail.p = loc.p;
         m_tip.p = m_tail.p;
-        m_tip.p.y += m_radius;
+        m_tip.p.y += m_height;
     }
     void UpdateLocation(const WorldPos& positionDelta)
     {

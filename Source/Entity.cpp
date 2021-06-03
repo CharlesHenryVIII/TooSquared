@@ -202,7 +202,8 @@ void Player::Update(float dt)
 {
     for (auto& i : g_items.m_items)
     {
-        if (Distance(i.m_transform.m_p.p, this->m_transform.m_p.p) < 1.5f)
+        if (Distance(i.m_transform.m_p.p, this->m_collider.m_tail.p) < 1.5f ||
+            Distance(i.m_transform.m_p.p, this->m_collider.m_tip.p)  < 1.5f)
         {
             m_inventory.Add(i.m_type, 1);
             i.m_lootable = false;
