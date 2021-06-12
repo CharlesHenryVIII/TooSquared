@@ -64,6 +64,7 @@ typedef gbVec4 Vec4;
 typedef gbMat2 Mat2;
 typedef gbMat3 Mat3;
 typedef gbMat4 Mat4;
+typedef gbQuat Quat;
 
 //union Vert2d {
 //    struct { float x, y, z, u, v; };
@@ -870,9 +871,10 @@ struct RigidBody {
 struct Transform {
     WorldPos m_p = {};
     WorldPos m_pDelta = {};
+    Quat m_quat = gb_quat_identity();
     Vec3 m_vel = {};
     Vec3 m_acceleration = {};
-    Vec3 m_rot = {};
+    //Vec3 m_rot = {};
     Vec3 m_scale = {};
     Vec3 m_terminalVel = {};
     bool m_isGrounded = false;

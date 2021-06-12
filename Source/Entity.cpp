@@ -3,6 +3,7 @@
 Entitys g_entityList;
 Items   g_items;
 
+#if 0
 WorldPos Entity::RealWorldPos()
 {
     WorldPos result = m_transform.m_p;
@@ -24,6 +25,62 @@ ChunkPos Entity::RealChunkPos()
 {
     return ToChunk(RealWorldPos());
 }
+#endif
+
+Mat4 Entity::GetTranslationMatrix()
+{
+    Mat4 result;
+    Mat4 trans;
+    Mat4 rot;
+    gb_mat4_identity(&result);
+    gb_mat4_from_quat(&rot, m_transform.m_quat);
+    gb_mat4_translate(&trans, m_transform.m_p.p);
+    result = trans * rot;
+
+    if (m_parent)
+    {
+        Entity* e = g_entityList.GetEntity(m_parent);
+        if (e)
+        {
+            result *= e->GetTranslationMatrix();
+        }
+    }
+    return result;
+}
+
+WorldPos Entity::GetTruePosition()
+{
+#if 1
+    WorldPos result = {};
+    result.p = GetTranslationMatrix().col[3].xyz;
+#else
+    Vec4 a = { 1,1,1,1 };//{ m_transform.m_p.p.x, m_transform.m_p.p.y, m_transform.m_p.p.z, 1.0f };
+    a = GetTranslationMatrix() * a;
+    WorldPos result;
+    result.p = a.xyz;
+#endif
+    return result;
+}
+
+Quat Entity::GetTrueRotation()
+{
+#if 1
+    Mat4 trans = GetTranslationMatrix();
+    Quat result = {};
+    gb_quat_from_mat4(&result, &trans);
+#else
+    Quat result = m_transform.m_quat;
+    if (m_parent)
+    {
+        Entity* e = g_entityList.GetEntity(m_parent);
+        if (e)
+        {
+            result *= e->GetTrueRotation();
+        }
+    }
+#endif
+    return result;
+}
 
 //PLAYER
 
@@ -33,8 +90,6 @@ void Player::Init()
     m_transform.m_pDelta = { 0.0f, 260.0f, 0.0f };
     m_transform.m_vel = {};
     m_transform.m_acceleration = {};
-    //how the fuck was I doing this before
-    //m_transform.m_terminalVel = 200.0f;
     m_transform.m_terminalVel = { 200.0f, 200.0f, 200.0f };
 }
 
@@ -67,11 +122,11 @@ void Player::InputUpdate(float dt, CommandHandler& commands)
         }
     }
 
+    Vec3 front = GetTrueRotation() * faceNormals[+Face::Front];
 
     float cameraAcceleration = 0;
     m_transform.m_acceleration = {};
     //std::vector<Triangle> debug_trianglesToDraw;
-    float dragFlightCoefficient = 15.0f;
     switch (m_movementType)
     {
     case MovementType::Fly:
@@ -88,18 +143,22 @@ void Player::InputUpdate(float dt, CommandHandler& commands)
             if (commands.keyStates[SDLK_w].down && commands.keyStates[SDLK_s].down)
                 m_transform.m_acceleration;
             else if (commands.keyStates[SDLK_w].down)
-                m_transform.m_acceleration += (cameraAcceleration * camera->m_front);
+                m_transform.m_acceleration += (cameraAcceleration * front);
+                //m_transform.m_acceleration += (cameraAcceleration * camera->m_front);
             else if (commands.keyStates[SDLK_s].down)
-                m_transform.m_acceleration -= (cameraAcceleration * camera->m_front);
+                m_transform.m_acceleration -= (cameraAcceleration * front);
+                //m_transform.m_acceleration -= (cameraAcceleration * camera->m_front);
         }
         {
             //Lateral
             if (commands.keyStates[SDLK_a].down && commands.keyStates[SDLK_d].down)
                 m_transform.m_acceleration;
             else if (commands.keyStates[SDLK_a].down)
-                m_transform.m_acceleration -= (Normalize(Cross(camera->m_front, camera->m_up)) * cameraAcceleration);
+                m_transform.m_acceleration -= (Normalize(Cross(front, camera->m_up)) * cameraAcceleration);
+                //m_transform.m_acceleration -= (Normalize(Cross(camera->m_front, camera->m_up)) * cameraAcceleration);
             else if (commands.keyStates[SDLK_d].down)
-                m_transform.m_acceleration += (Normalize(Cross(camera->m_front, camera->m_up)) * cameraAcceleration);
+                m_transform.m_acceleration += (Normalize(Cross(front, camera->m_up)) * cameraAcceleration);
+                //m_transform.m_acceleration += (Normalize(Cross(camera->m_front, camera->m_up)) * cameraAcceleration);
         }
         if (commands.keyStates[SDLK_LCTRL].down)
             m_transform.m_terminalVel.x = m_transform.m_terminalVel.z = 10.0f;
@@ -109,16 +168,15 @@ void Player::InputUpdate(float dt, CommandHandler& commands)
             m_transform.m_acceleration.z += cameraAcceleration;
         if (commands.keyStates[SDLK_x].down)
             m_transform.m_acceleration.x += cameraAcceleration;
-        m_transform.UpdateDeltaPosition(dt, { dragFlightCoefficient, dragFlightCoefficient, dragFlightCoefficient }, m_collider.m_radius * 2 * m_collider.m_height, 0);
-        m_transform.m_p.p += m_transform.m_pDelta.p;
         break;
+
     case MovementType::Collision:
     {
         cameraAcceleration = 15.0f; // m/s^2
-        Vec3 forward = Normalize(Vec3({ camera->m_front.x, 0, camera->m_front.z }));
+        Vec3 forward = Normalize(Vec3({ front.x, 0.0f, front.z }));
+        //Vec3 forward = Normalize(Vec3({ camera->m_front.x, 0.0f, camera->m_front.z }));
         m_transform.m_terminalVel.x = m_transform.m_terminalVel.z = 3.0f;
         m_transform.m_terminalVel.y = 50.0f;
-
         if (commands.keyStates[SDLK_LSHIFT].down)
         {
             cameraAcceleration = 50.0f;
@@ -153,7 +211,21 @@ void Player::InputUpdate(float dt, CommandHandler& commands)
             m_transform.m_acceleration.z += cameraAcceleration;
         if (commands.keyStates[SDLK_x].down)
             m_transform.m_acceleration.x += cameraAcceleration;
+        break;
+    }
+    }
+}
 
+void Player::Update(float dt)
+{
+    float dragFlightCoefficient = 15.0f;
+    switch (m_movementType)
+    {
+    case MovementType::Fly:
+        m_transform.UpdateDeltaPosition(dt, { dragFlightCoefficient, dragFlightCoefficient, dragFlightCoefficient }, m_collider.m_radius * 2 * m_collider.m_height, 0);
+        m_transform.m_p.p += m_transform.m_pDelta.p;
+        break;
+    case MovementType::Collision:
         m_transform.UpdateDeltaPosition(dt, { 10.0f, 1.0f, 10.0f }, m_collider.m_radius * 2 * m_collider.m_height);
         //m_collider.UpdateMidTipLocation(m_transform.m_p);
         m_collider.UpdateTailLocation(m_transform.m_p);
@@ -191,15 +263,10 @@ void Player::InputUpdate(float dt, CommandHandler& commands)
                 m_transform.m_vel.z = 0.0f;
             }
         }
-
-
         break;
     }
-    }
-}
 
-void Player::Update(float dt)
-{
+
     for (auto& i : g_items.m_items)
     {
         if (Distance(i.m_transform.m_p.p, this->m_collider.m_tail.p) < 1.5f ||
@@ -277,7 +344,10 @@ void Items::Update(float dt)
     float angularVelocity = tau / 5; // rads per second
     for (auto& e : m_items)
     {
-        e.m_transform.m_rot.y += dt * angularVelocity;
+        float yaw = dt * angularVelocity;
+        e.m_transform.m_quat *= gb_quat_euler_angles(0.0f, yaw, 0.0f);
+
+        //e.m_transform.m_rot.y += dt * angularVelocity;
     }
 }
 

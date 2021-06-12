@@ -93,12 +93,12 @@ extern char* g_ClipboardTextData;
 uint64_t GetCurrentTime();
 
 template <typename T>
-void GenericImGuiTable(const std::string& title, const std::string& fmt, T* firstValue)
+void GenericImGuiTable(const std::string& title, const std::string& fmt, T* firstValue, int32 length = 3)
 {
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
     ImGui::TextUnformatted(title.data());
-    for (int32 column = 0; column < 3; column++)
+    for (int32 column = 0; column < length; column++)
     {
         ImGui::TableSetColumnIndex(column + 1);
         std::string string = ToString(fmt.c_str(), firstValue[column]);

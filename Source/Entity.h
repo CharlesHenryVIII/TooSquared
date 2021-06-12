@@ -31,9 +31,12 @@ struct Entity
     virtual void InputUpdate(float dt, CommandHandler& commands) {};
     virtual void Update(float dt) = 0;
     virtual void Render(float dt, Camera* camera) {};
-    WorldPos RealWorldPos();
-    GamePos  RealGamePos();
-    ChunkPos RealChunkPos();
+    //WorldPos RealWorldPos();
+    //GamePos  RealGamePos();
+    //ChunkPos RealChunkPos();
+    Mat4 GetTranslationMatrix();
+    WorldPos GetTruePosition();
+    Quat GetTrueRotation();
 };
 
 #define ENTITYBOILERPLATE(name) \
@@ -59,17 +62,17 @@ struct Camera : public Entity
 {
     ENTITYBOILERPLATE(Camera);
 
-    Vec3  m_front  = { 0.0f, 0.0f, -1.0f };
+    //Vec3  m_front  = { 0.0f, 0.0f, -1.0f };
     Vec3  m_up     = { 0.0f, 1.0f, 0.0f };
     Mat4  m_view;
     Mat4  m_perspective;
     Mat4  m_viewProj;
-    float m_yaw   = -90.0f;
-    float m_pitch = 0.0f;
+    //float m_yaw   = -90.0f;
+    //float m_pitch = 0.0f;
     int32 m_fogDistance = 40;
     int32 m_drawDistance = 10;
 
-    void Update(float dt);
+    void Update(float dt) override;
 };
 
 struct Entitys {

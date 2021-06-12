@@ -120,6 +120,9 @@ enum class Face : uint8 {
 };
 ENUMOPS(Face);
 
+extern Vec3 faceNormals[+Face::Count];
+
+
 //NOTE: Wrong do later if needed
 //struct BlockPos {
 //    union {

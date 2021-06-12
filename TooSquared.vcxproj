@@ -200,7 +200,6 @@
     <ClInclude Include="Source\imgui_impl_sdl.h" />
     <ClInclude Include="Source\Input.h" />
     <ClInclude Include="Source\Inventory.h" />
-    <ClInclude Include="Source\Main.h" />
     <ClInclude Include="Source\Math.h" />
     <ClInclude Include="Source\Misc.h" />
     <ClInclude Include="Source\Noise.h" />

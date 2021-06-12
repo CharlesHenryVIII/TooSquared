@@ -160,6 +160,7 @@ int main(int argc, char* argv[])
 
     {
         WorldPos cOffset = { 1.0f, 0.0f, 1.0f };
+        playerCamera->GetTruePosition();
         gb_mat4_look_at(&playerCamera->m_view, 
                         player->m_transform.m_p.p,//{ g_camera.transform.m_p.p.x + cOffset.p.x, g_camera.transform.m_p.p.y + cOffset.p.y,g_camera.transform.m_p.p.z + cOffset.p.z },
                         player->m_transform.m_p.p + cOffset.p/*{ g_camera.transform.m_p.p.x, g_camera.transform.m_p.p.y, g_camera.transform.m_p.p.z }*/, { 0,1,0 });
@@ -242,10 +243,6 @@ int main(int argc, char* argv[])
          * Event Queing and handling
          *
          ********/
-        Vec2Int originalMouseLocation = {};
-        Vec2Int newMouseLocation = {};
-
-
         playerInput.mouse.pDelta = { 0, 0 };
 
         if (multiThreading.GetJobsInFlight() > 0 || uploadedLastFrame)
@@ -436,9 +433,25 @@ int main(int argc, char* argv[])
 
         //if (playerInput.keyStates[SDL_BUTTON_LEFT].down)
         {
+#if 1
+            float mouseSensativity = 0.04f;
+            float yaw   = -(playerInput.mouse.pDelta.x * mouseSensativity);
+            float pitch = -(playerInput.mouse.pDelta.y * mouseSensativity);
+
+#if 1
+            player->m_transform.m_quat *= gb_quat_euler_angles(pitch, yaw, 0.0f);
+#else
+            playerCamera->m_transform.m_quat *= gb_quat_euler_angles(pitch, 0.0f, 0.0f);
+            player->m_transform.m_quat       *= gb_quat_euler_angles(0.0f, yaw, 0.0f);
+#endif
+#else
             float mouseSensativity = 0.4f;
-            playerCamera->m_yaw += playerInput.mouse.pDelta.x * mouseSensativity;
+            playerCamera->m_yaw   += playerInput.mouse.pDelta.x * mouseSensativity;
             playerCamera->m_pitch -= playerInput.mouse.pDelta.y * mouseSensativity;
+
+            //make sure that when pitch is out of bounds, screen doesn't get flipped
+            playerCamera->m_pitch = Clamp<float>(playerCamera->m_pitch, -89.0f, 89.0f);
+#endif
         }
 
         if (playerInput.keyStates[SDLK_e].downThisFrame)
@@ -487,7 +500,46 @@ int main(int argc, char* argv[])
 
                     ImGui::EndTable();
                 }
-                if (ImGui::BeginTable("Movement", 4, flags))
+                if (ImGui::BeginTable("Movement", 5, flags))
+                {
+                    ImGui::TableSetupColumn("Type");
+                    ImGui::TableSetupColumn("X");
+                    ImGui::TableSetupColumn("Y");
+                    ImGui::TableSetupColumn("Z");
+                    ImGui::TableSetupColumn("W");
+                    ImGui::TableHeadersRow();
+
+                    Vec4 vel   = { player->m_transform.m_vel.x, player->m_transform.m_vel.y, player->m_transform.m_vel.z, 0.0f };
+                    Vec4 accel = { player->m_transform.m_acceleration.x, player->m_transform.m_acceleration.y, player->m_transform.m_acceleration.z, 0.0f };
+                    GenericImGuiTable("Vel",   "%+08.2f", vel.e, 4);
+                    GenericImGuiTable("Accel", "%+08.2f", accel.e, 4);
+                    GenericImGuiTable("Quat",  "%+08.2f", player->m_transform.m_quat.e, 4);
+                    ImGui::EndTable();
+                }
+                ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+            }
+            ImGui::End();
+
+        }
+        {
+            const float PAD = 5.0f;
+            ImGuiIO& io = ImGui::GetIO();
+            ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+                                           ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
+
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+            ImVec2 window_pos;//, window_pos_pivot;
+            window_pos.x = work_pos.x + PAD + 320;
+            window_pos.y = work_pos.y + PAD;
+            //window_pos_pivot.x = window_pos_pivot.y = 0.0f;
+            ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, {});
+
+            ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+            if (ImGui::Begin("Camera Transform Information", nullptr, windowFlags))
+            {
+                ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders;
+                if (ImGui::BeginTable("Position Info", 4, flags))
                 {
                     ImGui::TableSetupColumn("Type");
                     ImGui::TableSetupColumn("X");
@@ -495,8 +547,27 @@ int main(int argc, char* argv[])
                     ImGui::TableSetupColumn("Z");
                     ImGui::TableHeadersRow();
 
-                    GenericImGuiTable("Vel",   "%+08.2f", player->m_transform.m_vel.e);
-                    GenericImGuiTable("Accel", "%+08.2f", player->m_transform.m_acceleration.e);
+                    WorldPos p = playerCamera->GetTruePosition();
+                    GenericImGuiTable("World", "%+08.2f", p.p.e);
+                    GenericImGuiTable("Game", "%i", ToGame(p).p.e);
+                    GenericImGuiTable("Chunk", "%i", ToChunk(p).p.e);
+
+                    ImGui::EndTable();
+                }
+                if (ImGui::BeginTable("Movement", 5, flags))
+                {
+                    ImGui::TableSetupColumn("Type");
+                    ImGui::TableSetupColumn("X");
+                    ImGui::TableSetupColumn("Y");
+                    ImGui::TableSetupColumn("Z");
+                    ImGui::TableSetupColumn("W");
+                    ImGui::TableHeadersRow();
+
+                    Vec4 vel   = { playerCamera->m_transform.m_vel.x,           playerCamera->m_transform.m_vel.y,          playerCamera->m_transform.m_vel.z,          0.0f };
+                    Vec4 accel = { playerCamera->m_transform.m_acceleration.x,  playerCamera->m_transform.m_acceleration.y, playerCamera->m_transform.m_acceleration.z, 0.0f };
+                    GenericImGuiTable("Vel",   "%+08.2f", vel.e, 4);
+                    GenericImGuiTable("Accel", "%+08.2f", accel.e, 4);
+                    GenericImGuiTable("Quat",  "%+08.2f", playerCamera->m_transform.m_quat.e, 4);
                     ImGui::EndTable();
                 }
                 ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -677,19 +748,29 @@ int main(int argc, char* argv[])
             g_entityList.InputUpdate(deltaTime, playerInput);
 
 
+        {
+            PROFILE_SCOPE("Items Update");
+            g_items.Update(deltaTime);
+        }
 
-        //make sure that when pitch is out of bounds, screen doesn't get flipped
-        playerCamera->m_pitch = Clamp<float>(playerCamera->m_pitch, -89.0f, 89.0f);
+        {
+            PROFILE_SCOPE("Entity Update");
+            g_entityList.Update(deltaTime);
+        }
+
+
         Vec3 lookTarget = {};
         {
-            Vec3 front = {};
-            front.x = cos(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
-            front.y = sin(DegToRad(playerCamera->m_pitch));
-            front.z = sin(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
-            playerCamera->m_front = Normalize(front);
+            
+            Vec3 front = playerCamera->GetTrueRotation() * faceNormals[+Face::Front];
+            //front.x = cos(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
+            //front.y = sin(DegToRad(playerCamera->m_pitch));
+            //front.z = sin(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
+            //playerCamera->m_front = Normalize(front);
 
-            WorldPos cameraRealWorldPosition = playerCamera->RealWorldPos().p;
-            lookTarget = cameraRealWorldPosition.p + playerCamera->m_front;
+            //WorldPos cameraRealWorldPosition = playerCamera->GetTranslationMatrix() * playerCamera->m_transform.m_p.p;
+            WorldPos cameraRealWorldPosition = playerCamera->GetTruePosition();
+            lookTarget = cameraRealWorldPosition.p + front;//playerCamera->m_front;
             gb_mat4_look_at(&playerCamera->m_view, cameraRealWorldPosition.p, lookTarget, playerCamera->m_up);
 
             float SunRotationRadians = (((g_gameData.m_currentTime - 6.0f) / 24) * tau);
@@ -727,16 +808,6 @@ int main(int argc, char* argv[])
         }
         //END OF GARBAGE?
 
-        {
-            PROFILE_SCOPE("Items Update");
-            g_items.Update(deltaTime);
-        }
-
-        {
-            PROFILE_SCOPE("Entity Update");
-            g_entityList.Update(deltaTime);
-        }
-
 
 
         GamePos hitBlock;
@@ -747,7 +818,8 @@ int main(int argc, char* argv[])
             PROFILE_SCOPE_TAB("Raycast");
             RegionSampler localRegion;
             ChunkIndex centerChunkIndex;
-            WorldPos cameraRealWorldPosition = playerCamera->RealWorldPos();
+            //WorldPos cameraRealWorldPosition = playerCamera->RealWorldPos();
+            WorldPos cameraRealWorldPosition = playerCamera->GetTruePosition();//RealWorldPos();
             Ray ray = {
                 .origin = cameraRealWorldPosition.p,
                 .direction = lookTarget - cameraRealWorldPosition.p,
@@ -942,7 +1014,7 @@ int main(int argc, char* argv[])
             Mat4 iViewProj;
             gb_mat4_inverse(&iViewProj, &playerCamera->m_viewProj);
             sp->UpdateUniformMat4("u_inverseViewProjection", 1, false, iViewProj.e);
-            sp->UpdateUniformVec3("u_cameraPosition", 1, playerCamera->RealWorldPos().p.e);
+            sp->UpdateUniformVec3("u_cameraPosition", 1, playerCamera->GetTruePosition().p.e);
             sp->UpdateUniformFloat("u_gameTime", g_gameData.m_currentTime);
             glActiveTexture(GL_TEXTURE1);
             g_renderer.skyBoxNight->Bind();
@@ -1003,7 +1075,8 @@ int main(int argc, char* argv[])
                             (drawZ < _drawDistance && drawZ > -_drawDistance))
                             continue;
 
-                        ChunkPos cameraChunkP = playerCamera->RealChunkPos();
+                        //ChunkPos cameraChunkP = playerCamera->RealChunkPos();
+                        ChunkPos cameraChunkP = ToChunk(WorldPos(playerCamera->GetTruePosition()));
                         ChunkIndex originChunk = 0;
                         ChunkPos drawDistanceChunk = { cameraChunkP.p.x + drawX, 0, cameraChunkP.p.z + drawZ };
                         if (!g_chunks->GetChunkFromPosition(originChunk, drawDistanceChunk))
@@ -1054,7 +1127,8 @@ int main(int argc, char* argv[])
                 GamePos max = { min.p.x + (int32)CHUNK_X, min.p.y + (int32)CHUNK_Y, min.p.z + (int32)CHUNK_Z };
                 if (IsBoxInFrustum(frustum, ToWorld(min).p.e, ToWorld(max).p.e))
                 {
-                    renderables[numRenderables].d = ManhattanDistance(ToChunk(playerCamera->RealWorldPos().p).p, chunkP.p);
+                    //renderables[numRenderables].d = ManhattanDistance(ToChunk(playerCamera->RealWorldPos().p).p, chunkP.p);
+                    renderables[numRenderables].d = ManhattanDistance(ToChunk(WorldPos(playerCamera->GetTruePosition())).p, chunkP.p);
                     renderables[numRenderables++].r = i;
                 }
             }

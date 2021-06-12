@@ -133,9 +133,6 @@
     <ClInclude Include="Source\Noise.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="Source\Main.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Source\Input.h">
       <Filter>Source Files</Filter>
     </ClInclude>

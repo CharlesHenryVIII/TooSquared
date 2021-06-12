@@ -112,7 +112,7 @@ struct VertexFace {
     Vertex_Chunk a,b,c,d;
 };
 
-Vec3 faceNormals[] = {
+Vec3 faceNormals[+Face::Count] = {
 
 {  1.0f,  0.0f,  0.0f },
 { -1.0f,  0.0f,  0.0f },
@@ -2004,7 +2004,8 @@ void PreChunkRender(const Mat4& perspective, Camera* camera)
     sp->UpdateUniformVec3("u_lightColor",  1,  g_light.c.e);
     sp->UpdateUniformVec3("u_lightP",      1,  g_light.p.e);
 #endif
-    sp->UpdateUniformVec3("u_cameraP",     1,  camera->RealWorldPos().p.e);
+    //sp->UpdateUniformVec3("u_cameraP",     1,  camera->RealWorldPos().p.e);
+    sp->UpdateUniformVec3("u_cameraP",     1,  camera->GetTruePosition().p.e);
 
     sp->UpdateUniformUint8("u_CHUNK_X", CHUNK_X);
     sp->UpdateUniformUint8("u_CHUNK_Y", CHUNK_Y);
@@ -2226,7 +2227,8 @@ void DrawBlock(Transform& tran, Color color, Vec3 scale, Camera* camera, Texture
     Mat4 modelMatrix;
     gb_mat4_translate(&modelMatrix, tran.m_p.p);//{ tran.m_p.p.x, tran.m_p.p.y, tran.m_p.p.z });
     Mat4 rotation;
-    gb_mat4_rotate(&rotation, { 0, 1.0f, 0 }, tran.m_rot.y);
+    gb_mat4_from_quat(&rotation, tran.m_quat);
+    //gb_mat4_rotate(&rotation, { 0, 1.0f, 0 }, tran.m_rot.y);
     modelMatrix = modelMatrix * rotation;
     ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
     sp->UseShader();
@@ -2295,10 +2297,12 @@ void DrawCube(WorldPos p, Color color, Vec3  scale, Camera* camera, Texture::T t
     g_renderer.numTrianglesDrawn += 36 / 3;
 }
 
+//UNTESTED AND DOES NOT WORK
 void Draw2DSquare(Rect rect, Color color)
 {
     std::unique_ptr<VertexBuffer> vertexBuffer = std::make_unique<VertexBuffer>();
 
+    //WRONG COORDINATE SPACE -1 TO 1 NOT 0 TO SIZE OF SCREEN IN PIXELS
     Vertex vertices[4] = {};
     vertices[0].p = { rect.botLeft.x,  rect.topRight.y, 1.5f };
     vertices[1].p = { rect.botLeft.x,  rect.botLeft.y,  1.5f };
