@@ -42,7 +42,7 @@ Mat4 Entity::GetTranslationMatrix()
         Entity* e = g_entityList.GetEntity(m_parent);
         if (e)
         {
-            result *= e->GetTranslationMatrix();
+            result = e->GetTranslationMatrix() * result;
         }
     }
     return result;
