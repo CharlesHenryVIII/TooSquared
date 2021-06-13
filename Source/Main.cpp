@@ -439,16 +439,8 @@ int main(int argc, char* argv[])
             float pitch = -(playerInput.mouse.pDelta.y * mouseSensativity);
 
 #if 1
-            //gb_mat4_rotate();
-            Quat changeInRotationQuaternion = gb_quat_euler_angles(pitch, yaw, 0.0f);
+            player->m_transform.m_quat *= gb_quat_euler_angles(pitch, yaw, 0.0f);
 
-            
-            Mat4 changeInRotationMatrix;
-            gb_mat4_from_quat(&changeInRotationMatrix, changeInRotationQuaternion);
-
-            player->m_transform.m_rotation *= changeInRotationMatrix;
-
-            //player->m_transform.m_quat *= gb_quat_euler_angles(pitch, yaw, 0.0f);
             //pitch = gb_quat_pitch(player->m_transform.m_quat);
             //pitch = Clamp<float>(pitch, -89.0f, 89.0f);
             //yaw = gb_quat_yaw(player->m_transform.m_quat);
@@ -527,12 +519,7 @@ int main(int argc, char* argv[])
                     Vec4 accel = { player->m_transform.m_acceleration.x, player->m_transform.m_acceleration.y, player->m_transform.m_acceleration.z, 0.0f };
                     GenericImGuiTable("Vel",   "%+08.2f", vel.e, 4);
                     GenericImGuiTable("Accel", "%+08.2f", accel.e, 4);
-#if 1
-                    Vec4 rotation = player->m_transform.m_rotation * Vec4({ faceNormals[+Face::Front].x, faceNormals[+Face::Front].y, faceNormals[+Face::Front].z, 0.0f });
-                    GenericImGuiTable("Rot",   "%+08.2f", rotation.e, 4);
-#else
                     GenericImGuiTable("Quat",  "%+08.2f", player->m_transform.m_quat.e, 4);
-#endif
                     ImGui::EndTable();
                 }
                 ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -586,12 +573,7 @@ int main(int argc, char* argv[])
                     Vec4 accel = { playerCamera->m_transform.m_acceleration.x,  playerCamera->m_transform.m_acceleration.y, playerCamera->m_transform.m_acceleration.z, 0.0f };
                     GenericImGuiTable("Vel",   "%+08.2f", vel.e, 4);
                     GenericImGuiTable("Accel", "%+08.2f", accel.e, 4);
-#if 1
-                    Vec4 rotation = playerCamera->m_transform.m_rotation * Vec4({ faceNormals[+Face::Front].x, faceNormals[+Face::Front].y, faceNormals[+Face::Front].z, 0.0f });
-                    GenericImGuiTable("Rot",   "%+08.2f", rotation.e, 4);
-#else
                     GenericImGuiTable("Quat",  "%+08.2f", playerCamera->m_transform.m_quat.e, 4);
-#endif
                     ImGui::EndTable();
                 }
                 ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -786,11 +768,7 @@ int main(int argc, char* argv[])
         Vec3 lookTarget = {};
         {
             
-#if 1
-            Vec4 front = playerCamera->GetTrueRotation() * g_forwardVectorRotation;
-#else
             Vec3 front = playerCamera->GetTrueRotation() * faceNormals[+Face::Front];
-#endif
             //front.x = cos(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
             //front.y = sin(DegToRad(playerCamera->m_pitch));
             //front.z = sin(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
@@ -798,7 +776,7 @@ int main(int argc, char* argv[])
 
             //WorldPos cameraRealWorldPosition = playerCamera->GetTranslationMatrix() * playerCamera->m_transform.m_p.p;
             WorldPos cameraRealWorldPosition = playerCamera->GetTruePosition();
-            lookTarget = cameraRealWorldPosition.p + front.xyz;//playerCamera->m_front;
+            lookTarget = cameraRealWorldPosition.p + front;//playerCamera->m_front;
             gb_mat4_look_at(&playerCamera->m_view, cameraRealWorldPosition.p, lookTarget, playerCamera->m_up);
 
             float SunRotationRadians = (((g_gameData.m_currentTime - 6.0f) / 24) * tau);
