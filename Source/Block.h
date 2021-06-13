@@ -121,7 +121,8 @@ enum class Face : uint8 {
 ENUMOPS(Face);
 
 extern Vec3 faceNormals[+Face::Count];
-
+extern Vec4 g_forwardVectorRotation;
+extern Vec4 g_forwardVectorPosition;
 
 //NOTE: Wrong do later if needed
 //struct BlockPos {

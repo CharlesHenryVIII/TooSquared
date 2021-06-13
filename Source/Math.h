@@ -871,7 +871,8 @@ struct RigidBody {
 struct Transform {
     WorldPos m_p = {};
     WorldPos m_pDelta = {};
-    Quat m_quat = gb_quat_identity();
+    //Quat m_quat = gb_quat_identity();
+    Mat4 m_rotation = gb_mat4_identity_return();
     Vec3 m_vel = {};
     Vec3 m_acceleration = {};
     //Vec3 m_rot = {};

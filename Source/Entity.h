@@ -36,7 +36,11 @@ struct Entity
     //ChunkPos RealChunkPos();
     Mat4 GetTranslationMatrix();
     WorldPos GetTruePosition();
+#if 1
+    Mat4 GetTrueRotation();
+#else
     Quat GetTrueRotation();
+#endif
 };
 
 #define ENTITYBOILERPLATE(name) \

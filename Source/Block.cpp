@@ -122,6 +122,9 @@ Vec3 faceNormals[+Face::Count] = {
 {  0.0f,  0.0f, -1.0f },
 };
 
+Vec4 g_forwardVectorRotation = { faceNormals[+Face::Front].x, faceNormals[+Face::Front].y, faceNormals[+Face::Front].z, 0.0f };
+Vec4 g_forwardVectorPosition = { faceNormals[+Face::Front].x, faceNormals[+Face::Front].y, faceNormals[+Face::Front].z, 1.0f };
+
 //TODO: Block Pos?
 union VertexBlockCheck {
     struct { Vec3Int e0, e1, e2, e3, e4, e5, e6, e7; };
@@ -2226,10 +2229,14 @@ void DrawBlock(Transform& tran, Color color, Vec3 scale, Camera* camera, Texture
 
     Mat4 modelMatrix;
     gb_mat4_translate(&modelMatrix, tran.m_p.p);//{ tran.m_p.p.x, tran.m_p.p.y, tran.m_p.p.z });
+#if 1
+    modelMatrix = modelMatrix * tran.m_rotation;
+#else
     Mat4 rotation;
     gb_mat4_from_quat(&rotation, tran.m_quat);
     //gb_mat4_rotate(&rotation, { 0, 1.0f, 0 }, tran.m_rot.y);
     modelMatrix = modelMatrix * rotation;
+#endif
     ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
     sp->UseShader();
     g_renderer.textures[textureType]->Bind();

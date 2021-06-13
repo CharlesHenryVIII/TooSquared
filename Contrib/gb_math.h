@@ -383,6 +383,7 @@ GB_MATH_DEF void gb_float33_mul      (float (*out)[3], float (*mat1)[3], float (
 GB_MATH_DEF void gb_float33_mul_vec3 (gbVec3 *out, float m[3][3], gbVec3 in);
 
 GB_MATH_DEF void gb_mat4_identity   (gbMat4 *m);
+GB_MATH_DEF gbMat4 gb_mat4_identity_return (void);
 GB_MATH_DEF void gb_float44_identity(float m[4][4]);
 
 GB_MATH_DEF void  gb_mat4_transpose  (gbMat4 *m);
@@ -1470,6 +1471,7 @@ void gb_mat3_inverse(gbMat3 *out, gbMat3 *in) {
 
 void gb_mat4_transpose(gbMat4 *m) { gb_float44_transpose(gb_float44_m(m)); }
 void gb_mat4_identity(gbMat4 *m)  { gb_float44_identity(gb_float44_m(m));  }
+gbMat4 gb_mat4_identity_return() { gbMat4 m; gb_float44_identity(gb_float44_m(&m)); return m; }
 void gb_mat4_mul(gbMat4 *out, gbMat4 *m1, gbMat4 *m2) { gb_float44_mul(gb_float44_m(out), gb_float44_m(m1), gb_float44_m(m2)); }
 
 void gb_float44_identity(float m[4][4]) {

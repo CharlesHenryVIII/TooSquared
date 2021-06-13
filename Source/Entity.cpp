@@ -33,7 +33,11 @@ Mat4 Entity::GetTranslationMatrix()
     Mat4 trans;
     Mat4 rot;
     gb_mat4_identity(&result);
+#if 1
+    rot = m_transform.m_rotation;
+#else
     gb_mat4_from_quat(&rot, m_transform.m_quat);
+#endif
     gb_mat4_translate(&trans, m_transform.m_p.p);
     result = trans * rot;
 
@@ -62,6 +66,19 @@ WorldPos Entity::GetTruePosition()
     return result;
 }
 
+#if 1
+Mat4 Entity::GetTrueRotation()
+{
+    Mat4 trans = GetTranslationMatrix();
+    Vec4 Rotation = trans * g_forwardVectorRotation;
+
+    Quat quat;
+    gb_quat_from_mat4(&quat, &trans);
+    Mat4 result;
+    gb_mat4_from_quat(&result, quat);
+    return result;
+}
+#else
 Quat Entity::GetTrueRotation()
 {
 #if 1
@@ -81,6 +98,7 @@ Quat Entity::GetTrueRotation()
 #endif
     return result;
 }
+#endif
 
 //PLAYER
 
@@ -122,7 +140,11 @@ void Player::InputUpdate(float dt, CommandHandler& commands)
         }
     }
 
+#if 1
+    Vec3 front = (GetTrueRotation() * g_forwardVectorRotation).xyz;
+#else
     Vec3 front = GetTrueRotation() * faceNormals[+Face::Front];
+#endif
 
     float cameraAcceleration = 0;
     m_transform.m_acceleration = {};
@@ -345,7 +367,14 @@ void Items::Update(float dt)
     for (auto& e : m_items)
     {
         float yaw = dt * angularVelocity;
+#if 1
+        Quat quat = gb_quat_euler_angles(0.0f, yaw, 0.0f);
+        Mat4 deltaRotation;
+        gb_mat4_from_quat(&deltaRotation, quat);
+        e.m_transform.m_rotation *= deltaRotation;
+#else
         e.m_transform.m_quat *= gb_quat_euler_angles(0.0f, yaw, 0.0f);
+#endif
 
         //e.m_transform.m_rot.y += dt * angularVelocity;
     }
