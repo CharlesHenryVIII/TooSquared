@@ -21,6 +21,7 @@ struct Mouse {
     Vec2 pDelta = {};
     Vec2Int wheel = {}; //Y for vertical rotations, X for Horizontal rotations/movement
     SDL_Cursor* cursors[ImGuiMouseCursor_COUNT] = {};
+    float m_sensitivity = 0.4f;
     bool canUseGlobalState = true;
 };
 //extern Mouse g_mouse;

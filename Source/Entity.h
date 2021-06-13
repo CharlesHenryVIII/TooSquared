@@ -15,6 +15,9 @@ enum class EntityType {
     Camera,
 };
 
+extern Vec4 g_forwardVectorRotation;
+extern Vec4 g_forwardVectorPosition;
+
 typedef uint32 EntityID;
 //static std::atomic<EntityID> s_currentEntityID = 0;
 static EntityID s_currentEntityID = 0;
@@ -36,7 +39,7 @@ struct Entity
     //ChunkPos RealChunkPos();
     Mat4 GetTranslationMatrix();
     WorldPos GetTruePosition();
-    Quat GetTrueRotation();
+    //Quat GetTrueRotation();
 };
 
 #define ENTITYBOILERPLATE(name) \
@@ -50,8 +53,11 @@ struct Player : public Entity
     .m_radius = 0.25f,
     .m_height = 1.8f,
     };
-    MovementType m_movementType = MovementType::Fly;
+    //MovementType m_movementType = MovementType::Fly;
     uint32 m_inputID = {};
+    bool m_hasCamera;
+    void ChildCamera(Camera* c);
+    void DecoupleCamera();
     void Init() override;
     void InputUpdate(float dt, CommandHandler& commands) override;
     void Update(float dt) override;
@@ -73,6 +79,7 @@ struct Camera : public Entity
     int32 m_drawDistance = 10;
 
     void Update(float dt) override;
+    void InputUpdate(float dt, CommandHandler& commands) override;
 };
 
 struct Entitys {
@@ -122,7 +129,7 @@ struct Item
 struct Items
 {
     std::vector<Item> m_items;
-    void Add(BlockType blockType, WorldPos position);
+    Item* Add(BlockType blockType, WorldPos position);
     void Update(float deltaTime);
     void Render(float deltaTime, Camera* camera);
 };

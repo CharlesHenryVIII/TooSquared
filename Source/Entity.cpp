@@ -3,6 +3,9 @@
 Entitys g_entityList;
 Items   g_items;
 
+Vec4 g_forwardVectorRotation = { faceNormals[+Face::Front].x, faceNormals[+Face::Front].y, faceNormals[+Face::Front].z, 0.0f };
+Vec4 g_forwardVectorPosition = { faceNormals[+Face::Front].x, faceNormals[+Face::Front].y, faceNormals[+Face::Front].z, 1.0f };
+
 #if 0
 WorldPos Entity::RealWorldPos()
 {
@@ -33,7 +36,8 @@ Mat4 Entity::GetTranslationMatrix()
     Mat4 trans;
     Mat4 rot;
     gb_mat4_identity(&result);
-    gb_mat4_from_quat(&rot, m_transform.m_quat);
+    //gb_mat4_from_quat(&rot, m_transform.m_quat);
+    gb_mat4_from_quat(&rot, gb_quat_euler_angles(DegToRad(m_transform.m_pitch), DegToRad(m_transform.m_yaw), 0.0f));
     gb_mat4_translate(&trans, m_transform.m_p.p);
     result = trans * rot;
 
@@ -42,6 +46,7 @@ Mat4 Entity::GetTranslationMatrix()
         Entity* e = g_entityList.GetEntity(m_parent);
         if (e)
         {
+            //result = e->GetTranslationMatrix() * result;
             result = e->GetTranslationMatrix() * result;
         }
     }
@@ -62,6 +67,7 @@ WorldPos Entity::GetTruePosition()
     return result;
 }
 
+#if 0
 Quat Entity::GetTrueRotation()
 {
 #if 1
@@ -81,6 +87,7 @@ Quat Entity::GetTrueRotation()
 #endif
     return result;
 }
+#endif
 
 //PLAYER
 
@@ -93,7 +100,20 @@ void Player::Init()
     m_transform.m_terminalVel = { 200.0f, 200.0f, 200.0f };
 }
 
-void Player::InputUpdate(float dt, CommandHandler& commands)
+void Player::ChildCamera(Camera* c)
+{
+    m_hasCamera = true;
+    c->m_parent = this->m_ID;
+    this->m_transform = c->m_transform;
+    c->m_transform = {};
+    c->m_transform.m_p.p.y = this->m_collider.m_height - this->m_collider.m_radius;
+    c->m_transform.m_pitch = this->m_transform.m_pitch;
+    this->m_transform.m_pitch = 0;
+    this->m_transform.m_p.p -= c->m_transform.m_p.p;
+    this->m_children.push_back(c->m_ID);
+}
+
+void Player::DecoupleCamera()
 {
     Camera* camera = nullptr;
     for (auto c : m_children)
@@ -106,164 +126,139 @@ void Player::InputUpdate(float dt, CommandHandler& commands)
         }
     }
     assert(camera);
-    if (!camera)
-        return;
-
-    if (commands.keyStates[SDLK_0].downThisFrame)
+    if (camera)
     {
-        switch (m_movementType)
-        {
-        case MovementType::Fly:
-            m_movementType = MovementType::Collision;
-            break;
-        case MovementType::Collision:
-            m_movementType = MovementType::Fly;
-            break;
-        }
+        camera->m_parent = {};
+        float pitch = camera->m_transform.m_pitch;
+        camera->m_transform = m_transform;
+        camera->m_transform.m_pitch = pitch;
+        camera->m_transform.m_p.p.y += this->m_collider.m_height - this->m_collider.m_radius;
+
+        std::erase_if(m_children,
+            [camera](EntityID id)
+            {
+                return id == camera->m_ID;
+            });
     }
 
-    Vec3 front = GetTrueRotation() * faceNormals[+Face::Front];
+    m_hasCamera = false;
+}
+
+void Player::InputUpdate(float dt, CommandHandler& commands)
+{
+    Camera* camera = nullptr;
+    if (m_hasCamera)
+    {
+        for (auto c : m_children)
+        {
+            Entity* e = g_entityList.GetEntity(c);
+            if (e)
+            {
+                if (e->GetType() == EntityType::Camera)
+                    camera = reinterpret_cast<Camera*>(e);
+            }
+        }
+        assert(camera);
+    }
+
+    if (!camera)
+    {
+        return;
+    }
+    else
+    {
+        m_transform.m_yaw   -= commands.mouse.pDelta.x * commands.mouse.m_sensitivity;
+        camera->m_transform.m_pitch -= commands.mouse.pDelta.y * commands.mouse.m_sensitivity; 
+        camera->m_transform.m_pitch = Clamp<float>(camera->m_transform.m_pitch, -89.5f, 89.5f);
+    }
+
+
+    //Vec3 front = GetTrueRotation() * faceNormals[+Face::Front];
+    Vec3 front = (GetTranslationMatrix() * g_forwardVectorRotation).xyz;
 
     float cameraAcceleration = 0;
     m_transform.m_acceleration = {};
     //std::vector<Triangle> debug_trianglesToDraw;
-    switch (m_movementType)
-    {
-    case MovementType::Fly:
-        cameraAcceleration = 200.0f; // m/s^2
-        m_transform.m_terminalVel.x = m_transform.m_terminalVel.z =
-            m_transform.m_terminalVel.y = 10.0f;
-        if (commands.keyStates[SDLK_LSHIFT].down)
-        {
-            cameraAcceleration *= 30;
-            m_transform.m_terminalVel.x = m_transform.m_terminalVel.y = m_transform.m_terminalVel.z = 200.0f;
-        }
-        {
-            //Forward
-            if (commands.keyStates[SDLK_w].down && commands.keyStates[SDLK_s].down)
-                m_transform.m_acceleration;
-            else if (commands.keyStates[SDLK_w].down)
-                m_transform.m_acceleration += (cameraAcceleration * front);
-                //m_transform.m_acceleration += (cameraAcceleration * camera->m_front);
-            else if (commands.keyStates[SDLK_s].down)
-                m_transform.m_acceleration -= (cameraAcceleration * front);
-                //m_transform.m_acceleration -= (cameraAcceleration * camera->m_front);
-        }
-        {
-            //Lateral
-            if (commands.keyStates[SDLK_a].down && commands.keyStates[SDLK_d].down)
-                m_transform.m_acceleration;
-            else if (commands.keyStates[SDLK_a].down)
-                m_transform.m_acceleration -= (Normalize(Cross(front, camera->m_up)) * cameraAcceleration);
-                //m_transform.m_acceleration -= (Normalize(Cross(camera->m_front, camera->m_up)) * cameraAcceleration);
-            else if (commands.keyStates[SDLK_d].down)
-                m_transform.m_acceleration += (Normalize(Cross(front, camera->m_up)) * cameraAcceleration);
-                //m_transform.m_acceleration += (Normalize(Cross(camera->m_front, camera->m_up)) * cameraAcceleration);
-        }
-        if (commands.keyStates[SDLK_LCTRL].down)
-            m_transform.m_terminalVel.x = m_transform.m_terminalVel.z = 10.0f;
-        if (commands.keyStates[SDLK_SPACE].down)
-            m_transform.m_acceleration.y += cameraAcceleration;
-        if (commands.keyStates[SDLK_z].down)
-            m_transform.m_acceleration.z += cameraAcceleration;
-        if (commands.keyStates[SDLK_x].down)
-            m_transform.m_acceleration.x += cameraAcceleration;
-        break;
 
-    case MovementType::Collision:
+    cameraAcceleration = 15.0f; // m/s^2
+    Vec3 forward = Normalize(Vec3({ front.x, 0.0f, front.z }));
+    //Vec3 forward = Normalize(Vec3({ camera->m_front.x, 0.0f, camera->m_front.z }));
+    m_transform.m_terminalVel.x = m_transform.m_terminalVel.z = 3.0f;
+    m_transform.m_terminalVel.y = 50.0f;
+    if (commands.keyStates[SDLK_LSHIFT].down)
     {
-        cameraAcceleration = 15.0f; // m/s^2
-        Vec3 forward = Normalize(Vec3({ front.x, 0.0f, front.z }));
-        //Vec3 forward = Normalize(Vec3({ camera->m_front.x, 0.0f, camera->m_front.z }));
-        m_transform.m_terminalVel.x = m_transform.m_terminalVel.z = 3.0f;
-        m_transform.m_terminalVel.y = 50.0f;
-        if (commands.keyStates[SDLK_LSHIFT].down)
-        {
-            cameraAcceleration = 50.0f;
-            m_transform.m_terminalVel.x = m_transform.m_terminalVel.z = 8.0f;
-        }
-        if (commands.keyStates[SDLK_LCTRL].down)
-            cameraAcceleration /= 3.0f;
-        {
-            //Forward
-            if (commands.keyStates[SDLK_w].down && commands.keyStates[SDLK_s].down)
-                m_transform.m_acceleration;
-            else if (commands.keyStates[SDLK_w].down)
-                m_transform.m_acceleration += (cameraAcceleration * forward);
-            else if (commands.keyStates[SDLK_s].down)
-                m_transform.m_acceleration -= (cameraAcceleration * forward);
-        }
-        {
-            //Lateral
-            if (commands.keyStates[SDLK_a].down && commands.keyStates[SDLK_d].down)
-                m_transform.m_acceleration;
-            else if (commands.keyStates[SDLK_a].down)
-                m_transform.m_acceleration -= (Normalize(Cross(forward, camera->m_up)) * cameraAcceleration);
-            else if (commands.keyStates[SDLK_d].down)
-                m_transform.m_acceleration += (Normalize(Cross(forward, camera->m_up)) * cameraAcceleration);
-        }
-        if (commands.keyStates[SDLK_SPACE].downThisFrame)
-        {
-            m_transform.m_vel.y += 7.0f;
-            m_transform.m_isGrounded = false;
-        }
-        if (commands.keyStates[SDLK_z].down)
-            m_transform.m_acceleration.z += cameraAcceleration;
-        if (commands.keyStates[SDLK_x].down)
-            m_transform.m_acceleration.x += cameraAcceleration;
-        break;
+        cameraAcceleration = 50.0f;
+        m_transform.m_terminalVel.x = m_transform.m_terminalVel.z = 8.0f;
     }
+    if (commands.keyStates[SDLK_LCTRL].down)
+        cameraAcceleration /= 3.0f;
+    {
+        //Forward
+        if (commands.keyStates[SDLK_w].down && commands.keyStates[SDLK_s].down)
+            m_transform.m_acceleration;
+        else if (commands.keyStates[SDLK_w].down)
+            m_transform.m_acceleration += (cameraAcceleration * forward);
+        else if (commands.keyStates[SDLK_s].down)
+            m_transform.m_acceleration -= (cameraAcceleration * forward);
     }
+    {
+        //Lateral
+        if (commands.keyStates[SDLK_a].down && commands.keyStates[SDLK_d].down)
+            m_transform.m_acceleration;
+        else if (commands.keyStates[SDLK_a].down)
+            m_transform.m_acceleration -= (Normalize(Cross(forward, camera->m_up)) * cameraAcceleration);
+        else if (commands.keyStates[SDLK_d].down)
+            m_transform.m_acceleration += (Normalize(Cross(forward, camera->m_up)) * cameraAcceleration);
+    }
+    if (commands.keyStates[SDLK_SPACE].downThisFrame)
+    {
+        m_transform.m_vel.y += 7.0f;
+        m_transform.m_isGrounded = false;
+    }
+    if (commands.keyStates[SDLK_z].down)
+        m_transform.m_acceleration.z += cameraAcceleration;
+    if (commands.keyStates[SDLK_x].down)
+        m_transform.m_acceleration.x += cameraAcceleration;
 }
 
 void Player::Update(float dt)
 {
-    float dragFlightCoefficient = 15.0f;
-    switch (m_movementType)
+    m_transform.UpdateDeltaPosition(dt, { 10.0f, 1.0f, 10.0f }, m_collider.m_radius * 2 * m_collider.m_height);
+    //m_collider.UpdateMidTipLocation(m_transform.m_p);
+    m_collider.UpdateTailLocation(m_transform.m_p);
+    //g_camera.transform.UpdatePosition2(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
+
+    m_transform.m_p.p += m_transform.m_pDelta.p;
+    Vec3 deltaPosition = {};
+    m_transform.m_isGrounded = false;
+    if (CapsuleVsWorldBlocks(m_collider, m_transform.m_pDelta.p, deltaPosition, m_collider.m_collidedTriangles))
     {
-    case MovementType::Fly:
-        m_transform.UpdateDeltaPosition(dt, { dragFlightCoefficient, dragFlightCoefficient, dragFlightCoefficient }, m_collider.m_radius * 2 * m_collider.m_height, 0);
-        m_transform.m_p.p += m_transform.m_pDelta.p;
-        break;
-    case MovementType::Collision:
-        m_transform.UpdateDeltaPosition(dt, { 10.0f, 1.0f, 10.0f }, m_collider.m_radius * 2 * m_collider.m_height);
-        //m_collider.UpdateMidTipLocation(m_transform.m_p);
-        m_collider.UpdateTailLocation(m_transform.m_p);
-        //g_camera.transform.UpdatePosition2(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
+        //Update Position
+        m_transform.m_p.p += deltaPosition;
+        m_transform.m_pDelta = {};
 
-        m_transform.m_p.p += m_transform.m_pDelta.p;
-        Vec3 deltaPosition = {};
-        m_transform.m_isGrounded = false;
-        if (CapsuleVsWorldBlocks(m_collider, m_transform.m_pDelta.p, deltaPosition, m_collider.m_collidedTriangles))
+        //Zero velocity going into a collision
+        Vec3 normalForceDirection = Normalize(deltaPosition);
+        Vec3 collisionDirection = normalForceDirection;//-normalForceDirection;
+        Vec3 dotProductResults = { DotProduct(Vec3({ m_transform.m_vel.x, 0.0f, 0.0f }), collisionDirection),
+                                   DotProduct(Vec3({ 0.0f, m_transform.m_vel.y, 0.0f }), collisionDirection),
+                                   DotProduct(Vec3({ 0.0f, 0.0f, m_transform.m_vel.z }), collisionDirection) };
+
+        //TODO: improve to include deflection/angle of collision not just collision in that direction
+        if (dotProductResults.x < 0.0f)
         {
-            //Update Position
-            m_transform.m_p.p += deltaPosition;
-            m_transform.m_pDelta = {};
-
-            //Zero velocity going into a collision
-            Vec3 normalForceDirection = Normalize(deltaPosition);
-            Vec3 collisionDirection = normalForceDirection;//-normalForceDirection;
-            Vec3 dotProductResults = { DotProduct(Vec3({ m_transform.m_vel.x, 0.0f, 0.0f }), collisionDirection),
-                                       DotProduct(Vec3({ 0.0f, m_transform.m_vel.y, 0.0f }), collisionDirection),
-                                       DotProduct(Vec3({ 0.0f, 0.0f, m_transform.m_vel.z }), collisionDirection) };
-
-            //TODO: improve to include deflection/angle of collision not just collision in that direction
-            if (dotProductResults.x < 0.0f)
-            {
-                m_transform.m_vel.x = 0.0f;
-            }
-            if (dotProductResults.y < 0.0f)
-            {
-                if (m_transform.m_vel.y < 0.0f)
-                    m_transform.m_isGrounded = true;
-                m_transform.m_vel.y = 0.0f;
-            }
-            if (dotProductResults.z < 0.0f)
-            {
-                m_transform.m_vel.z = 0.0f;
-            }
+            m_transform.m_vel.x = 0.0f;
         }
-        break;
+        if (dotProductResults.y < 0.0f)
+        {
+            if (m_transform.m_vel.y < 0.0f)
+                m_transform.m_isGrounded = true;
+            m_transform.m_vel.y = 0.0f;
+        }
+        if (dotProductResults.z < 0.0f)
+        {
+            m_transform.m_vel.z = 0.0f;
+        }
     }
 
 
@@ -276,36 +271,91 @@ void Player::Update(float dt)
             i.m_lootable = false;
         }
     }
-
-    //switch (m_movementType)
-    //{
-    //case MovementType::Fly:
-    //    break;
-    //case MovementType::Collision:
-    //    break;
-    //}
 }
 
 void Player::Render(float dt, Camera* camera)
 {
-
+    
 }
 
 
 //Camera
 void Camera::Update(float dt)
 {
+    Entity* e = g_entityList.GetEntity(m_parent);
+    if (e == nullptr)
+    {
+        const float dragFlightCoefficient = 15.0f;
+        const float fakeAreaToGetThisToWork = 0.25f * 2 * 1.8f;//m_collider.m_radius * 2 * m_collider.m_height;
 
+        m_transform.UpdateDeltaPosition(dt, { dragFlightCoefficient, dragFlightCoefficient, dragFlightCoefficient }, fakeAreaToGetThisToWork, 0);
+        m_transform.m_p.p += m_transform.m_pDelta.p;
+    }
+}
+
+void Camera::InputUpdate(float dt, CommandHandler& commands)
+{
+    Entity* e = g_entityList.GetEntity(m_parent);
+    m_transform.m_acceleration = {};
+    if (e == nullptr)
+    {
+        m_transform.m_yaw   -= commands.mouse.pDelta.x * commands.mouse.m_sensitivity;
+        m_transform.m_pitch -= commands.mouse.pDelta.y * commands.mouse.m_sensitivity;
+        m_transform.m_pitch = Clamp<float>(m_transform.m_pitch, -89.5f, 89.5f);
+
+        float cameraAcceleration = 200.0f; // m/s^2
+        m_transform.m_terminalVel.x = m_transform.m_terminalVel.z = m_transform.m_terminalVel.y = 10.0f;
+
+        //Vec3 front = GetTrueRotation() * faceNormals[+Face::Front];
+        Vec3 front = (GetTranslationMatrix() * g_forwardVectorRotation).xyz;
+
+        if (commands.keyStates[SDLK_LSHIFT].down)
+        {
+            cameraAcceleration *= 30;
+            m_transform.m_terminalVel.x = m_transform.m_terminalVel.y = m_transform.m_terminalVel.z = 200.0f;
+        }
+        {
+            //Forward
+            if (commands.keyStates[SDLK_w].down && commands.keyStates[SDLK_s].down)
+                m_transform.m_acceleration;
+            else if (commands.keyStates[SDLK_w].down)
+                m_transform.m_acceleration += (cameraAcceleration * front);
+            //m_transform.m_acceleration += (cameraAcceleration * camera->m_front);
+            else if (commands.keyStates[SDLK_s].down)
+                m_transform.m_acceleration -= (cameraAcceleration * front);
+            //m_transform.m_acceleration -= (cameraAcceleration * camera->m_front);
+        }
+        {
+            //Lateral
+            if (commands.keyStates[SDLK_a].down && commands.keyStates[SDLK_d].down)
+                m_transform.m_acceleration;
+            else if (commands.keyStates[SDLK_a].down)
+                m_transform.m_acceleration -= (Normalize(Cross(front, this->m_up)) * cameraAcceleration);
+            //m_transform.m_acceleration -= (Normalize(Cross(camera->m_front, camera->m_up)) * cameraAcceleration);
+            else if (commands.keyStates[SDLK_d].down)
+                m_transform.m_acceleration += (Normalize(Cross(front, this->m_up)) * cameraAcceleration);
+            //m_transform.m_acceleration += (Normalize(Cross(camera->m_front, camera->m_up)) * cameraAcceleration);
+        }
+        if (commands.keyStates[SDLK_LCTRL].down)
+            m_transform.m_terminalVel.x = m_transform.m_terminalVel.z = 10.0f;
+        if (commands.keyStates[SDLK_SPACE].down)
+            m_transform.m_acceleration.y += cameraAcceleration;
+        if (commands.keyStates[SDLK_z].down)
+            m_transform.m_acceleration.z += cameraAcceleration;
+        if (commands.keyStates[SDLK_x].down)
+            m_transform.m_acceleration.x += cameraAcceleration;
+    }
 }
 
 
 //Items
-void Items::Add(BlockType blockType, WorldPos position)
+Item* Items::Add(BlockType blockType, WorldPos position)
 {
     Item newItem;
     newItem.m_transform.m_p.p = position.p;
     newItem.m_type = blockType;
     m_items.push_back(newItem);
+    return &m_items[m_items.size() - 1];
 }
 
 void Items::Update(float dt)
@@ -345,9 +395,9 @@ void Items::Update(float dt)
     for (auto& e : m_items)
     {
         float yaw = dt * angularVelocity;
-        e.m_transform.m_quat *= gb_quat_euler_angles(0.0f, yaw, 0.0f);
+        //e.m_transform.m_quat *= gb_quat_euler_angles(0.0f, yaw, 0.0f);
 
-        //e.m_transform.m_rot.y += dt * angularVelocity;
+        e.m_transform.m_yaw += dt * angularVelocity;
     }
 }
 
@@ -355,7 +405,19 @@ void Items::Render(float dt, Camera* camera)
 {
     float scale = 0.5f;
     for (auto i : m_items)
-        DrawBlock(i.m_transform, White, scale, camera, Texture::T::Minecraft, i.m_type);
+    {
+        Mat4 result;
+        Mat4 translation;
+        Mat4 rotation;
+        gb_mat4_identity(&result);
+        gb_mat4_from_quat(&rotation, gb_quat_euler_angles(DegToRad(i.m_transform.m_pitch), DegToRad(i.m_transform.m_yaw), 0.0f));
+        //gb_mat4_rotate(&rotation, { 0,1,0 }, (totalTime * 3.0f) / (2 * 3.14f));
+        gb_mat4_translate(&translation, i.m_transform.m_p.p);
+        result = translation * rotation;
+        DrawBlock(result, White, scale, camera, Texture::T::Minecraft, i.m_type);
+
+        //DrawBlock(i.m_transform, White, scale, camera, Texture::T::Minecraft, i.m_type);
+    }
 }
 
     
@@ -394,11 +456,11 @@ void Entitys::InputUpdate(float dt,CommandHandler& commands)
 {
     for (auto e : list)
     {
-        if (e->GetType() == EntityType::Player)
+        //if (e->GetType() == EntityType::Player)
         {
-            auto p = reinterpret_cast<Player*>(e);
-            if (p->m_inputID == commands.ID)
-                p->InputUpdate(dt, commands);
+            //auto p = reinterpret_cast<Player*>(e);
+            //if (p->m_inputID == commands.ID)
+                e->InputUpdate(dt, commands);
         }
     }
 }

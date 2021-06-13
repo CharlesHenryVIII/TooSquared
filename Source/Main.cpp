@@ -147,15 +147,17 @@ int main(int argc, char* argv[])
     g_chunks = new ChunkArray();
     CommandHandler playerInput;
     Player* player = g_entityList.New<Player>();
-    player->m_transform.m_p.p = {0, 150, 0};
+    //player->m_transform.m_p.p = {0, 150, 0};
     player->m_inputID = playerInput.ID;
     Camera* playerCamera = g_entityList.New<Camera>();
-    {
-        playerCamera->m_parent = player->m_ID;
-        player->m_children.push_back(playerCamera->m_ID);
-    }
-    playerCamera->m_transform.m_p.p.y = player->m_collider.m_height - player->m_collider.m_radius;
-    playerCamera->m_transform.m_p.p.x = playerCamera->m_transform.m_p.p.z = 0;
+    playerCamera->m_transform.m_p.p = {0, 150, 0};
+    //player->ChildCamera(playerCamera);
+    //{
+    //    playerCamera->m_parent = player->m_ID;
+    //    player->m_children.push_back(playerCamera->m_ID);
+    //}
+    //playerCamera->m_transform.m_p.p.y = player->m_collider.m_height - player->m_collider.m_radius;
+    //playerCamera->m_transform.m_p.p.x = playerCamera->m_transform.m_p.p.z = 0;
     //
 
     {
@@ -166,14 +168,22 @@ int main(int argc, char* argv[])
                         player->m_transform.m_p.p + cOffset.p/*{ g_camera.transform.m_p.p.x, g_camera.transform.m_p.p.y, g_camera.transform.m_p.p.z }*/, { 0,1,0 });
     }
 
+
+    Transform debug_blockTransformParent = {};
+    debug_blockTransformParent.m_p.p = { 10, 150, 0 };
+    Transform debug_blockTransformChild = {};
+    debug_blockTransformChild.m_p.p = { 1, 1, 0 };
+
+
     float loadingTimer = 0.0f;
     bool uploadedLastFrame = false;
     //bool debugDraw = false;
     uint32 s_debugFlags = +DebugOptions::LookatBlock | +DebugOptions::Enabled;
     bool TEST_CREATE_AND_UPLOAD_CHUNKS = true;
 
-
-
+    //Item* parentItem= g_items.Add(BlockType::Grass, { 50, 150, 0 });
+    //Item* childItem = g_items.Add(BlockType::Grass, {50, 150, 0});
+    //parentItem->m
 
     //___________
     //IMGUI SETUP
@@ -403,6 +413,18 @@ int main(int argc, char* argv[])
         }
 
 
+        if (playerInput.keyStates[SDLK_0].downThisFrame)
+        {
+            if (player->m_hasCamera)
+            {
+                player->DecoupleCamera();
+            }
+            else
+            {
+                player->ChildCamera(playerCamera);
+            }
+        }
+
 
 
         if (playerInput.keyStates[SDLK_ESCAPE].down)
@@ -433,24 +455,24 @@ int main(int argc, char* argv[])
 
         //if (playerInput.keyStates[SDL_BUTTON_LEFT].down)
         {
-#if 1
-            float mouseSensativity = 0.04f;
+#if 0
+            float mouseSensativity = 0.4f;
             float yaw   = -(playerInput.mouse.pDelta.x * mouseSensativity);
             float pitch = -(playerInput.mouse.pDelta.y * mouseSensativity);
 
 #if 1
-            player->m_transform.m_quat *= gb_quat_euler_angles(pitch, yaw, 0.0f);
+            //player->m_transform.m_quat *= gb_quat_euler_angles(pitch, yaw, 0.0f);
 
-            //pitch = gb_quat_pitch(player->m_transform.m_quat);
-            //pitch = Clamp<float>(pitch, -89.0f, 89.0f);
-            //yaw = gb_quat_yaw(player->m_transform.m_quat);
-            //player->m_transform.m_quat = gb_quat_euler_angles(pitch, yaw, 0.0f);
+            float newpitch = gb_quat_pitch(player->m_transform.m_quat) + DegToRad(pitch);
+            //newpitch = Clamp<float>(newpitch, DegToRad(-89.0f), DegToRad(89.0f));
+            float newyaw = gb_quat_yaw(player->m_transform.m_quat) + DegToRad(yaw);
+            player->m_transform.m_quat = gb_quat_euler_angles(newpitch, newyaw, 0.0f);
 
 #else
             playerCamera->m_transform.m_quat *= gb_quat_euler_angles(pitch, 0.0f, 0.0f);
             player->m_transform.m_quat       *= gb_quat_euler_angles(0.0f, yaw, 0.0f);
 #endif
-#else
+#elif 0
             float mouseSensativity = 0.4f;
             playerCamera->m_yaw   += playerInput.mouse.pDelta.x * mouseSensativity;
             playerCamera->m_pitch -= playerInput.mouse.pDelta.y * mouseSensativity;
@@ -517,9 +539,11 @@ int main(int argc, char* argv[])
 
                     Vec4 vel   = { player->m_transform.m_vel.x, player->m_transform.m_vel.y, player->m_transform.m_vel.z, 0.0f };
                     Vec4 accel = { player->m_transform.m_acceleration.x, player->m_transform.m_acceleration.y, player->m_transform.m_acceleration.z, 0.0f };
+                    Vec4 rot   = { player->m_transform.m_yaw, player->m_transform.m_pitch, 0.0f, 0.0f };
                     GenericImGuiTable("Vel",   "%+08.2f", vel.e, 4);
                     GenericImGuiTable("Accel", "%+08.2f", accel.e, 4);
-                    GenericImGuiTable("Quat",  "%+08.2f", player->m_transform.m_quat.e, 4);
+                    //GenericImGuiTable("Quat",  "%+08.2f", player->m_transform.m_quat.e, 4);
+                    GenericImGuiTable("Rot",   "%+08.2f", rot.e, 4);
                     ImGui::EndTable();
                 }
                 ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -571,9 +595,11 @@ int main(int argc, char* argv[])
 
                     Vec4 vel   = { playerCamera->m_transform.m_vel.x,           playerCamera->m_transform.m_vel.y,          playerCamera->m_transform.m_vel.z,          0.0f };
                     Vec4 accel = { playerCamera->m_transform.m_acceleration.x,  playerCamera->m_transform.m_acceleration.y, playerCamera->m_transform.m_acceleration.z, 0.0f };
+                    Vec4 rot   = { playerCamera->m_transform.m_yaw, playerCamera->m_transform.m_pitch, 0.0f, 0.0f };
                     GenericImGuiTable("Vel",   "%+08.2f", vel.e, 4);
                     GenericImGuiTable("Accel", "%+08.2f", accel.e, 4);
-                    GenericImGuiTable("Quat",  "%+08.2f", playerCamera->m_transform.m_quat.e, 4);
+                    //GenericImGuiTable("Quat",  "%+08.2f", playerCamera->m_transform.m_quat.e, 4);
+                    GenericImGuiTable("Rot",   "%+08.2f", rot.e, 4);
                     ImGui::EndTable();
                 }
                 ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -768,7 +794,9 @@ int main(int argc, char* argv[])
         Vec3 lookTarget = {};
         {
             
-            Vec3 front = playerCamera->GetTrueRotation() * faceNormals[+Face::Front];
+
+            //Vec3 front = playerCamera->GetTrueRotation() * faceNormals[+Face::Front];
+            Vec3 front = (playerCamera->GetTranslationMatrix() * g_forwardVectorRotation).xyz;
             //front.x = cos(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
             //front.y = sin(DegToRad(playerCamera->m_pitch));
             //front.z = sin(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
@@ -924,6 +952,8 @@ int main(int argc, char* argv[])
                 }
             }
         }
+
+
 
         ////TODO: Optimize to update corners (max 4 chunks)
         //for (int32 c = SDLK_1; c <= SDLK_9; c++)
@@ -1218,6 +1248,36 @@ int main(int argc, char* argv[])
                 }
             }
         }
+
+        {
+            float angularVelocity = tau / 5; // rads per second
+            float yaw = deltaTime * angularVelocity;
+
+            debug_blockTransformParent.m_yaw += yaw;
+            debug_blockTransformChild.m_yaw += yaw;
+
+            Mat4 parentResult;
+            Mat4 parentTrans;
+            Mat4 parentRot;
+            gb_mat4_identity(&parentResult);
+            gb_mat4_rotate(&parentRot, { 0,1,0 }, (float(totalTime) * 3.0f) / (2 * 3.14f));
+            gb_mat4_translate(&parentTrans, debug_blockTransformParent.m_p.p);
+            parentResult = parentTrans * parentRot;
+
+            DrawBlock(parentResult, White, 1.0f, playerCamera, Texture::T::Minecraft, BlockType::Grass);
+
+
+            Mat4 childResult;
+            Mat4 childTrans;
+            Mat4 childRot;
+            gb_mat4_rotate(&childRot, { 0,1,0 }, (float(totalTime) * 3.0f) / (2 * 3.14f));
+            gb_mat4_translate(&childTrans, debug_blockTransformChild.m_p.p);
+            childResult = childTrans * childRot;
+
+            Mat4 result = parentResult * childResult;
+            DrawBlock(result, White, 1.0f, playerCamera, Texture::T::Minecraft, BlockType::Grass);
+        }
+
 
         {
             PROFILE_SCOPE("Chunk Deletion");
