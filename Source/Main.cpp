@@ -440,6 +440,12 @@ int main(int argc, char* argv[])
 
 #if 1
             player->m_transform.m_quat *= gb_quat_euler_angles(pitch, yaw, 0.0f);
+
+            //pitch = gb_quat_pitch(player->m_transform.m_quat);
+            //pitch = Clamp<float>(pitch, -89.0f, 89.0f);
+            //yaw = gb_quat_yaw(player->m_transform.m_quat);
+            //player->m_transform.m_quat = gb_quat_euler_angles(pitch, yaw, 0.0f);
+
 #else
             playerCamera->m_transform.m_quat *= gb_quat_euler_angles(pitch, 0.0f, 0.0f);
             player->m_transform.m_quat       *= gb_quat_euler_angles(0.0f, yaw, 0.0f);
