@@ -3,34 +3,11 @@
 Entitys g_entityList;
 Items   g_items;
 
-Vec4 g_forwardVectorRotation = { 0, 0, -1, 0.0f };
-Vec4 g_forwardVectorPosition = { 0, 0, -1, 1.0f };
+Vec3 g_forwardVector = { 0.0f, 0.0f, -1.0f };
+//Vec4 g_forwardVectorRotation = { 0, 0, -1, 0.0f };
+//Vec4 g_forwardVectorPosition = { 0, 0, -1, 1.0f };
 
-#if 0
-WorldPos Entity::RealWorldPos()
-{
-    WorldPos result = m_transform.m_p;
-    if (m_parent)
-    {
-        Entity* e = g_entityList.GetEntity(m_parent);
-        if (e)
-            result.p += e->RealWorldPos().p;
-    }
-    return result;
-}
-
-GamePos  Entity::RealGamePos()
-{
-    return ToGame(RealWorldPos());
-}
-
-ChunkPos Entity::RealChunkPos()
-{
-    return ToChunk(RealWorldPos());
-}
-#endif
-
-Mat4 Entity::GetTranslationMatrix()
+Mat4 Entity::GetWorldMatrix()
 {
     Mat4 result;
     Mat4 trans;
@@ -46,32 +23,30 @@ Mat4 Entity::GetTranslationMatrix()
         Entity* e = g_entityList.GetEntity(m_parent);
         if (e)
         {
-            //result = e->GetTranslationMatrix() * result;
-            result = e->GetTranslationMatrix() * result;
+            //result = e->GetWorldMatrix() * result;
+            result = e->GetWorldMatrix() * result;
         }
     }
     return result;
 }
 
-WorldPos Entity::GetTruePosition()
+WorldPos Entity::GetWorldPosition()
 {
-#if 1
     WorldPos result = {};
-    result.p = GetTranslationMatrix().col[3].xyz;
-#else
-    Vec4 a = { 1,1,1,1 };//{ m_transform.m_p.p.x, m_transform.m_p.p.y, m_transform.m_p.p.z, 1.0f };
-    a = GetTranslationMatrix() * a;
-    WorldPos result;
-    result.p = a.xyz;
-#endif
+    result.p = GetWorldMatrix().col[3].xyz;
     return result;
+}
+
+Vec3 Entity::GetForwardVector()
+{
+    return (GetWorldMatrix() * GetVec4(g_forwardVector, 0.0f)).xyz;
 }
 
 #if 0
 Quat Entity::GetTrueRotation()
 {
 #if 1
-    Mat4 trans = GetTranslationMatrix();
+    Mat4 trans = GetWorldMatrix();
     Quat result = {};
     gb_quat_from_mat4(&result, &trans);
 #else
@@ -173,7 +148,7 @@ void Player::InputUpdate(float dt, CommandHandler& commands)
 
 
     //Vec3 front = GetTrueRotation() * faceNormals[+Face::Front];
-    Vec3 front = (GetTranslationMatrix() * g_forwardVectorRotation).xyz;
+    Vec3 front = GetForwardVector();//(GetWorldMatrix() * g_forwardVectorRotation).xyz;
 
     float cameraAcceleration = 0;
     m_rigidBody.m_acceleration = {};
@@ -319,7 +294,7 @@ void Camera::InputUpdate(float dt, CommandHandler& commands)
         if (commands.keyStates[SDLK_LSHIFT].down)
             m_targetSpeed = 200.0f;
 
-        Vec3 front = (GetTranslationMatrix() * Vec4 { request.x, request.y, request.z, 0 }).xyz;
+        Vec3 front = (GetWorldMatrix() * GetVec4(request, 0 )).xyz;
         gb_vec3_norm0(&front, front);
         Vec3 targetVelocity = front * m_targetSpeed;
 

@@ -15,8 +15,9 @@ enum class EntityType {
     Camera,
 };
 
-extern Vec4 g_forwardVectorRotation;
-extern Vec4 g_forwardVectorPosition;
+//Vec3 g_forwardVector = { 0.0f, 0.0f, -1.0f };
+//extern Vec4 g_forwardVectorRotation;
+//extern Vec4 g_forwardVectorPosition;
 
 typedef uint32 EntityID;
 //static std::atomic<EntityID> s_currentEntityID = 0;
@@ -34,11 +35,9 @@ struct Entity
     virtual void InputUpdate(float dt, CommandHandler& commands) {};
     virtual void Update(float dt) = 0;
     virtual void Render(float dt, Camera* camera) {};
-    //WorldPos RealWorldPos();
-    //GamePos  RealGamePos();
-    //ChunkPos RealChunkPos();
-    Mat4 GetTranslationMatrix();
-    WorldPos GetTruePosition();
+    Mat4 GetWorldMatrix();
+    WorldPos GetWorldPosition();
+    Vec3 GetForwardVector();
     //Quat GetTrueRotation();
 };
 
@@ -54,7 +53,6 @@ struct Player : public Entity
     .m_height = 1.8f,
     };
     RigidBody m_rigidBody = {};
-    //MovementType m_movementType = MovementType::Fly;
     uint32 m_inputID = {};
     bool m_hasCamera;
     void ChildCamera(Camera* c);

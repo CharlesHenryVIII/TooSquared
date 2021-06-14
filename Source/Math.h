@@ -66,6 +66,11 @@ typedef gbMat3 Mat3;
 typedef gbMat4 Mat4;
 typedef gbQuat Quat;
 
+[[nodiscard]] inline Vec4 GetVec4(Vec3 a, float b)
+{
+    return { a.x, a.y, a.z, b };
+}
+
 //union Vert2d {
 //    struct { float x, y, z, u, v; };
 //    struct { Vec3 xyz; Vec2 uv; };

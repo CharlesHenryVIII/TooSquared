@@ -162,7 +162,7 @@ int main(int argc, char* argv[])
 
     {
         WorldPos cOffset = { 1.0f, 0.0f, 1.0f };
-        playerCamera->GetTruePosition();
+        playerCamera->GetWorldPosition();
         gb_mat4_look_at(&playerCamera->m_view, 
                         playerCamera->m_transform.m_p.p,//{ g_camera.transform.m_p.p.x + cOffset.p.x, g_camera.transform.m_p.p.y + cOffset.p.y,g_camera.transform.m_p.p.z + cOffset.p.z },
                         playerCamera->m_transform.m_p.p + cOffset.p/*{ g_camera.transform.m_p.p.x, g_camera.transform.m_p.p.y, g_camera.transform.m_p.p.z }*/, { 0,1,0 });
@@ -577,7 +577,7 @@ int main(int argc, char* argv[])
                     ImGui::TableSetupColumn("Z");
                     ImGui::TableHeadersRow();
 
-                    WorldPos p = playerCamera->GetTruePosition();
+                    WorldPos p = playerCamera->GetWorldPosition();
                     GenericImGuiTable("World", "%+08.2f", p.p.e);
                     GenericImGuiTable("Game", "%i", ToGame(p).p.e);
                     GenericImGuiTable("Chunk", "%i", ToChunk(p).p.e);
@@ -792,14 +792,14 @@ int main(int argc, char* argv[])
         Vec3 lookTarget = {};
         {
             //Vec3 front = playerCamera->GetTrueRotation() * faceNormals[+Face::Front];
-            Vec3 front = (playerCamera->GetTranslationMatrix() * g_forwardVectorRotation).xyz;
+            Vec3 front = playerCamera->GetForwardVector();// (playerCamera->GetWorldMatrix()* g_forwardVectorRotation).xyz;
             //front.x = cos(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
             //front.y = sin(DegToRad(playerCamera->m_pitch));
             //front.z = sin(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
             //playerCamera->m_front = Normalize(front);
 
-            //WorldPos cameraRealWorldPosition = playerCamera->GetTranslationMatrix() * playerCamera->m_transform.m_p.p;
-            WorldPos cameraRealWorldPosition = playerCamera->GetTruePosition();
+            //WorldPos cameraRealWorldPosition = playerCamera->GetWorldMatrix() * playerCamera->m_transform.m_p.p;
+            WorldPos cameraRealWorldPosition = playerCamera->GetWorldPosition();
             lookTarget = cameraRealWorldPosition.p + front;//playerCamera->m_front;
             gb_mat4_look_at(&playerCamera->m_view, cameraRealWorldPosition.p, lookTarget, playerCamera->m_up);
 
@@ -849,7 +849,7 @@ int main(int argc, char* argv[])
             RegionSampler localRegion;
             ChunkIndex centerChunkIndex;
             //WorldPos cameraRealWorldPosition = playerCamera->RealWorldPos();
-            WorldPos cameraRealWorldPosition = playerCamera->GetTruePosition();//RealWorldPos();
+            WorldPos cameraRealWorldPosition = playerCamera->GetWorldPosition();//RealWorldPos();
             Ray ray = {
                 .origin = cameraRealWorldPosition.p,
                 .direction = lookTarget - cameraRealWorldPosition.p,
@@ -1046,7 +1046,7 @@ int main(int argc, char* argv[])
             Mat4 iViewProj;
             gb_mat4_inverse(&iViewProj, &playerCamera->m_viewProj);
             sp->UpdateUniformMat4("u_inverseViewProjection", 1, false, iViewProj.e);
-            sp->UpdateUniformVec3("u_cameraPosition", 1, playerCamera->GetTruePosition().p.e);
+            sp->UpdateUniformVec3("u_cameraPosition", 1, playerCamera->GetWorldPosition().p.e);
             sp->UpdateUniformFloat("u_gameTime", g_gameData.m_currentTime);
             glActiveTexture(GL_TEXTURE1);
             g_renderer.skyBoxNight->Bind();
@@ -1108,7 +1108,7 @@ int main(int argc, char* argv[])
                             continue;
 
                         //ChunkPos cameraChunkP = playerCamera->RealChunkPos();
-                        ChunkPos cameraChunkP = ToChunk(WorldPos(playerCamera->GetTruePosition()));
+                        ChunkPos cameraChunkP = ToChunk(WorldPos(playerCamera->GetWorldPosition()));
                         ChunkIndex originChunk = 0;
                         ChunkPos drawDistanceChunk = { cameraChunkP.p.x + drawX, 0, cameraChunkP.p.z + drawZ };
                         if (!g_chunks->GetChunkFromPosition(originChunk, drawDistanceChunk))
@@ -1160,7 +1160,7 @@ int main(int argc, char* argv[])
                 if (IsBoxInFrustum(frustum, ToWorld(min).p.e, ToWorld(max).p.e))
                 {
                     //renderables[numRenderables].d = ManhattanDistance(ToChunk(playerCamera->RealWorldPos().p).p, chunkP.p);
-                    renderables[numRenderables].d = ManhattanDistance(ToChunk(WorldPos(playerCamera->GetTruePosition())).p, chunkP.p);
+                    renderables[numRenderables].d = ManhattanDistance(ToChunk(WorldPos(playerCamera->GetWorldPosition())).p, chunkP.p);
                     renderables[numRenderables++].r = i;
                 }
             }

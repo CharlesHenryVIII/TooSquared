@@ -2005,7 +2005,7 @@ void PreChunkRender(const Mat4& perspective, Camera* camera)
     sp->UpdateUniformVec3("u_lightP",      1,  g_light.p.e);
 #endif
     //sp->UpdateUniformVec3("u_cameraP",     1,  camera->RealWorldPos().p.e);
-    sp->UpdateUniformVec3("u_cameraP",     1,  camera->GetTruePosition().p.e);
+    sp->UpdateUniformVec3("u_cameraP",     1,  camera->GetWorldPosition().p.e);
 
     sp->UpdateUniformUint8("u_CHUNK_X", CHUNK_X);
     sp->UpdateUniformUint8("u_CHUNK_Y", CHUNK_Y);
