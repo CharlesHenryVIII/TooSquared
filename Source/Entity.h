@@ -77,6 +77,7 @@ struct Camera : public Entity
     //float m_pitch = 0.0f;
     int32 m_fogDistance = 40;
     int32 m_drawDistance = 10;
+    float m_targetSpeed = {};
 
     void Update(float dt) override;
     void InputUpdate(float dt, CommandHandler& commands) override;

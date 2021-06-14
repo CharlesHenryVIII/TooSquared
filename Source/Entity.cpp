@@ -3,8 +3,8 @@
 Entitys g_entityList;
 Items   g_items;
 
-Vec4 g_forwardVectorRotation = { faceNormals[+Face::Front].x, faceNormals[+Face::Front].y, faceNormals[+Face::Front].z, 0.0f };
-Vec4 g_forwardVectorPosition = { faceNormals[+Face::Front].x, faceNormals[+Face::Front].y, faceNormals[+Face::Front].z, 1.0f };
+Vec4 g_forwardVectorRotation = { 0, 0, -1, 0.0f };
+Vec4 g_forwardVectorPosition = { 0, 0, -1, 1.0f };
 
 #if 0
 WorldPos Entity::RealWorldPos()
@@ -285,11 +285,12 @@ void Camera::Update(float dt)
     Entity* e = g_entityList.GetEntity(m_parent);
     if (e == nullptr)
     {
-        const float dragFlightCoefficient = 15.0f;
-        const float fakeAreaToGetThisToWork = 0.25f * 2 * 1.8f;//m_collider.m_radius * 2 * m_collider.m_height;
+        //const float dragFlightCoefficient = 15.0f;
+        //const float fakeAreaToGetThisToWork = 0.25f * 2 * 1.8f;//m_collider.m_radius * 2 * m_collider.m_height;
 
-        m_transform.UpdateDeltaPosition(dt, { dragFlightCoefficient, dragFlightCoefficient, dragFlightCoefficient }, fakeAreaToGetThisToWork, 0);
-        m_transform.m_p.p += m_transform.m_pDelta.p;
+        //m_transform.UpdateDeltaPosition(dt, { dragFlightCoefficient, dragFlightCoefficient, dragFlightCoefficient }, fakeAreaToGetThisToWork, 0);
+        //m_transform.m_p.p += m_transform.m_pDelta.p;
+        //m_transform.UpdateCameraPosition(dt, );
     }
 }
 
@@ -299,10 +300,35 @@ void Camera::InputUpdate(float dt, CommandHandler& commands)
     m_transform.m_acceleration = {};
     if (e == nullptr)
     {
-        m_transform.m_yaw   -= commands.mouse.pDelta.x * commands.mouse.m_sensitivity;
+        m_transform.m_yaw -= commands.mouse.pDelta.x * commands.mouse.m_sensitivity;
         m_transform.m_pitch -= commands.mouse.pDelta.y * commands.mouse.m_sensitivity;
         m_transform.m_pitch = Clamp<float>(m_transform.m_pitch, -89.5f, 89.5f);
+#if 1
 
+        Vec3 request = {};
+        if (commands.keyStates[SDLK_w].down)
+            request += gb_vec3(0, 0, -1);
+        if (commands.keyStates[SDLK_s].down)
+            request += gb_vec3(0, 0, 1);
+        if (commands.keyStates[SDLK_a].down)
+            request += gb_vec3(-1, 0, 0);
+        if (commands.keyStates[SDLK_d].down)
+            request += gb_vec3(1, 0, 0);
+        if (commands.keyStates[SDLK_SPACE].down)
+            request += gb_vec3(0, 1, 0);
+        if (commands.keyStates[SDLK_LCTRL].down)
+            request += gb_vec3(0, -1, 0);
+
+        m_targetSpeed = 10.0f;
+        if (commands.keyStates[SDLK_LSHIFT].down)
+            m_targetSpeed = 200.0f;
+
+        Vec3 front = (GetTranslationMatrix() * Vec4 { request.x, request.y, request.z, 0 }).xyz;
+        gb_vec3_norm0(&front, front);
+        Vec3 targetVelocity = front * m_targetSpeed;
+        m_transform.UpdateCameraPosition(dt, targetVelocity);
+
+#else
         float cameraAcceleration = 200.0f; // m/s^2
         m_transform.m_terminalVel.x = m_transform.m_terminalVel.z = m_transform.m_terminalVel.y = 10.0f;
 
@@ -344,6 +370,7 @@ void Camera::InputUpdate(float dt, CommandHandler& commands)
             m_transform.m_acceleration.z += cameraAcceleration;
         if (commands.keyStates[SDLK_x].down)
             m_transform.m_acceleration.x += cameraAcceleration;
+#endif
     }
 }
 

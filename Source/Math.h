@@ -574,9 +574,14 @@ inline double* Normalize(double* v, size_t length)
 //}
 
 template <typename T>
-[[nodiscard]] inline T Lerp(T a, T b, T t)
+[[nodiscard]] inline T Lerp(T a, T b, float t)
 {
     return a + (b - a) * t;
+}
+
+[[nodiscard]] inline Vec3 Converge(Vec3 value, Vec3 target, float rate, float dt)
+{
+    return Lerp(target, value, exp2(-rate * dt));
 }
 
 //[[nodiscard]] inline float Lerp(float a, float b, float t)
@@ -887,7 +892,7 @@ struct Transform {
             m_vel.y = Max(m_vel.y, 0.0f);
 
         m_vel.y += (m_acceleration.y + gravity) * deltaTime;
-        m_vel.y = Clamp(m_vel.y, -m_terminalVel.y, m_terminalVel.y);
+        //m_vel.y = Clamp(m_vel.y, -m_terminalVel.y, m_terminalVel.y);
 
         m_vel.x += m_acceleration.x * deltaTime;
         m_vel.z += m_acceleration.z * deltaTime;
@@ -906,6 +911,12 @@ struct Transform {
 
         //Velocity and position will be local for Audio and Particle actors
         m_pDelta = m_vel * deltaTime;
+    }
+
+    void UpdateCameraPosition(float dt, Vec3 targetVel)
+    {
+        m_vel = Converge(m_vel, targetVel, 16.0f, dt);
+        m_p.p += m_vel * dt;
     }
 };
 

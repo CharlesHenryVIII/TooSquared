@@ -473,7 +473,7 @@ struct VoronoiCell {
             float lineDistance = Distance({}, lineDest);
             float distanceAlongLine = DotProduct(lineDest, point) / lineDistance;
             float distanceRatioAlongLine = distanceAlongLine / lineDistance;
-            Vec2 pointOnLine = Lerp<Vec2>(Vec2({}), lineDest, Vec2({ 1.0f, 1.0f }) * distanceRatioAlongLine);
+            Vec2 pointOnLine = Lerp<Vec2>(Vec2({}), lineDest, distanceRatioAlongLine);
             //Vec2 hi = { Max(0.0f, lineDest.x), Max(0.0f, lineDest.y) };
             //Vec2 lo = { Min(0.0f, lineDest.x), Min(0.0f, lineDest.y) };
             //pointOnLine.x = Clamp<float>(pointOnLine.x, lo.x, hi.x);

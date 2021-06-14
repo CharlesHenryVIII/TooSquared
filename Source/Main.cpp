@@ -164,8 +164,8 @@ int main(int argc, char* argv[])
         WorldPos cOffset = { 1.0f, 0.0f, 1.0f };
         playerCamera->GetTruePosition();
         gb_mat4_look_at(&playerCamera->m_view, 
-                        player->m_transform.m_p.p,//{ g_camera.transform.m_p.p.x + cOffset.p.x, g_camera.transform.m_p.p.y + cOffset.p.y,g_camera.transform.m_p.p.z + cOffset.p.z },
-                        player->m_transform.m_p.p + cOffset.p/*{ g_camera.transform.m_p.p.x, g_camera.transform.m_p.p.y, g_camera.transform.m_p.p.z }*/, { 0,1,0 });
+                        playerCamera->m_transform.m_p.p,//{ g_camera.transform.m_p.p.x + cOffset.p.x, g_camera.transform.m_p.p.y + cOffset.p.y,g_camera.transform.m_p.p.z + cOffset.p.z },
+                        playerCamera->m_transform.m_p.p + cOffset.p/*{ g_camera.transform.m_p.p.x, g_camera.transform.m_p.p.y, g_camera.transform.m_p.p.z }*/, { 0,1,0 });
     }
 
 
