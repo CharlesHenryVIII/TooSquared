@@ -261,7 +261,7 @@ int main(int argc, char* argv[])
         {
             SDL_SetWindowTitle(g_window.SDL_Context, ToString("TooSquared Chunks: %u; Time: %0.2f; Triangles: %u; grounded: %i",
                 g_chunks->chunkCount,
-                loadingTimer, g_renderer.numTrianglesDrawn, player->m_transform.m_isGrounded).c_str());
+                loadingTimer, g_renderer.numTrianglesDrawn, player->m_rigidBody.m_isGrounded).c_str());
         }
 
 
@@ -537,8 +537,8 @@ int main(int argc, char* argv[])
                     ImGui::TableSetupColumn("W");
                     ImGui::TableHeadersRow();
 
-                    Vec4 vel   = { player->m_transform.m_vel.x, player->m_transform.m_vel.y, player->m_transform.m_vel.z, 0.0f };
-                    Vec4 accel = { player->m_transform.m_acceleration.x, player->m_transform.m_acceleration.y, player->m_transform.m_acceleration.z, 0.0f };
+                    Vec4 vel   = { player->m_rigidBody.m_vel.x, player->m_rigidBody.m_vel.y, player->m_rigidBody.m_vel.z, 0.0f };
+                    Vec4 accel = { player->m_rigidBody.m_acceleration.x, player->m_rigidBody.m_acceleration.y, player->m_rigidBody.m_acceleration.z, 0.0f };
                     Vec4 rot   = { player->m_transform.m_yaw, player->m_transform.m_pitch, 0.0f, 0.0f };
                     GenericImGuiTable("Vel",   "%+08.2f", vel.e, 4);
                     GenericImGuiTable("Accel", "%+08.2f", accel.e, 4);
@@ -593,11 +593,9 @@ int main(int argc, char* argv[])
                     ImGui::TableSetupColumn("W");
                     ImGui::TableHeadersRow();
 
-                    Vec4 vel   = { playerCamera->m_transform.m_vel.x,           playerCamera->m_transform.m_vel.y,          playerCamera->m_transform.m_vel.z,          0.0f };
-                    Vec4 accel = { playerCamera->m_transform.m_acceleration.x,  playerCamera->m_transform.m_acceleration.y, playerCamera->m_transform.m_acceleration.z, 0.0f };
-                    Vec4 rot   = { playerCamera->m_transform.m_yaw, playerCamera->m_transform.m_pitch, 0.0f, 0.0f };
+                    Vec4 vel = { playerCamera->m_velocity.x,      playerCamera->m_velocity.y,        playerCamera->m_velocity.z, 0.0f };
+                    Vec4 rot = { playerCamera->m_transform.m_yaw, playerCamera->m_transform.m_pitch, 0.0f,                       0.0f };
                     GenericImGuiTable("Vel",   "%+08.2f", vel.e, 4);
-                    GenericImGuiTable("Accel", "%+08.2f", accel.e, 4);
                     //GenericImGuiTable("Quat",  "%+08.2f", playerCamera->m_transform.m_quat.e, 4);
                     GenericImGuiTable("Rot",   "%+08.2f", rot.e, 4);
                     ImGui::EndTable();
@@ -793,8 +791,6 @@ int main(int argc, char* argv[])
 
         Vec3 lookTarget = {};
         {
-            
-
             //Vec3 front = playerCamera->GetTrueRotation() * faceNormals[+Face::Front];
             Vec3 front = (playerCamera->GetTranslationMatrix() * g_forwardVectorRotation).xyz;
             //front.x = cos(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));

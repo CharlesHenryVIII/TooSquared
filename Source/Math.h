@@ -858,35 +858,18 @@ struct Capsule
 };
 
 struct RigidBody {
-
-    //WorldPos m_p = {};
-    //Vec3 m_vel = {};
-    //Vec3 m_acceleration = {};
-    //float m_terminalVel = {};
-
-    float mass = {};
-    Vec3 drag = {};
-    float angularDrag = {};
-    bool hasGravity = {};
-    bool isKinematic = {};
-    //interpolation
-    //usesCollisionDetection?
-};
-
-struct Transform {
-    WorldPos m_p = {};
-    WorldPos m_pDelta = {};
-    //Quat m_quat = gb_quat_identity();
     Vec3 m_vel = {};
     Vec3 m_acceleration = {};
-    float m_yaw   = {};
-    float m_pitch = {};
-    //Vec3 m_rot = {};
-    Vec3 m_scale = {};
     Vec3 m_terminalVel = {};
     bool m_isGrounded = false;
 
-    void UpdateDeltaPosition(float deltaTime, Vec3 dragCoefficient, float area, float gravity = -10.0f)
+    //float mass = {};
+    //Vec3 drag = {};
+    //float angularDrag = {};
+    //bool hasGravity = {};
+    //bool isKinematic = {};
+
+    Vec3 GetDeltaPosition(float deltaTime, Vec3 dragCoefficient, float area, float gravity = -10.0f)
     {
         if (m_isGrounded)
             m_vel.y = Max(m_vel.y, 0.0f);
@@ -910,14 +893,16 @@ struct Transform {
         m_vel.z = Clamp(m_vel.z, -m_terminalVel.z, m_terminalVel.z);
 
         //Velocity and position will be local for Audio and Particle actors
-        m_pDelta = m_vel * deltaTime;
+        return (m_vel * deltaTime);
     }
+};
 
-    void UpdateCameraPosition(float dt, Vec3 targetVel)
-    {
-        m_vel = Converge(m_vel, targetVel, 16.0f, dt);
-        m_p.p += m_vel * dt;
-    }
+struct Transform {
+    WorldPos m_p = {};
+    //Quat m_quat = gb_quat_identity();
+    float m_yaw   = {};
+    float m_pitch = {};
+    Vec3 m_scale = {};
 };
 
 struct BlockSampler;

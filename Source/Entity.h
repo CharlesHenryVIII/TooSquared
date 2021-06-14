@@ -53,6 +53,7 @@ struct Player : public Entity
     .m_radius = 0.25f,
     .m_height = 1.8f,
     };
+    RigidBody m_rigidBody = {};
     //MovementType m_movementType = MovementType::Fly;
     uint32 m_inputID = {};
     bool m_hasCamera;
@@ -78,6 +79,7 @@ struct Camera : public Entity
     int32 m_fogDistance = 40;
     int32 m_drawDistance = 10;
     float m_targetSpeed = {};
+    Vec3 m_velocity;
 
     void Update(float dt) override;
     void InputUpdate(float dt, CommandHandler& commands) override;

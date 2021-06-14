@@ -94,10 +94,9 @@ Quat Entity::GetTrueRotation()
 void Player::Init()
 {
     m_transform.m_p = { 0.0f, 260.0f, 0.0f };
-    m_transform.m_pDelta = { 0.0f, 260.0f, 0.0f };
-    m_transform.m_vel = {};
-    m_transform.m_acceleration = {};
-    m_transform.m_terminalVel = { 200.0f, 200.0f, 200.0f };
+    m_rigidBody.m_vel = {};
+    m_rigidBody.m_acceleration = {};
+    m_rigidBody.m_terminalVel = { 200.0f, 200.0f, 200.0f };
 }
 
 void Player::ChildCamera(Camera* c)
@@ -177,87 +176,86 @@ void Player::InputUpdate(float dt, CommandHandler& commands)
     Vec3 front = (GetTranslationMatrix() * g_forwardVectorRotation).xyz;
 
     float cameraAcceleration = 0;
-    m_transform.m_acceleration = {};
+    m_rigidBody.m_acceleration = {};
     //std::vector<Triangle> debug_trianglesToDraw;
 
     cameraAcceleration = 15.0f; // m/s^2
     Vec3 forward = Normalize(Vec3({ front.x, 0.0f, front.z }));
     //Vec3 forward = Normalize(Vec3({ camera->m_front.x, 0.0f, camera->m_front.z }));
-    m_transform.m_terminalVel.x = m_transform.m_terminalVel.z = 3.0f;
-    m_transform.m_terminalVel.y = 50.0f;
+    m_rigidBody.m_terminalVel.x = m_rigidBody.m_terminalVel.z = 3.0f;
+    m_rigidBody.m_terminalVel.y = 50.0f;
     if (commands.keyStates[SDLK_LSHIFT].down)
     {
         cameraAcceleration = 50.0f;
-        m_transform.m_terminalVel.x = m_transform.m_terminalVel.z = 8.0f;
+        m_rigidBody.m_terminalVel.x = m_rigidBody.m_terminalVel.z = 8.0f;
     }
     if (commands.keyStates[SDLK_LCTRL].down)
         cameraAcceleration /= 3.0f;
     {
         //Forward
         if (commands.keyStates[SDLK_w].down && commands.keyStates[SDLK_s].down)
-            m_transform.m_acceleration;
+            m_rigidBody.m_acceleration;
         else if (commands.keyStates[SDLK_w].down)
-            m_transform.m_acceleration += (cameraAcceleration * forward);
+            m_rigidBody.m_acceleration += (cameraAcceleration * forward);
         else if (commands.keyStates[SDLK_s].down)
-            m_transform.m_acceleration -= (cameraAcceleration * forward);
+            m_rigidBody.m_acceleration -= (cameraAcceleration * forward);
     }
     {
         //Lateral
         if (commands.keyStates[SDLK_a].down && commands.keyStates[SDLK_d].down)
-            m_transform.m_acceleration;
+            m_rigidBody.m_acceleration;
         else if (commands.keyStates[SDLK_a].down)
-            m_transform.m_acceleration -= (Normalize(Cross(forward, camera->m_up)) * cameraAcceleration);
+            m_rigidBody.m_acceleration -= (Normalize(Cross(forward, camera->m_up)) * cameraAcceleration);
         else if (commands.keyStates[SDLK_d].down)
-            m_transform.m_acceleration += (Normalize(Cross(forward, camera->m_up)) * cameraAcceleration);
+            m_rigidBody.m_acceleration += (Normalize(Cross(forward, camera->m_up)) * cameraAcceleration);
     }
     if (commands.keyStates[SDLK_SPACE].downThisFrame)
     {
-        m_transform.m_vel.y += 7.0f;
-        m_transform.m_isGrounded = false;
+        m_rigidBody.m_vel.y += 7.0f;
+        m_rigidBody.m_isGrounded = false;
     }
     if (commands.keyStates[SDLK_z].down)
-        m_transform.m_acceleration.z += cameraAcceleration;
+        m_rigidBody.m_acceleration.z += cameraAcceleration;
     if (commands.keyStates[SDLK_x].down)
-        m_transform.m_acceleration.x += cameraAcceleration;
+        m_rigidBody.m_acceleration.x += cameraAcceleration;
 }
 
 void Player::Update(float dt)
 {
-    m_transform.UpdateDeltaPosition(dt, { 10.0f, 1.0f, 10.0f }, m_collider.m_radius * 2 * m_collider.m_height);
+    Vec3 kinematicsPositionDelta = m_rigidBody.GetDeltaPosition(dt, { 10.0f, 1.0f, 10.0f }, m_collider.m_radius * 2 * m_collider.m_height);
     //m_collider.UpdateMidTipLocation(m_transform.m_p);
     m_collider.UpdateTailLocation(m_transform.m_p);
     //g_camera.transform.UpdatePosition2(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
 
-    m_transform.m_p.p += m_transform.m_pDelta.p;
-    Vec3 deltaPosition = {};
-    m_transform.m_isGrounded = false;
-    if (CapsuleVsWorldBlocks(m_collider, m_transform.m_pDelta.p, deltaPosition, m_collider.m_collidedTriangles))
+    m_transform.m_p.p += kinematicsPositionDelta;
+    Vec3 collisionPositionDelta = {};
+    m_rigidBody.m_isGrounded = false;
+    if (CapsuleVsWorldBlocks(m_collider, kinematicsPositionDelta, collisionPositionDelta, m_collider.m_collidedTriangles))
     {
         //Update Position
-        m_transform.m_p.p += deltaPosition;
-        m_transform.m_pDelta = {};
+        m_transform.m_p.p += collisionPositionDelta;
 
         //Zero velocity going into a collision
-        Vec3 normalForceDirection = Normalize(deltaPosition);
+        Vec3 normalForceDirection = Normalize(collisionPositionDelta);
         Vec3 collisionDirection = normalForceDirection;//-normalForceDirection;
-        Vec3 dotProductResults = { DotProduct(Vec3({ m_transform.m_vel.x, 0.0f, 0.0f }), collisionDirection),
-                                   DotProduct(Vec3({ 0.0f, m_transform.m_vel.y, 0.0f }), collisionDirection),
-                                   DotProduct(Vec3({ 0.0f, 0.0f, m_transform.m_vel.z }), collisionDirection) };
+        Vec3 dotProductResults = { DotProduct(Vec3({ m_rigidBody.m_vel.x, 0.0f, 0.0f }), collisionDirection),
+                                   DotProduct(Vec3({ 0.0f, m_rigidBody.m_vel.y, 0.0f }), collisionDirection),
+                                   DotProduct(Vec3({ 0.0f, 0.0f, m_rigidBody.m_vel.z }), collisionDirection) };
 
         //TODO: improve to include deflection/angle of collision not just collision in that direction
         if (dotProductResults.x < 0.0f)
         {
-            m_transform.m_vel.x = 0.0f;
+            m_rigidBody.m_vel.x = 0.0f;
         }
         if (dotProductResults.y < 0.0f)
         {
-            if (m_transform.m_vel.y < 0.0f)
-                m_transform.m_isGrounded = true;
-            m_transform.m_vel.y = 0.0f;
+            if (m_rigidBody.m_vel.y < 0.0f)
+                m_rigidBody.m_isGrounded = true;
+            m_rigidBody.m_vel.y = 0.0f;
         }
         if (dotProductResults.z < 0.0f)
         {
-            m_transform.m_vel.z = 0.0f;
+            m_rigidBody.m_vel.z = 0.0f;
         }
     }
 
@@ -297,13 +295,11 @@ void Camera::Update(float dt)
 void Camera::InputUpdate(float dt, CommandHandler& commands)
 {
     Entity* e = g_entityList.GetEntity(m_parent);
-    m_transform.m_acceleration = {};
     if (e == nullptr)
     {
         m_transform.m_yaw -= commands.mouse.pDelta.x * commands.mouse.m_sensitivity;
         m_transform.m_pitch -= commands.mouse.pDelta.y * commands.mouse.m_sensitivity;
         m_transform.m_pitch = Clamp<float>(m_transform.m_pitch, -89.5f, 89.5f);
-#if 1
 
         Vec3 request = {};
         if (commands.keyStates[SDLK_w].down)
@@ -326,51 +322,10 @@ void Camera::InputUpdate(float dt, CommandHandler& commands)
         Vec3 front = (GetTranslationMatrix() * Vec4 { request.x, request.y, request.z, 0 }).xyz;
         gb_vec3_norm0(&front, front);
         Vec3 targetVelocity = front * m_targetSpeed;
-        m_transform.UpdateCameraPosition(dt, targetVelocity);
 
-#else
-        float cameraAcceleration = 200.0f; // m/s^2
-        m_transform.m_terminalVel.x = m_transform.m_terminalVel.z = m_transform.m_terminalVel.y = 10.0f;
-
-        //Vec3 front = GetTrueRotation() * faceNormals[+Face::Front];
-        Vec3 front = (GetTranslationMatrix() * g_forwardVectorRotation).xyz;
-
-        if (commands.keyStates[SDLK_LSHIFT].down)
-        {
-            cameraAcceleration *= 30;
-            m_transform.m_terminalVel.x = m_transform.m_terminalVel.y = m_transform.m_terminalVel.z = 200.0f;
-        }
-        {
-            //Forward
-            if (commands.keyStates[SDLK_w].down && commands.keyStates[SDLK_s].down)
-                m_transform.m_acceleration;
-            else if (commands.keyStates[SDLK_w].down)
-                m_transform.m_acceleration += (cameraAcceleration * front);
-            //m_transform.m_acceleration += (cameraAcceleration * camera->m_front);
-            else if (commands.keyStates[SDLK_s].down)
-                m_transform.m_acceleration -= (cameraAcceleration * front);
-            //m_transform.m_acceleration -= (cameraAcceleration * camera->m_front);
-        }
-        {
-            //Lateral
-            if (commands.keyStates[SDLK_a].down && commands.keyStates[SDLK_d].down)
-                m_transform.m_acceleration;
-            else if (commands.keyStates[SDLK_a].down)
-                m_transform.m_acceleration -= (Normalize(Cross(front, this->m_up)) * cameraAcceleration);
-            //m_transform.m_acceleration -= (Normalize(Cross(camera->m_front, camera->m_up)) * cameraAcceleration);
-            else if (commands.keyStates[SDLK_d].down)
-                m_transform.m_acceleration += (Normalize(Cross(front, this->m_up)) * cameraAcceleration);
-            //m_transform.m_acceleration += (Normalize(Cross(camera->m_front, camera->m_up)) * cameraAcceleration);
-        }
-        if (commands.keyStates[SDLK_LCTRL].down)
-            m_transform.m_terminalVel.x = m_transform.m_terminalVel.z = 10.0f;
-        if (commands.keyStates[SDLK_SPACE].down)
-            m_transform.m_acceleration.y += cameraAcceleration;
-        if (commands.keyStates[SDLK_z].down)
-            m_transform.m_acceleration.z += cameraAcceleration;
-        if (commands.keyStates[SDLK_x].down)
-            m_transform.m_acceleration.x += cameraAcceleration;
-#endif
+        m_velocity = Converge(m_velocity, targetVelocity, 16.0f, dt);
+        m_transform.m_p.p += m_velocity * dt;
+        //m_transform.UpdateCameraPosition(dt, targetVelocity);
     }
 }
 
@@ -442,8 +397,6 @@ void Items::Render(float dt, Camera* camera)
         gb_mat4_translate(&translation, i.m_transform.m_p.p);
         result = translation * rotation;
         DrawBlock(result, White, scale, camera, Texture::T::Minecraft, i.m_type);
-
-        //DrawBlock(i.m_transform, White, scale, camera, Texture::T::Minecraft, i.m_type);
     }
 }
 
@@ -483,12 +436,7 @@ void Entitys::InputUpdate(float dt,CommandHandler& commands)
 {
     for (auto e : list)
     {
-        //if (e->GetType() == EntityType::Player)
-        {
-            //auto p = reinterpret_cast<Player*>(e);
-            //if (p->m_inputID == commands.ID)
-                e->InputUpdate(dt, commands);
-        }
+        e->InputUpdate(dt, commands);
     }
 }
 
