@@ -102,6 +102,12 @@ bool HeavensInterpolation(float& result, float time, float lo, float hi, float i
     return true;
 }
 
+enum class ChunkUpdateOrigin : int32 {
+    Player,
+    Camera,
+};
+ENUMOPS(ChunkUpdateOrigin);
+
 enum class DebugOptions : uint32 {
     None = 0,
     ChunkStatus = BIT(0),
@@ -151,6 +157,7 @@ int main(int argc, char* argv[])
     player->m_inputID = playerInput.ID;
     Camera* playerCamera = g_entityList.New<Camera>();
     playerCamera->m_transform.m_p.p = {0, 150, 0};
+    ChunkUpdateOrigin chunkUpdateOrigin = ChunkUpdateOrigin::Player;
     //player->ChildCamera(playerCamera);
     //{
     //    playerCamera->m_parent = player->m_ID;
@@ -659,6 +666,15 @@ int main(int argc, char* argv[])
 
                 ImGui::TreePop();
             }
+
+            if (ImGui::TreeNode("Misc"))
+            {
+                ImGui::Text("Update the chunks based on:");
+                ImGui::RadioButton("Player", (int32*)&chunkUpdateOrigin, +ChunkUpdateOrigin::Player); ImGui::SameLine();
+                ImGui::RadioButton("Camera", (int32*)&chunkUpdateOrigin, +ChunkUpdateOrigin::Camera); //ImGui::SameLine();
+
+                ImGui::TreePop();
+            }
             ImGui::End();
         }
 
@@ -987,7 +1003,18 @@ int main(int argc, char* argv[])
 #endif
 
             playerCamera->m_fogDistance = playerCamera->m_drawDistance + 10;
-            ChunkPos playerChunkPos = ToChunk(player->m_transform.m_p);
+
+            ChunkPos chunkPos;
+            switch (chunkUpdateOrigin)
+            {
+            case ChunkUpdateOrigin::Player:
+                chunkPos = ToChunk(player->GetWorldPosition());
+                break;
+            case ChunkUpdateOrigin::Camera:
+                chunkPos = ToChunk(playerCamera->GetWorldPosition());
+                break;
+            }
+
             for (int32 _drawDistance = 0; _drawDistance < playerCamera->m_drawDistance; _drawDistance++)
             {
                 for (int32 z = -_drawDistance; z <= _drawDistance; z++)
@@ -997,7 +1024,7 @@ int main(int argc, char* argv[])
                         if (z == _drawDistance || x ==  _drawDistance ||
                            z == -_drawDistance || x == -_drawDistance)
                         {
-                            ChunkPos newBlockP = { playerChunkPos.p.x + x, 0, playerChunkPos.p.z + z };
+                            ChunkPos newBlockP = { chunkPos.p.x + x, 0, chunkPos.p.z + z };
                             ChunkIndex funcResult;
                             if (TEST_CREATE_AND_UPLOAD_CHUNKS)
                             if (!g_chunks->GetChunkFromPosition(funcResult, newBlockP))
@@ -1017,8 +1044,8 @@ int main(int argc, char* argv[])
                     {
                         if (g_chunks->active[i])
                         {
-                            if (((g_chunks->p[i].p.x > playerChunkPos.p.x + playerCamera->m_fogDistance || g_chunks->p[i].p.z > playerChunkPos.p.z + playerCamera->m_fogDistance) ||
-                                (g_chunks->p[i].p.x < playerChunkPos.p.x - playerCamera->m_fogDistance || g_chunks->p[i].p.z < playerChunkPos.p.z - playerCamera->m_fogDistance)) ||
+                            if (((g_chunks->p[i].p.x > chunkPos.p.x + playerCamera->m_fogDistance || g_chunks->p[i].p.z > chunkPos.p.z + playerCamera->m_fogDistance) ||
+                                (g_chunks->p[i].p.x < chunkPos.p.x - playerCamera->m_fogDistance || g_chunks->p[i].p.z < chunkPos.p.z - playerCamera->m_fogDistance)) ||
                                 !TEST_CREATE_AND_UPLOAD_CHUNKS)
                             {
                                 g_chunks->flags[i] |= CHUNK_TODELETE;
@@ -1238,7 +1265,7 @@ int main(int argc, char* argv[])
                 {
                     if (player->m_collider.m_collidedTriangles.size())
                     {
-                        DrawTriangles(player->m_collider.m_collidedTriangles, Orange, playerCamera, false);
+                        DrawTriangles(player->m_collider.m_collidedTriangles, Orange, playerCamera->m_view, playerCamera->m_perspective, false);
                         player->m_collider.m_collidedTriangles.clear();
                     }
                 }

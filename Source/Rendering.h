@@ -12,8 +12,6 @@ struct Renderer;
 extern Renderer g_renderer;
 struct Window;
 extern Window g_window;
-//struct Camera;
-//extern Camera g_camera;
 #if DIRECTIONALLIGHT == 1
 //struct Light_Direction;
 //extern Light_Direction g_light;
@@ -29,24 +27,6 @@ struct Window {
     SDL_Window* SDL_Context = nullptr;
     bool hasAttention = true;
 };
-
-//struct Camera {
-//    Transform transform = {
-//    .m_p = { 0.0f, 260.0f, 0.0f },
-//    .m_pDelta = { 0.0f, 260.0f, 0.0f },
-//    .m_vel = {},
-//    .m_acceleration = {},
-//    .m_terminalVel = 200.0f,
-//    };
-//    //WorldPos p  = { 0.0f, 260.0f, 0.0f };
-//    Vec3 front  = { 0.0f, 0.0f, -1.0f };
-//    Vec3 up     = { 0.0f, 1.0f, 0.0f };
-//    Mat4 view;
-//    float yaw   = -90.0f;
-//    float pitch = 0.0f;
-//    int32 fogDistance = 40;
-//    int32 drawDistance = 10;
-//};
 
 struct Light_Point {
     Vec3 p;
@@ -272,4 +252,5 @@ void UpdateFrameBuffers(Vec2Int size, uint32 samples);
 void ResolveMSAAFramebuffer();
 void UI_AddDrawCall(RectInt sourceRect, RectInt _destRect, Color colorMod, Texture::T textureType);
 void UI_AddDrawCall(RectInt _sourceRect, Rect destRect, Color colorMod, Texture::T textureType);
+void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& view, const Mat4& perspective, bool depthWrite);
 void UI_Render();

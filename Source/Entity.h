@@ -13,6 +13,7 @@ enum class MovementType {
 enum class EntityType {
     Player,
     Camera,
+    Item,
 };
 
 //Vec3 g_forwardVector = { 0.0f, 0.0f, -1.0f };
@@ -32,8 +33,8 @@ struct Entity
     bool inUse = true;
     virtual void Init() {};
     virtual EntityType GetType() = 0;
-    virtual void InputUpdate(float dt, CommandHandler& commands) {};
     virtual void Update(float dt) = 0;
+    virtual void InputUpdate(float dt, CommandHandler& commands) {};
     virtual void Render(float dt, Camera* camera) {};
     Mat4 GetWorldMatrix();
     WorldPos GetWorldPosition();
@@ -83,6 +84,7 @@ struct Camera : public Entity
     void InputUpdate(float dt, CommandHandler& commands) override;
 };
 
+
 struct Entitys {
 
     std::vector<Entity*> list;
@@ -90,6 +92,8 @@ struct Entitys {
     T* New()
     {
         T* e = new T();
+        //assert(constexpr(std::is_same_v<T, Item>))
+        //assert(T != Item);
         list.push_back(e);
         return e;
     }
@@ -120,10 +124,12 @@ struct Entitys {
     void Render(float deltaTime, Camera* camera);
 };
 
-struct Item
+
+struct Item : public Entity
 {
+    ENTITYBOILERPLATE(Item);
+    void Update(float deltaTime);
     BlockType m_type;
-    Transform m_transform;
     bool m_lootable = true;
 };
 

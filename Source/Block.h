@@ -314,14 +314,8 @@ struct Camera;
 void SetBlockSprites();
 void PreChunkRender(const Mat4& perspective, Camera* camera);
 Rect GetUVsFromIndex(uint8 index);
-#if 1
 void DrawBlock(const Mat4& mat, Color color, float scale, Camera* camera, Texture::T textureType, BlockType blockType);
 void DrawBlock(const Mat4& mat, Color color, Vec3 scale, Camera* camera, Texture::T textureType, BlockType blockType);
-#else
-void DrawBlock(const Transform& tran, Color color, float scale, Camera* camera, Texture::T textureType, BlockType blockType);
-void DrawBlock(const Transform& tran, Color color, Vec3 scale, Camera* camera, Texture::T textureType, BlockType blockType);
-#endif
-void DrawTriangles(const std::vector<Triangle>& triangles, Color color, Camera* camera, bool depthWrite = true);
 void DrawCube(WorldPos p, Color color, Vec3  scale, Camera* camera, Texture::T textureType = Texture::T::Plain, BlockType blockType = BlockType::Empty);
 void DrawCube(WorldPos p, Color color, float scale, Camera* camera, Texture::T textureType = Texture::T::Plain, BlockType blockType = BlockType::Empty);
 void Draw2DSquare(Rect rect, Color color);

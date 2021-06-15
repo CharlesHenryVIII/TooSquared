@@ -315,6 +315,35 @@ Item* Items::Add(BlockType blockType, WorldPos position)
     return &m_items[m_items.size() - 1];
 }
 
+void Item::Update(float dt)
+{
+    GamePos blockInsideP = ToGame(m_transform.m_p.p);
+    GamePos blockBelowP = blockInsideP;
+    blockBelowP.p.y = Max(0, blockBelowP.p.y - 1);
+    BlockType blockInsideType;
+    BlockType blockBelowType;
+    bool moved = false;
+    while (g_chunks->GetBlock(blockInsideType, blockInsideP) && blockInsideType != BlockType::Empty)
+    {
+        m_transform.m_p.p.y += 1.0f;
+        blockInsideP.p.y += 1;
+        moved = true;
+    }
+    if (!moved)
+    {
+        while (g_chunks->GetBlock(blockBelowType, blockBelowP) && blockBelowType == BlockType::Empty)
+        {
+            m_transform.m_p.p.y -= 1.0f;
+            blockBelowP.p.y -= 1;
+        }
+    }
+
+    //Apply angular velocity
+    float angularVelocity = tau / 5; // rads per second
+    //e.m_transform.m_quat *= gb_quat_euler_angles(0.0f, yaw, 0.0f);
+    m_transform.m_yaw += RadToDeg(dt * angularVelocity);
+}
+
 void Items::Update(float dt)
 {
     std::erase_if(m_items,
@@ -325,36 +354,7 @@ void Items::Update(float dt)
 
     for (auto& e : m_items)
     {
-        GamePos blockInsideP = ToGame(e.m_transform.m_p.p);
-        GamePos blockBelowP = blockInsideP;
-        blockBelowP.p.y = Max(0, blockBelowP.p.y - 1);
-        BlockType blockInsideType;
-        BlockType blockBelowType;
-        bool moved = false;
-        while (g_chunks->GetBlock(blockInsideType, blockInsideP) && blockInsideType != BlockType::Empty)
-        {
-            e.m_transform.m_p.p.y += 1.0f;
-            blockInsideP.p.y += 1;
-            moved = true;
-        }
-        if (!moved)
-        {
-            while (g_chunks->GetBlock(blockBelowType, blockBelowP) && blockBelowType == BlockType::Empty)
-            {
-                e.m_transform.m_p.p.y -= 1.0f;
-                blockBelowP.p.y -= 1;
-            }
-        }
-    }
-
-    //Apply angular velocity
-    float angularVelocity = tau / 5; // rads per second
-    for (auto& e : m_items)
-    {
-        float yaw = dt * angularVelocity;
-        //e.m_transform.m_quat *= gb_quat_euler_angles(0.0f, yaw, 0.0f);
-
-        e.m_transform.m_yaw += dt * angularVelocity;
+        e.Update(dt);
     }
 }
 
