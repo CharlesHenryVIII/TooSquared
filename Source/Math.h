@@ -150,8 +150,9 @@ struct Rect {
 };
 
 
+template <typename T = float>
 struct Range {
-    float min, max;
+    T min, max;
 
 //    float RandomInRange()
 //    {

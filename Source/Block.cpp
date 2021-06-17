@@ -230,6 +230,7 @@ void SetBlockSprites()
     SetMultipleBlockSprites(BlockType::Ice, 67);
     SetMultipleBlockSprites(BlockType::Obsidian, 37);
     SetMultipleBlockSprites(BlockType::Leaves, 53);
+    //SetMultipleBlockSprites(BlockType::Leaves, 52);
     SetMultipleBlockSprites(BlockType::MossyCobblestone, 36);
     SetMultipleBlockSprites(BlockType::TNT, 8);
     blockSprites[+BlockType::TNT].faceSprites[+Face::Top] = 9;
@@ -403,6 +404,64 @@ uint32 GetMountainsHeight(GamePos p, float perlinScale, int32 noiseOffset, uint3
     Vec2 lookupLoc = Vec2({ float(p.p.x), float(p.p.z) }) * perlinScale;
     uint32 deltaHeight = Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D(lookupLoc * frequency, np)), 0, CHUNK_Y - lowDetailHeight);
     return deltaHeight;
+}
+
+bool TreeIsAtLocation(GamePos p, float perlinScale, int32 noiseOffset)
+{
+    float frequency = 10.0f;
+    //float frequency = 0.000001f;
+    NoiseParams np = {
+        .numOfOctaves = 2,
+        .freq = 100.0f,
+        .weight = 1.0f,
+        .gainFactor = 0.5f,
+    };
+
+    Vec2 lookupLoc = Vec2({ float(p.p.x), float(p.p.z) }) * perlinScale;
+    bool treeIsThere = Perlin2D(lookupLoc * frequency, np) > 0.6f;
+    return treeIsThere;
+}
+
+//TreeGenerationProcess(waterVsLandHeight, chunkIndex, x, y, z, blockP);
+void TreeGenerationProcess(uint32& height, ChunkIndex index, int32 chunkx, int32 chunky, int32 chunkz, const GamePos& p)
+{
+    const Vec3Int maxSize = { 5, 6, 5 };
+    const int32 logHeight = 5;
+    const Range<Vec3Int>  branchRange = { { -2, 3, -2}, { 2, 5, 2 } };
+    
+    //for (int32 x = 0; x < maxSize.x; x++)
+    //{
+    //    for (int32 z = 0; z < maxSize.z; z++)
+    //    {
+            if (TreeIsAtLocation(p, 0.01f, HEIGHT_MIN_WATER))
+            {//determin what will be in the 
+                int32 treeY = 0;
+                for (treeY; treeY + height < CHUNK_Y && treeY < logHeight; treeY++)
+                {
+                    g_chunks->blocks[index].e[chunkx][chunky + treeY][chunkz] = BlockType::Wood;
+                }
+                int32 leafy = 0;
+                for (int32 leafx = branchRange.min.x; leafx <= branchRange.max.x; leafx++)
+                {
+                    for (leafy = branchRange.min.y; leafy <= branchRange.max.y && leafy + chunky < CHUNK_Y; leafy++)
+                    {
+                        for (int32 leafz = branchRange.min.z; leafz <= branchRange.max.z; leafz++)
+                        {
+                            if (leafx + chunkx < CHUNK_X && leafy + treeY + height < CHUNK_Y && leafz + chunkz < CHUNK_Z)
+                                if (leafx + chunkx >= 0 && leafy + chunky >= 0 && leafz + chunkz >= 0)
+                                    if (g_chunks->blocks[index].e[chunkx + leafx][chunky + leafy][chunkz + leafz] == BlockType::Empty)
+                                        g_chunks->blocks[index].e[chunkx + leafx][chunky + leafy][chunkz + leafz] = BlockType::Leaves;
+                        }
+                    }
+                }
+                //for (treeY; treeY + height < CHUNK_Y && treeY < maxSize.y; treeY++)
+                //{
+                //    g_chunks->blocks[index].e[chunkx][chunky + treeY][chunkz] = BlockType::Leaves;
+                //}
+                height += treeY + leafy;
+            }
+    //    }
+    //}
 }
 
 struct LineSegment {
@@ -924,6 +983,11 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                             else if (counts > 5)
                                 blocks[chunkIndex].e[x][y][z] = BlockType::DiamondBlock;
 #endif
+                        }
+                        
+                        if (waterVsLandHeight < CHUNK_Y)
+                        {
+                            TreeGenerationProcess(waterVsLandHeight, chunkIndex, x, y, z, blockP);
                         }
                     }
                     assert(waterVsLandHeight < CHUNK_Y);

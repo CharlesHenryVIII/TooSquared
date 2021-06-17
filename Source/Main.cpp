@@ -157,7 +157,7 @@ int main(int argc, char* argv[])
     player->m_inputID = playerInput.ID;
     Camera* playerCamera = g_entityList.New<Camera>();
     playerCamera->m_transform.m_p.p = {0, 150, 0};
-    ChunkUpdateOrigin chunkUpdateOrigin = ChunkUpdateOrigin::Player;
+    ChunkUpdateOrigin chunkUpdateOrigin = ChunkUpdateOrigin::Camera;//ChunkUpdateOrigin::Player;
     //player->ChildCamera(playerCamera);
     //{
     //    playerCamera->m_parent = player->m_ID;
