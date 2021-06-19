@@ -335,9 +335,19 @@ float stb_ComputeHeightFieldDelta(int x, int y, float weight)
 #define HEIGHT_MIN_WATER    20U
 #define HEIGHT_MAX_WATER    70U
 uint64 s_worldSeed = 0;
+const int32 generalNoiseOffset = HEIGHT_MIN_WATER;
+const float generalPerlinScale = 0.01f;
+const NoiseParams seaFloorParams = {
+    .numOfOctaves = 8,
+    .freq = 0.17f,
+    //.freq = 0.3f,
+    .weight = 1.0f,
+    //.gainFactor = 0.8f,
+    .gainFactor = 1.0f,
+};
 
 
-uint32 GetLandHeight(WorldPos chunkP, Vec3Int blockP, NoiseParams& params, float scale, int32 noiseOffset, uint32 lowerClamp, uint32 upperClamp)
+uint32 GetLandHeight(WorldPos chunkP, Vec3Int blockP, const NoiseParams& params, float scale, int32 noiseOffset, uint32 lowerClamp, uint32 upperClamp)
 {
     Vec2 lookupLoc = { (chunkP.p.x + blockP.x) * scale, (chunkP.p.z + blockP.z) * scale };
     return Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D(lookupLoc, params)), lowerClamp, upperClamp);
@@ -406,6 +416,86 @@ uint32 GetMountainsHeight(GamePos p, float perlinScale, int32 noiseOffset, uint3
     return deltaHeight;
 }
 
+uint32 QueryLandHeight(ChunkPos chunkLocation, int32 xQueryLocation, int32 zQueryLocation)
+{
+    VoronoiRegion region;
+    region.BuildRegion(chunkLocation, s_worldSeed);
+    Vec3Int block_queryLocation = { xQueryLocation % CHUNK_X, 0, zQueryLocation % CHUNK_Z };
+
+    uint32 waterVsLandHeight = GetLandHeight(ToWorld(chunkLocation), block_queryLocation, seaFloorParams, generalPerlinScale, generalNoiseOffset, HEIGHT_MIN_WATER, CHUNK_Y);
+    if (!(waterVsLandHeight < HEIGHT_MAX_WATER - 2 && waterVsLandHeight < HEIGHT_MAX_WATER + 1))
+    {
+        GamePos blockP;
+        blockP.p = ToGame(chunkLocation).p + block_queryLocation;//Vec3Int({xQueryLocation, 0, zQueryLocation });
+
+        uint32 terrainFunctions[] = {
+            GetPlainsHeight(blockP, generalPerlinScale, generalNoiseOffset, waterVsLandHeight),
+            GetHillsHeight(blockP, generalPerlinScale, generalNoiseOffset, waterVsLandHeight),
+            GetMountainsHeight(blockP, generalPerlinScale, generalNoiseOffset, waterVsLandHeight),
+        };
+        static_assert(arrsize(terrainFunctions) == +TerrainType::Count);
+
+        float noiseHeightScale = 0.05f;
+
+        float gBlurWeights[5][5] = {
+          1,  4,  7,  4,  1,
+          4, 16, 26, 16,  4,
+          7, 26, 41, 26,  7,
+          4, 16, 26, 16,  4,
+          1,  4,  7,  4,  1,
+        };
+        float gWeightTotal = 0;
+        for (int32 y = 0; y < sizeof(gBlurWeights) / sizeof(gBlurWeights[0]); y++)
+        {
+            for (int32 x = 0; x < sizeof(gBlurWeights[0]) / sizeof(gBlurWeights[0][0]); x++)
+            {
+                gWeightTotal += gBlurWeights[y][x];
+            }
+        }
+        for (int32 y = 0; y < sizeof(gBlurWeights) / sizeof(gBlurWeights[0]); y++)
+        {
+            for (int32 x = 0; x < sizeof(gBlurWeights[0]) / sizeof(gBlurWeights[0][0]); x++)
+            {
+                gBlurWeights[y][x] /= gWeightTotal;
+            }
+        }
+
+        float newHeight = 0;
+        for (int32 y = 0; y < sizeof(gBlurWeights) / sizeof(gBlurWeights[0]); y++)
+        {
+            for (int32 x = 0; x < sizeof(gBlurWeights[0]) / sizeof(gBlurWeights[0][0]); x++)
+            {
+                Vec3Int blockOffset = {};
+                blockOffset.x = x - (sizeof(gBlurWeights[0]) / sizeof(gBlurWeights[0][0])) / 2;
+                blockOffset.z = y - (sizeof(gBlurWeights) / sizeof(gBlurWeights[0])) / 2;
+                GamePos checkBlockP = {};
+                checkBlockP.p = blockP.p + blockOffset;
+                VoronoiCell* checkCell = region.GetCell(checkBlockP);
+                assert(checkCell);
+                if (checkCell)
+                {
+                    uint32 hashValue = checkCell->GetHash(s_worldSeed);
+                    TerrainType neighborType = TerrainType(hashValue % +TerrainType::Count);
+                    float cellHeight = float(terrainFunctions[+neighborType]) * noiseHeightScale;
+                    newHeight += cellHeight * gBlurWeights[y][x];
+                }
+            }
+        }
+
+        waterVsLandHeight += uint32(newHeight);
+        //________
+
+        assert(waterVsLandHeight > HEIGHT_UNBREAKABLE);
+        assert(waterVsLandHeight < CHUNK_Y);
+        waterVsLandHeight = Clamp(waterVsLandHeight, HEIGHT_UNBREAKABLE + 1, CHUNK_Y - 1);
+    }
+    return waterVsLandHeight;
+}
+uint32 QueryLandHeight(GamePos queryLocation)
+{
+    return QueryLandHeight(ToChunk(queryLocation), queryLocation.p.x, queryLocation.p.z);
+}
+
 bool TreeIsAtLocation(GamePos p, float perlinScale, int32 noiseOffset)
 {
     float frequency = 10.0f;
@@ -422,357 +512,76 @@ bool TreeIsAtLocation(GamePos p, float perlinScale, int32 noiseOffset)
     return treeIsThere;
 }
 
-//TreeGenerationProcess(waterVsLandHeight, chunkIndex, x, y, z, blockP);
 void TreeGenerationProcess(uint32& height, ChunkIndex index, int32 chunkx, int32 chunky, int32 chunkz, const GamePos& p)
 {
     const Vec3Int maxSize = { 5, 6, 5 };
     const int32 logHeight = 5;
     const Range<Vec3Int>  branchRange = { { -2, 3, -2}, { 2, 5, 2 } };
-    
-    //for (int32 x = 0; x < maxSize.x; x++)
-    //{
-    //    for (int32 z = 0; z < maxSize.z; z++)
-    //    {
-            if (TreeIsAtLocation(p, 0.01f, HEIGHT_MIN_WATER))
-            {//determin what will be in the 
-                int32 treeY = 0;
-                for (treeY; treeY + height < CHUNK_Y && treeY < logHeight; treeY++)
+    float perlinScale = 0.01f;
+
+    if (TreeIsAtLocation(p, perlinScale, HEIGHT_MIN_WATER) && height < CHUNK_Y)
+    {//determin what will be in the 
+        int32 treeY = 0;
+        for (treeY; treeY + height < CHUNK_Y && treeY < logHeight; treeY++)
+        {
+            g_chunks->blocks[index].e[chunkx][chunky + treeY][chunkz] = BlockType::Wood;
+        }
+        int32 leafy = 0;
+        for (int32 leafx = branchRange.min.x; leafx <= branchRange.max.x; leafx++)
+        {
+            for (leafy = branchRange.min.y; leafy <= branchRange.max.y && leafy + chunky < CHUNK_Y; leafy++)
+            {
+                for (int32 leafz = branchRange.min.z; leafz <= branchRange.max.z; leafz++)
                 {
-                    g_chunks->blocks[index].e[chunkx][chunky + treeY][chunkz] = BlockType::Wood;
-                }
-                int32 leafy = 0;
-                for (int32 leafx = branchRange.min.x; leafx <= branchRange.max.x; leafx++)
-                {
-                    for (leafy = branchRange.min.y; leafy <= branchRange.max.y && leafy + chunky < CHUNK_Y; leafy++)
-                    {
-                        for (int32 leafz = branchRange.min.z; leafz <= branchRange.max.z; leafz++)
+                    if (leafx + chunkx < CHUNK_X && leafy + treeY + height < CHUNK_Y && leafz + chunkz < CHUNK_Z)
+                        if (leafx + chunkx >= 0 && leafy + chunky >= 0 && leafz + chunkz >= 0)
                         {
-                            if (leafx + chunkx < CHUNK_X && leafy + treeY + height < CHUNK_Y && leafz + chunkz < CHUNK_Z)
-                                if (leafx + chunkx >= 0 && leafy + chunky >= 0 && leafz + chunkz >= 0)
-                                    if (g_chunks->blocks[index].e[chunkx + leafx][chunky + leafy][chunkz + leafz] == BlockType::Empty)
-                                        g_chunks->blocks[index].e[chunkx + leafx][chunky + leafy][chunkz + leafz] = BlockType::Leaves;
+                            BlockType& block = g_chunks->blocks[index].e[chunkx + leafx][chunky + leafy][chunkz + leafz];
+                            if (block == BlockType::Empty)
+                                block = BlockType::Leaves;
+                        }
+                }
+            }
+        }
+        height += treeY + leafy;
+        assert(height < CHUNK_Y);
+    }
+    else
+    {
+        GamePos checkLocation = {};
+        uint32 maxHeight = 0;
+        for (int32 x = branchRange.min.x; x <= branchRange.max.x; x++)
+        {
+            for (int32 z = branchRange.min.z; z <= branchRange.max.z; z++)
+            {
+                //int32 xLoc = x + chunkx;
+                //int32 zLoc = z + chunkz;
+                checkLocation.p = p.p + Vec3Int({ x, 0, z });
+                //if (TreeIsAtLocation(p, perlinScale, HEIGHT_MIN_WATER))
+                if (TreeIsAtLocation(checkLocation, perlinScale, HEIGHT_MIN_WATER))
+                {
+                    uint32 landHeight = QueryLandHeight(checkLocation);
+                    for (int32 y = branchRange.min.y; y <= branchRange.max.y && landHeight + y < CHUNK_Y; y++)
+                    {
+                        uint32 newY = landHeight + y;
+                        if (newY < 0)
+                            continue;
+                        BlockType& block = g_chunks->blocks[index].e[chunkx][newY][chunkz];
+
+                        if (block == BlockType::Empty)
+                        {
+                            block = BlockType::Leaves;
+                            //maxHeight = Max(maxHeight, y);
+                            maxHeight = Max(maxHeight, newY + 1);
                         }
                     }
                 }
-                //for (treeY; treeY + height < CHUNK_Y && treeY < maxSize.y; treeY++)
-                //{
-                //    g_chunks->blocks[index].e[chunkx][chunky + treeY][chunkz] = BlockType::Leaves;
-                //}
-                height += treeY + leafy;
             }
-    //    }
-    //}
+        }
+        height = Max(height, maxHeight);
+        assert(height < CHUNK_Y);
+    }
 }
-
-struct LineSegment {
-    Vec2 p0;
-    Vec2 p1;
-
-    Vec2 Normal()
-    {
-        //TODO CHECK IF THIS IS RIGHT
-        Vec2 result = (p1 - p0);
-        result = { -result.y, result.x };
-        return result;
-    }
-};
-
-enum class VoronoiEdges {
-    West,
-    North,
-    East,
-    South,
-    Count,
-};
-ENUMOPS(VoronoiEdges);
-
-Vec2Int vornoiEdges[+VoronoiEdges::Count] = {
-{ 0, 0 },
-{ 0, 1 },
-{ 1, 1 },
-{ 1, 0 },
-};
-
-struct VoronoiCell {
-    GamePos m_center = {};
-    LineSegment m_lines[+VoronoiEdges::Count] = {};
-
-    void BuildCell(GamePos* corners, GamePos cellCenter)
-    {
-        m_center = cellCenter;
-        for (int32 i = 0; i < arrsize(m_lines); i++)
-        {
-            m_lines[i].p0 = { float(corners[i].p.x),                        float(corners[i].p.z) };
-            m_lines[i].p1 = { float(corners[(i + 1) % arrsize(m_lines)].p.x), float(corners[(i + 1) % arrsize(m_lines)].p.z) };
-        }
-    }
-
-    [[nodiscard]] bool Contains(GamePos blockP)
-    {
-        for (int32 i = 0; i < arrsize(m_lines); i++)
-        {
-            Vec2 normal = m_lines[i].Normal();
-            Vec2 point = { float(blockP.p.x), float(blockP.p.z) };
-            point -= m_lines[i].p0;
-            if (DotProduct(normal, point) > 0)
-                return false;
-        }
-        return true;
-    }
-
-    [[nodiscard]] std::vector<float> DistanceToEachLineSegment(const GamePos& blockP)
-    {
-        std::vector<float> distances;
-        for (int32 i = 0; i < arrsize(m_lines); i++)
-        {
-            Vec2 lineDest = m_lines[i].p1 - m_lines[i].p0;
-            Vec2 point = Vec2({ float(blockP.p.x), float(blockP.p.z) }) - m_lines[i].p0;
-
-            //https://mathinsight.org/dot_product
-            float lineDistance = Distance({}, lineDest);
-            float distanceAlongLine = DotProduct(lineDest, point) / lineDistance;
-            float distanceRatioAlongLine = distanceAlongLine / lineDistance;
-            Vec2 pointOnLine = Lerp<Vec2>(Vec2({}), lineDest, distanceRatioAlongLine);
-            //Vec2 hi = { Max(0.0f, lineDest.x), Max(0.0f, lineDest.y) };
-            //Vec2 lo = { Min(0.0f, lineDest.x), Min(0.0f, lineDest.y) };
-            //pointOnLine.x = Clamp<float>(pointOnLine.x, lo.x, hi.x);
-            //pointOnLine.y = Clamp<float>(pointOnLine.y, lo.y, hi.y);
-
-            distances.push_back(Distance(pointOnLine, point));
-        }
-        return distances;
-    }
-
-    [[nodiscard]] uint32 GetHash()
-    {
-        uint32 xHash = XXSeedHash(s_worldSeed, m_center.p.x);
-        uint32 zHash = XXSeedHash(s_worldSeed, m_center.p.z);
-        union TempMerge {
-            struct {
-                uint32 x;
-                uint32 y;
-            };
-            uint64 big;
-        } a;
-        a.x = xHash;
-        a.y = zHash;
-
-        uint32 result = PCG_Random(a.big);
-        return result;
-    }
-
-};
-
-struct VoronoiResult {
-    VoronoiCell cell;
-    float distance;
-};
-
-struct VoronoiRegion {
-    const int32 m_cellSize = 10; //size of the area for sampling positions
-    const int32 m_apronDistance = 4;
-    ChunkPos Debug_referenceChunkP;
-    Vec2Int Debug_referenceCellP;
-    std::vector<VoronoiCell> cells;
-
-    [[nodiscard]] VoronoiCell* GetCell(GamePos p)
-    {
-        for (VoronoiCell& cell : cells)
-        {
-            if (cell.Contains(p))
-                return &cell;
-        }
-        return nullptr;
-    }
-
-    [[nodiscard]] ChunkPos CellToChunk(Vec2Int cellP)
-    {
-        ChunkPos result = { cellP.x * m_cellSize, 0, cellP.y * m_cellSize };
-        return result;
-    }
-
-    [[nodiscard]] GamePos CellToGame(Vec2Int cellP)
-    {
-        GamePos result = ToGame(ChunkPos({ cellP.x * m_cellSize, 0, cellP.y * m_cellSize }));
-        return result;
-    }
-
-    [[nodiscard]] Vec2Int ToCell(ChunkPos p)
-    {
-        Vec2Int result = Vec2ToVec2Int(Floor(Vec2({ float(p.p.x) , float(p.p.z) }) / float(m_cellSize)));
-        return result;
-    }
-
-    [[nodiscard]] Vec2Int ToCell(GamePos p)
-    {
-        ChunkPos chunkPos = ToChunk(p);
-        return ToCell(chunkPos);
-    }
-    
-    VoronoiCell* GetNeighbors(GamePos blockP)
-    {
-        VoronoiCell* thisCell = nullptr;
-        VoronoiCell results[+VoronoiEdges::Count] = {};
-        for (VoronoiCell& cell : cells)
-        {
-            if (cell.Contains(blockP))
-                thisCell = &cell;
-        }
-
-        if (thisCell)
-        {
-            GamePos neighborChunkOffsets[] = {
-                CellToGame(Vec2Int({ -1,  0 })),
-                CellToGame(Vec2Int({  0,  1 })),
-                CellToGame(Vec2Int({  1,  0 })),
-                CellToGame(Vec2Int({  0, -1 })),
-            };
-
-            for (int32 i = 0; i < +VoronoiEdges::Count; i++)
-            {
-
-                for (VoronoiCell& cell : cells)
-                {
-                    if (cell.m_center.p == (thisCell->m_center.p + neighborChunkOffsets[i].p))
-                        results[i] = cell;
-                }
-            }
-            return results;
-        }
-        else
-            return nullptr;
-    }
-
-    VoronoiCell* HuntForBlock(VoronoiCell* baseCell, const Vec2& basePos, const Vec2& _direction)
-    {
-        Vec2 direction = Normalize(_direction);
-
-        Vec2 checkLocation = basePos;
-        GamePos gameCheckLocation = {};
-        VoronoiCell* checkCell = nullptr;
-        int32 j = 0;
-        do {
-            checkLocation = checkLocation + direction;
-            gameCheckLocation = GamePos({ int32(floorf(checkLocation.x + 0.5f)), 0, int32(floorf(checkLocation.y + 0.5f)) });
-            checkCell = GetCell(gameCheckLocation);
-            if (j++ >= 50)
-            {
-                assert(false);
-                break;
-            }
-        } while (checkCell->m_center.p == baseCell->m_center.p);
-
-        return checkCell;
-    }
-
-    //TODO: Improve
-    std::vector<VoronoiResult> GetVoronoiDistancesAndNeighbors(VoronoiCell* blockCell, const GamePos& blockP)
-    {
-        std::vector<float> distances = blockCell->DistanceToEachLineSegment(blockP);
-        std::vector<VoronoiResult> results;
-        for (int32 i = 0; i < distances.size(); i++)
-        {
-            //Get cell over line
-
-            Vec2 halfwayPoint = blockCell->m_lines[i].p0 + ((blockCell->m_lines[i].p1 - blockCell->m_lines[i].p0) / 2);
-            VoronoiCell* checkCell = HuntForBlock(blockCell, halfwayPoint, blockCell->m_lines[i].Normal());
-            VoronoiResult result = {};
-            result.cell = *checkCell;
-            result.distance = distances[i];
-            results.push_back(result);
-
-
-            //Get cell over point
-            result = {};
-
-
-            //Get Distance to point
-            Vec2 cornerLoc = blockCell->m_lines[i].p1;
-            //GamePos pointLoc = { uint32(_pointLoc.x), 0, uint32(_pointLoc.y) };
-            Vec2 blockLoc = { float(blockP.p.x), float(blockP.p.z) };
-            result.distance = Distance(blockLoc, cornerLoc);
-
-            //find the cell over the point
-            Vec2 cellCenter = { float(blockCell->m_center.p.x), float(blockCell->m_center.p.z) };
-            Vec2 _toCorner = cornerLoc - cellCenter;
-            //Vec2 toCorner = Normalize(_toCorner);
-            result.cell = *HuntForBlock(blockCell, cornerLoc, _toCorner);
-            results.push_back(result);
-
-
-        }
-        return results;
-
-    }
-
-    void BuildRegion(ChunkPos chunkP)
-    {
-        int32 currentRegionGatherSize = 2;
-        Vec2Int cell_chunkP = ToCell(chunkP);
-        bool DEBUGTEST_firstTimeThrough = true;
-
-        Debug_referenceChunkP = chunkP;
-        Debug_referenceCellP = cell_chunkP;
-        for (int32 cell_x = -currentRegionGatherSize; cell_x <= currentRegionGatherSize; cell_x++)
-        {
-            for (int32 cell_y = -currentRegionGatherSize; cell_y <= currentRegionGatherSize; cell_y++)
-            {
-                GamePos cellCorners[4] = {};
-                GamePos cellCenter = {};
-                Vec2Int cell_basePoint = cell_chunkP + Vec2Int({ cell_x, cell_y });
-
-                //Create corner location
-                for (int32 i = 0; i < +VoronoiEdges::Count; i++)
-                {
-                    cellCorners[i] = CellToGame(cell_basePoint + vornoiEdges[i]);
-                }
-
-                //Create center point
-                cellCenter = ToGame(ChunkPos(CellToChunk(cell_basePoint).p + m_cellSize / 2));
-                cellCenter.p.y = 0;
-
-                //Jitter corners
-                //create an offset that is between 1 and 1 less than half the size of the cell
-                //this makes sure we dont have to check further cells
-                float cellOffsetSizeInChunks = Max(m_cellSize / 2.0f - 1.0f, 1.0f);
-
-                for (int32 i = 0; i < +VoronoiEdges::Count; i++)
-                {
-                    const Vec2Int& cell_corner = ToCell(cellCorners[i]);
-                    int64 z_positionSeed = PositionHash({ cell_corner.x, 0, cell_corner.y });
-                    uint32 x_positionSeed = PCG_Random(z_positionSeed);
-
-                    Vec3 offsetRatio = {};
-                    ChunkPos offsetInChunks = {};
-                    Vec2Int loc = {};
-
-                    offsetRatio.x = Clamp((XXSeedHash(x_positionSeed + s_worldSeed, cell_corner.x) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
-                    offsetRatio.z = Clamp((XXSeedHash(z_positionSeed + s_worldSeed, cell_corner.y) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
-                    offsetInChunks = ChunkPos(Vec3ToVec3Int(offsetRatio * cellOffsetSizeInChunks));
-                    
-                    cellCorners[i].p += ToGame(offsetInChunks).p;
-
-#if 0
-                    if (DEBUGTEST_firstTimeThrough)
-                    {
-                        WorldPos blockLoc = ToWorld(cellCorners[i]);
-                        blockLoc.p.y = 240.0f;
-                        cubesToDraw.push_back(blockLoc);
-                        DEBUGTEST_firstTimeThrough = false;
-                    }
-#endif
-                }
-
-
-
-                VoronoiCell cell;
-                cell.BuildCell(cellCorners, cellCenter);
-                cells.push_back(cell);
-            }
-        }
-    }
-};
-
 
 void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
 {
@@ -781,18 +590,9 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
 
 #if VORONOI == 13
 
-    WorldPos chunkGamePos = ToWorld(g_chunks->p[chunkIndex]);
+    ChunkPos chunkPos = g_chunks->p[chunkIndex];
+    WorldPos chunkGamePos = ToWorld(chunkPos);
     uint16 heightMap[CHUNK_X][CHUNK_Z] = {};
-    int32 noiseOffset = HEIGHT_MIN_WATER;
-    float perlinScale = 0.01f;
-    NoiseParams seaFloorParams = {
-        .numOfOctaves = 8,
-        .freq = 0.17f,
-        //.freq = 0.3f,
-        .weight = 1.0f,
-        //.gainFactor = 0.8f,
-        .gainFactor = 1.0f,
-    };
 
     //set the base unbreakable layer
     {
@@ -829,7 +629,7 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
     double terrainWeights[CHUNK_X][CHUNK_Z][+TerrainType::Count] = {};
 
     VoronoiRegion region;
-    region.BuildRegion(g_chunks->p[chunkIndex]);
+    region.BuildRegion(chunkPos, s_worldSeed);
 
     //set the majority of the blocks
     {
@@ -841,7 +641,7 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                 for (int32 z = 0; z < CHUNK_Z; z++)
                 {
                     //Fill with stone from HEIGHT_MIN_WATER to the determined height - 3
-                    waterVsLandHeight = GetLandHeight(chunkGamePos, { int32(x), 0, int32(z) }, seaFloorParams, perlinScale, noiseOffset, HEIGHT_MIN_WATER, CHUNK_Y);//HEIGHT_MIN_WATER - 2);
+                    waterVsLandHeight = GetLandHeight(chunkGamePos, { int32(x), 0, int32(z) }, seaFloorParams, generalPerlinScale, generalNoiseOffset, HEIGHT_MIN_WATER, CHUNK_Y);//HEIGHT_MIN_WATER - 2);
                     //waterVsLandHeight = Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D({ (chunkGamePos.p.x + x) * perlinScale, (chunkGamePos.p.z + z) * perlinScale }, seaFloorParams)), HEIGHT_MIN_WATER, HEIGHT_MAX_WATER - 2);
                     uint32 y = HEIGHT_UNBREAKABLE;
                     for (y; y < Min(waterVsLandHeight, HEIGHT_MIN_WATER) - 3; y++)
@@ -880,79 +680,9 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                     else
                     {//land
 
-                        //add perlin noise here for creating more interesting land
-
-                        //float currentHeightMaxHeightRatio = float((waterVsLandHeight - HEIGHT_MAX_WATER)) / float((CHUNK_Y - HEIGHT_MAX_WATER));
-
-                        //________
-                        //NEW STUFF
-                        //________
                         GamePos blockP = Convert_BlockToGame(chunkIndex, { x, 0, z });
-                        VoronoiCell* cell = region.GetCell(blockP);
-                        assert(cell);
+                        waterVsLandHeight = QueryLandHeight(chunkPos, x, z);
 
-
-                        uint32 terrainFunctions[] = {
-                            GetPlainsHeight(blockP, perlinScale, noiseOffset, waterVsLandHeight),
-                            GetHillsHeight(blockP, perlinScale, noiseOffset, waterVsLandHeight),
-                            GetMountainsHeight(blockP, perlinScale, noiseOffset, waterVsLandHeight),
-                        };
-                        static_assert(arrsize(terrainFunctions) == +TerrainType::Count);
-    
-                        uint32 cellHash = cell->GetHash();
-                        TerrainType cellType = TerrainType(cellHash % +TerrainType::Count);
-
-                        float noiseHeightScale = 0.05f;
-                        float baseHeight = float(terrainFunctions[+cellType]) * noiseHeightScale;
-
-                        float gBlurWeights[5][5] = {
-                          1,  4,  7,  4,  1,
-                          4, 16, 26, 16,  4,
-                          7, 26, 41, 26,  7,
-                          4, 16, 26, 16,  4,
-                          1,  4,  7,  4,  1,
-                        };
-                        float gWeightTotal = 0;
-                        for (int32 y = 0; y < sizeof(gBlurWeights) / sizeof(gBlurWeights[0]); y++)
-                        {
-                            for (int32 x = 0; x < sizeof(gBlurWeights[0]) / sizeof(gBlurWeights[0][0]); x++)
-                            {
-                                gWeightTotal += gBlurWeights[y][x];
-                            }
-                        }
-                        for (int32 y = 0; y < sizeof(gBlurWeights) / sizeof(gBlurWeights[0]); y++)
-                        {
-                            for (int32 x = 0; x < sizeof(gBlurWeights[0]) / sizeof(gBlurWeights[0][0]); x++)
-                            {
-                                gBlurWeights[y][x] /= gWeightTotal;
-                            }
-                        }
-
-                        float newHeight = 0;
-                        for (int32 y = 0; y < sizeof(gBlurWeights) / sizeof(gBlurWeights[0]); y++)
-                        {
-                            for (int32 x = 0; x < sizeof(gBlurWeights[0]) / sizeof(gBlurWeights[0][0]); x++)
-                            {
-                                Vec3Int blockOffset = {};
-                                blockOffset.x = x - (sizeof(gBlurWeights[0]) / sizeof(gBlurWeights[0][0])) / 2;
-                                blockOffset.z = y - (sizeof(gBlurWeights) / sizeof(gBlurWeights[0])) / 2;
-                                GamePos checkBlockP = {};
-                                checkBlockP.p = blockP.p + blockOffset;
-                                VoronoiCell* checkCell = region.GetCell(checkBlockP);
-                                uint32 hashValue = checkCell->GetHash();
-                                TerrainType neighborType = TerrainType(hashValue % +TerrainType::Count);
-                                float cellHeight = float(terrainFunctions[+neighborType]) * noiseHeightScale;
-                                
-                                newHeight += cellHeight * gBlurWeights[y][x];
-                            }
-                        }
-
-                        waterVsLandHeight += uint32(newHeight);
-                        //________
-
-                        assert(waterVsLandHeight > y);
-                        assert(waterVsLandHeight < CHUNK_Y);
-                        waterVsLandHeight = Clamp(waterVsLandHeight, y + 1, CHUNK_Y - 1);
                         for (y; y < waterVsLandHeight - 3; y++)
                         {
                             blocks[chunkIndex].e[x][y][z] = BlockType::Stone;
@@ -985,10 +715,7 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
 #endif
                         }
                         
-                        if (waterVsLandHeight < CHUNK_Y)
-                        {
-                            TreeGenerationProcess(waterVsLandHeight, chunkIndex, x, y, z, blockP);
-                        }
+                        TreeGenerationProcess(waterVsLandHeight, chunkIndex, x, y, z, blockP);
                     }
                     assert(waterVsLandHeight < CHUNK_Y);
                     assert(waterVsLandHeight > 0);
@@ -1283,7 +1010,7 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
 
             Vec2 blockRatio = { static_cast<float>(chunkBlockP.p.x + blockP.p.x), static_cast<float>(chunkBlockP.p.z + blockP.p.z) };
 
-            const int32 blockRatioProduct = 100;
+            const int32 blockRatioProduct = 100;noiseOffset
             blockRatio /= blockRatioProduct;
             int32 yTotal = 0;
             //BlockType topBlockType;// = BlockType::Grass;
@@ -1352,7 +1079,7 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                     .freq = 0.75f,
                     .weight = 1.0f,
                     .gainFactor = 1.0f,
-                };
+                };noiseOffset
                 topBlockType = BlockType::Grass;
                 break;
             }

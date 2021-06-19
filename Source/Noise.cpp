@@ -998,3 +998,289 @@ uint32 XXSeedHash(uint64 seed, int64 buf)
 		
 		return h32;
 }
+
+
+
+
+
+
+
+
+
+
+
+//
+//VORONOI CODE: 
+//
+
+Vec2Int vornoiEdges[+VoronoiEdges::Count] = {
+{ 0, 0 },
+{ 0, 1 },
+{ 1, 1 },
+{ 1, 0 },
+};
+
+
+
+
+
+void VoronoiCell::BuildCell(GamePos* corners, GamePos cellCenter)
+{
+    m_center = cellCenter;
+    for (int32 i = 0; i < arrsize(m_lines); i++)
+    {
+        m_lines[i].p0 = { float(corners[i].p.x),                        float(corners[i].p.z) };
+        m_lines[i].p1 = { float(corners[(i + 1) % arrsize(m_lines)].p.x), float(corners[(i + 1) % arrsize(m_lines)].p.z) };
+    }
+}
+
+[[nodiscard]] bool VoronoiCell::Contains(GamePos blockP)
+{
+    for (int32 i = 0; i < arrsize(m_lines); i++)
+    {
+        Vec2 normal = m_lines[i].Normal();
+        Vec2 point = { float(blockP.p.x), float(blockP.p.z) };
+        point -= m_lines[i].p0;
+        if (DotProduct(normal, point) > 0)
+            return false;
+    }
+    return true;
+}
+
+[[nodiscard]] std::vector<float> VoronoiCell::DistanceToEachLineSegment(const GamePos& blockP)
+{
+    std::vector<float> distances;
+    for (int32 i = 0; i < arrsize(m_lines); i++)
+    {
+        Vec2 lineDest = m_lines[i].p1 - m_lines[i].p0;
+        Vec2 point = Vec2({ float(blockP.p.x), float(blockP.p.z) }) - m_lines[i].p0;
+
+        //https://mathinsight.org/dot_product
+        float lineDistance = Distance({}, lineDest);
+        float distanceAlongLine = DotProduct(lineDest, point) / lineDistance;
+        float distanceRatioAlongLine = distanceAlongLine / lineDistance;
+        Vec2 pointOnLine = Lerp<Vec2>(Vec2({}), lineDest, distanceRatioAlongLine);
+        //Vec2 hi = { Max(0.0f, lineDest.x), Max(0.0f, lineDest.y) };
+        //Vec2 lo = { Min(0.0f, lineDest.x), Min(0.0f, lineDest.y) };
+        //pointOnLine.x = Clamp<float>(pointOnLine.x, lo.x, hi.x);
+        //pointOnLine.y = Clamp<float>(pointOnLine.y, lo.y, hi.y);
+
+        distances.push_back(Distance(pointOnLine, point));
+    }
+    return distances;
+}
+
+[[nodiscard]] uint32 VoronoiCell::GetHash(uint64 worldSeed)
+{
+    uint32 xHash = XXSeedHash(worldSeed, m_center.p.x);
+    uint32 zHash = XXSeedHash(worldSeed, m_center.p.z);
+    union TempMerge {
+        struct {
+            uint32 x;
+            uint32 y;
+        };
+        uint64 big;
+    } a;
+    a.x = xHash;
+    a.y = zHash;
+
+    uint32 result = PCG_Random(a.big);
+    return result;
+}
+
+[[nodiscard]] VoronoiCell* VoronoiRegion::GetCell(GamePos p)
+{
+    for (VoronoiCell& cell : cells)
+    {
+        if (cell.Contains(p))
+            return &cell;
+    }
+    return nullptr;
+}
+
+[[nodiscard]] ChunkPos VoronoiRegion::CellToChunk(Vec2Int cellP)
+{
+    ChunkPos result = { cellP.x * m_cellSize, 0, cellP.y * m_cellSize };
+    return result;
+}
+
+[[nodiscard]] GamePos VoronoiRegion::CellToGame(Vec2Int cellP)
+{
+    GamePos result = ToGame(ChunkPos({ cellP.x * m_cellSize, 0, cellP.y * m_cellSize }));
+    return result;
+}
+
+[[nodiscard]] Vec2Int VoronoiRegion::ToCell(ChunkPos p)
+{
+    Vec2Int result = Vec2ToVec2Int(Floor(Vec2({ float(p.p.x) , float(p.p.z) }) / float(m_cellSize)));
+    return result;
+}
+
+[[nodiscard]] Vec2Int VoronoiRegion::ToCell(GamePos p)
+{
+    ChunkPos chunkPos = ToChunk(p);
+    return ToCell(chunkPos);
+}
+
+//VoronoiCell* VoronoiRegion::GetNeighbors(GamePos blockP)
+//{
+//    VoronoiCell* thisCell = nullptr;
+//    VoronoiCell results[+VoronoiEdges::Count] = {};
+//    for (VoronoiCell& cell : cells)
+//    {
+//        if (cell.Contains(blockP))
+//            thisCell = &cell;
+//    }
+//
+//    if (thisCell)
+//    {
+//        GamePos neighborChunkOffsets[] = {
+//            CellToGame(Vec2Int({ -1,  0 })),
+//            CellToGame(Vec2Int({  0,  1 })),
+//            CellToGame(Vec2Int({  1,  0 })),
+//            CellToGame(Vec2Int({  0, -1 })),
+//        };
+//
+//        for (int32 i = 0; i < +VoronoiEdges::Count; i++)
+//        {
+//
+//            for (VoronoiCell& cell : cells)
+//            {
+//                if (cell.m_center.p == (thisCell->m_center.p + neighborChunkOffsets[i].p))
+//                    results[i] = cell;
+//            }
+//        }
+//        return results;
+//    }
+//    else
+//        return nullptr;
+//}
+//
+VoronoiCell* VoronoiRegion::HuntForBlock(VoronoiCell* baseCell, const Vec2& basePos, const Vec2& _direction)
+{
+    Vec2 direction = Normalize(_direction);
+
+    Vec2 checkLocation = basePos;
+    GamePos gameCheckLocation = {};
+    VoronoiCell* checkCell = nullptr;
+    int32 j = 0;
+    do {
+        checkLocation = checkLocation + direction;
+        gameCheckLocation = GamePos({ int32(floorf(checkLocation.x + 0.5f)), 0, int32(floorf(checkLocation.y + 0.5f)) });
+        checkCell = GetCell(gameCheckLocation);
+        if (j++ >= 50)
+        {
+            assert(false);
+            break;
+        }
+    } while (checkCell->m_center.p == baseCell->m_center.p);
+
+    return checkCell;
+}
+
+//TODO: Improve
+std::vector<VoronoiResult> VoronoiRegion::GetVoronoiDistancesAndNeighbors(VoronoiCell* blockCell, const GamePos& blockP)
+{
+    std::vector<float> distances = blockCell->DistanceToEachLineSegment(blockP);
+    std::vector<VoronoiResult> results;
+    for (int32 i = 0; i < distances.size(); i++)
+    {
+        //Get cell over line
+
+        Vec2 halfwayPoint = blockCell->m_lines[i].p0 + ((blockCell->m_lines[i].p1 - blockCell->m_lines[i].p0) / 2);
+        VoronoiCell* checkCell = HuntForBlock(blockCell, halfwayPoint, blockCell->m_lines[i].Normal());
+        VoronoiResult result = {};
+        result.cell = *checkCell;
+        result.distance = distances[i];
+        results.push_back(result);
+
+
+        //Get cell over point
+        result = {};
+
+
+        //Get Distance to point
+        Vec2 cornerLoc = blockCell->m_lines[i].p1;
+        //GamePos pointLoc = { uint32(_pointLoc.x), 0, uint32(_pointLoc.y) };
+        Vec2 blockLoc = { float(blockP.p.x), float(blockP.p.z) };
+        result.distance = Distance(blockLoc, cornerLoc);
+
+        //find the cell over the point
+        Vec2 cellCenter = { float(blockCell->m_center.p.x), float(blockCell->m_center.p.z) };
+        Vec2 _toCorner = cornerLoc - cellCenter;
+        //Vec2 toCorner = Normalize(_toCorner);
+        result.cell = *HuntForBlock(blockCell, cornerLoc, _toCorner);
+        results.push_back(result);
+
+
+    }
+    return results;
+
+}
+
+void VoronoiRegion::BuildRegion(ChunkPos chunkP, uint64 worldSeed)
+{
+    int32 currentRegionGatherSize = 2;
+    Vec2Int cell_chunkP = ToCell(chunkP);
+    bool DEBUGTEST_firstTimeThrough = true;
+
+    Debug_referenceChunkP = chunkP;
+    Debug_referenceCellP = cell_chunkP;
+    for (int32 cell_x = -currentRegionGatherSize; cell_x <= currentRegionGatherSize; cell_x++)
+    {
+        for (int32 cell_y = -currentRegionGatherSize; cell_y <= currentRegionGatherSize; cell_y++)
+        {
+            GamePos cellCorners[4] = {};
+            GamePos cellCenter = {};
+            Vec2Int cell_basePoint = cell_chunkP + Vec2Int({ cell_x, cell_y });
+
+            //Create corner location
+            for (int32 i = 0; i < +VoronoiEdges::Count; i++)
+            {
+                cellCorners[i] = CellToGame(cell_basePoint + vornoiEdges[i]);
+            }
+
+            //Create center point
+            cellCenter = ToGame(ChunkPos(CellToChunk(cell_basePoint).p + m_cellSize / 2));
+            cellCenter.p.y = 0;
+
+            //Jitter corners
+            //create an offset that is between 1 and 1 less than half the size of the cell
+            //this makes sure we dont have to check further cells
+            float cellOffsetSizeInChunks = Max(m_cellSize / 2.0f - 1.0f, 1.0f);
+
+            for (int32 i = 0; i < +VoronoiEdges::Count; i++)
+            {
+                const Vec2Int& cell_corner = ToCell(cellCorners[i]);
+                int64 z_positionSeed = PositionHash({ cell_corner.x, 0, cell_corner.y });
+                uint32 x_positionSeed = PCG_Random(z_positionSeed);
+
+                Vec3 offsetRatio = {};
+                ChunkPos offsetInChunks = {};
+                Vec2Int loc = {};
+
+                offsetRatio.x = Clamp((XXSeedHash(x_positionSeed + worldSeed, cell_corner.x) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
+                offsetRatio.z = Clamp((XXSeedHash(z_positionSeed + worldSeed, cell_corner.y) & 0xFFFF) / float(0xFFFF), -1.0f, 1.0f);
+                offsetInChunks = ChunkPos(Vec3ToVec3Int(offsetRatio * cellOffsetSizeInChunks));
+
+                cellCorners[i].p += ToGame(offsetInChunks).p;
+
+#if 0
+                if (DEBUGTEST_firstTimeThrough)
+                {
+                    WorldPos blockLoc = ToWorld(cellCorners[i]);
+                    blockLoc.p.y = 240.0f;
+                    cubesToDraw.push_back(blockLoc);
+                    DEBUGTEST_firstTimeThrough = false;
+                }
+#endif
+            }
+
+
+
+            VoronoiCell cell;
+            cell.BuildCell(cellCorners, cellCenter);
+            cells.push_back(cell);
+        }
+    }
+}

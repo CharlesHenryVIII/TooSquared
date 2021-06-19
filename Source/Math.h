@@ -149,6 +149,19 @@ struct Rect {
 
 };
 
+struct LineSegment {
+    Vec2 p0;
+    Vec2 p1;
+
+    Vec2 Normal()
+    {
+        //TODO CHECK IF THIS IS RIGHT
+        Vec2 result = (p1 - p0);
+        result = { -result.y, result.x };
+        return result;
+    }
+};
+
 
 template <typename T = float>
 struct Range {
