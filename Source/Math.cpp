@@ -640,7 +640,7 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
 {
     bool result = false;
 
-    WorldPos blockP = ToWorld(blockSampler.baseBlock);
+    WorldPos blockP = ToWorld(blockSampler.m_baseBlockP);
     Vec3 directionToTriangle = {};
     float distanceToTriangle = {};
     int32 cubeIndices[] = { 0, 1, 2, 1, 3, 2 };
@@ -652,7 +652,7 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
 
     for (int32 faceIndex : faceIndices)
     {
-        if (blockSampler.blocks[faceIndex] != BlockType::Empty)
+        if (blockSampler.blocks[faceIndex] != BlockType::Empty && blockSampler.blocks[faceIndex] != BlockType::Water)
             continue;
         for (int32 j = 0; j <= 1; j++)
         {
@@ -794,7 +794,6 @@ bool CapsuleVsWorldBlocks(Capsule capsuleCollider, Vec3 in_positionDelta, Vec3& 
         PROFILE_SCOPE_TAB("Collision Update");
         BlockSampler blockSampler = {};
 
-        std::vector<GamePos> neighborBlocks;
         GamePos referenceGamePosition = ToGame(capsuleCollider.m_tip);
         int32 horizontalOffset = Max(int32(capsuleCollider.m_radius + 0.5f), 1);
         int32 verticalOffset = Max(int32(capsuleCollider.m_tip.p.y - capsuleCollider.m_tail.p.y + 0.5f), 1);
@@ -807,6 +806,8 @@ bool CapsuleVsWorldBlocks(Capsule capsuleCollider, Vec3 in_positionDelta, Vec3& 
                 for (int32 z = -horizontalOffset; z <= horizontalOffset; z++)
                 {
                     if (!(blockSampler.RegionGather(GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })))))
+                        continue;
+                    if (blockSampler.m_baseBlockType == BlockType::Water)
                         continue;
                     Vec3 outsideOfBlock = {};
                     if (CapsuleVsBlock(capsuleCollider, blockSampler, outsideOfBlock, debug_trianglesToDraw))

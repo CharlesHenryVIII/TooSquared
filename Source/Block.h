@@ -247,8 +247,9 @@ struct RegionSampler {
 
 struct BlockSampler {
     BlockType blocks[+Face::Count] = {};
-    GamePos baseBlock = {};
-    bool RegionGather(GamePos baseBlock);
+    GamePos m_baseBlockP = {};
+    BlockType m_baseBlockType = BlockType::Empty;
+    bool RegionGather(GamePos m_baseBlockP);
 };
 
 struct ChunkArray

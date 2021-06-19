@@ -1527,7 +1527,7 @@ void RegionSampler::IncrimentRefCount()
 //TODO: Add error reporting when this fails
 bool BlockSampler::RegionGather(GamePos base)
 {
-    baseBlock = base;
+    m_baseBlockP = base;
     bool result = true;
 
     ChunkPos blockChunkP = {};
@@ -1535,7 +1535,8 @@ bool BlockSampler::RegionGather(GamePos base)
     ChunkIndex blockChunkIndex;
     if (g_chunks->GetChunkFromPosition(blockChunkIndex, blockChunkP))
     {
-        result = !(g_chunks->blocks[blockChunkIndex].e[block_blockP.x][block_blockP.y][block_blockP.z] == BlockType::Empty);
+        m_baseBlockType = g_chunks->blocks[blockChunkIndex].e[block_blockP.x][block_blockP.y][block_blockP.z];
+        result = !(m_baseBlockType == BlockType::Empty);
     }
     else
         result = false;
