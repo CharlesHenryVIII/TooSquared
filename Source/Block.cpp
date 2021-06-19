@@ -551,34 +551,30 @@ void TreeGenerationProcess(uint32& height, ChunkIndex index, int32 chunkx, int32
     }
     else
     {
-        GamePos checkLocation = {};
         uint32 maxHeight = 0;
         for (int32 x = branchRange.min.x; x <= branchRange.max.x; x++)
         {
             for (int32 z = branchRange.min.z; z <= branchRange.max.z; z++)
             {
+                GamePos checkLocation = {};
                 checkLocation.p = p.p + Vec3Int({ x, 0, z });
                 if (TreeIsAtLocation(checkLocation, perlinScale, HEIGHT_MIN_WATER))
                 {
-                    //if ((landHeight < HEIGHT_MAX_WATER - 2) || (landHeight < HEIGHT_MAX_WATER + 1))
                     if (GetLandHeight(ToWorld(ToChunk(checkLocation)), checkLocation.p, seaFloorParams, generalPerlinScale, generalNoiseOffset, HEIGHT_MIN_WATER, CHUNK_Y) < HEIGHT_MAX_WATER + 1)
                         continue;
 
                     uint32 landHeight = QueryLandHeight(checkLocation);
-                    //if (landHeight > HEIGHT_MAX_WATER)
+                    for (int32 y = branchRange.min.y; y <= branchRange.max.y && landHeight + y < CHUNK_Y; y++)
                     {
-                        for (int32 y = branchRange.min.y; y <= branchRange.max.y && landHeight + y < CHUNK_Y; y++)
-                        {
-                            uint32 newY = landHeight + y;
-                            if (newY < 0)
-                                continue;
-                            BlockType& block = g_chunks->blocks[index].e[chunkx][newY][chunkz];
+                        uint32 newY = landHeight + y;
+                        if (newY < 0)
+                            continue;
+                        BlockType& block = g_chunks->blocks[index].e[chunkx][newY][chunkz];
 
-                            if (block == BlockType::Empty)
-                            {
-                                block = BlockType::Leaves;
-                                maxHeight = Max(maxHeight, newY + 1);
-                            }
+                        if (block == BlockType::Empty)
+                        {
+                            block = BlockType::Leaves;
+                            maxHeight = Max(maxHeight, newY + 1);
                         }
                     }
                 }

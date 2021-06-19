@@ -626,6 +626,13 @@ int main(int argc, char* argv[])
 
                 ImGui::Indent();
                 ImGui::CheckboxFlags("Chunk Status", &s_debugFlags, +DebugOptions::ChunkStatus);
+                ImGui::SameLine(); HelpMarker("\
+Red:    Unloaded,\n\
+Green:  BlocksLoading,\n\
+Blue:   BlocksLoaded,\n\
+Yellow: VertexLoading,\n\
+Purple: VertexLoaded,\n\
+White:  Uploaded,");
                 ImGui::CheckboxFlags("Collision Triangles", &s_debugFlags, +DebugOptions::CollisionTriangles);
                 ImGui::CheckboxFlags("Raycast Block", &s_debugFlags, +DebugOptions::LookatBlock);
                 ImGui::Unindent();
