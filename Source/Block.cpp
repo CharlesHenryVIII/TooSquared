@@ -1681,7 +1681,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                             //ACCTIMER(T_Vertices::GetBlock);
                             getBlockResult = (region.GetBlock(type, { xReal, yReal, zReal })) || (yReal == CHUNK_Y);
                         }
-                        if (getBlockResult && type == BlockType::Empty)
+                        if (getBlockResult && type == BlockType::Empty || (currentBlockType != BlockType::Water && type == BlockType::Water))
                         {
                             VertexFace f = {};
                             Vec3 offset = { static_cast<float>(x + realP.p.x), static_cast<float>(y + realP.p.y), static_cast<float>(z + realP.p.z) };
