@@ -349,7 +349,7 @@ const NoiseParams seaFloorParams = {
 
 uint32 GetLandHeight(WorldPos chunkP, Vec3Int blockP, const NoiseParams& params, float scale, int32 noiseOffset, uint32 lowerClamp, uint32 upperClamp)
 {
-    Vec2 lookupLoc = { (chunkP.p.x + blockP.x) * scale, (chunkP.p.z + blockP.z) * scale };
+    Vec2 lookupLoc = { (chunkP.p.x + (blockP.x % CHUNK_X)) * scale, (chunkP.p.z + (blockP.z % CHUNK_Z)) * scale };
     return Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D(lookupLoc, params)), lowerClamp, upperClamp);
 }
 
@@ -519,7 +519,10 @@ void TreeGenerationProcess(uint32& height, ChunkIndex index, int32 chunkx, int32
     const Range<Vec3Int>  branchRange = { { -2, 3, -2}, { 2, 5, 2 } };
     float perlinScale = 0.01f;
 
-    if (TreeIsAtLocation(p, perlinScale, HEIGHT_MIN_WATER) && height < CHUNK_Y)
+    if (p.p == Vec3Int({ -114, 0, 23 }))
+        int32 DEBUG_TEST = 10;
+
+    if (height >= HEIGHT_MAX_WATER + 1 && TreeIsAtLocation(p, perlinScale, HEIGHT_MIN_WATER) && height < CHUNK_Y)
     {//determin what will be in the 
         int32 treeY = 0;
         for (treeY; treeY + height < CHUNK_Y && treeY < logHeight; treeY++)
@@ -554,25 +557,28 @@ void TreeGenerationProcess(uint32& height, ChunkIndex index, int32 chunkx, int32
         {
             for (int32 z = branchRange.min.z; z <= branchRange.max.z; z++)
             {
-                //int32 xLoc = x + chunkx;
-                //int32 zLoc = z + chunkz;
                 checkLocation.p = p.p + Vec3Int({ x, 0, z });
-                //if (TreeIsAtLocation(p, perlinScale, HEIGHT_MIN_WATER))
                 if (TreeIsAtLocation(checkLocation, perlinScale, HEIGHT_MIN_WATER))
                 {
-                    uint32 landHeight = QueryLandHeight(checkLocation);
-                    for (int32 y = branchRange.min.y; y <= branchRange.max.y && landHeight + y < CHUNK_Y; y++)
-                    {
-                        uint32 newY = landHeight + y;
-                        if (newY < 0)
-                            continue;
-                        BlockType& block = g_chunks->blocks[index].e[chunkx][newY][chunkz];
+                    //if ((landHeight < HEIGHT_MAX_WATER - 2) || (landHeight < HEIGHT_MAX_WATER + 1))
+                    if (GetLandHeight(ToWorld(ToChunk(checkLocation)), checkLocation.p, seaFloorParams, generalPerlinScale, generalNoiseOffset, HEIGHT_MIN_WATER, CHUNK_Y) < HEIGHT_MAX_WATER + 1)
+                        continue;
 
-                        if (block == BlockType::Empty)
+                    uint32 landHeight = QueryLandHeight(checkLocation);
+                    //if (landHeight > HEIGHT_MAX_WATER)
+                    {
+                        for (int32 y = branchRange.min.y; y <= branchRange.max.y && landHeight + y < CHUNK_Y; y++)
                         {
-                            block = BlockType::Leaves;
-                            //maxHeight = Max(maxHeight, y);
-                            maxHeight = Max(maxHeight, newY + 1);
+                            uint32 newY = landHeight + y;
+                            if (newY < 0)
+                                continue;
+                            BlockType& block = g_chunks->blocks[index].e[chunkx][newY][chunkz];
+
+                            if (block == BlockType::Empty)
+                            {
+                                block = BlockType::Leaves;
+                                maxHeight = Max(maxHeight, newY + 1);
+                            }
                         }
                     }
                 }
@@ -640,6 +646,8 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
             {
                 for (int32 z = 0; z < CHUNK_Z; z++)
                 {
+                    GamePos blockP = Convert_BlockToGame(chunkIndex, { x, 0, z });
+
                     //Fill with stone from HEIGHT_MIN_WATER to the determined height - 3
                     waterVsLandHeight = GetLandHeight(chunkGamePos, { int32(x), 0, int32(z) }, seaFloorParams, generalPerlinScale, generalNoiseOffset, HEIGHT_MIN_WATER, CHUNK_Y);//HEIGHT_MIN_WATER - 2);
                     //waterVsLandHeight = Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D({ (chunkGamePos.p.x + x) * perlinScale, (chunkGamePos.p.z + z) * perlinScale }, seaFloorParams)), HEIGHT_MIN_WATER, HEIGHT_MAX_WATER - 2);
@@ -680,7 +688,6 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                     else
                     {//land
 
-                        GamePos blockP = Convert_BlockToGame(chunkIndex, { x, 0, z });
                         waterVsLandHeight = QueryLandHeight(chunkPos, x, z);
 
                         for (y; y < waterVsLandHeight - 3; y++)
@@ -714,9 +721,8 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
                                 blocks[chunkIndex].e[x][y][z] = BlockType::DiamondBlock;
 #endif
                         }
-                        
-                        TreeGenerationProcess(waterVsLandHeight, chunkIndex, x, y, z, blockP);
                     }
+                    TreeGenerationProcess(waterVsLandHeight, chunkIndex, x, y, z, blockP);
                     assert(waterVsLandHeight < CHUNK_Y);
                     assert(waterVsLandHeight > 0);
                     heightMap[x][z] = waterVsLandHeight;
