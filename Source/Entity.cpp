@@ -189,10 +189,10 @@ void Player::InputUpdate(float dt, CommandHandler& commands)
         m_rigidBody.m_vel.y += 7.0f;
         m_rigidBody.m_isGrounded = false;
     }
-    if (commands.keyStates[SDLK_z].down)
-        m_rigidBody.m_acceleration.z += cameraAcceleration;
-    if (commands.keyStates[SDLK_x].down)
-        m_rigidBody.m_acceleration.x += cameraAcceleration;
+    //if (commands.keyStates[SDLK_z].down)
+    //    m_rigidBody.m_acceleration.z += cameraAcceleration;
+    //if (commands.keyStates[SDLK_x].down)
+    //    m_rigidBody.m_acceleration.x += cameraAcceleration;
 }
 
 void Entity::EntityOnCollisionGeneral(RigidBody& rb, const Vec3& collisionPositionDelta)
@@ -242,11 +242,14 @@ void Player::Update(float dt)
 
     for (auto& i : g_items.m_items)
     {
-        if (Distance(i.m_transform.m_p.p, this->m_collider.m_tail.p) < 1.5f ||
-            Distance(i.m_transform.m_p.p, this->m_collider.m_tip.p)  < 1.5f)
+        if (i.m_lootable)
         {
-            m_inventory.Add(i.m_type, 1);
-            i.m_lootable = false;
+            if (Distance(i.m_transform.m_p.p, this->m_collider.m_tail.p) < 1.5f ||
+                Distance(i.m_transform.m_p.p, this->m_collider.m_tip.p) < 1.5f)
+            {
+                m_inventory.Add(i.m_type, 1);
+                i.m_looted = true;
+            }
         }
     }
 }
@@ -314,6 +317,7 @@ void Item::Update(float dt)
 {
 #if 1
     
+    //New Movement Code
     Vec3 kinematicsPositionDelta = m_rigidBody.GetDeltaPosition(dt, { 3.0f, 1.0f, 3.0f });
     //Vec3 kinematicsPositionDelta = m_rigidBody.GetDeltaPosition(dt, { 0.0f, 0.0f, 0.0f }, 0.0f);
     m_collider.m_center = m_transform.m_p;
@@ -325,6 +329,8 @@ void Item::Update(float dt)
         EntityOnCollisionGeneral(m_rigidBody, collisionPositionDelta);
     }
 #else
+
+    //Old Simple Movement Code
     GamePos blockInsideP = ToGame(m_transform.m_p.p);
     GamePos blockBelowP = blockInsideP;
     blockBelowP.p.y = Max(0, blockBelowP.p.y - 1);
@@ -351,17 +357,32 @@ void Item::Update(float dt)
     //e.m_transform.m_quat *= gb_quat_euler_angles(0.0f, yaw, 0.0f);
     m_transform.m_yaw += RadToDeg(dt * angularVelocity);
 #endif
+
+    if (!m_lootable && (m_lootableCountDown > 0.0f))
+    {
+        m_lootableCountDown -= dt;
+        m_lootable = m_lootableCountDown <= 0.0f;
+    }
 }
 
 
 //Items
-Item* Items::Add(BlockType blockType, const WorldPos& position, const Vec3& velocity)
+Item* Items::Add(BlockType blockType, const WorldPos& position, const WorldPos& destination)
 {
     Item newItem;
     assert(blockType != BlockType::Empty);
     newItem.m_transform.m_p.p = position.p;
     newItem.m_type = blockType;
     newItem.m_collider.m_length = 0.5f;
+    newItem.m_lootable = false;
+    newItem.m_lootableCountDown = 1.0f; //seconds
+
+    Vec3 velocity = destination.p - position.p;
+    velocity = Normalize(velocity);
+    velocity.y = 0.5f;
+    velocity = Normalize(velocity);
+    velocity *= 10;
+
     newItem.m_rigidBody.m_vel = velocity;
     newItem.m_rigidBody.m_terminalVel = { 100.0f, 100.0f, 100.0f };
     m_items.push_back(newItem);
@@ -373,7 +394,7 @@ void Items::Update(float dt)
     std::erase_if(m_items,
         [](Item& i)
         {
-            return (!i.m_lootable);
+            return (i.m_looted);
         });
 
     for (auto& e : m_items)
@@ -393,7 +414,8 @@ void Items::Render(float dt, Camera* camera)
         gb_mat4_identity(&result);
         //gb_mat4_from_quat(&rotation, gb_quat_euler_angles(DegToRad(i.m_transform.m_pitch), DegToRad(i.m_transform.m_yaw), 0.0f));
         //gb_mat4_rotate(&rotation, { 0,1,0 }, (totalTime * 3.0f) / (2 * 3.14f));
-        gb_mat4_translate(&translation, { i.m_transform.m_p.p.x, i.m_transform.m_p.p.y - (scale / 2.0f), i.m_transform.m_p.p.z });
+        //gb_mat4_translate(&translation, { i.m_transform.m_p.p.x, i.m_transform.m_p.p.y - (scale / 2.0f), i.m_transform.m_p.p.z });
+        gb_mat4_translate(&translation, i.m_transform.m_p.p); // based on m_transform being the center
         //result = translation * rotation;
         result = translation;
         DrawBlock(result, White, scale, camera, Texture::T::Minecraft, i.m_type);

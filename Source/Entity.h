@@ -133,13 +133,15 @@ struct Item : public Entity
     Cube m_collider = {};
     RigidBody m_rigidBody = {};
     BlockType m_type;
+    bool m_looted = false;
     bool m_lootable = true;
+    float m_lootableCountDown = 1.0f; //seconds
 };
 
 struct Items
 {
     std::vector<Item> m_items;
-    Item* Add(BlockType blockType, const WorldPos& position, const Vec3& velocity);
+    Item* Add(BlockType blockType, const WorldPos& position, const WorldPos& destination);
     void Update(float deltaTime);
     void Render(float deltaTime, Camera* camera);
 };

@@ -249,35 +249,38 @@ bool PointVsAABB(const Vec3& point, const AABB& box)
 bool AABBVsAABB(Vec3& out_intersection, const AABB& box1, const AABB& box2)
 {
     out_intersection = {};
-    //bool result = ((box1.min.x <= box2.max.x && box1.max.x >= box2.min.x) &&
-    //               (box1.min.y <= box2.max.y && box1.max.y >= box2.min.y) &&
-    //               (box1.min.z <= box2.max.z && box1.max.z >= box2.min.z));
 
-    const Vec3 box1Center = box1.Center();
-    const Vec3 box2Center = box2.Center();
+    bool result = true;
+
+    const Vec3 box1Center  = box1.Center();
+    const Vec3 box2Center  = box2.Center();
     const Vec3 box1Lengths = box1.GetLengths();
     const Vec3 box2Lengths = box2.GetLengths();
 
     const float dx = box1Center.x - box2Center.x;
     const float px = (box1Lengths.x / 2 + box2Lengths.x / 2) - abs(dx);
-    if (px <= 0)
-        return false;
 
     const float dy = box1Center.y - box2Center.y;
     const float py = (box1Lengths.y / 2 + box2Lengths.y / 2) - abs(dy);
-    if (py <= 0)
-        return false;
 
     const float dz = box1Center.z - box2Center.z;
     const float pz = (box1Lengths.z / 2 + box2Lengths.z / 2) - abs(dz);
-    if (pz <= 0)
-        return false;
-
-
-    //if (result)
-    {
 #if 1
+    result = ((box1.min.x <= box2.max.x && box1.max.x >= box2.min.x) &&
+              (box1.min.y <= box2.max.y && box1.max.y >= box2.min.y) &&
+              (box1.min.z <= box2.max.z && box1.max.z >= box2.min.z));
+#else
+    if (px <= 0)
+        result = false;
+    if (py <= 0)
+        result = false;
+    if (pz <= 0)
+        result = false;
+#endif
 
+
+    if (result)
+    {
         if (py < px && py < pz)
         {
             const float sy = Sign(dy);
@@ -299,69 +302,8 @@ bool AABBVsAABB(Vec3& out_intersection, const AABB& box1, const AABB& box2)
             //result = true;
             return true;
         }
-#else
-        Vec3 box1IntersectionVertex = {};
-        Vec3 box2IntersectionVertex = {};
-
-        Vec3 box1Points[8] = {
-            box1.min,
-            { box1.min.x, box1.min.y, box1.max.z },
-            { box1.min.x, box1.max.y, box1.min.z },
-            { box1.min.x, box1.max.y, box1.max.z },
-
-            { box1.max.x, box1.min.y, box1.min.z },
-            { box1.max.x, box1.min.y, box1.max.z },
-            { box1.max.x, box1.max.y, box1.min.z },
-            box1.max,
-        };
-
-        Vec3 box2Points[8] = {
-            box2.min,
-            { box2.min.x, box2.min.y, box2.max.z },
-            { box2.min.x, box2.max.y, box2.min.z },
-            { box2.min.x, box2.max.y, box2.max.z },
-
-            { box2.max.x, box2.min.y, box2.min.z },
-            { box2.max.x, box2.min.y, box2.max.z },
-            { box2.max.x, box2.max.y, box2.min.z },
-            box2.max,
-        };
-
-        if (box1.max.x <= box2.max.x && box1.min.x >= box2.min.x)
-        {
-            o_intersection.x;
-        }
-
-        for (Vec3& box1Point : box1Points)
-        {
-            if (PointVsAABB(box1Point, box2))
-            {
-                if (box1IntersectionVertex != Vec3({ 0, 0, 0 }))
-                {
-                    
-                }
-                else
-                    box1IntersectionVertex = box1Point;
-            }
-        }
-
-        for (Vec3& box2Point : box2Points)
-        {
-
-        }
-
-        //Vec3 i_Box1MaxVsBox2Min = Max(box1.max - box2.min, Vec3({ 0.0f, 0.0f, 0.0f }));
-        //Vec3 i_Box2MaxVsBox1Min = Max(box2.max - box1.min, Vec3({ 0.0f, 0.0f, 0.0f }));
-
-
-
-
-        out_intersection = box1IntersectionVertex - box2IntersectionVertex;
-#endif
     }
-
-    return true;
-    //return result;
+    return result;
 }
 
 bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal)

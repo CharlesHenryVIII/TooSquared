@@ -866,7 +866,7 @@ struct AABB {
     [[nodiscard]] Vec3 Center() const
     {
         Vec3 result = {};
-        result = min + (max - min);
+        result = min + ((max - min) / 2);
         return result;
     }
 };

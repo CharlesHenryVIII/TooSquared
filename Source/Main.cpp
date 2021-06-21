@@ -438,8 +438,8 @@ int main(int argc, char* argv[])
             g_running = false;
         if (playerInput.keyStates[SDLK_BACKQUOTE].downThisFrame)
             s_debugFlags ^= +DebugOptions::Enabled;
-        if (playerInput.keyStates[SDLK_c].downThisFrame)
-            TEST_CREATE_AND_UPLOAD_CHUNKS = !TEST_CREATE_AND_UPLOAD_CHUNKS;
+        //if (playerInput.keyStates[SDLK_c].downThisFrame)
+        //    TEST_CREATE_AND_UPLOAD_CHUNKS = !TEST_CREATE_AND_UPLOAD_CHUNKS;
         if (playerInput.keyStates[SDLK_v].downThisFrame)
             g_renderer.msaaEnabled = !g_renderer.msaaEnabled;
         if (playerInput.keyStates[SDLK_m].downThisFrame)
@@ -917,6 +917,7 @@ White:  Uploaded,");
 
         if (g_cursorEngaged)
         {
+            //Inventory Slot Selection:
             //TODO: improve
             if (playerInput.mouse.wheel.y > 0)
             {
@@ -937,6 +938,7 @@ White:  Uploaded,");
                 }
             }
 
+            //Block Deletion and Placement
             //TODO: Optimize to update corners (max 4 chunks)
             if (playerInput.keyStates[SDL_BUTTON_RIGHT].downThisFrame)
             {
@@ -948,15 +950,9 @@ White:  Uploaded,");
                         assert(collectedBlockType != BlockType::Empty);
                         SetBlock(hitBlock, BlockType::Empty);
                         WorldPos itemOrigin = ToWorld(hitBlock).p + 0.5f;
-#if 0
-                        Vec3 itemVelocity = { 0, -5, 0 };
-#else
-                        Vec3 itemVelocity = playerCamera->GetWorldPosition().p - itemOrigin.p;
-                        itemVelocity = Normalize(itemVelocity);
-                        itemVelocity *= 3;
-                        itemVelocity.y += 2;
-#endif
-                        g_items.Add(collectedBlockType, itemOrigin, itemVelocity);
+
+
+                        g_items.Add(collectedBlockType, itemOrigin, playerCamera->GetWorldPosition());
                         //TODO: add feature to drop block if block could not be picked up
                         //if (auto overflow = player->m_inventory.Add(collectedBlockType, 1))
                         //{
@@ -977,6 +973,16 @@ White:  Uploaded,");
                         //Why must i put this stupid uint8 in here for auto to determine the type -_-
                         player->m_inventory.Remove(uint8(1));
                     }
+                }
+            }
+
+            if (playerInput.keyStates[SDLK_x].downThisFrame)
+            {
+                InventorySlot& is = player->m_inventory.HotSlot();
+                if (is.m_block != BlockType::Empty)
+                {
+                    g_items.Add(is.m_block, player->m_transform.m_p, player->GetForwardVector() * 10);
+                    player->m_inventory.Remove(uint8(1));
                 }
             }
         }
