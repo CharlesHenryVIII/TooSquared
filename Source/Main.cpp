@@ -535,7 +535,7 @@ int main(int argc, char* argv[])
 
                     ImGui::EndTable();
                 }
-                if (ImGui::BeginTable("Movement", 5, flags))
+                if (ImGui::BeginTable("Movement", 6, flags))
                 {
                     ImGui::TableSetupColumn("Type");
                     ImGui::TableSetupColumn("X");
@@ -551,6 +551,7 @@ int main(int argc, char* argv[])
                     GenericImGuiTable("Accel", "%+08.2f", accel.e, 4);
                     //GenericImGuiTable("Quat",  "%+08.2f", player->m_transform.m_quat.e, 4);
                     GenericImGuiTable("Rot",   "%+08.2f", rot.e, 4);
+                    GenericImGuiTable("FV",    "%+08.2f", GetVec4(player->GetForwardVector(), 0.0f).e, 4);
                     ImGui::EndTable();
                 }
                 ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -981,7 +982,11 @@ White:  Uploaded,");
                 InventorySlot& is = player->m_inventory.HotSlot();
                 if (is.m_block != BlockType::Empty)
                 {
-                    g_items.Add(is.m_block, player->m_transform.m_p, player->GetForwardVector() * 10);
+                    WorldPos playerPosition = player->GetWorldPosition();
+                    Vec3 playerForwardVector = player->GetForwardVector() * 10;
+                    WorldPos finalPosition;
+                    finalPosition.p = playerPosition.p + playerForwardVector;
+                    g_items.Add(is.m_block, player->m_transform.m_p, finalPosition);
                     player->m_inventory.Remove(uint8(1));
                 }
             }
