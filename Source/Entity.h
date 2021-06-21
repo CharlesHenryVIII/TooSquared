@@ -39,6 +39,7 @@ struct Entity
     Mat4 GetWorldMatrix();
     WorldPos GetWorldPosition();
     Vec3 GetForwardVector();
+    void EntityOnCollisionGeneral(RigidBody& rb, const Vec3& collisionPositionDelta);
     //Quat GetTrueRotation();
 };
 
@@ -129,6 +130,8 @@ struct Item : public Entity
 {
     ENTITYBOILERPLATE(Item);
     void Update(float deltaTime);
+    Cube m_collider = {};
+    RigidBody m_rigidBody = {};
     BlockType m_type;
     bool m_lootable = true;
 };
@@ -136,7 +139,7 @@ struct Item : public Entity
 struct Items
 {
     std::vector<Item> m_items;
-    Item* Add(BlockType blockType, WorldPos position);
+    Item* Add(BlockType blockType, const WorldPos& position, const Vec3& velocity);
     void Update(float deltaTime);
     void Render(float deltaTime, Camera* camera);
 };

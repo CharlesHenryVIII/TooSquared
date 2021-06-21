@@ -477,6 +477,10 @@ template <typename T>
     return a - Floor(a);
 }
 
+[[nodiscard]] inline float Abs(float a)
+{
+    return fabs(a);
+}
 [[nodiscard]] inline Vec3 Abs(Vec3 a)
 {
     return { fabs(a.x), fabs(a.y), fabs(a.z) };
@@ -720,6 +724,14 @@ Atan2f return value:
     Vec3 r = { roundf(a.x), roundf(a.y), roundf(a.z) };
     return r;
 }
+[[nodiscard]] inline float Sign(float value)
+{
+    return value < 0.0f ? -1.0f : 1.0f;
+}
+[[nodiscard]] inline int32 Sign(int32 value)
+{
+    return value < 0 ? -1 : 1;
+}
 
 
 [[nodiscard]] uint32 PCG_Random(uint64 state);
@@ -841,6 +853,22 @@ int32 ManhattanDistance(Vec3Int a, Vec3Int b);
 struct AABB {
     Vec3 min = {};
     Vec3 max = {};
+
+    [[nodiscard]] Vec3 GetLengths() const
+    {
+        Vec3 result = {};
+        result.x = Abs(max.x - min.x);
+        result.y = Abs(max.y - min.y);
+        result.z = Abs(max.z - min.z);
+        return result;
+    }
+
+    [[nodiscard]] Vec3 Center() const
+    {
+        Vec3 result = {};
+        result = min + (max - min);
+        return result;
+    }
 };
 
 struct Ray {
@@ -876,6 +904,19 @@ struct Capsule
     }
 };
 
+struct Cube 
+{
+    float m_length = 0;
+    WorldPos m_center;
+    std::vector<Triangle> m_collidedTriangles;
+
+    void UpdateBottomMiddleLocation(const WorldPos& newLoc)
+    {
+        m_center = newLoc;
+        m_center.p.y += m_length / 2.0f;
+    }
+};
+
 struct RigidBody {
     Vec3 m_vel = {};
     Vec3 m_acceleration = {};
@@ -888,7 +929,7 @@ struct RigidBody {
     //bool hasGravity = {};
     //bool isKinematic = {};
 
-    Vec3 GetDeltaPosition(float deltaTime, Vec3 dragCoefficient, float area, float gravity = -10.0f)
+    Vec3 GetDeltaPosition(float deltaTime, Vec3 dragCoefficient, float gravity = -10.0f)
     {
         if (m_isGrounded)
             m_vel.y = Max(m_vel.y, 0.0f);
@@ -899,10 +940,10 @@ struct RigidBody {
         m_vel.x += m_acceleration.x * deltaTime;
         m_vel.z += m_acceleration.z * deltaTime;
 
-        float zeroTolerance = 0.25f;
-        float mass = 1000.0f; //grams
-        Vec3 dragForce = m_vel * dragCoefficient;//dragCoefficient * ((1.255f * m_vel/* * m_vel*/) / 2) * area;
-        Vec3 dragVel = dragForce / (mass * deltaTime);
+        //float zeroTolerance = 0.25f;
+        //float mass = 1000.0f; //grams
+        //Vec3 dragForce = m_vel * dragCoefficient;//dragCoefficient * ((1.255f * m_vel/* * m_vel*/) / 2) * area;
+        Vec3 dragVel;// = dragForce / (mass * deltaTime);
 
         dragVel = m_vel * dragCoefficient * deltaTime;
 
@@ -927,9 +968,11 @@ struct Transform {
 struct BlockSampler;
 bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal);
 bool RayVsAABB(const Ray& ray, const AABB& box);
+bool AABBVsAABB(Vec3& out_intersection, const AABB& box1, const AABB& box2);
 bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance);
 Vec3 ClosestPointOnLineSegment(const Vec3& A, const Vec3& B, const Vec3& Point);
 bool CapsuleVsBlock(Capsule collider, const BlockSampler& region, Vec3& toOutside, std::vector<Triangle>& debug_triangles);
 bool CapsuleVsWorldBlocks(Capsule capsuleCollider, Vec3 in_positionDelta, Vec3& out_positionDelta, std::vector<Triangle>& debug_trianglesToDraw);
+bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionDelta, std::vector<Triangle>& debug_trianglesToDraw);
 
 void QuickSort(uint8* data, const int32 length, const int32 itemSize, int32 (*compare)(const void* a, const void* b));

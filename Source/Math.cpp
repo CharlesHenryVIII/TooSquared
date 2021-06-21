@@ -239,6 +239,130 @@ int32 ManhattanDistance(Vec3Int a, Vec3Int b)
 {
     return abs(a.x - b.x) + abs(a.y - b.y) + abs(a.z - b.z);
 }
+bool PointVsAABB(const Vec3& point, const AABB& box)
+{
+  return ((point.x >= box.min.x && point.x <= box.max.x) &&
+          (point.y >= box.min.y && point.y <= box.max.y) &&
+          (point.z >= box.min.z && point.z <= box.max.z));
+}
+
+bool AABBVsAABB(Vec3& out_intersection, const AABB& box1, const AABB& box2)
+{
+    out_intersection = {};
+    //bool result = ((box1.min.x <= box2.max.x && box1.max.x >= box2.min.x) &&
+    //               (box1.min.y <= box2.max.y && box1.max.y >= box2.min.y) &&
+    //               (box1.min.z <= box2.max.z && box1.max.z >= box2.min.z));
+
+    const Vec3 box1Center = box1.Center();
+    const Vec3 box2Center = box2.Center();
+    const Vec3 box1Lengths = box1.GetLengths();
+    const Vec3 box2Lengths = box2.GetLengths();
+
+    const float dx = box1Center.x - box2Center.x;
+    const float px = (box1Lengths.x / 2 + box2Lengths.x / 2) - abs(dx);
+    if (px <= 0)
+        return false;
+
+    const float dy = box1Center.y - box2Center.y;
+    const float py = (box1Lengths.y / 2 + box2Lengths.y / 2) - abs(dy);
+    if (py <= 0)
+        return false;
+
+    const float dz = box1Center.z - box2Center.z;
+    const float pz = (box1Lengths.z / 2 + box2Lengths.z / 2) - abs(dz);
+    if (pz <= 0)
+        return false;
+
+
+    //if (result)
+    {
+#if 1
+
+        if (py < px && py < pz)
+        {
+            const float sy = Sign(dy);
+            out_intersection.y = py * sy;
+            //result = true;
+            return true;
+        }
+        else if (px < py && px < pz)
+        {
+            const float sx = Sign(dx);
+            out_intersection.x = px * sx;
+            //result = true;
+            return true;
+        }
+        else if (pz < px && pz < py)
+        {
+            const float sz = Sign(dz);
+            out_intersection.z = pz * sz;
+            //result = true;
+            return true;
+        }
+#else
+        Vec3 box1IntersectionVertex = {};
+        Vec3 box2IntersectionVertex = {};
+
+        Vec3 box1Points[8] = {
+            box1.min,
+            { box1.min.x, box1.min.y, box1.max.z },
+            { box1.min.x, box1.max.y, box1.min.z },
+            { box1.min.x, box1.max.y, box1.max.z },
+
+            { box1.max.x, box1.min.y, box1.min.z },
+            { box1.max.x, box1.min.y, box1.max.z },
+            { box1.max.x, box1.max.y, box1.min.z },
+            box1.max,
+        };
+
+        Vec3 box2Points[8] = {
+            box2.min,
+            { box2.min.x, box2.min.y, box2.max.z },
+            { box2.min.x, box2.max.y, box2.min.z },
+            { box2.min.x, box2.max.y, box2.max.z },
+
+            { box2.max.x, box2.min.y, box2.min.z },
+            { box2.max.x, box2.min.y, box2.max.z },
+            { box2.max.x, box2.max.y, box2.min.z },
+            box2.max,
+        };
+
+        if (box1.max.x <= box2.max.x && box1.min.x >= box2.min.x)
+        {
+            o_intersection.x;
+        }
+
+        for (Vec3& box1Point : box1Points)
+        {
+            if (PointVsAABB(box1Point, box2))
+            {
+                if (box1IntersectionVertex != Vec3({ 0, 0, 0 }))
+                {
+                    
+                }
+                else
+                    box1IntersectionVertex = box1Point;
+            }
+        }
+
+        for (Vec3& box2Point : box2Points)
+        {
+
+        }
+
+        //Vec3 i_Box1MaxVsBox2Min = Max(box1.max - box2.min, Vec3({ 0.0f, 0.0f, 0.0f }));
+        //Vec3 i_Box2MaxVsBox1Min = Max(box2.max - box1.min, Vec3({ 0.0f, 0.0f, 0.0f }));
+
+
+
+
+        out_intersection = box1IntersectionVertex - box2IntersectionVertex;
+#endif
+    }
+
+    return true;
+    //return result;
+}
 
 bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal)
 {
@@ -648,8 +772,6 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
     Triangle triangle = {};
 
 
-#if 1
-
     for (int32 faceIndex : faceIndices)
     {
         if (blockSampler.blocks[faceIndex] != BlockType::Empty && blockSampler.blocks[faceIndex] != BlockType::Water)
@@ -682,88 +804,6 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
             }
         }
     }
-
-#else
-    //+-X
-    for (int32 i = 0; i < 2; i++)
-    {
-        if (blockSampler.blocks[i] != BlockType::Empty)
-            continue;
-        for (int32 j = 0; j <= 1; j++)
-        {
-            triangle = {};
-            for (int32 k = 0; k < 3; k++)
-            {
-                triangle.e[k] = blockP.p + cubeVertices[i].e[cubeIndices[k + (j * 3)]];
-            }
-
-            directionToTriangle = {};
-            distanceToTriangle = {};
-            if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && !dimensionContact[0])
-            {//Sphere inside triangle
-                //toOutside.x += directionToTriangle.x * distanceToTriangle;
-                if (fabs(directionToTriangle.x * distanceToTriangle) > fabsf(toOutside.x))
-                    toOutside.x = directionToTriangle.x * distanceToTriangle;
-                debug_triangles.push_back(triangle);
-                result = true;
-            }
-        }
-    }
-
-    //+-Z
-    for (int32 i = 4; i < 6; i++)
-    {
-        if (blockSampler.blocks[i] != BlockType::Empty)
-            continue;
-        for (int32 j = 0; j <= 1; j++)
-        {
-            triangle = {};
-            for (int32 k = 0; k < 3; k++)
-            {
-                triangle.e[k] = blockP.p + cubeVertices[i].e[cubeIndices[k + (j * 3)]];
-            }
-
-            directionToTriangle = {};
-            distanceToTriangle = {};
-            if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && !dimensionContact[2])
-            {//Sphere inside triangle
-                //toOutside.z += directionToTriangle.z * distanceToTriangle;
-                if (fabs(directionToTriangle.z * distanceToTriangle) > fabsf(toOutside.z))
-                    toOutside.z = directionToTriangle.z * distanceToTriangle;
-                debug_triangles.push_back(triangle);
-                result = true;
-            }
-        }
-    }
-
-    //collider.UpdateTipLocation(collider.m_tip.p + toOutside);
-
-    //+-y
-    for (int32 i = 2; i < 4; i++)
-    {
-        if (blockSampler.blocks[i] != BlockType::Empty)
-            continue;
-        for (int32 j = 0; j <= 1; j++)
-        {
-            triangle = {};
-            for (int32 k = 0; k < 3; k++)
-            {
-                triangle.e[k] = blockP.p + cubeVertices[i].e[cubeIndices[k + (j * 3)]];
-            }
-
-            directionToTriangle = {};
-            distanceToTriangle = {};
-            if (CapsuleVsTriangle(collider, triangle, directionToTriangle, distanceToTriangle, true))// && (!dimensionContact[1]))
-            {//Sphere inside triangle
-                //toOutside.y += directionToTriangle.y * distanceToTriangle;
-                if (fabs(directionToTriangle.y * distanceToTriangle) > fabsf(toOutside.y))
-                    toOutside.y = directionToTriangle.y * distanceToTriangle;
-                debug_triangles.push_back(triangle);
-                result = true;
-            }
-        }
-    }
-#endif
 
     collider.UpdateMidTipLocation(collider.m_tip.p + Vec3({ 0.0f, directionToTriangle.y * distanceToTriangle, 0.0f }));
 
@@ -824,6 +864,68 @@ bool CapsuleVsWorldBlocks(Capsule capsuleCollider, Vec3 in_positionDelta, Vec3& 
     return result;
 }
 
+bool CubeVsBlock(Cube collider, const BlockSampler& blockSampler, Vec3& toOutside, std::vector<Triangle>& debug_triangles)
+{
+    AABB block;
+    block.min = ToWorld(blockSampler.m_baseBlockP).p;
+    block.max = block.min + Vec3({ 1.0f, 1.0f, 1.0f });
+
+    AABB cube;
+    cube.min = collider.m_center.p - Vec3({ collider.m_length / 2.0f, collider.m_length / 2.0f, collider.m_length / 2.0f });
+    cube.max = cube.min + Vec3({ collider.m_length, collider.m_length, collider.m_length });
+
+    return AABBVsAABB(toOutside, cube, block);
+}
+
+bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionDelta, std::vector<Triangle>& debug_trianglesToDraw)
+{
+    assert(OnMainThread());
+    bool result = false;
+
+    while (in_positionDelta.x != 0.0f || in_positionDelta.y != 0.0f || in_positionDelta.z != 0.0f)
+    {
+
+        {
+            Vec3 pDelta = {};
+            float clampVal = 0.3f;
+            pDelta.x = Clamp(in_positionDelta.x, -clampVal, clampVal);
+            pDelta.y = Clamp(in_positionDelta.y, -clampVal, clampVal);
+            pDelta.z = Clamp(in_positionDelta.z, -clampVal, clampVal);
+
+            in_positionDelta -= pDelta;
+            collider.m_center.p += pDelta;
+        }
+
+
+        PROFILE_SCOPE_TAB("Collision Update");
+        BlockSampler blockSampler = {};
+
+        GamePos referenceGamePosition = ToGame(collider.m_center);
+        int32 offset = Max(int32(collider.m_length), 1);
+
+        for (int32 y = -offset; y <= offset; y++)
+        {
+            for (int32 x = -offset; x <= offset; x++)
+            {
+                for (int32 z = -offset; z <= offset; z++)
+                {
+                    if (!(blockSampler.RegionGather(GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })))))
+                        continue;
+                    if (blockSampler.m_baseBlockType == BlockType::Water)
+                        continue;
+                    Vec3 outsideOfBlock = {};
+                    if (CubeVsBlock(collider, blockSampler, outsideOfBlock, debug_trianglesToDraw))
+                    {
+                        out_positionDelta += outsideOfBlock;
+                        collider.m_center.p += outsideOfBlock;
+                        result = true;
+                    }
+                }
+            }
+        }
+    }
+    return result;
+}
 
 
 

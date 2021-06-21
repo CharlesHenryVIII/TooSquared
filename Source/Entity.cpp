@@ -195,43 +195,48 @@ void Player::InputUpdate(float dt, CommandHandler& commands)
         m_rigidBody.m_acceleration.x += cameraAcceleration;
 }
 
+void Entity::EntityOnCollisionGeneral(RigidBody& rb, const Vec3& collisionPositionDelta)
+{
+    //Update Position
+    m_transform.m_p.p += collisionPositionDelta;
+
+    //Zero velocity going into a collision
+    Vec3 normalForceDirection = Normalize(collisionPositionDelta);
+    Vec3 collisionDirection = normalForceDirection;//-normalForceDirection;
+    Vec3 dotProductResults = { DotProduct(Vec3({ rb.m_vel.x, 0.0f, 0.0f }), collisionDirection),
+                               DotProduct(Vec3({ 0.0f, rb.m_vel.y, 0.0f }), collisionDirection),
+                               DotProduct(Vec3({ 0.0f, 0.0f, rb.m_vel.z }), collisionDirection) };
+
+    //TODO: improve to include deflection/angle of collision not just collision in that direction
+    //consider using Max() instead of if statements like this
+    if (dotProductResults.x < 0.0f)
+    {
+        rb.m_vel.x = 0.0f;
+    }
+    if (dotProductResults.y < 0.0f)
+    {
+        if (rb.m_vel.y < 0.0f)
+            rb.m_isGrounded = true;
+        rb.m_vel.y = 0.0f;
+    }
+    if (dotProductResults.z < 0.0f)
+    {
+        rb.m_vel.z = 0.0f;
+    }
+}
+
 void Player::Update(float dt)
 {
-    Vec3 kinematicsPositionDelta = m_rigidBody.GetDeltaPosition(dt, { 10.0f, 1.0f, 10.0f }, m_collider.m_radius * 2 * m_collider.m_height);
-    //m_collider.UpdateMidTipLocation(m_transform.m_p);
+    Vec3 kinematicsPositionDelta = m_rigidBody.GetDeltaPosition(dt, { 10.0f, 1.0f, 10.0f });
     m_collider.UpdateTailLocation(m_transform.m_p);
-    //g_camera.transform.UpdatePosition2(deltaTime, { 10.0f, 1.0f, 10.0f }, playerCollider.m_radius * 2 * playerCollider.m_height);
 
     m_transform.m_p.p += kinematicsPositionDelta;
     Vec3 collisionPositionDelta = {};
     m_rigidBody.m_isGrounded = false;
+    //m_rigidBody.VsWorldBlocks();
     if (CapsuleVsWorldBlocks(m_collider, kinematicsPositionDelta, collisionPositionDelta, m_collider.m_collidedTriangles))
     {
-        //Update Position
-        m_transform.m_p.p += collisionPositionDelta;
-
-        //Zero velocity going into a collision
-        Vec3 normalForceDirection = Normalize(collisionPositionDelta);
-        Vec3 collisionDirection = normalForceDirection;//-normalForceDirection;
-        Vec3 dotProductResults = { DotProduct(Vec3({ m_rigidBody.m_vel.x, 0.0f, 0.0f }), collisionDirection),
-                                   DotProduct(Vec3({ 0.0f, m_rigidBody.m_vel.y, 0.0f }), collisionDirection),
-                                   DotProduct(Vec3({ 0.0f, 0.0f, m_rigidBody.m_vel.z }), collisionDirection) };
-
-        //TODO: improve to include deflection/angle of collision not just collision in that direction
-        if (dotProductResults.x < 0.0f)
-        {
-            m_rigidBody.m_vel.x = 0.0f;
-        }
-        if (dotProductResults.y < 0.0f)
-        {
-            if (m_rigidBody.m_vel.y < 0.0f)
-                m_rigidBody.m_isGrounded = true;
-            m_rigidBody.m_vel.y = 0.0f;
-        }
-        if (dotProductResults.z < 0.0f)
-        {
-            m_rigidBody.m_vel.z = 0.0f;
-        }
+        EntityOnCollisionGeneral(m_rigidBody, collisionPositionDelta);
     }
 
 
@@ -304,19 +309,22 @@ void Camera::InputUpdate(float dt, CommandHandler& commands)
     }
 }
 
-
-//Items
-Item* Items::Add(BlockType blockType, WorldPos position)
-{
-    Item newItem;
-    newItem.m_transform.m_p.p = position.p;
-    newItem.m_type = blockType;
-    m_items.push_back(newItem);
-    return &m_items[m_items.size() - 1];
-}
-
+//Item
 void Item::Update(float dt)
 {
+#if 1
+    
+    Vec3 kinematicsPositionDelta = m_rigidBody.GetDeltaPosition(dt, { 3.0f, 1.0f, 3.0f });
+    //Vec3 kinematicsPositionDelta = m_rigidBody.GetDeltaPosition(dt, { 0.0f, 0.0f, 0.0f }, 0.0f);
+    m_collider.m_center = m_transform.m_p;
+    m_transform.m_p.p += kinematicsPositionDelta;
+    Vec3 collisionPositionDelta = {};
+    m_rigidBody.m_isGrounded = false;
+    if (CubeVsWorldBlocks(m_collider, kinematicsPositionDelta, collisionPositionDelta, m_collider.m_collidedTriangles))
+    {
+        EntityOnCollisionGeneral(m_rigidBody, collisionPositionDelta);
+    }
+#else
     GamePos blockInsideP = ToGame(m_transform.m_p.p);
     GamePos blockBelowP = blockInsideP;
     blockBelowP.p.y = Max(0, blockBelowP.p.y - 1);
@@ -342,6 +350,22 @@ void Item::Update(float dt)
     float angularVelocity = tau / 5; // rads per second
     //e.m_transform.m_quat *= gb_quat_euler_angles(0.0f, yaw, 0.0f);
     m_transform.m_yaw += RadToDeg(dt * angularVelocity);
+#endif
+}
+
+
+//Items
+Item* Items::Add(BlockType blockType, const WorldPos& position, const Vec3& velocity)
+{
+    Item newItem;
+    assert(blockType != BlockType::Empty);
+    newItem.m_transform.m_p.p = position.p;
+    newItem.m_type = blockType;
+    newItem.m_collider.m_length = 0.5f;
+    newItem.m_rigidBody.m_vel = velocity;
+    newItem.m_rigidBody.m_terminalVel = { 100.0f, 100.0f, 100.0f };
+    m_items.push_back(newItem);
+    return &m_items[m_items.size() - 1];
 }
 
 void Items::Update(float dt)
@@ -365,12 +389,13 @@ void Items::Render(float dt, Camera* camera)
     {
         Mat4 result;
         Mat4 translation;
-        Mat4 rotation;
+        //Mat4 rotation;
         gb_mat4_identity(&result);
-        gb_mat4_from_quat(&rotation, gb_quat_euler_angles(DegToRad(i.m_transform.m_pitch), DegToRad(i.m_transform.m_yaw), 0.0f));
+        //gb_mat4_from_quat(&rotation, gb_quat_euler_angles(DegToRad(i.m_transform.m_pitch), DegToRad(i.m_transform.m_yaw), 0.0f));
         //gb_mat4_rotate(&rotation, { 0,1,0 }, (totalTime * 3.0f) / (2 * 3.14f));
-        gb_mat4_translate(&translation, i.m_transform.m_p.p);
-        result = translation * rotation;
+        gb_mat4_translate(&translation, { i.m_transform.m_p.p.x, i.m_transform.m_p.p.y - (scale / 2.0f), i.m_transform.m_p.p.z });
+        //result = translation * rotation;
+        result = translation;
         DrawBlock(result, White, scale, camera, Texture::T::Minecraft, i.m_type);
     }
 }

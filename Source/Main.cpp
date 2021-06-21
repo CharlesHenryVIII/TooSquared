@@ -947,7 +947,16 @@ White:  Uploaded,");
                     {
                         assert(collectedBlockType != BlockType::Empty);
                         SetBlock(hitBlock, BlockType::Empty);
-                        g_items.Add(collectedBlockType, ToWorld(hitBlock).p + 0.5f);
+                        WorldPos itemOrigin = ToWorld(hitBlock).p + 0.5f;
+#if 0
+                        Vec3 itemVelocity = { 0, -5, 0 };
+#else
+                        Vec3 itemVelocity = playerCamera->GetWorldPosition().p - itemOrigin.p;
+                        itemVelocity = Normalize(itemVelocity);
+                        itemVelocity *= 3;
+                        itemVelocity.y += 2;
+#endif
+                        g_items.Add(collectedBlockType, itemOrigin, itemVelocity);
                         //TODO: add feature to drop block if block could not be picked up
                         //if (auto overflow = player->m_inventory.Add(collectedBlockType, 1))
                         //{
