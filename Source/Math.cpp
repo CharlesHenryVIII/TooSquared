@@ -246,6 +246,16 @@ bool PointVsAABB(const Vec3& point, const AABB& box)
           (point.z >= box.min.z && point.z <= box.max.z));
 }
 
+
+bool AABBVsAABB(const AABB& box1, const AABB& box2)
+{
+    bool result = ((box1.min.x <= box2.max.x && box1.max.x >= box2.min.x) &&
+                   (box1.min.y <= box2.max.y && box1.max.y >= box2.min.y) &&
+                   (box1.min.z <= box2.max.z && box1.max.z >= box2.min.z));
+    return result;
+}
+
+//https://noonat.github.io/intersect/
 bool AABBVsAABB(Vec3& out_intersection, const AABB& box1, const AABB& box2)
 {
     out_intersection = {};
@@ -265,10 +275,9 @@ bool AABBVsAABB(Vec3& out_intersection, const AABB& box1, const AABB& box2)
 
     const float dz = box1Center.z - box2Center.z;
     const float pz = (box1Lengths.z / 2 + box2Lengths.z / 2) - abs(dz);
-#if 1
-    result = ((box1.min.x <= box2.max.x && box1.max.x >= box2.min.x) &&
-              (box1.min.y <= box2.max.y && box1.max.y >= box2.min.y) &&
-              (box1.min.z <= box2.max.z && box1.max.z >= box2.min.z));
+#if 0
+    result = AABBVsAABB(box1, box2);
+             
 #else
     if (px <= 0)
         result = false;

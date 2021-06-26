@@ -51,23 +51,8 @@ using namespace gl;
 #include IMGUI_IMPL_OPENGL_LOADER_CUSTOM
 #endif
 
-enum class TimeOfDay : int32 {
-    Midnight,
-    Morning,
-    Afternoon,
-    Evening,
-    Count,
-};
-ENUMOPS(TimeOfDay);
 float s_timesOfDay[+TimeOfDay::Count] = { 0.0f, 7.0f, 10.0f, 17.0f };
 const char* s_timesOfDayNames[+TimeOfDay::Count] = { "Midnight", "Morning", "Afternoon", "Evening" };
-
-struct GameData {
-    float m_currentTime = 12.0f;
-    float m_timeScale = 1.0f;
-    TimeOfDay m_timeOfDay = TimeOfDay::Afternoon;
-    bool m_gameTimePlaying = false;
-}g_gameData;
 
 //returns false if out of range
 bool HeavensInterpolation(float& result, float time, float lo, float hi, float interpolate_lo, float interpolate_hi)
@@ -174,7 +159,6 @@ int main(int argc, char* argv[])
                         playerCamera->m_transform.m_p.p,//{ g_camera.transform.m_p.p.x + cOffset.p.x, g_camera.transform.m_p.p.y + cOffset.p.y,g_camera.transform.m_p.p.z + cOffset.p.z },
                         playerCamera->m_transform.m_p.p + cOffset.p/*{ g_camera.transform.m_p.p.x, g_camera.transform.m_p.p.y, g_camera.transform.m_p.p.z }*/, { 0,1,0 });
     }
-
 
     Transform debug_blockTransformParent = {};
     debug_blockTransformParent.m_p.p = { 10, 150, 0 };
@@ -535,7 +519,7 @@ int main(int argc, char* argv[])
 
                     ImGui::EndTable();
                 }
-                if (ImGui::BeginTable("Movement", 6, flags))
+                if (ImGui::BeginTable("Movement", 5, flags))
                 {
                     ImGui::TableSetupColumn("Type");
                     ImGui::TableSetupColumn("X");
@@ -551,7 +535,7 @@ int main(int argc, char* argv[])
                     GenericImGuiTable("Accel", "%+08.2f", accel.e, 4);
                     //GenericImGuiTable("Quat",  "%+08.2f", player->m_transform.m_quat.e, 4);
                     GenericImGuiTable("Rot",   "%+08.2f", rot.e, 4);
-                    GenericImGuiTable("FV",    "%+08.2f", GetVec4(player->GetForwardVector(), 0.0f).e, 4);
+                    //GenericImGuiTable("FV",    "%+08.2f", GetVec4(player->GetForwardVector(), 0.0f).e, 4);
                     ImGui::EndTable();
                 }
                 ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -680,6 +664,29 @@ White:  Uploaded,");
                 ImGui::Text("Update the chunks based on:");
                 ImGui::RadioButton("Player", (int32*)&chunkUpdateOrigin, +ChunkUpdateOrigin::Player); ImGui::SameLine();
                 ImGui::RadioButton("Camera", (int32*)&chunkUpdateOrigin, +ChunkUpdateOrigin::Camera); //ImGui::SameLine();
+
+                ImGui::Text("Core Count:");
+                ImGui::RadioButton("Multi", (int32*)&multiThreading.threads, +MultiThreading::Threads::multi_thread); ImGui::SameLine();
+                ImGui::RadioButton("Single", (int32*)&multiThreading.threads, +MultiThreading::Threads::single_thread); //ImGui::SameLine();
+
+                if (ImGui::Button("Save Game"))
+                {
+                    SaveGame();
+                }
+
+                //// Typically we would use ImVec2(-1.0f,0.0f) or ImVec2(-FLT_MIN,0.0f) to use all available width,
+                //// or ImVec2(width,0.0f) for a specified width. ImVec2(0.0f,0.0f) uses ItemWidth.
+                //ImGui::ProgressBar(progress, ImVec2(0.0f, 0.0f));
+                //ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
+                //ImGui::Text("Progress Bar");
+
+                //float progress_saturated = IM_CLAMP(progress, 0.0f, 1.0f);
+                //char buf[32];
+                //sprintf(buf, "%d/%d", (int)(progress_saturated * 1753), 1753);
+                int32 atomicCopy_progress = g_gameData.m_gameSaveProgress;
+                int32 atomicCopy_count = g_gameData.m_gameSaveDataCount;
+                std::string progressText = ToString("%i/%i", atomicCopy_progress, atomicCopy_count);
+                ImGui::ProgressBar(atomicCopy_progress / float(atomicCopy_count), ImVec2(0.f, 0.f), progressText.c_str());
 
                 ImGui::TreePop();
             }

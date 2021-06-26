@@ -33,3 +33,19 @@ uint64 GetCurrentTime()
     return ((SDL_GetPerformanceCounter() - ct) * 1000 * 1000 * 1000) / f; //nano seconds
 }
 
+File::File(char const* fileName, File::FileMode fileMode, bool updateFile)
+{
+    std::string mode = ToString("%c", +fileMode);
+    if (updateFile)
+        mode += '+';
+    m_handle = fopen(fileName, mode.c_str());
+    assert(m_handle != NULL);
+    m_isValid = m_handle != NULL;
+}
+
+File::~File()
+{
+    fclose(m_handle);
+}
+
+GameData g_gameData = {};

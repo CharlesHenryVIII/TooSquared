@@ -3,6 +3,7 @@
 ###TODO: 
  * Optimize block creation and deletion
  * Saving chunks to disk
+ * Block refactor to be structures of information about each block instead of being individual blocks
 
  * Directional and point lighting
  * Block wireframe on target
@@ -10,8 +11,6 @@
  * Move main loops into a single loop that switches on chunk state?
  * Render water correctly
  * Added perlin seeding
- * move physics off of transform and onto seperate physics object
-	* Rigid Body includes mass, drag, angular drag, uses gravity, kinematic, interpolation, collision detection { Unity Game Engine }
  * Convert from key inputs to action keys.  Do not trigger action keys when the g_cursorEngaged is false
 
 

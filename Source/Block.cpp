@@ -2176,3 +2176,114 @@ bool ChunkArray::GetBlock(BlockType& blockType, const GamePos& blockP)
     }
     return false;
 }
+
+
+struct ChunkSaveData {
+    ChunkData blocks = {};
+    ChunkPos  p = {};
+};
+
+struct SaveGameJob : public Job {
+    std::vector<ChunkSaveData> m_data;
+
+    void DoThing() override;
+};
+
+bool SaveGame()
+{
+    assert(OnMainThread());
+    SaveGameJob* job = new SaveGameJob();
+    job->m_data.reserve(MAX_CHUNKS);
+
+    for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+    {
+        if (g_chunks->active[i])
+        {
+            ChunkSaveData data = {};
+            data.p = g_chunks->p[i];
+            memcpy(data.blocks.e, g_chunks->blocks[i].e, CHUNK_X * CHUNK_Y * CHUNK_Z * sizeof(BlockType));
+            job->m_data.push_back(data);
+        }
+    }
+
+    MultiThreading& multiThreading = MultiThreading::GetInstance();
+    multiThreading.SubmitJob(job);
+    return true;
+}
+
+inline void SaveGameJob::DoThing()
+{
+    g_gameData.m_gameSaved = false;
+    g_gameData.m_gameSavedSuccessfully = false;
+    g_gameData.m_gameSaveDataCount = 0;
+    g_gameData.m_gameSaveProgress = 0;
+
+    File file = File("GameSaveData.txt", File::FileMode::Write, false);
+
+    if (file.m_isValid)
+    {
+        std::string textTitle;
+        std::string textP;
+        std::string textHeight;
+        std::string textBlockTypes;
+        textBlockTypes.reserve(CHUNK_X * CHUNK_Y * CHUNK_Z * 3);
+        g_gameData.m_gameSaveDataCount = (int32)m_data.size();
+
+        //int32 i = 0;
+        //for (ChunkSaveData& chunk : m_data)
+        for (int32 i = 0; i < m_data.size(); i++)
+        {
+            g_gameData.m_gameSaveProgress = i + 1;
+
+            ChunkSaveData& chunk = m_data[i];
+            textTitle.clear();
+            textP.clear();
+            textHeight.clear();
+            textBlockTypes.clear();
+
+            textTitle = ToString("Chunk %i\n", i++);
+            textP = ToString("%i %i %i\n", chunk.p.p.x, chunk.p.p.y, chunk.p.p.z);
+            BlockType blockTypesForYSlice[CHUNK_X][CHUNK_Z] = {};
+
+            for (int32 y = 0; y < CHUNK_Y; y++)
+            {
+                const BlockType firstBlock = chunk.blocks.e[0][y][0];
+                bool blocksAreTheSame = true;
+
+                for (int32 x = 0; x < CHUNK_X; x++)
+                {
+                    for (int32 z = 0; z < CHUNK_Z; z++)
+                    {
+                        const BlockType& block = chunk.blocks.e[x][y][z];
+                        if (firstBlock != block)
+                            blocksAreTheSame = false;
+                        blockTypesForYSlice[x][z] = block;
+
+                    }
+                }
+                if (blocksAreTheSame)
+                {
+                    textBlockTypes += ToString("%i ", +BlockType::Count + +firstBlock);
+                }
+                else
+                {
+                    for (int32 x = 0; x < CHUNK_X; x++)
+                    {
+                        for (int32 z = 0; z < CHUNK_Z; z++)
+                        {
+                            textBlockTypes += ToString("%i ", +blockTypesForYSlice[x][z]);
+                        }
+                    }
+                }
+            }
+
+            assert(file.Write(textTitle) == true);
+            assert(file.Write(textP) == true);
+            assert(file.Write(textHeight) == true);
+            assert(file.Write(textBlockTypes) == true);
+            assert(file.Write("\n\n") == true);
+            g_gameData.m_gameSaved = true;
+            g_gameData.m_gameSavedSuccessfully = true;
+        }
+    }
+}

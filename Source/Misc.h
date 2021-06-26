@@ -105,3 +105,48 @@ void GenericImGuiTable(const std::string& title, const std::string& fmt, T* firs
         ImGui::TextUnformatted(string.data());
     }
 }
+
+class File {
+    FILE* m_handle;
+
+public:
+    bool m_isValid = false;
+
+    enum class FileMode : char {
+        Read   = 'r',  // read: Open file for input operations.The file must exist.
+        Write  = 'w',  // write : Create an empty file for output operations.If a file with the same name already exists, its contents are discardedand the file is treated as a new empty file.
+        Append = 'a',  // append : Open file for output at the end of a file.Output operations always write data at the end of the file, expanding it.Repositioning operations(fseek, fsetpos, rewind) are ignored.The file is created if it does not exist.
+    };
+        
+    File(char const* fileName, File::FileMode fileMode, bool updateFile);
+    ~File();
+
+    bool Write(const std::string& text)
+    {
+        int32 result = fputs(text.c_str(), m_handle);
+        return (!(result == EOF));
+    }
+};
+
+enum class TimeOfDay : int32 {
+    Midnight,
+    Morning,
+    Afternoon,
+    Evening,
+    Count,
+};
+ENUMOPS(TimeOfDay);
+
+struct GameData {
+    float m_currentTime = 12.0f;
+    float m_timeScale = 1.0f;
+    TimeOfDay m_timeOfDay = TimeOfDay::Afternoon;
+    bool m_gameTimePlaying = false;
+    std::atomic<bool>  m_gameSaved = false;
+    std::atomic<bool>  m_gameSavedSuccessfully = false;
+    std::atomic<int32> m_gameSaveProgress  = 0;
+    std::atomic<int32> m_gameSaveDataCount = 0;
+};
+extern GameData g_gameData;
+
+ENUMOPS(File::FileMode);

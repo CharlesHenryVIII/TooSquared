@@ -29,7 +29,7 @@ private:
     Job* AcquireJob();
 
 public:
-    enum Threads{
+    enum Threads : int32{
         single_thread,
         multi_thread,
     };
@@ -51,3 +51,4 @@ public:
 };
 
 bool OnMainThread();
+

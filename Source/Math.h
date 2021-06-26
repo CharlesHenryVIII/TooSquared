@@ -968,6 +968,7 @@ struct Transform {
 struct BlockSampler;
 bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal);
 bool RayVsAABB(const Ray& ray, const AABB& box);
+bool AABBVsAABB(const AABB& box1, const AABB& box2);
 bool AABBVsAABB(Vec3& out_intersection, const AABB& box1, const AABB& box2);
 bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance);
 Vec3 ClosestPointOnLineSegment(const Vec3& A, const Vec3& B, const Vec3& Point);

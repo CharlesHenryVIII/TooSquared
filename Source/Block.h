@@ -270,13 +270,15 @@ struct ChunkArray
     VertexBuffer                            vertexBuffer[MAX_CHUNKS] = {};
     uint32                                  uploadedIndexCount[MAX_CHUNKS] = {};
     uint16                                  flags[MAX_CHUNKS] = {};
-    uint32                                  chunkCount = 0;
     uint16                                  height[MAX_CHUNKS] = {};
     std::atomic<State>                      state[MAX_CHUNKS] = {};
-    std::unordered_map<uint64, ChunkIndex>  chunkPosTable;
     std::atomic<int32>                      refs[MAX_CHUNKS] = {};
+
     ChunkType                               chunkType[MAX_CHUNKS] = {};
     TerrainType                             terrainType[MAX_CHUNKS] = {};
+
+    uint32                                  chunkCount = 0;
+    std::unordered_map<uint64, ChunkIndex>  chunkPosTable;
 
     ChunkIndex highestActiveChunk;
 
@@ -320,6 +322,7 @@ void DrawBlock(const Mat4& mat, Color color, Vec3 scale, Camera* camera, Texture
 void DrawCube(WorldPos p, Color color, Vec3  scale, Camera* camera, Texture::T textureType = Texture::T::Plain, BlockType blockType = BlockType::Empty);
 void DrawCube(WorldPos p, Color color, float scale, Camera* camera, Texture::T textureType = Texture::T::Plain, BlockType blockType = BlockType::Empty);
 void Draw2DSquare(Rect rect, Color color);
+bool SaveGame();
 
 int64 PositionHash(ChunkPos p);
 bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& distance, Vec3& normal);
