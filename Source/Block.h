@@ -97,9 +97,9 @@ enum class ChunkType : Uint8 {
 };
 ENUMOPS(ChunkType);
 
-#define CHUNK_TODELETE          0x0020
-#define CHUNK_RESCAN_BLOCKS     0x0040
-#define CHUNK_RESCANING_BLOCKS  0x0080
+#define CHUNK_FLAG_MODIFIED     BIT(1)
+#define CHUNK_FLAG_DIRTY        BIT(2)
+#define CHUNK_FLAG_TODELETE     BIT(3)
 
 constexpr uint32 CHUNK_X = 16;
 constexpr uint32 CHUNK_Y = 256;
@@ -252,6 +252,7 @@ struct BlockSampler {
     bool RegionGather(GamePos m_baseBlockP);
 };
 
+
 struct ChunkArray
 {
     enum State {
@@ -269,9 +270,10 @@ struct ChunkArray
     std::vector<Vertex_Chunk>               faceVertices[MAX_CHUNKS] = {};
     VertexBuffer                            vertexBuffer[MAX_CHUNKS] = {};
     uint32                                  uploadedIndexCount[MAX_CHUNKS] = {};
-    uint16                                  flags[MAX_CHUNKS] = {};
+    //uint16                                  flags[MAX_CHUNKS] = {};
     uint16                                  height[MAX_CHUNKS] = {};
     std::atomic<State>                      state[MAX_CHUNKS] = {};
+    std::atomic<uint32>                     flags[MAX_CHUNKS] = {};
     std::atomic<int32>                      refs[MAX_CHUNKS] = {};
 
     ChunkType                               chunkType[MAX_CHUNKS] = {};

@@ -2145,6 +2145,7 @@ void SetBlock(GamePos hitBlock, BlockType setBlockType)
 
         g_chunks->blocks[hitChunkIndex].e[hitBlockRelP.x][hitBlockRelP.y][hitBlockRelP.z] = setBlockType;
         g_chunks->height[hitChunkIndex] = Max((uint16)(hitBlockRelP.y + 1), g_chunks->height[hitChunkIndex]);
+        g_chunks->flags[hitChunkIndex]  |= CHUNK_FLAG_MODIFIED;
 
         RegionSampler regionUpdate;
         regionUpdate.RegionGather(hitChunkIndex);
@@ -2197,7 +2198,7 @@ bool SaveGame()
 
     for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
     {
-        if (g_chunks->active[i])
+        if (g_chunks->active[i] && g_chunks->flags[i] & CHUNK_FLAG_MODIFIED)
         {
             ChunkSaveData data = {};
             data.p = g_chunks->p[i];
@@ -2205,20 +2206,37 @@ bool SaveGame()
             job->m_data.push_back(data);
         }
     }
+    if (job->m_data.size() > 0)
+    {
+        MultiThreading& multiThreading = MultiThreading::GetInstance();
+        multiThreading.SubmitJob(job);
+        return true;
+    }
+    else
+        return false;
+}
 
-    MultiThreading& multiThreading = MultiThreading::GetInstance();
-    multiThreading.SubmitJob(job);
-    return true;
+bool LoadGameFromDisk()
+{
+
+
+
+    return false;
+}
+
+bool LoadGameFromMemory()
+{
+    return false;
 }
 
 inline void SaveGameJob::DoThing()
 {
-    g_gameData.m_gameSaved = false;
     g_gameData.m_gameSavedSuccessfully = false;
     g_gameData.m_gameSaveDataCount = 0;
     g_gameData.m_gameSaveProgress = 0;
+    g_gameData.m_gameSaveAttempt = true;
 
-    File file = File("GameSaveData.txt", File::FileMode::Write, false);
+    File file = File(g_gameData.m_saveFilename.c_str(), File::FileMode::Write, false);
 
     if (file.m_isValid)
     {
@@ -2228,12 +2246,13 @@ inline void SaveGameJob::DoThing()
         std::string textBlockTypes;
         textBlockTypes.reserve(CHUNK_X * CHUNK_Y * CHUNK_Z * 3);
         g_gameData.m_gameSaveDataCount = (int32)m_data.size();
+        g_gameData.m_gameSaveProgress = 0;
 
         //int32 i = 0;
         //for (ChunkSaveData& chunk : m_data)
         for (int32 i = 0; i < m_data.size(); i++)
         {
-            g_gameData.m_gameSaveProgress = i + 1;
+            g_gameData.m_gameSaveProgress++;
 
             ChunkSaveData& chunk = m_data[i];
             textTitle.clear();
@@ -2241,7 +2260,7 @@ inline void SaveGameJob::DoThing()
             textHeight.clear();
             textBlockTypes.clear();
 
-            textTitle = ToString("Chunk %i\n", i++);
+            textTitle = ToString("Chunk %i\n", i);
             textP = ToString("%i %i %i\n", chunk.p.p.x, chunk.p.p.y, chunk.p.p.z);
             BlockType blockTypesForYSlice[CHUNK_X][CHUNK_Z] = {};
 
@@ -2282,8 +2301,8 @@ inline void SaveGameJob::DoThing()
             assert(file.Write(textHeight) == true);
             assert(file.Write(textBlockTypes) == true);
             assert(file.Write("\n\n") == true);
-            g_gameData.m_gameSaved = true;
             g_gameData.m_gameSavedSuccessfully = true;
         }
     }
+    g_gameData.m_gameSaveAttempt = true;
 }

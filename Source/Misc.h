@@ -119,6 +119,7 @@ public:
     };
         
     File(char const* fileName, File::FileMode fileMode, bool updateFile);
+    File(const std::string& fileName, File::FileMode fileMode, bool updateFile);
     ~File();
 
     bool Write(const std::string& text)
@@ -142,10 +143,11 @@ struct GameData {
     float m_timeScale = 1.0f;
     TimeOfDay m_timeOfDay = TimeOfDay::Afternoon;
     bool m_gameTimePlaying = false;
-    std::atomic<bool>  m_gameSaved = false;
+    std::atomic<bool>  m_gameSaveAttempt = false;
     std::atomic<bool>  m_gameSavedSuccessfully = false;
     std::atomic<int32> m_gameSaveProgress  = 0;
     std::atomic<int32> m_gameSaveDataCount = 0;
+    std::string m_saveFilename = "GameSaveData.txt";
 };
 extern GameData g_gameData;
 

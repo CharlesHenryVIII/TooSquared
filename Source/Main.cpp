@@ -568,12 +568,12 @@ int main(int argc, char* argv[])
                     ImGui::TableSetupColumn("Y");
                     ImGui::TableSetupColumn("Z");
                     ImGui::TableHeadersRow();
-
+                    //
                     WorldPos p = playerCamera->GetWorldPosition();
                     GenericImGuiTable("World", "%+08.2f", p.p.e);
                     GenericImGuiTable("Game", "%i", ToGame(p).p.e);
                     GenericImGuiTable("Chunk", "%i", ToChunk(p).p.e);
-
+                    //
                     ImGui::EndTable();
                 }
                 if (ImGui::BeginTable("Movement", 5, flags))
@@ -584,7 +584,7 @@ int main(int argc, char* argv[])
                     ImGui::TableSetupColumn("Z");
                     ImGui::TableSetupColumn("W");
                     ImGui::TableHeadersRow();
-
+                    //
                     Vec4 vel = { playerCamera->m_velocity.x,      playerCamera->m_velocity.y,        playerCamera->m_velocity.z, 0.0f };
                     Vec4 rot = { playerCamera->m_transform.m_yaw, playerCamera->m_transform.m_pitch, 0.0f,                       0.0f };
                     GenericImGuiTable("Vel",   "%+08.2f", vel.e, 4);
@@ -595,7 +595,6 @@ int main(int argc, char* argv[])
                 ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
             }
             ImGui::End();
-
         }
 
         {
@@ -605,10 +604,10 @@ int main(int argc, char* argv[])
             {
                 ImGui::CheckboxFlags("Enable Debug Drawing", &s_debugFlags, +DebugOptions::Enabled);
                 ImGui::SameLine(); HelpMarker("Key: '`'");
-
+                //
                 ImGui::Indent();
                 ImGui::CheckboxFlags("All", &s_debugFlags, +DebugOptions::All);
-
+                //
                 ImGui::Indent();
                 ImGui::CheckboxFlags("Chunk Status", &s_debugFlags, +DebugOptions::ChunkStatus);
                 ImGui::SameLine(); HelpMarker("\
@@ -634,16 +633,16 @@ White:  Uploaded,");
                     g_gameData.m_timeScale = 1.0f;
                     g_gameData.m_gameTimePlaying = false;
                 }
-
+                //
                 ImGui::PushItemWidth(100);
                 ImGui::SliderFloat("Current Time", &g_gameData.m_currentTime, 0.0f, 24.0f, "%.2f");
                 ImGui::PopItemWidth();
-
+                //
                 if (ImGui::Checkbox("Use Time Scale", &g_gameData.m_gameTimePlaying) && !g_gameData.m_gameTimePlaying)
                 {
                     g_gameData.m_currentTime = s_timesOfDay[+g_gameData.m_timeOfDay];
                 }
-
+                //
                 ImGui::PushItemWidth(100);
                 if (ImGui::SliderInt("Time Of Day", reinterpret_cast<int32*>(&g_gameData.m_timeOfDay), 0, +TimeOfDay::Count - 1, s_timesOfDayNames[+g_gameData.m_timeOfDay]) &&
                     !g_gameData.m_gameTimePlaying)
@@ -651,11 +650,11 @@ White:  Uploaded,");
                     g_gameData.m_currentTime = s_timesOfDay[+g_gameData.m_timeOfDay];
                 }
                 ImGui::PopItemWidth();
-
+                //
                 ImGui::PushItemWidth(100);
                 ImGui::SliderFloat("Time Scale", &g_gameData.m_timeScale, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
                 ImGui::PopItemWidth();
-
+                //
                 ImGui::TreePop();
             }
 
@@ -664,30 +663,61 @@ White:  Uploaded,");
                 ImGui::Text("Update the chunks based on:");
                 ImGui::RadioButton("Player", (int32*)&chunkUpdateOrigin, +ChunkUpdateOrigin::Player); ImGui::SameLine();
                 ImGui::RadioButton("Camera", (int32*)&chunkUpdateOrigin, +ChunkUpdateOrigin::Camera); //ImGui::SameLine();
-
+                //
                 ImGui::Text("Core Count:");
                 ImGui::RadioButton("Multi", (int32*)&multiThreading.threads, +MultiThreading::Threads::multi_thread); ImGui::SameLine();
                 ImGui::RadioButton("Single", (int32*)&multiThreading.threads, +MultiThreading::Threads::single_thread); //ImGui::SameLine();
-
+                //
                 if (ImGui::Button("Save Game"))
                 {
                     SaveGame();
                 }
-
-                //// Typically we would use ImVec2(-1.0f,0.0f) or ImVec2(-FLT_MIN,0.0f) to use all available width,
-                //// or ImVec2(width,0.0f) for a specified width. ImVec2(0.0f,0.0f) uses ItemWidth.
-                //ImGui::ProgressBar(progress, ImVec2(0.0f, 0.0f));
-                //ImGui::SameLine(0.0f, ImGui::GetStyle().ItemInnerSpacing.x);
-                //ImGui::Text("Progress Bar");
-
-                //float progress_saturated = IM_CLAMP(progress, 0.0f, 1.0f);
-                //char buf[32];
-                //sprintf(buf, "%d/%d", (int)(progress_saturated * 1753), 1753);
+                //
+                ImVec4 greenColor = { 0.1f, 0.8f, 0.1f, 0.8f };
+                ImVec4 redColor   = { 0.8f, 0.1f, 0.1f, 0.8f };
+                //
+                if (g_gameData.m_gameSaveAttempt)
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Button, greenColor);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, greenColor);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, greenColor);
+                }
+                else
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Button, redColor);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, redColor);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, redColor);
+                }
+                ImGui::Button("Saving Attempt");
+                ImGui::PopStyleColor(3);
+                ImGui::SameLine();
+                //
+                if (g_gameData.m_gameSavedSuccessfully)
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Button, greenColor);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, greenColor);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, greenColor);
+                }
+                else
+                {
+                    ImGui::PushStyleColor(ImGuiCol_Button, redColor);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, redColor);
+                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, redColor);
+                }
+                ImGui::Button("Saving Success");
+                ImGui::PopStyleColor(3);
+                //
                 int32 atomicCopy_progress = g_gameData.m_gameSaveProgress;
                 int32 atomicCopy_count = g_gameData.m_gameSaveDataCount;
                 std::string progressText = ToString("%i/%i", atomicCopy_progress, atomicCopy_count);
                 ImGui::ProgressBar(atomicCopy_progress / float(atomicCopy_count), ImVec2(0.f, 0.f), progressText.c_str());
-
+                //
+                {
+                    ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
+                    if (show_demo_window)
+                        ImGui::ShowDemoWindow(&show_demo_window);
+                }
+                //
                 ImGui::TreePop();
             }
             ImGui::End();
@@ -763,46 +793,6 @@ White:  Uploaded,");
             }
 
             ImGui::End();
-        }
-
-        {
-            // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-            if (show_demo_window)
-                ImGui::ShowDemoWindow(&show_demo_window);
-
-            // 2. Show a simple window that we create ourselves. We use a Begin/End pair to created a named window.
-            {
-                static float f = 0.0f;
-                static int counter = 0;
-
-                ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
-
-                ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-                ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-                ImGui::Checkbox("Another Window", &show_another_window);
-
-                ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-                ImGui::ColorEdit3("clear color", (float*)&clear_color); // Edit 3 floats representing a color
-
-                if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-                    counter++;
-                ImGui::SameLine();
-                ImGui::Text("counter = %d", counter);
-
-                ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-                ImGui::End();
-            }
-
-            // 3. Show another simple window.
-            if (show_another_window)
-            {
-                ImGui::Begin("Another Window", &show_another_window);   // Pass a pointer to our bool variable (the window will have a closing button that will clear the bool when clicked)
-                ImGui::Text("Hello from another window!");
-                if (ImGui::Button("Close Me"))
-                    show_another_window = false;
-                ImGui::End();
-            }
-
         }
 
         if (g_cursorEngaged)
@@ -1082,7 +1072,7 @@ White:  Uploaded,");
                                 (g_chunks->p[i].p.x < chunkPos.p.x - playerCamera->m_fogDistance || g_chunks->p[i].p.z < chunkPos.p.z - playerCamera->m_fogDistance)) ||
                                 !TEST_CREATE_AND_UPLOAD_CHUNKS)
                             {
-                                g_chunks->flags[i] |= CHUNK_TODELETE;
+                                g_chunks->flags[i] |= CHUNK_FLAG_TODELETE;
                             }
                         }
                     }
@@ -1234,7 +1224,7 @@ White:  Uploaded,");
                 ChunkIndex renderChunk = renderables[i].r;
                 if (g_chunks->state[renderChunk] == ChunkArray::VertexLoaded)
                 {
-                    if (uploadCount > uploadMax || (g_chunks->flags[renderChunk] & CHUNK_TODELETE))
+                    if (uploadCount > uploadMax || (g_chunks->flags[renderChunk] & CHUNK_FLAG_TODELETE))
                         continue;
                     g_chunks->UploadChunk(renderChunk);
                     uploadCount++;
@@ -1348,7 +1338,7 @@ White:  Uploaded,");
                 if (g_chunks->state[i] == ChunkArray::BlocksLoading)
                     continue;
 
-                if ((g_chunks->flags[i] & CHUNK_TODELETE) && (g_chunks->refs[i] == 0))
+                if ((g_chunks->flags[i] & CHUNK_FLAG_TODELETE) && (g_chunks->refs[i] == 0))
                 {
                     g_chunks->ClearChunk(i);
                 }
