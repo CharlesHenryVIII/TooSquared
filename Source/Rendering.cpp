@@ -386,33 +386,36 @@ ShaderProgram::~ShaderProgram()
 
 void ShaderProgram::CheckForUpdate()
 {
-
-    uint64 vertexFileTime = 0;
-    if (!GetFileTime(&vertexFileTime, m_vertexFile))
+    File vertexFile = File(m_vertexFile, File::FileMode::Read, false);
+    vertexFile.GetTime();
+    if (!vertexFile.m_timeIsValid)
     {
         return;
     }
 
-    uint64 pixelFileTime = 0;
-    if(!GetFileTime(&pixelFileTime, m_pixelFile))
+    File pixelFile = File(m_pixelFile, File::FileMode::Read, false);
+    pixelFile.GetTime();
+    if (!pixelFile.m_timeIsValid)
     {
         return;
     }
 
-    if (m_vertexLastWriteTime < vertexFileTime ||
-        m_pixelLastWriteTime  < pixelFileTime)
+    if (m_vertexLastWriteTime < vertexFile.m_time ||
+        m_pixelLastWriteTime  < pixelFile.m_time)
     {
         //Compile shaders and link to program
         GLuint vhandle = glCreateShader(GL_VERTEX_SHADER);
         GLuint phandle = glCreateShader(GL_FRAGMENT_SHADER);
 
-        std::string vertexText;
-        std::string pixelText;
-        GetFileText(vertexText, m_vertexFile);
-        GetFileText(pixelText, m_pixelFile);
+        //std::string vertexText;
+        //std::string pixelText;
+        //GetFileText(vertexText, m_vertexFile);
+        //GetFileText(pixelText, m_pixelFile);
+        vertexFile.GetText();
+        pixelFile.GetText();
 
-        if (!CompileShader(vhandle, "Vertex Shader", vertexText) ||
-            !CompileShader(phandle, "Pixel Shader", pixelText))
+        if (!CompileShader(vhandle, "Vertex Shader", vertexFile.m_contents) ||
+            !CompileShader(phandle, "Pixel Shader",  pixelFile.m_contents))
             return;
 
 
@@ -459,8 +462,8 @@ void ShaderProgram::CheckForUpdate()
 #ifdef _DEBUGPRINT
             DebugPrint("Shader Created\n");
 #endif
-            m_vertexLastWriteTime = vertexFileTime;
-            m_pixelLastWriteTime = pixelFileTime;
+            m_vertexLastWriteTime = vertexFile.m_time;
+            m_pixelLastWriteTime = pixelFile.m_time;
             glDeleteShader(vhandle);
             glDeleteShader(phandle);
         }

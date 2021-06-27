@@ -2218,7 +2218,15 @@ bool SaveGame()
 
 bool LoadGameFromDisk()
 {
+    if (g_gameData.m_gameSaveAttempt)
+        return false;
 
+    File file = File(g_gameData.m_saveFilename.c_str(), File::FileMode::Read, false);
+
+    if (file.m_handleIsValid)
+    {
+
+    }
 
 
     return false;
@@ -2238,7 +2246,7 @@ inline void SaveGameJob::DoThing()
 
     File file = File(g_gameData.m_saveFilename.c_str(), File::FileMode::Write, false);
 
-    if (file.m_isValid)
+    if (file.m_handleIsValid)
     {
         std::string textTitle;
         std::string textP;

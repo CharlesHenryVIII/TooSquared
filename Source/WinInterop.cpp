@@ -7,60 +7,117 @@
 #include <thread>
 
 
-
-
-static HANDLE GetFileHandle(const std::string& fileLoc)
+File::File(char const* filename, File::FileMode fileMode, bool updateFile)
 {
-    HANDLE handle = CreateFileA(fileLoc.c_str(), GENERIC_READ, FILE_SHARE_READ,
-        NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-    return handle;
+    std::string sFileName = std::string(filename);
+    Init(sFileName, fileMode, updateFile);
 }
 
-bool GetFileText(std::string& result, const std::string& fileLoc)
+File::File(const std::string& filename, File::FileMode fileMode, bool updateFile)
 {
-    HANDLE handle = GetFileHandle(fileLoc);
-    if (handle == INVALID_HANDLE_VALUE)
-        return false;
-    Defer {
-        CloseHandle(handle);
-    };
+    Init(filename, fileMode, updateFile);
+}
 
+void File::GetHandle()
+{
+    m_handle = CreateFileA(m_filename.c_str(), m_accessType, m_shareType,
+        NULL, m_openType, FILE_ATTRIBUTE_NORMAL, NULL);
+}
+
+void File::Init(const std::string& filename, File::FileMode fileMode, bool createIfNotFound)
+{
+    m_filename = std::string(filename);
+    m_accessType = GENERIC_READ;
+    m_shareType  = FILE_SHARE_READ;
+    m_openType   = OPEN_EXISTING;
+
+    switch (fileMode)
+    {
+    case File::FileMode::Read:
+        m_accessType = GENERIC_READ;
+        m_shareType  = FILE_SHARE_READ;
+        break;
+    case File::FileMode::Write:
+        m_openType = TRUNCATE_EXISTING;
+    case File::FileMode::Append:
+        m_accessType = GENERIC_WRITE;
+        m_shareType = FILE_SHARE_WRITE;
+        break;
+    }
+    GetHandle();
+
+    if (createIfNotFound && m_handle == INVALID_HANDLE_VALUE)
+    {
+        m_openType = CREATE_NEW;
+        GetHandle();
+    }
+    m_handleIsValid = (m_handle != INVALID_HANDLE_VALUE);
+    assert(m_handleIsValid);
+
+    if (m_handleIsValid)
+    {
+        switch (fileMode)
+        {
+        case File::FileMode::Read:
+        case File::FileMode::Append:
+
+            GetText();
+            break;
+        }
+    }
+}
+
+File::~File()
+{
+    if (m_handleIsValid)
+        CloseHandle(m_handle);
+}
+
+
+void File::GetText()
+{
     uint32 bytesRead;
     static_assert(sizeof(DWORD) == sizeof(uint32));
     static_assert(sizeof(LPVOID) == sizeof(void*));
     
-    const uint32 fileSize = GetFileSize(handle, NULL);
-    result.resize(fileSize, 0);
-    if (!ReadFile(handle, (LPVOID)result.c_str(), (DWORD)fileSize, reinterpret_cast<LPDWORD>(&bytesRead), NULL))
+    const uint32 fileSize = GetFileSize(m_handle, NULL);
+    m_contents.resize(fileSize, 0);
+    m_textIsValid = true;
+    if (!ReadFile(m_handle, (LPVOID)m_contents.c_str(), (DWORD)fileSize, reinterpret_cast<LPDWORD>(&bytesRead), NULL))
     {
         assert(false);
-        return false;
+        m_textIsValid = false;
     }
-    return true;
 }
 
-bool GetFileTime(uint64* result, const std::string& fileLoc)
+bool File::Write(const std::string& text)
 {
-    HANDLE handle = GetFileHandle(fileLoc);
-    if (handle == INVALID_HANDLE_VALUE)
-        return false;
-    Defer {
-        CloseHandle(handle);
-    };
+    LPDWORD bytesWritten = {};
+    BOOL result = WriteFile(m_handle, text.c_str(), (DWORD)text.size(), bytesWritten, NULL);
+    return result != 0;
+    //int32 result = fputs(text.c_str(), m_handle);
+    //return (!(result == EOF));
+    //return false;
+}
 
+void File::GetTime()
+{
     FILETIME creationTime;
     FILETIME lastAccessTime;
     FILETIME lastWriteTime;
-    if (!GetFileTime(handle, &creationTime, &lastAccessTime, &lastWriteTime))
+    if (!GetFileTime(m_handle, &creationTime, &lastAccessTime, &lastWriteTime))
     {
         DebugPrint("GetFileTime failed with %d\n", GetLastError());
-        return false;
+        m_timeIsValid = false;
     }
-    ULARGE_INTEGER actualResult;
-    actualResult.LowPart = lastWriteTime.dwLowDateTime;
-    actualResult.HighPart = lastWriteTime.dwHighDateTime;
-    *result = actualResult.QuadPart;
-    return true;
+    else
+    {
+        ULARGE_INTEGER actualResult;
+        actualResult.LowPart = lastWriteTime.dwLowDateTime;
+        actualResult.HighPart = lastWriteTime.dwHighDateTime;
+        m_time = actualResult.QuadPart;
+        m_timeIsValid = true;
+    }
 }
 
 void DebugPrint(const char* fmt, ...)
