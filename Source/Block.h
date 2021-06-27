@@ -39,7 +39,6 @@ enum class BlockType : uint8 {
 //Flower_Blue,
 //Sappling,
 //Chest,
-
 };
 ENUMOPS(BlockType);
 
@@ -293,7 +292,8 @@ struct ChunkArray
     void RenderChunk(ChunkIndex i);
     bool GetChunk(ChunkIndex& result, GamePos blockP);
     bool GetBlock(BlockType& blockType, const GamePos& blockP);
-
+    bool SaveChunk(ChunkIndex i);
+    bool Init();
 };
 extern ChunkArray* g_chunks;
 
@@ -324,7 +324,7 @@ void DrawBlock(const Mat4& mat, Color color, Vec3 scale, Camera* camera, Texture
 void DrawCube(WorldPos p, Color color, Vec3  scale, Camera* camera, Texture::T textureType = Texture::T::Plain, BlockType blockType = BlockType::Empty);
 void DrawCube(WorldPos p, Color color, float scale, Camera* camera, Texture::T textureType = Texture::T::Plain, BlockType blockType = BlockType::Empty);
 void Draw2DSquare(Rect rect, Color color);
-bool SaveGame();
+//bool SaveGame();
 
 int64 PositionHash(ChunkPos p);
 bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& distance, Vec3& normal);

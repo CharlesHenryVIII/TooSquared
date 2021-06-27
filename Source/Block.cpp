@@ -54,6 +54,7 @@ bool ChunkArray::GetChunkFromPosition(ChunkIndex& result, ChunkPos p)
 
 void ChunkArray::ClearChunk(ChunkIndex index)
 {
+    SaveChunk(index);
     auto it = chunkPosTable.find(PositionHash(p[index]));
     assert(it != chunkPosTable.end());
     chunkPosTable.erase(it);
@@ -2184,133 +2185,110 @@ struct ChunkSaveData {
     ChunkPos  p = {};
 };
 
-struct SaveGameJob : public Job {
-    std::vector<ChunkSaveData> m_data;
+struct SaveChunkJob : public Job {
+    ChunkSaveData m_data;
 
     void DoThing() override;
 };
 
-bool SaveGame()
+bool ChunkArray::Init()
+{
+    bool success = true;
+    std::string filename = g_gameData.m_folderPath;
+    success &= CreateFolder(filename);
+    filename = g_gameData.m_saveFolderPath;
+    success &= CreateFolder(filename);
+    filename += g_gameData.m_saveFilename;
+    success &= CreateFolder(filename);
+    filename += "\\Chunk_Data";
+    success &= CreateFolder(filename);
+    return success;
+}
+
+bool ChunkArray::SaveChunk(ChunkIndex i)
 {
     assert(OnMainThread());
-    SaveGameJob* job = new SaveGameJob();
-    job->m_data.reserve(MAX_CHUNKS);
+    if (g_chunks->flags[i] & CHUNK_FLAG_MODIFIED)
+    {
+        SaveChunkJob* job = new SaveChunkJob();
+        job->m_data.p = g_chunks->p[i];
+        memcpy(job->m_data.blocks.e, g_chunks->blocks[i].e, CHUNK_X * CHUNK_Y * CHUNK_Z * sizeof(BlockType));
 
-    for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
-    {
-        if (g_chunks->active[i] && g_chunks->flags[i] & CHUNK_FLAG_MODIFIED)
-        {
-            ChunkSaveData data = {};
-            data.p = g_chunks->p[i];
-            memcpy(data.blocks.e, g_chunks->blocks[i].e, CHUNK_X * CHUNK_Y * CHUNK_Z * sizeof(BlockType));
-            job->m_data.push_back(data);
-        }
-    }
-    if (job->m_data.size() > 0)
-    {
-        MultiThreading& multiThreading = MultiThreading::GetInstance();
-        multiThreading.SubmitJob(job);
+        MultiThreading::GetInstance().SubmitJob(job);
         return true;
     }
-    else
-        return false;
-}
-
-bool LoadGameFromDisk()
-{
-    if (g_gameData.m_gameSaveAttempt)
-        return false;
-
-    File file = File(g_gameData.m_saveFilename.c_str(), File::FileMode::Read, false);
-
-    if (file.m_handleIsValid)
-    {
-
-    }
-
-
     return false;
 }
 
-bool LoadGameFromMemory()
+#pragma pack(push, 1)
+struct ChunkDiskFileHeader {
+    uint32 m_magic_header;
+    uint32 m_magic_type;
+    uint32 version;
+};
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct ChunkDiskHeader {
+    uint32 m_magic_header;
+    uint32 m_magic_type;
+};
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct ChunkDiskData {
+    uint16 m_count;
+    std::underlying_type<BlockType>::type m_type;
+};
+#pragma pack(pop)
+
+void SaveChunkJob::DoThing()
 {
-    return false;
-}
+    ChunkDiskFileHeader mainHeader = {};
+    mainHeader.m_magic_header = SDL_FOURCC('C', 'H', 'N', 'K');
+    mainHeader.m_magic_type   = SDL_FOURCC('H', 'E', 'A', 'D');
+    mainHeader.version = 1;
 
-inline void SaveGameJob::DoThing()
-{
-    g_gameData.m_gameSavedSuccessfully = false;
-    g_gameData.m_gameSaveDataCount = 0;
-    g_gameData.m_gameSaveProgress = 0;
-    g_gameData.m_gameSaveAttempt = true;
+    ChunkDiskHeader chunkHeader = {};
+    chunkHeader.m_magic_header = SDL_FOURCC('C', 'H', 'N', 'K');
+    chunkHeader.m_magic_type   = SDL_FOURCC('D', 'A', 'T', 'A');
 
-    File file = File(g_gameData.m_saveFilename.c_str(), File::FileMode::Write, false);
-
-    if (file.m_handleIsValid)
+    std::vector<ChunkDiskData> dataArray;
+    dataArray.reserve(100);
+    ChunkDiskData data;
+    data.m_type  = +m_data.blocks.e[0][0][0];
+    data.m_count = 0;
+    for (int32 y = 0; y < CHUNK_Y; y++)
     {
-        std::string textTitle;
-        std::string textP;
-        std::string textHeight;
-        std::string textBlockTypes;
-        textBlockTypes.reserve(CHUNK_X * CHUNK_Y * CHUNK_Z * 3);
-        g_gameData.m_gameSaveDataCount = (int32)m_data.size();
-        g_gameData.m_gameSaveProgress = 0;
-
-        //int32 i = 0;
-        //for (ChunkSaveData& chunk : m_data)
-        for (int32 i = 0; i < m_data.size(); i++)
+        for (int32 x = 0; x < CHUNK_X; x++)
         {
-            g_gameData.m_gameSaveProgress++;
-
-            ChunkSaveData& chunk = m_data[i];
-            textTitle.clear();
-            textP.clear();
-            textHeight.clear();
-            textBlockTypes.clear();
-
-            textTitle = ToString("Chunk %i\n", i);
-            textP = ToString("%i %i %i\n", chunk.p.p.x, chunk.p.p.y, chunk.p.p.z);
-            BlockType blockTypesForYSlice[CHUNK_X][CHUNK_Z] = {};
-
-            for (int32 y = 0; y < CHUNK_Y; y++)
+            for (int32 z = 0; z < CHUNK_Z; z++)
             {
-                const BlockType firstBlock = chunk.blocks.e[0][y][0];
-                bool blocksAreTheSame = true;
-
-                for (int32 x = 0; x < CHUNK_X; x++)
+                if (data.m_type == +m_data.blocks.e[x][y][z])
                 {
-                    for (int32 z = 0; z < CHUNK_Z; z++)
-                    {
-                        const BlockType& block = chunk.blocks.e[x][y][z];
-                        if (firstBlock != block)
-                            blocksAreTheSame = false;
-                        blockTypesForYSlice[x][z] = block;
-
-                    }
-                }
-                if (blocksAreTheSame)
-                {
-                    textBlockTypes += ToString("%i ", +BlockType::Count + +firstBlock);
+                    data.m_count++;
                 }
                 else
                 {
-                    for (int32 x = 0; x < CHUNK_X; x++)
-                    {
-                        for (int32 z = 0; z < CHUNK_Z; z++)
-                        {
-                            textBlockTypes += ToString("%i ", +blockTypesForYSlice[x][z]);
-                        }
-                    }
+                    dataArray.push_back(data);
+                    data.m_type  = +m_data.blocks.e[x][y][z];
+                    data.m_count = 1;
                 }
             }
-
-            assert(file.Write(textTitle) == true);
-            assert(file.Write(textP) == true);
-            assert(file.Write(textHeight) == true);
-            assert(file.Write(textBlockTypes) == true);
-            assert(file.Write("\n\n") == true);
-            g_gameData.m_gameSavedSuccessfully = true;
         }
     }
-    g_gameData.m_gameSaveAttempt = true;
+    dataArray.push_back(data);
+
+    std::string filename = g_gameData.m_saveFolderPath + g_gameData.m_saveFilename + "\\Chunk_Data\\" + ToString("%i_%i.wad", m_data.p.p.x, m_data.p.p.z);
+
+    File file(filename.c_str(), File::FileMode::Write, true);
+
+    if (file.m_handleIsValid)
+    {
+        bool success = true;
+        success &= file.Write(&mainHeader, sizeof(ChunkDiskFileHeader));
+        success &= file.Write(&chunkHeader, sizeof(ChunkDiskHeader));
+        success &= file.Write(dataArray.data(), dataArray.size() * sizeof(ChunkDiskData));
+    }
+
 }

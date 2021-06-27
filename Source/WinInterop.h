@@ -23,6 +23,7 @@ struct File {
     ~File();
 
     bool Write(const std::string& text);
+    bool Write(void* data, size_t sizeInBytes);
     void GetText();
     void GetTime();
 
@@ -37,9 +38,8 @@ private:
     void Init(const std::string& filename, File::FileMode fileMode, bool updateFile);
 };
 
-
-//bool GetFileText(std::string& result, const std::string& fileLoc);
-//bool GetFileTime(uint64* result, const std::string& fileLoc);
+void InitializeWinInterop();
 void DebugPrint(const char* fmt, ...);
 std::string ToString(const char* fmt, ...);
 void SetThreadName(std::thread::native_handle_type threadID, std::string name);
+bool CreateFolder(const std::string& folderLocation);

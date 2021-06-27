@@ -120,10 +120,12 @@ static void HelpMarker(const char* desc)
 int main(int argc, char* argv[])
 {
     InitializeVideo();
+    InitializeWinInterop();
     MultiThreading& multiThreading = MultiThreading::GetInstance();
 
     double freq = double(SDL_GetPerformanceFrequency()); //HZ
-    double totalTime = SDL_GetPerformanceCounter() / freq; //sec
+    double startTime = SDL_GetPerformanceCounter() / freq;
+    double totalTime = SDL_GetPerformanceCounter() / freq - startTime; //sec
     double previousTime = totalTime;
     double LastShaderUpdateTime = totalTime;
 #if 0
@@ -136,6 +138,7 @@ int main(int argc, char* argv[])
 
     //Initilizers
     g_chunks = new ChunkArray();
+    g_chunks->Init();
     CommandHandler playerInput;
     Player* player = g_entityList.New<Player>();
     //player->m_transform.m_p.p = {0, 150, 0};
@@ -151,6 +154,8 @@ int main(int argc, char* argv[])
     //playerCamera->m_transform.m_p.p.y = player->m_collider.m_height - player->m_collider.m_radius;
     //playerCamera->m_transform.m_p.p.x = playerCamera->m_transform.m_p.p.z = 0;
     //
+
+    
 
     {
         WorldPos cOffset = { 1.0f, 0.0f, 1.0f };
@@ -230,7 +235,7 @@ int main(int argc, char* argv[])
     while (g_running)
     {
         PROFILE_SCOPE_TAB("FRAMETIME:");
-        totalTime = SDL_GetPerformanceCounter() / freq;
+        totalTime = SDL_GetPerformanceCounter() / freq - startTime;
         float deltaTime = float(totalTime - previousTime);// / 10;
         previousTime = totalTime;
         //TODO: Time stepping for simulation
@@ -670,7 +675,7 @@ White:  Uploaded,");
                 //
                 if (ImGui::Button("Save Game"))
                 {
-                    SaveGame();
+                    //SaveGame();
                 }
                 //
                 ImVec4 greenColor = { 0.1f, 0.8f, 0.1f, 0.8f };

@@ -124,7 +124,9 @@ struct GameData {
     std::atomic<bool>  m_gameSavedSuccessfully = false;
     std::atomic<int32> m_gameSaveProgress  = 0;
     std::atomic<int32> m_gameSaveDataCount = 0;
-    std::string m_saveFilename = "GameSaveData.txt";
+    std::string m_saveFilename = "TestGame";
+    std::string m_folderPath;
+    std::string m_saveFolderPath;
 };
 extern GameData g_gameData;
 

@@ -386,14 +386,14 @@ ShaderProgram::~ShaderProgram()
 
 void ShaderProgram::CheckForUpdate()
 {
-    File vertexFile = File(m_vertexFile, File::FileMode::Read, false);
+    File vertexFile(m_vertexFile, File::FileMode::Read, false);
     vertexFile.GetTime();
     if (!vertexFile.m_timeIsValid)
     {
         return;
     }
 
-    File pixelFile = File(m_pixelFile, File::FileMode::Read, false);
+    File pixelFile(m_pixelFile, File::FileMode::Read, false);
     pixelFile.GetTime();
     if (!pixelFile.m_timeIsValid)
     {

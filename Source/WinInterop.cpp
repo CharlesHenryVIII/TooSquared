@@ -3,8 +3,22 @@
 #include "Math.h"
 
 #include <Windows.h>
+#include <shlobj_core.h>
 #include <string>
 #include <thread>
+
+void InitializeWinInterop()
+{
+    char szPath[MAX_PATH] = {};
+    if (SUCCEEDED(SHGetFolderPathA(NULL, CSIDL_COMMON_APPDATA, NULL, 0, szPath)))
+    {
+        g_gameData.m_folderPath = szPath;
+        g_gameData.m_folderPath += "\\TooSquared";
+        g_gameData.m_saveFolderPath = g_gameData.m_folderPath + "\\Saves\\";
+        //PathAppend(szPath, TEXT("New Doc.txt"));
+    }
+
+}
 
 
 File::File(char const* filename, File::FileMode fileMode, bool updateFile)
@@ -30,12 +44,14 @@ void File::Init(const std::string& filename, File::FileMode fileMode, bool creat
     m_accessType = GENERIC_READ;
     m_shareType  = FILE_SHARE_READ;
     m_openType   = OPEN_EXISTING;
+    //m_fileAttribute = FILE_ATTRIBUTE_NORMAL;
 
     switch (fileMode)
     {
     case File::FileMode::Read:
         m_accessType = GENERIC_READ;
         m_shareType  = FILE_SHARE_READ;
+        //m_fileAttribute = FILE_ATTRIBUTE_READONLY;
         break;
     case File::FileMode::Write:
         m_openType = TRUNCATE_EXISTING;
@@ -89,6 +105,12 @@ void File::GetText()
         m_textIsValid = false;
     }
 }
+bool File::Write(void* data, size_t sizeInBytes)
+{
+    LPDWORD bytesWritten = {};
+    BOOL result = WriteFile(m_handle, data, (DWORD)sizeInBytes, bytesWritten, NULL);
+    return result != 0;
+}
 
 bool File::Write(const std::string& text)
 {
@@ -118,6 +140,12 @@ void File::GetTime()
         m_time = actualResult.QuadPart;
         m_timeIsValid = true;
     }
+}
+
+bool CreateFolder(const std::string& folderLocation)
+{
+    BOOL result = CreateDirectoryA(folderLocation.c_str(), NULL);
+    return !(result == 0);
 }
 
 void DebugPrint(const char* fmt, ...)
