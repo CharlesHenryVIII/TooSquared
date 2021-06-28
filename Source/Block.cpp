@@ -88,7 +88,6 @@ void ChunkArray::ClearChunk(ChunkIndex index)
     //delete vertexBuffer[index];
     //TODO: FIX
     //vertexBuffer[index] = {};
-
 }
 
 ChunkIndex ChunkArray::AddChunk(ChunkPos position)
@@ -1829,7 +1828,8 @@ void SetBlocks::DoThing()
 {
     //PROFILE_SCOPE("THREAD: SetBlocks()");
     g_chunks->refs[chunk]++;
-    g_chunks->SetBlocks(chunk);
+    if (!g_chunks->LoadChunk(chunk))
+        g_chunks->SetBlocks(chunk);
     g_chunks->state[chunk] = ChunkArray::BlocksLoaded;
     g_chunks->refs[chunk]--;
 }
@@ -2183,6 +2183,7 @@ bool ChunkArray::GetBlock(BlockType& blockType, const GamePos& blockP)
 struct ChunkSaveData {
     ChunkData blocks = {};
     ChunkPos  p = {};
+    uint16    height = {};
 };
 
 struct SaveChunkJob : public Job {
@@ -2190,6 +2191,11 @@ struct SaveChunkJob : public Job {
 
     void DoThing() override;
 };
+
+std::string GetChunkFilePathFromPosition(const ChunkPos& p)
+{
+    return g_gameData.m_saveFolderPath + g_gameData.m_saveFilename + "\\Chunk_Data\\" + ToString("%i_%i.wad", p.p.x, p.p.z);
+}
 
 bool ChunkArray::Init()
 {
@@ -2213,6 +2219,7 @@ bool ChunkArray::SaveChunk(ChunkIndex i)
         SaveChunkJob* job = new SaveChunkJob();
         job->m_data.p = g_chunks->p[i];
         memcpy(job->m_data.blocks.e, g_chunks->blocks[i].e, CHUNK_X * CHUNK_Y * CHUNK_Z * sizeof(BlockType));
+        job->m_data.height = g_chunks->height[i];
 
         MultiThreading::GetInstance().SubmitJob(job);
         return true;
@@ -2232,6 +2239,7 @@ struct ChunkDiskFileHeader {
 struct ChunkDiskHeader {
     uint32 m_magic_header;
     uint32 m_magic_type;
+    uint32 m_height;
 };
 #pragma pack(pop)
 
@@ -2252,6 +2260,7 @@ void SaveChunkJob::DoThing()
     ChunkDiskHeader chunkHeader = {};
     chunkHeader.m_magic_header = SDL_FOURCC('C', 'H', 'N', 'K');
     chunkHeader.m_magic_type   = SDL_FOURCC('D', 'A', 'T', 'A');
+    chunkHeader.m_height       = m_data.height;
 
     std::vector<ChunkDiskData> dataArray;
     dataArray.reserve(100);
@@ -2279,16 +2288,82 @@ void SaveChunkJob::DoThing()
     }
     dataArray.push_back(data);
 
-    std::string filename = g_gameData.m_saveFolderPath + g_gameData.m_saveFilename + "\\Chunk_Data\\" + ToString("%i_%i.wad", m_data.p.p.x, m_data.p.p.z);
+    std::string filename = GetChunkFilePathFromPosition(m_data.p);/// g_gameData.m_saveFolderPath + g_gameData.m_saveFilename + "\\Chunk_Data\\" + ToString("%i_%i.wad", m_data.p.p.x, m_data.p.p.z);
 
-    File file(filename.c_str(), File::FileMode::Write, true);
+    File file(filename, File::FileMode::Write, true);
 
     if (file.m_handleIsValid)
     {
         bool success = true;
-        success &= file.Write(&mainHeader, sizeof(ChunkDiskFileHeader));
+        success &= file.Write(&mainHeader,  sizeof(ChunkDiskFileHeader));
         success &= file.Write(&chunkHeader, sizeof(ChunkDiskHeader));
         success &= file.Write(dataArray.data(), dataArray.size() * sizeof(ChunkDiskData));
     }
 
+}
+
+bool ChunkArray::LoadChunk(ChunkIndex index)
+{
+    std::string filename = GetChunkFilePathFromPosition(g_chunks->p[index]);
+    File file(filename, File::FileMode::Read, false);
+
+    if (!file.m_handleIsValid)
+        return false;
+
+    file.GetData();
+    if (file.m_binaryDataIsValid)
+    {
+        ChunkDiskFileHeader* mainHeader = (ChunkDiskFileHeader*)file.m_dataBinary.data();
+        uint32 CHNK = SDL_FOURCC('C','H','N','K');
+        uint32 HEAD = SDL_FOURCC('H','E','A','D');
+        uint32 DATA = SDL_FOURCC('D','A','T','A');
+
+        mainHeader->m_magic_header;
+        mainHeader->m_magic_type;
+        mainHeader->version;
+
+        ChunkDiskHeader* chunkHeader = (ChunkDiskHeader*)(mainHeader + 1);
+        chunkHeader->m_magic_header;
+        chunkHeader->m_magic_type;
+        chunkHeader->m_height;
+
+        g_chunks->height[index] = chunkHeader->m_height;
+        //bytes minus headers, converted to number of ChunkDiskData
+        size_t count = (file.m_dataBinary.size() - sizeof(ChunkDiskFileHeader) - sizeof(ChunkDiskHeader)) / sizeof(ChunkDiskData);
+        assert(count);
+        ChunkDiskData* dataStart = (ChunkDiskData*)(chunkHeader + 1);
+
+#if 1
+        uint32 blockCount = dataStart[0].m_count;
+        uint32 i = 0;
+        for (int32 y = 0; y < CHUNK_Y; y++)
+        {
+            for (int32 x = 0; x < CHUNK_X; x++)
+            {
+                for (int32 z = 0; z < CHUNK_Z; z++)
+                {
+                    g_chunks->blocks[index].e[x][y][z] = (BlockType)dataStart[i].m_type;
+                    blockCount--;
+                    if (blockCount == 0)
+                    {
+                        i++;
+                        blockCount = dataStart[i].m_count;
+                    }
+                }
+            }
+        }
+#else
+        uint32 blockCount = 0;
+        for (size_t i = 0; i < count; i++)
+        {
+            int32 z = blockCount % CHUNK_Z;
+            int32 x = blockCount % CHUNK_X;
+            g_chunks->blocks[i].e[x][y][z];
+            dataStart[i].m_count;
+            dataStart[i].m_type;
+        }
+#endif
+        return true;
+    }
+    return false;
 }

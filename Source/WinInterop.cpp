@@ -68,19 +68,23 @@ void File::Init(const std::string& filename, File::FileMode fileMode, bool creat
         GetHandle();
     }
     m_handleIsValid = (m_handle != INVALID_HANDLE_VALUE);
-    assert(m_handleIsValid);
+    //assert(m_handleIsValid);
+    auto filePointerLocation = FILE_END;
 
     if (m_handleIsValid)
     {
         switch (fileMode)
         {
         case File::FileMode::Read:
+            filePointerLocation = FILE_BEGIN;
         case File::FileMode::Append:
 
             GetText();
             break;
         }
     }
+
+    DWORD newFilePointer = SetFilePointer(m_handle, 0, NULL, filePointerLocation);
 }
 
 File::~File()
@@ -92,10 +96,13 @@ File::~File()
 
 void File::GetText()
 {
+    if (!m_handleIsValid)
+        return;
+
     uint32 bytesRead;
     static_assert(sizeof(DWORD) == sizeof(uint32));
     static_assert(sizeof(LPVOID) == sizeof(void*));
-    
+
     const uint32 fileSize = GetFileSize(m_handle, NULL);
     m_contents.resize(fileSize, 0);
     m_textIsValid = true;
@@ -103,6 +110,25 @@ void File::GetText()
     {
         assert(false);
         m_textIsValid = false;
+    }
+}
+
+void File::GetData()
+{
+    if (!m_handleIsValid)
+        return;
+
+    uint32 bytesRead;
+    static_assert(sizeof(DWORD) == sizeof(uint32));
+    static_assert(sizeof(LPVOID) == sizeof(void*));
+
+    const uint32 fileSize = GetFileSize(m_handle, NULL);
+    m_dataBinary.resize(fileSize, 0);
+    m_binaryDataIsValid = true;
+    if (ReadFile(m_handle, (LPVOID)m_dataBinary.data(), (DWORD)fileSize, reinterpret_cast<LPDWORD>(&bytesRead), NULL) == 0)
+    {
+        m_binaryDataIsValid = false;
+        DWORD error = GetLastError();
     }
 }
 bool File::Write(void* data, size_t sizeInBytes)
