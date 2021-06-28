@@ -48,6 +48,7 @@ public:
         return m_jobs_in_flight;
     }
 	void SubmitJob(Job* job);
+    bool SleepThread(uint64 ms);
 };
 
 bool OnMainThread();

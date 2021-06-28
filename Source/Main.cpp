@@ -271,6 +271,11 @@ int main(int argc, char* argv[])
             switch (SDLEvent.type)
             {
             case SDL_QUIT:
+                for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+                {
+                    if (g_chunks->active[i])
+                        g_chunks->flags[i] |= CHUNK_FLAG_TODELETE;
+                }
                 g_running = false;
                 break;
             case SDL_KEYDOWN:
@@ -1348,6 +1353,8 @@ White:  Uploaded,");
                     g_chunks->ClearChunk(i);
                 }
             }
+            while (g_running == false && multiThreading.GetJobsInFlight() > 0)
+                multiThreading.SleepThread(250);  //do nothing;
         }
 
         {

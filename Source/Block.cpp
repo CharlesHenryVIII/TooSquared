@@ -2299,7 +2299,6 @@ void SaveChunkJob::DoThing()
         success &= file.Write(&chunkHeader, sizeof(ChunkDiskHeader));
         success &= file.Write(dataArray.data(), dataArray.size() * sizeof(ChunkDiskData));
     }
-
 }
 
 bool ChunkArray::LoadChunk(ChunkIndex index)
@@ -2320,50 +2319,39 @@ bool ChunkArray::LoadChunk(ChunkIndex index)
 
         mainHeader->m_magic_header;
         mainHeader->m_magic_type;
-        mainHeader->version;
-
-        ChunkDiskHeader* chunkHeader = (ChunkDiskHeader*)(mainHeader + 1);
-        chunkHeader->m_magic_header;
-        chunkHeader->m_magic_type;
-        chunkHeader->m_height;
-
-        g_chunks->height[index] = chunkHeader->m_height;
-        //bytes minus headers, converted to number of ChunkDiskData
-        size_t count = (file.m_dataBinary.size() - sizeof(ChunkDiskFileHeader) - sizeof(ChunkDiskHeader)) / sizeof(ChunkDiskData);
-        assert(count);
-        ChunkDiskData* dataStart = (ChunkDiskData*)(chunkHeader + 1);
-
-#if 1
-        uint32 blockCount = dataStart[0].m_count;
-        uint32 i = 0;
-        for (int32 y = 0; y < CHUNK_Y; y++)
+        if (mainHeader->version == 1)
         {
-            for (int32 x = 0; x < CHUNK_X; x++)
+            ChunkDiskHeader* chunkHeader = (ChunkDiskHeader*)(mainHeader + 1);
+            chunkHeader->m_magic_header;
+            chunkHeader->m_magic_type;
+            chunkHeader->m_height;
+
+            g_chunks->height[index] = chunkHeader->m_height;
+            //bytes minus headers, converted to number of ChunkDiskData
+            size_t count = (file.m_dataBinary.size() - sizeof(ChunkDiskFileHeader) - sizeof(ChunkDiskHeader)) / sizeof(ChunkDiskData);
+            assert(count);
+            ChunkDiskData* dataStart = (ChunkDiskData*)(chunkHeader + 1);
+
+            uint32 blockCount = dataStart[0].m_count;
+            uint32 i = 0;
+            for (int32 y = 0; y < CHUNK_Y; y++)
             {
-                for (int32 z = 0; z < CHUNK_Z; z++)
+                for (int32 x = 0; x < CHUNK_X; x++)
                 {
-                    g_chunks->blocks[index].e[x][y][z] = (BlockType)dataStart[i].m_type;
-                    blockCount--;
-                    if (blockCount == 0)
+                    for (int32 z = 0; z < CHUNK_Z; z++)
                     {
-                        i++;
-                        blockCount = dataStart[i].m_count;
+                        g_chunks->blocks[index].e[x][y][z] = (BlockType)dataStart[i].m_type;
+                        blockCount--;
+                        if (blockCount == 0)
+                        {
+                            i++;
+                            blockCount = dataStart[i].m_count;
+                        }
                     }
                 }
             }
+            return true;
         }
-#else
-        uint32 blockCount = 0;
-        for (size_t i = 0; i < count; i++)
-        {
-            int32 z = blockCount % CHUNK_Z;
-            int32 x = blockCount % CHUNK_X;
-            g_chunks->blocks[i].e[x][y][z];
-            dataStart[i].m_count;
-            dataStart[i].m_type;
-        }
-#endif
-        return true;
     }
     return false;
 }

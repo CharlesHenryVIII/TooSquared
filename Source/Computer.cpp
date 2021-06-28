@@ -3,6 +3,8 @@
 #include "WinInterop.h"
 #include "SDL\include\SDL.h"
 
+#include <Chrono>
+
 uint32 UsableCores()
 {
     return Max<uint32>(1, SDL_GetCPUCount() - 1);
@@ -91,4 +93,12 @@ bool OnMainThread()
     return mainThreadID == std::this_thread::get_id();
 }
 
+bool MultiThreading::SleepThread(uint64 _ms)
+{
+    //std::chrono::duration
+    //using namespace std::chrono_literals;
+    //2000ms
+    std::this_thread::sleep_for(std::chrono::milliseconds(_ms));
+    return true;
+}
 
