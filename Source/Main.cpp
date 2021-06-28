@@ -117,6 +117,16 @@ static void HelpMarker(const char* desc)
     }
 }
 
+void ExitApplication()
+{
+    for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+    {
+        if (g_chunks->active[i])
+            g_chunks->flags[i] |= CHUNK_FLAG_TODELETE;
+    }
+    g_running = false;
+}
+
 int main(int argc, char* argv[])
 {
     InitializeVideo();
@@ -271,12 +281,7 @@ int main(int argc, char* argv[])
             switch (SDLEvent.type)
             {
             case SDL_QUIT:
-                for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
-                {
-                    if (g_chunks->active[i])
-                        g_chunks->flags[i] |= CHUNK_FLAG_TODELETE;
-                }
-                g_running = false;
+                ExitApplication();
                 break;
             case SDL_KEYDOWN:
             case SDL_KEYUP:
@@ -429,7 +434,7 @@ int main(int argc, char* argv[])
 
 
         if (playerInput.keyStates[SDLK_ESCAPE].down)
-            g_running = false;
+            ExitApplication();
         if (playerInput.keyStates[SDLK_BACKQUOTE].downThisFrame)
             s_debugFlags ^= +DebugOptions::Enabled;
         //if (playerInput.keyStates[SDLK_c].downThisFrame)

@@ -2313,17 +2313,19 @@ bool ChunkArray::LoadChunk(ChunkIndex index)
     if (file.m_binaryDataIsValid)
     {
         ChunkDiskFileHeader* mainHeader = (ChunkDiskFileHeader*)file.m_dataBinary.data();
-        uint32 CHNK = SDL_FOURCC('C','H','N','K');
-        uint32 HEAD = SDL_FOURCC('H','E','A','D');
-        uint32 DATA = SDL_FOURCC('D','A','T','A');
 
-        mainHeader->m_magic_header;
-        mainHeader->m_magic_type;
         if (mainHeader->version == 1)
         {
+            uint32 CHNK = SDL_FOURCC('C', 'H', 'N', 'K');
+            uint32 HEAD = SDL_FOURCC('H', 'E', 'A', 'D');
+            uint32 DATA = SDL_FOURCC('D', 'A', 'T', 'A');
+            if (!(mainHeader->m_magic_header == CHNK && mainHeader->m_magic_type == HEAD))
+                return false;
+
             ChunkDiskHeader* chunkHeader = (ChunkDiskHeader*)(mainHeader + 1);
-            chunkHeader->m_magic_header;
-            chunkHeader->m_magic_type;
+            if (!(chunkHeader->m_magic_header == CHNK && chunkHeader->m_magic_type == DATA))
+                return false;
+
             chunkHeader->m_height;
 
             g_chunks->height[index] = chunkHeader->m_height;

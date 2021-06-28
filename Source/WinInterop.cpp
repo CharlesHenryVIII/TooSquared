@@ -17,7 +17,6 @@ void InitializeWinInterop()
         g_gameData.m_saveFolderPath = g_gameData.m_folderPath + "\\Saves\\";
         //PathAppend(szPath, TEXT("New Doc.txt"));
     }
-
 }
 
 
@@ -55,9 +54,12 @@ void File::Init(const std::string& filename, File::FileMode fileMode, bool creat
         break;
     case File::FileMode::Write:
         m_openType = TRUNCATE_EXISTING;
+        [[fallthrough]];
     case File::FileMode::Append:
         m_accessType = GENERIC_WRITE;
         m_shareType = FILE_SHARE_WRITE;
+        break;
+    default:
         break;
     }
     GetHandle();
@@ -77,9 +79,11 @@ void File::Init(const std::string& filename, File::FileMode fileMode, bool creat
         {
         case File::FileMode::Read:
             filePointerLocation = FILE_BEGIN;
+            [[fallthrough]];
         case File::FileMode::Append:
-
             GetText();
+            break;
+        default:
             break;
         }
     }
