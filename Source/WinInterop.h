@@ -5,10 +5,10 @@
 #include <thread>
 
 struct File {
-    enum class FileMode {
-        Read,   //Read:   Open file for read access.
-        Write,  //Write:  Open and empty file for output.
-        Append, //Append: Open file for output.
+    enum class Mode {
+        Read,  //Read:   Open file for read access.
+        Write, //Write:  Open and empty file for output.
+        Append,//Append: Open file for output.
     };
 
     bool m_handleIsValid     = false;
@@ -20,8 +20,8 @@ struct File {
     std::vector<uint8> m_dataBinary;
     uint64 m_time = {};
 
-    File(char const* fileName,        File::FileMode fileMode, bool updateFile);
-    File(const std::string& fileName, File::FileMode fileMode, bool updateFile);
+    File(char const* fileName,        File::Mode fileMode, bool updateFile);
+    File(const std::string& fileName, File::Mode fileMode, bool updateFile);
     ~File();
 
     bool Write(const std::string& text);
@@ -38,7 +38,7 @@ private:
     uint32  m_openType;
 
     void GetHandle();
-    void Init(const std::string& filename, File::FileMode fileMode, bool updateFile);
+    void Init(const std::string& filename, File::Mode fileMode, bool updateFile);
 };
 
 void InitializeWinInterop();

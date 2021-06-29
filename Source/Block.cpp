@@ -2290,7 +2290,7 @@ void SaveChunkJob::DoThing()
 
     std::string filename = GetChunkFilePathFromPosition(m_data.p);/// g_gameData.m_saveFolderPath + g_gameData.m_saveFilename + "\\Chunk_Data\\" + ToString("%i_%i.wad", m_data.p.p.x, m_data.p.p.z);
 
-    File file(filename, File::FileMode::Write, true);
+    File file(filename, File::Mode::Write, true);
 
     if (file.m_handleIsValid)
     {
@@ -2304,7 +2304,7 @@ void SaveChunkJob::DoThing()
 bool ChunkArray::LoadChunk(ChunkIndex index)
 {
     std::string filename = GetChunkFilePathFromPosition(g_chunks->p[index]);
-    File file(filename, File::FileMode::Read, false);
+    File file(filename, File::Mode::Read, false);
 
     if (!file.m_handleIsValid)
         return false;

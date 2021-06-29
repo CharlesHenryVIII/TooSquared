@@ -20,13 +20,13 @@ void InitializeWinInterop()
 }
 
 
-File::File(char const* filename, File::FileMode fileMode, bool updateFile)
+File::File(char const* filename, File::Mode fileMode, bool updateFile)
 {
     std::string sFileName = std::string(filename);
     Init(sFileName, fileMode, updateFile);
 }
 
-File::File(const std::string& filename, File::FileMode fileMode, bool updateFile)
+File::File(const std::string& filename, File::Mode fileMode, bool updateFile)
 {
     Init(filename, fileMode, updateFile);
 }
@@ -37,7 +37,7 @@ void File::GetHandle()
         NULL, m_openType, FILE_ATTRIBUTE_NORMAL, NULL);
 }
 
-void File::Init(const std::string& filename, File::FileMode fileMode, bool createIfNotFound)
+void File::Init(const std::string& filename, File::Mode fileMode, bool createIfNotFound)
 {
     m_filename = std::string(filename);
     m_accessType = GENERIC_READ;
@@ -47,15 +47,15 @@ void File::Init(const std::string& filename, File::FileMode fileMode, bool creat
 
     switch (fileMode)
     {
-    case File::FileMode::Read:
+    case File::Mode::Read:
         m_accessType = GENERIC_READ;
         m_shareType  = FILE_SHARE_READ;
         //m_fileAttribute = FILE_ATTRIBUTE_READONLY;
         break;
-    case File::FileMode::Write:
+    case File::Mode::Write:
         m_openType = TRUNCATE_EXISTING;
         [[fallthrough]];
-    case File::FileMode::Append:
+    case File::Mode::Append:
         m_accessType = GENERIC_WRITE;
         m_shareType = FILE_SHARE_WRITE;
         break;
@@ -77,11 +77,12 @@ void File::Init(const std::string& filename, File::FileMode fileMode, bool creat
     {
         switch (fileMode)
         {
-        case File::FileMode::Read:
+        case File::Mode::Read:
             filePointerLocation = FILE_BEGIN;
             [[fallthrough]];
-        case File::FileMode::Append:
+        case File::Mode::Append:
             GetText();
+            GetData();
             break;
         default:
             break;
@@ -112,7 +113,7 @@ void File::GetText()
     m_textIsValid = true;
     if (!ReadFile(m_handle, (LPVOID)m_contents.c_str(), (DWORD)fileSize, reinterpret_cast<LPDWORD>(&bytesRead), NULL))
     {
-        assert(false);
+        //assert(false);
         m_textIsValid = false;
     }
 }

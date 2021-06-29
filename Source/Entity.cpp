@@ -256,23 +256,69 @@ void Player::Update(float dt)
 
 void Player::Render(float dt, Camera* camera)
 {
-    
+
+}
+
+struct PlayerFileHeader {
+    uint32 m_header;
+    uint32 m_type;
+    uint32 m_version;
+};
+
+void Player::Save()
+{
+    PlayerFileHeader mainHeader = {};
+    mainHeader.m_header  = SDL_FOURCC('E', 'N', 'T', 'T');
+    mainHeader.m_type    = SDL_FOURCC('P', 'L', 'Y', 'R');
+    mainHeader.m_version = 1;
+
+    std::string filename = g_gameData.m_saveFolderPath + g_gameData.m_saveFilename + "\\Player_Data.wad";
+    File file(filename, File::Mode::Write, true);
+    if (file.m_handleIsValid)
+    {
+        bool success = true;
+        success &= file.Write(&mainHeader,  sizeof(PlayerFileHeader));
+        success &= file.Write(&m_transform, sizeof(m_transform));
+        success &= file.Write(&m_inventory, sizeof(Inventory));
+        success &= file.Write(&m_rigidBody, sizeof(RigidBody));
+    }
+}
+
+bool Player::Load()
+{
+    std::string filename = g_gameData.m_saveFolderPath + g_gameData.m_saveFilename + "\\Player_Data.wad";
+    File file(filename, File::Mode::Read, false);
+    if (file.m_handleIsValid)
+    {
+        uint32 header  = SDL_FOURCC('E', 'N', 'T', 'T');
+        uint32 type    = SDL_FOURCC('P', 'L', 'Y', 'R');
+        uint32 version = 1;
+
+        PlayerFileHeader* mainHeader = (PlayerFileHeader*)file.m_contents.data();
+        if (mainHeader->m_header == header && mainHeader->m_type == type && mainHeader->m_version == version)
+        {
+            Transform* tran = (Transform*)(mainHeader + 1);
+            Inventory* inv  = (Inventory*)(tran + 1);
+            RigidBody* rb   = (RigidBody*)(inv + 1);
+
+            m_transform = *tran;
+            m_inventory = *inv;
+            m_rigidBody = *rb;
+
+            return true;
+        }
+    }
+    return false;
 }
 
 
 //Camera
 void Camera::Update(float dt)
 {
-    Entity* e = g_entityList.GetEntity(m_parent);
-    if (e == nullptr)
-    {
-        //const float dragFlightCoefficient = 15.0f;
-        //const float fakeAreaToGetThisToWork = 0.25f * 2 * 1.8f;//m_collider.m_radius * 2 * m_collider.m_height;
-
-        //m_transform.UpdateDeltaPosition(dt, { dragFlightCoefficient, dragFlightCoefficient, dragFlightCoefficient }, fakeAreaToGetThisToWork, 0);
-        //m_transform.m_p.p += m_transform.m_pDelta.p;
-        //m_transform.UpdateCameraPosition(dt, );
-    }
+    //Entity* e = g_entityList.GetEntity(m_parent);
+    //if (e == nullptr)
+    //{
+    //}
 }
 
 void Camera::InputUpdate(float dt, CommandHandler& commands)
@@ -312,11 +358,12 @@ void Camera::InputUpdate(float dt, CommandHandler& commands)
     }
 }
 
+
 //Item
 void Item::Update(float dt)
 {
 #if 1
-    
+
     //New Movement Code
     Vec3 kinematicsPositionDelta = m_rigidBody.GetDeltaPosition(dt, { 3.0f, 1.0f, 3.0f });
     //Vec3 kinematicsPositionDelta = m_rigidBody.GetDeltaPosition(dt, { 0.0f, 0.0f, 0.0f }, 0.0f);

@@ -117,12 +117,20 @@ static void HelpMarker(const char* desc)
     }
 }
 
-void ExitApplication()
+void ExitApplication(Player* player, Camera* camera)
 {
     for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
     {
         if (g_chunks->active[i])
             g_chunks->flags[i] |= CHUNK_FLAG_TODELETE;
+    }
+    if (player)
+    {
+        player->Save();
+    }
+    if (camera)
+    {
+        camera->Save();
     }
     g_running = false;
 }
@@ -151,21 +159,15 @@ int main(int argc, char* argv[])
     g_chunks->Init();
     CommandHandler playerInput;
     Player* player = g_entityList.New<Player>();
-    //player->m_transform.m_p.p = {0, 150, 0};
     player->m_inputID = playerInput.ID;
     Camera* playerCamera = g_entityList.New<Camera>();
-    playerCamera->m_transform.m_p.p = {0, 150, 0};
-    ChunkUpdateOrigin chunkUpdateOrigin = ChunkUpdateOrigin::Camera;//ChunkUpdateOrigin::Player;
-    //player->ChildCamera(playerCamera);
-    //{
-    //    playerCamera->m_parent = player->m_ID;
-    //    player->m_children.push_back(playerCamera->m_ID);
-    //}
-    //playerCamera->m_transform.m_p.p.y = player->m_collider.m_height - player->m_collider.m_radius;
-    //playerCamera->m_transform.m_p.p.x = playerCamera->m_transform.m_p.p.z = 0;
-    //
+    player->ChildCamera(playerCamera);
+    if (!player->Load())
+    {
+        player->m_transform.m_p.p = { 0, 150, 0 };
+    }
 
-    
+    ChunkUpdateOrigin chunkUpdateOrigin = ChunkUpdateOrigin::Player;
 
     {
         WorldPos cOffset = { 1.0f, 0.0f, 1.0f };
@@ -281,7 +283,7 @@ int main(int argc, char* argv[])
             switch (SDLEvent.type)
             {
             case SDL_QUIT:
-                ExitApplication();
+                ExitApplication(player, playerCamera);
                 break;
             case SDL_KEYDOWN:
             case SDL_KEYUP:
@@ -434,7 +436,7 @@ int main(int argc, char* argv[])
 
 
         if (playerInput.keyStates[SDLK_ESCAPE].down)
-            ExitApplication();
+            ExitApplication(player, playerCamera);
         if (playerInput.keyStates[SDLK_BACKQUOTE].downThisFrame)
             s_debugFlags ^= +DebugOptions::Enabled;
         //if (playerInput.keyStates[SDLK_c].downThisFrame)

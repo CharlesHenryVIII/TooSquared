@@ -34,6 +34,8 @@ struct Entity
     virtual void Init() {};
     virtual EntityType GetType() = 0;
     virtual void Update(float dt) = 0;
+    virtual void Save() {};
+    virtual bool Load() { return false; };
     virtual void InputUpdate(float dt, CommandHandler& commands) {};
     virtual void Render(float dt, Camera* camera) {};
     Mat4 GetWorldMatrix();
@@ -63,6 +65,8 @@ struct Player : public Entity
     void InputUpdate(float dt, CommandHandler& commands) override;
     void Update(float dt) override;
     void Render(float dt, Camera* camera) override;
+    void Save() override;
+    bool Load() override;
 };
 
 struct Camera : public Entity

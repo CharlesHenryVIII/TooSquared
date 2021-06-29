@@ -23,6 +23,7 @@ private:
 public:
     InventorySlot m_slots[MAX_SLOTS] = {};
     uint32 m_slotSelected = {};
+
     auto Add(BlockType block, auto count)
     {
         assert(count);
