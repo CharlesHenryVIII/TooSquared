@@ -55,6 +55,8 @@ bool ChunkArray::GetChunkFromPosition(ChunkIndex& result, ChunkPos p)
 void ChunkArray::ClearChunk(ChunkIndex index)
 {
     SaveChunk(index);
+    g_items.Save(g_chunks->p[index]);
+
     auto it = chunkPosTable.find(PositionHash(p[index]));
     assert(it != chunkPosTable.end());
     chunkPosTable.erase(it);
@@ -1514,8 +1516,12 @@ bool RegionSampler::RegionGather(ChunkIndex i)
 void RegionSampler::DecrimentRefCount()
 {
     g_chunks->refs[center]--;
+    assert(g_chunks->refs[center] >= 0);
     for (int32 i = 0; i < arrsize(neighbors); i++)
+    {
         g_chunks->refs[i]--;
+        assert(g_chunks->refs[i] >= 0);
+    }
 }
 void RegionSampler::IncrimentRefCount()
 {

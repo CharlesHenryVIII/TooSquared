@@ -150,7 +150,7 @@ struct Items
     Item* Add(BlockType blockType, const WorldPos& position, const WorldPos& destination);
     void Update(float deltaTime);
     void Render(float deltaTime, Camera* camera);
-    void Save(const ChunkPos& p);
+    bool Save(const ChunkPos& p, bool prelocking = false);
     bool SaveAll();
     bool Load(const ChunkPos& p);
 };

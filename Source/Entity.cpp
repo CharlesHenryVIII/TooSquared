@@ -433,6 +433,8 @@ Item* Items::Add(BlockType blockType, const WorldPos& position, const WorldPos& 
     Item newItem;
     assert(blockType != BlockType::Empty);
     newItem.m_transform.m_p.p = position.p;
+    if (newItem.m_transform.m_p.p.y < 0)
+        newItem.m_transform.m_p.p.y = ToWorld(GamePos({ 0, CHUNK_Y, 0})).p.y;
     newItem.m_type = blockType;
     newItem.m_collider.m_length = 0.5f;
     newItem.m_lootable = false;
@@ -493,11 +495,6 @@ void Items::Render(float dt, Camera* camera)
 }
 
 
-void Items::Save(const ChunkPos& p)
-{
-
-}
-
 #pragma pack(push, 1)
 struct EntityDiskFileHeader {
     uint32 m_magic_header;
@@ -538,23 +535,46 @@ bool Items::SaveAll()
     std::lock_guard<std::mutex> lock(m_listVectorMutex);
     while (m_items.size())
     {
-        ChunkPos currentItemChunkPosition = ToChunk(m_items[0].m_transform.m_p);
-        std::vector<ItemDiskData> itemDiskData;
-        itemDiskData.reserve(200);
+        succeeded &= Save(ToChunk(m_items[0].m_transform.m_p), true);
+    }
+    return succeeded;
+}
 
-        for (auto& i : m_items)
+bool Items::Save(const ChunkPos& p, bool prelocking)
+{
+    EntityDiskFileHeader mainHeader;
+    mainHeader.m_magic_header = SDL_FOURCC('E', 'N', 'T', 'Y');
+    mainHeader.m_magic_type = SDL_FOURCC('D', 'A', 'T', 'A');
+    mainHeader.version = 1;
+
+    ItemDiskHeader itemHeader;
+    itemHeader.m_magic_header = SDL_FOURCC('I', 'T', 'E', 'M');
+    itemHeader.m_magic_type = SDL_FOURCC('D', 'A', 'T', 'A');
+
+    ItemDiskData itemData = {};
+
+    bool succeeded = true;
+    if (!prelocking)
+        std::lock_guard<std::mutex> lock(m_listVectorMutex);
+
+    std::vector<ItemDiskData> itemDiskData;
+    itemDiskData.reserve(200);
+
+    for (auto& i : m_items)
+    {
+        ChunkPos checkChunkPos = ToChunk(i.m_transform.m_p);
+        if (checkChunkPos.p == p.p)
         {
-            ChunkPos checkChunkPos = ToChunk(i.m_transform.m_p);
-            if (checkChunkPos.p == currentItemChunkPosition.p)
-            {
-                itemData.m_transform =  i.m_transform;
-                itemData.m_type      = +i.m_type;
-                itemDiskData.push_back(itemData);
-                i.inUse = false;
-            }
+            itemData.m_transform = i.m_transform;
+            itemData.m_type = +i.m_type;
+            itemDiskData.push_back(itemData);
+            i.inUse = false;
         }
+    }
 
-        std::string entityFilePath = GetEntitySaveFilePathFromChunkPos(currentItemChunkPosition);
+    if (itemDiskData.size())
+    {
+        std::string entityFilePath = GetEntitySaveFilePathFromChunkPos(p);
         File file(entityFilePath, File::Mode::Write, true);
         if (file.m_handleIsValid)
         {
@@ -572,15 +592,16 @@ bool Items::SaveAll()
     return succeeded;
 }
 
+
 bool Items::Load(const ChunkPos& p)
 {
     EntityDiskFileHeader mainHeaderRef;
     mainHeaderRef.m_magic_header = SDL_FOURCC('E', 'N', 'T', 'Y');
-    mainHeaderRef.m_magic_type   = SDL_FOURCC('D', 'A', 'T', 'A');
+    mainHeaderRef.m_magic_type = SDL_FOURCC('D', 'A', 'T', 'A');
     mainHeaderRef.version = 1;
     ItemDiskHeader itemHeaderRef;
     itemHeaderRef.m_magic_header = SDL_FOURCC('I', 'T', 'E', 'M');
-    itemHeaderRef.m_magic_type   = SDL_FOURCC('D', 'A', 'T', 'A');
+    itemHeaderRef.m_magic_type = SDL_FOURCC('D', 'A', 'T', 'A');
     ItemDiskData itemData = {};
 
     std::string entityFilePath = GetEntitySaveFilePathFromChunkPos(p);
