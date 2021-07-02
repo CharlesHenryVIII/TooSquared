@@ -446,7 +446,7 @@ Item* Items::Add(BlockType blockType, const WorldPos& position, const WorldPos& 
         velocity = NormalizeZero(velocity);
         velocity.y = 0.5f;
         velocity = NormalizeZero(velocity);
-        velocity *= 10;
+        velocity *= 8;
     }
     //if (!isnormal(velocity.x))
     //    velocity.x = 0;
