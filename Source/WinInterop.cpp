@@ -92,10 +92,17 @@ void File::Init(const std::string& filename, File::Mode fileMode, bool createIfN
     DWORD newFilePointer = SetFilePointer(m_handle, 0, NULL, filePointerLocation);
 }
 
-File::~File()
+bool File::FileDestructor()
 {
+    return CloseHandle(m_handle);
+}
+
+File::~File()
+{   
     if (m_handleIsValid)
-        CloseHandle(m_handle);
+    {
+        FileDestructor();
+    }
 }
 
 
@@ -171,6 +178,19 @@ void File::GetTime()
         m_time = actualResult.QuadPart;
         m_timeIsValid = true;
     }
+}
+
+bool File::Delete()
+{
+    if (m_handleIsValid)
+    {
+        FileDestructor();
+        std::wstring fuckingWide(m_filename.begin(), m_filename.end());
+        bool result = DeleteFile(fuckingWide.c_str());
+        m_handleIsValid = false;
+        return result;
+    }
+    return false;
 }
 
 bool CreateFolder(const std::string& folderLocation)

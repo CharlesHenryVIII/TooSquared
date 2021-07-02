@@ -325,8 +325,6 @@ void DrawBlock(const Mat4& mat, Color color, Vec3 scale, Camera* camera, Texture
 void DrawCube(WorldPos p, Color color, Vec3  scale, Camera* camera, Texture::T textureType = Texture::T::Plain, BlockType blockType = BlockType::Empty);
 void DrawCube(WorldPos p, Color color, float scale, Camera* camera, Texture::T textureType = Texture::T::Plain, BlockType blockType = BlockType::Empty);
 void Draw2DSquare(Rect rect, Color color);
-std::string GetChunkFilePathFromPosition(const ChunkPos& p);
-//bool SaveGame();
 
 int64 PositionHash(ChunkPos p);
 bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& distance, Vec3& normal);

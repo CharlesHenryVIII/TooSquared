@@ -782,7 +782,7 @@ bool CapsuleVsWorldBlocks(Capsule capsuleCollider, Vec3 in_positionDelta, Vec3& 
         }
 
 
-        PROFILE_SCOPE_TAB("Collision Update");
+        //PROFILE_SCOPE_TAB("Collision Update");
         BlockSampler blockSampler = {};
 
         GamePos referenceGamePosition = ToGame(capsuleCollider.m_tip);
@@ -848,7 +848,7 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
         }
 
 
-        PROFILE_SCOPE_TAB("Collision Update");
+        //PROFILE_SCOPE_TAB("Collision Update");
         BlockSampler blockSampler = {};
 
         GamePos referenceGamePosition = ToGame(collider.m_center);

@@ -51,7 +51,7 @@ struct ExitScopeHelp
 
 #define Defer auto TS_CONCAT(defer__, __LINE__) = ExitScopeHelp() + [&]()
 
-#define ENABLE_PROFILE 0
+#define ENABLE_PROFILE 1
 #if ENABLE_PROFILE
 float GetTimer();
 struct ScopeTimer
@@ -130,3 +130,5 @@ struct GameData {
 };
 extern GameData g_gameData;
 
+std::string GetChunkSaveFilePathFromChunkPos(const ChunkPos& p);
+std::string GetEntitySaveFilePathFromChunkPos(const ChunkPos& p);

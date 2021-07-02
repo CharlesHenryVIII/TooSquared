@@ -144,10 +144,17 @@ struct Item : public Entity
 
 struct Items
 {
+    std::mutex        m_listVectorMutex;
     std::vector<Item> m_items;
+
     Item* Add(BlockType blockType, const WorldPos& position, const WorldPos& destination);
     void Update(float deltaTime);
     void Render(float deltaTime, Camera* camera);
+    void Save(const ChunkPos& p);
+    bool SaveAll();
+    bool Load(const ChunkPos& p);
 };
 extern Items g_items;
 extern Entitys g_entityList;
+
+bool EntityInit();

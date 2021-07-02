@@ -20,8 +20,8 @@ struct File {
     std::vector<uint8> m_dataBinary;
     uint64 m_time = {};
 
-    File(char const* fileName,        File::Mode fileMode, bool updateFile);
-    File(const std::string& fileName, File::Mode fileMode, bool updateFile);
+    File(char const* fileName,        File::Mode fileMode, bool createIfNotFound);
+    File(const std::string& fileName, File::Mode fileMode, bool createIfNotFound);
     ~File();
 
     bool Write(const std::string& text);
@@ -29,6 +29,7 @@ struct File {
     void GetData();
     void GetText();
     void GetTime();
+    bool Delete();
 
 private:
         
@@ -38,7 +39,8 @@ private:
     uint32  m_openType;
 
     void GetHandle();
-    void Init(const std::string& filename, File::Mode fileMode, bool updateFile);
+    void Init(const std::string& filename, File::Mode fileMode, bool createIfNotFound);
+    bool FileDestructor();
 };
 
 void InitializeWinInterop();

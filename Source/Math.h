@@ -550,10 +550,21 @@ template <typename T>
 //}
 
 //TODO: Remove powf and replace with * operator
+//TODO: Improve
+[[nodiscard]] inline Vec3 NormalizeZero(Vec3 v)
+{
+    float prod = v.x * v.x + v.y * v.y + v.z * v.z;
+    if (prod == 0.0f)
+        return {};
+    float hyp = sqrtf(prod);
+    Vec3 result = { (v.x / hyp), (v.y / hyp) , (v.z / hyp)};
+    return result;
+}
 [[nodiscard]] inline Vec3 Normalize(Vec3 v)
 {
-    float hyp = sqrtf(powf(v.x, 2) + powf(v.y, 2) + powf(v.z, 2));
-    return { (v.x / hyp), (v.y / hyp) , (v.z / hyp)};
+    float hyp = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+    Vec3 result = { (v.x / hyp), (v.y / hyp) , (v.z / hyp)};
+    return result;
 }
 [[nodiscard]] inline Vec2 Normalize(Vec2 v)
 {

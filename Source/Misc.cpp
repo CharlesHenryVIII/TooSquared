@@ -33,4 +33,23 @@ uint64 GetCurrentTime()
     return ((SDL_GetPerformanceCounter() - ct) * 1000 * 1000 * 1000) / f; //nano seconds
 }
 
+std::string GetSaveFilePathFromChunkPos(const std::string subFolderDataName, const ChunkPos& p)
+{
+    assert(subFolderDataName[0] == '\\' && subFolderDataName[subFolderDataName.size() - 1] == '\\');
+    if (subFolderDataName[0] == '\\' && subFolderDataName[subFolderDataName.size() - 1] == '\\')
+        return g_gameData.m_saveFolderPath + g_gameData.m_saveFilename + subFolderDataName + ToString("%i_%i.wad", p.p.x, p.p.z);
+    return {};
+}
+
+std::string GetChunkSaveFilePathFromChunkPos(const ChunkPos& p)
+{
+    return GetSaveFilePathFromChunkPos("\\Chunk_Data\\", p);
+}
+
+std::string GetEntitySaveFilePathFromChunkPos(const ChunkPos& p)
+{
+    return GetSaveFilePathFromChunkPos("\\Entity_Data\\", p);
+}
+
 GameData g_gameData = {};
+

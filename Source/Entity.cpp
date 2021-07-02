@@ -7,6 +7,20 @@ Vec3 g_forwardVector = { 0.0f, 0.0f, -1.0f };
 //Vec4 g_forwardVectorRotation = { 0, 0, -1, 0.0f };
 //Vec4 g_forwardVectorPosition = { 0, 0, -1, 1.0f };
 
+bool EntityInit()
+{
+    bool success = true;
+    std::string filename = g_gameData.m_folderPath;
+    success &= CreateFolder(filename);
+    filename = g_gameData.m_saveFolderPath;
+    success &= CreateFolder(filename);
+    filename += g_gameData.m_saveFilename;
+    success &= CreateFolder(filename);
+    filename += "\\Entity_Data";
+    success &= CreateFolder(filename);
+    return success;
+}
+
 Mat4 Entity::GetWorldMatrix()
 {
     Mat4 result;
@@ -425,19 +439,27 @@ Item* Items::Add(BlockType blockType, const WorldPos& position, const WorldPos& 
     newItem.m_lootableCountDown = 1.0f; //seconds
 
     Vec3 velocity = destination.p - position.p;
-    velocity = Normalize(velocity);
+    if (!isnormal(velocity.x))
+        velocity.x = 0;
+    if (!isnormal(velocity.y))
+        velocity.y = 0;
+    if (!isnormal(velocity.z))
+        velocity.z = 0;
+    velocity = NormalizeZero(velocity);
     velocity.y = 0.5f;
-    velocity = Normalize(velocity);
+    velocity = NormalizeZero(velocity);
     velocity *= 10;
 
     newItem.m_rigidBody.m_vel = velocity;
     newItem.m_rigidBody.m_terminalVel = { 100.0f, 100.0f, 100.0f };
+    std::lock_guard<std::mutex> lock(m_listVectorMutex);
     m_items.push_back(newItem);
     return &m_items[m_items.size() - 1];
 }
 
 void Items::Update(float dt)
 {
+    std::lock_guard<std::mutex> lock(m_listVectorMutex);
     std::erase_if(m_items,
         [](Item& i)
         {
@@ -453,7 +475,8 @@ void Items::Update(float dt)
 void Items::Render(float dt, Camera* camera)
 {
     float scale = 0.5f;
-    for (auto i : m_items)
+    std::lock_guard<std::mutex> lock(m_listVectorMutex);
+    for (auto& i : m_items)
     {
         Mat4 result;
         Mat4 translation;
@@ -469,7 +492,128 @@ void Items::Render(float dt, Camera* camera)
     }
 }
 
-    
+
+void Items::Save(const ChunkPos& p)
+{
+
+}
+
+#pragma pack(push, 1)
+struct EntityDiskFileHeader {
+    uint32 m_magic_header;
+    uint32 m_magic_type;
+    uint32 version;
+};
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct ItemDiskHeader {
+    uint32 m_magic_header;
+    uint32 m_magic_type;
+};
+#pragma pack(pop)
+
+#pragma pack(push, 1)
+struct ItemDiskData {
+    Transform m_transform;
+    std::underlying_type<BlockType>::type m_type;
+};
+#pragma pack(pop)
+
+
+bool Items::SaveAll()
+{
+    EntityDiskFileHeader mainHeader;
+    mainHeader.m_magic_header = SDL_FOURCC('E', 'N', 'T', 'Y');
+    mainHeader.m_magic_type   = SDL_FOURCC('D', 'A', 'T', 'A');
+    mainHeader.version = 1;
+
+    ItemDiskHeader itemHeader;
+    itemHeader.m_magic_header = SDL_FOURCC('I', 'T', 'E', 'M');
+    itemHeader.m_magic_type   = SDL_FOURCC('D', 'A', 'T', 'A');
+
+    ItemDiskData itemData = {};
+
+    bool succeeded = true;
+    std::lock_guard<std::mutex> lock(m_listVectorMutex);
+    while (m_items.size())
+    {
+        ChunkPos currentItemChunkPosition = ToChunk(m_items[0].m_transform.m_p);
+        std::vector<ItemDiskData> itemDiskData;
+        itemDiskData.reserve(200);
+
+        for (auto& i : m_items)
+        {
+            ChunkPos checkChunkPos = ToChunk(i.m_transform.m_p);
+            if (checkChunkPos.p == currentItemChunkPosition.p)
+            {
+                itemData.m_transform =  i.m_transform;
+                itemData.m_type      = +i.m_type;
+                itemDiskData.push_back(itemData);
+                i.inUse = false;
+            }
+        }
+
+        std::string entityFilePath = GetEntitySaveFilePathFromChunkPos(currentItemChunkPosition);
+        File file(entityFilePath, File::Mode::Write, true);
+        if (file.m_handleIsValid)
+        {
+            succeeded &= file.Write(&mainHeader, sizeof(mainHeader));
+            succeeded &= file.Write(&itemHeader, sizeof(itemHeader));
+            succeeded &= file.Write(itemDiskData.data(), itemDiskData.size() * sizeof(ItemDiskData));
+        }
+
+        std::erase_if(m_items,
+            [](Item e)
+            {
+                return !e.inUse;
+            });
+    }
+    return succeeded;
+}
+
+bool Items::Load(const ChunkPos& p)
+{
+    EntityDiskFileHeader mainHeaderRef;
+    mainHeaderRef.m_magic_header = SDL_FOURCC('E', 'N', 'T', 'Y');
+    mainHeaderRef.m_magic_type   = SDL_FOURCC('D', 'A', 'T', 'A');
+    mainHeaderRef.version = 1;
+    ItemDiskHeader itemHeaderRef;
+    itemHeaderRef.m_magic_header = SDL_FOURCC('I', 'T', 'E', 'M');
+    itemHeaderRef.m_magic_type   = SDL_FOURCC('D', 'A', 'T', 'A');
+    ItemDiskData itemData = {};
+
+    std::string entityFilePath = GetEntitySaveFilePathFromChunkPos(p);
+    File file(entityFilePath, File::Mode::Read, false);
+    bool success = true;
+    if (file.m_handleIsValid)
+    {
+        file.GetData();
+        if (file.m_binaryDataIsValid)
+        {
+            //TODO: Simplify or put this into a function maybe put it into a parent struct since this type of code seems to be common between saving
+            EntityDiskFileHeader* mainHeader = (EntityDiskFileHeader*)file.m_dataBinary.data();
+            if (mainHeader->m_magic_header == mainHeaderRef.m_magic_header && mainHeader->m_magic_type == mainHeaderRef.m_magic_type && mainHeader->version == mainHeaderRef.version)
+            {
+                ItemDiskHeader* itemHeader = (ItemDiskHeader*)(mainHeader + 1);
+                if (itemHeader->m_magic_header == itemHeaderRef.m_magic_header && itemHeader->m_magic_type == itemHeaderRef.m_magic_type)
+                {
+                    size_t count = (file.m_dataBinary.size() - sizeof(EntityDiskFileHeader) - sizeof(ItemDiskHeader)) / sizeof(ItemDiskData);
+                    ItemDiskData* itemDataStart = (ItemDiskData*)(itemHeader + 1);
+                    for (size_t i = 0; i < count; i++)
+                    {
+                        Add((BlockType)itemDataStart[i].m_type, itemDataStart[i].m_transform.m_p, itemDataStart[i].m_transform.m_p);
+                    }
+                }
+            }
+        }
+        success &= file.Delete();
+    }
+    else
+        success = false;
+    return success;
+}
+
 //Entitys
 void Entitys::Add(Entity* entity)
 {
@@ -522,4 +666,3 @@ void Entitys::CleanUp()
             return false;
         });
 }
-

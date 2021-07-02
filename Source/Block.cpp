@@ -1830,6 +1830,7 @@ void SetBlocks::DoThing()
     g_chunks->refs[chunk]++;
     if (!g_chunks->LoadChunk(chunk))
         g_chunks->SetBlocks(chunk);
+    g_items.Load(g_chunks->p[chunk]);
     g_chunks->state[chunk] = ChunkArray::BlocksLoaded;
     g_chunks->refs[chunk]--;
 }
@@ -2192,11 +2193,6 @@ struct SaveChunkJob : public Job {
     void DoThing() override;
 };
 
-std::string GetChunkFilePathFromPosition(const ChunkPos& p)
-{
-    return g_gameData.m_saveFolderPath + g_gameData.m_saveFilename + "\\Chunk_Data\\" + ToString("%i_%i.wad", p.p.x, p.p.z);
-}
-
 bool ChunkArray::Init()
 {
     bool success = true;
@@ -2288,7 +2284,7 @@ void SaveChunkJob::DoThing()
     }
     dataArray.push_back(data);
 
-    std::string filename = GetChunkFilePathFromPosition(m_data.p);/// g_gameData.m_saveFolderPath + g_gameData.m_saveFilename + "\\Chunk_Data\\" + ToString("%i_%i.wad", m_data.p.p.x, m_data.p.p.z);
+    std::string filename = GetChunkSaveFilePathFromChunkPos(m_data.p);/// g_gameData.m_saveFolderPath + g_gameData.m_saveFilename + "\\Chunk_Data\\" + ToString("%i_%i.wad", m_data.p.p.x, m_data.p.p.z);
 
     File file(filename, File::Mode::Write, true);
 
@@ -2303,7 +2299,7 @@ void SaveChunkJob::DoThing()
 
 bool ChunkArray::LoadChunk(ChunkIndex index)
 {
-    std::string filename = GetChunkFilePathFromPosition(g_chunks->p[index]);
+    std::string filename = GetChunkSaveFilePathFromChunkPos(g_chunks->p[index]);
     File file(filename, File::Mode::Read, false);
 
     if (!file.m_handleIsValid)

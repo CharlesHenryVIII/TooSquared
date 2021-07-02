@@ -119,6 +119,8 @@ static void HelpMarker(const char* desc)
 
 void ExitApplication(Player* player, Camera* camera)
 {
+    g_items.SaveAll();
+
     for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
     {
         if (g_chunks->active[i])
@@ -139,6 +141,7 @@ int main(int argc, char* argv[])
 {
     InitializeVideo();
     InitializeWinInterop();
+    EntityInit();
     MultiThreading& multiThreading = MultiThreading::GetInstance();
 
     double freq = double(SDL_GetPerformanceFrequency()); //HZ
@@ -185,6 +188,7 @@ int main(int argc, char* argv[])
 
     float loadingTimer = 0.0f;
     bool uploadedLastFrame = false;
+    bool showIMGUI = true;
     //bool debugDraw = false;
     uint32 s_debugFlags = +DebugOptions::LookatBlock | +DebugOptions::Enabled;
     bool TEST_CREATE_AND_UPLOAD_CHUNKS = true;
@@ -456,6 +460,11 @@ int main(int argc, char* argv[])
             }
         }
 
+        if (playerInput.keyStates[SDLK_z].downThisFrame)
+        {
+            showIMGUI = !showIMGUI;
+        }
+
         // change this value to your liking
         float sensitivity = 0.3f;
         playerInput.mouse.pDelta *= sensitivity;
@@ -499,317 +508,321 @@ int main(int argc, char* argv[])
                 SDL_ShowCursor(SDL_ENABLE);
         }
 
+
+        if (showIMGUI)
         {
-            // Start the Dear ImGui frame
-            ImGui_ImplOpenGL3_NewFrame();
-            ImGui_ImplSDL2_NewFrame(g_window.SDL_Context);
-            ImGui::NewFrame();
-
-            const float PAD = 5.0f;
-            ImGuiIO& io = ImGui::GetIO();
-            ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
-                                           ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
-
-            const ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
-            ImVec2 window_pos;//, window_pos_pivot;
-            window_pos.x = work_pos.x + PAD;
-            window_pos.y = work_pos.y + PAD;
-            //window_pos_pivot.x = window_pos_pivot.y = 0.0f;
-            ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, {});
-
-            ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
-            if (ImGui::Begin("Transform Information", nullptr, windowFlags))
             {
-                ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders;
-                if (ImGui::BeginTable("Position Info", 4, flags))
+                // Start the Dear ImGui frame
+                ImGui_ImplOpenGL3_NewFrame();
+                ImGui_ImplSDL2_NewFrame(g_window.SDL_Context);
+                ImGui::NewFrame();
+
+                const float PAD = 5.0f;
+                ImGuiIO& io = ImGui::GetIO();
+                ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+                    ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
+
+                const ImGuiViewport* viewport = ImGui::GetMainViewport();
+                ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+                ImVec2 window_pos;//, window_pos_pivot;
+                window_pos.x = work_pos.x + PAD;
+                window_pos.y = work_pos.y + PAD;
+                //window_pos_pivot.x = window_pos_pivot.y = 0.0f;
+                ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, {});
+
+                ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+                if (ImGui::Begin("Transform Information", nullptr, windowFlags))
                 {
-                    ImGui::TableSetupColumn("Type");
-                    ImGui::TableSetupColumn("X");
-                    ImGui::TableSetupColumn("Y");
-                    ImGui::TableSetupColumn("Z");
-                    ImGui::TableHeadersRow();
+                    ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders;
+                    if (ImGui::BeginTable("Position Info", 4, flags))
+                    {
+                        ImGui::TableSetupColumn("Type");
+                        ImGui::TableSetupColumn("X");
+                        ImGui::TableSetupColumn("Y");
+                        ImGui::TableSetupColumn("Z");
+                        ImGui::TableHeadersRow();
 
-                    GenericImGuiTable("World", "%+08.2f", player->m_transform.m_p.p.e);
-                    GenericImGuiTable("Game", "%i", ToGame(player->m_transform.m_p).p.e);
-                    GenericImGuiTable("Chunk", "%i", ToChunk(player->m_transform.m_p).p.e);
+                        GenericImGuiTable("World", "%+08.2f", player->m_transform.m_p.p.e);
+                        GenericImGuiTable("Game", "%i", ToGame(player->m_transform.m_p).p.e);
+                        GenericImGuiTable("Chunk", "%i", ToChunk(player->m_transform.m_p).p.e);
 
-                    ImGui::EndTable();
+                        ImGui::EndTable();
+                    }
+                    if (ImGui::BeginTable("Movement", 5, flags))
+                    {
+                        ImGui::TableSetupColumn("Type");
+                        ImGui::TableSetupColumn("X");
+                        ImGui::TableSetupColumn("Y");
+                        ImGui::TableSetupColumn("Z");
+                        ImGui::TableSetupColumn("W");
+                        ImGui::TableHeadersRow();
+
+                        Vec4 vel = { player->m_rigidBody.m_vel.x, player->m_rigidBody.m_vel.y, player->m_rigidBody.m_vel.z, 0.0f };
+                        Vec4 accel = { player->m_rigidBody.m_acceleration.x, player->m_rigidBody.m_acceleration.y, player->m_rigidBody.m_acceleration.z, 0.0f };
+                        Vec4 rot = { player->m_transform.m_yaw, player->m_transform.m_pitch, 0.0f, 0.0f };
+                        GenericImGuiTable("Vel", "%+08.2f", vel.e, 4);
+                        GenericImGuiTable("Accel", "%+08.2f", accel.e, 4);
+                        //GenericImGuiTable("Quat",  "%+08.2f", player->m_transform.m_quat.e, 4);
+                        GenericImGuiTable("Rot", "%+08.2f", rot.e, 4);
+                        //GenericImGuiTable("FV",    "%+08.2f", GetVec4(player->GetForwardVector(), 0.0f).e, 4);
+                        ImGui::EndTable();
+                    }
+                    ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
                 }
-                if (ImGui::BeginTable("Movement", 5, flags))
-                {
-                    ImGui::TableSetupColumn("Type");
-                    ImGui::TableSetupColumn("X");
-                    ImGui::TableSetupColumn("Y");
-                    ImGui::TableSetupColumn("Z");
-                    ImGui::TableSetupColumn("W");
-                    ImGui::TableHeadersRow();
+                ImGui::End();
 
-                    Vec4 vel   = { player->m_rigidBody.m_vel.x, player->m_rigidBody.m_vel.y, player->m_rigidBody.m_vel.z, 0.0f };
-                    Vec4 accel = { player->m_rigidBody.m_acceleration.x, player->m_rigidBody.m_acceleration.y, player->m_rigidBody.m_acceleration.z, 0.0f };
-                    Vec4 rot   = { player->m_transform.m_yaw, player->m_transform.m_pitch, 0.0f, 0.0f };
-                    GenericImGuiTable("Vel",   "%+08.2f", vel.e, 4);
-                    GenericImGuiTable("Accel", "%+08.2f", accel.e, 4);
-                    //GenericImGuiTable("Quat",  "%+08.2f", player->m_transform.m_quat.e, 4);
-                    GenericImGuiTable("Rot",   "%+08.2f", rot.e, 4);
-                    //GenericImGuiTable("FV",    "%+08.2f", GetVec4(player->GetForwardVector(), 0.0f).e, 4);
-                    ImGui::EndTable();
-                }
-                ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
             }
-            ImGui::End();
-
-        }
-        {
-            const float PAD = 5.0f;
-            ImGuiIO& io = ImGui::GetIO();
-            ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
-                                           ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
-
-            const ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
-            ImVec2 window_pos;//, window_pos_pivot;
-            window_pos.x = work_pos.x + PAD + 320;
-            window_pos.y = work_pos.y + PAD;
-            //window_pos_pivot.x = window_pos_pivot.y = 0.0f;
-            ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, {});
-
-            ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
-            if (ImGui::Begin("Camera Transform Information", nullptr, windowFlags))
             {
-                ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders;
-                if (ImGui::BeginTable("Position Info", 4, flags))
+                const float PAD = 5.0f;
+                ImGuiIO& io = ImGui::GetIO();
+                ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+                    ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
+
+                const ImGuiViewport* viewport = ImGui::GetMainViewport();
+                ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+                ImVec2 window_pos;//, window_pos_pivot;
+                window_pos.x = work_pos.x + PAD + 320;
+                window_pos.y = work_pos.y + PAD;
+                //window_pos_pivot.x = window_pos_pivot.y = 0.0f;
+                ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, {});
+
+                ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+                if (ImGui::Begin("Camera Transform Information", nullptr, windowFlags))
                 {
-                    ImGui::TableSetupColumn("Type");
-                    ImGui::TableSetupColumn("X");
-                    ImGui::TableSetupColumn("Y");
-                    ImGui::TableSetupColumn("Z");
-                    ImGui::TableHeadersRow();
-                    //
-                    WorldPos p = playerCamera->GetWorldPosition();
-                    GenericImGuiTable("World", "%+08.2f", p.p.e);
-                    GenericImGuiTable("Game", "%i", ToGame(p).p.e);
-                    GenericImGuiTable("Chunk", "%i", ToChunk(p).p.e);
-                    //
-                    ImGui::EndTable();
+                    ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders;
+                    if (ImGui::BeginTable("Position Info", 4, flags))
+                    {
+                        ImGui::TableSetupColumn("Type");
+                        ImGui::TableSetupColumn("X");
+                        ImGui::TableSetupColumn("Y");
+                        ImGui::TableSetupColumn("Z");
+                        ImGui::TableHeadersRow();
+                        //
+                        WorldPos p = playerCamera->GetWorldPosition();
+                        GenericImGuiTable("World", "%+08.2f", p.p.e);
+                        GenericImGuiTable("Game", "%i", ToGame(p).p.e);
+                        GenericImGuiTable("Chunk", "%i", ToChunk(p).p.e);
+                        //
+                        ImGui::EndTable();
+                    }
+                    if (ImGui::BeginTable("Movement", 5, flags))
+                    {
+                        ImGui::TableSetupColumn("Type");
+                        ImGui::TableSetupColumn("X");
+                        ImGui::TableSetupColumn("Y");
+                        ImGui::TableSetupColumn("Z");
+                        ImGui::TableSetupColumn("W");
+                        ImGui::TableHeadersRow();
+                        //
+                        Vec4 vel = { playerCamera->m_velocity.x,      playerCamera->m_velocity.y,        playerCamera->m_velocity.z, 0.0f };
+                        Vec4 rot = { playerCamera->m_transform.m_yaw, playerCamera->m_transform.m_pitch, 0.0f,                       0.0f };
+                        GenericImGuiTable("Vel", "%+08.2f", vel.e, 4);
+                        //GenericImGuiTable("Quat",  "%+08.2f", playerCamera->m_transform.m_quat.e, 4);
+                        GenericImGuiTable("Rot", "%+08.2f", rot.e, 4);
+                        ImGui::EndTable();
+                    }
+                    ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
                 }
-                if (ImGui::BeginTable("Movement", 5, flags))
-                {
-                    ImGui::TableSetupColumn("Type");
-                    ImGui::TableSetupColumn("X");
-                    ImGui::TableSetupColumn("Y");
-                    ImGui::TableSetupColumn("Z");
-                    ImGui::TableSetupColumn("W");
-                    ImGui::TableHeadersRow();
-                    //
-                    Vec4 vel = { playerCamera->m_velocity.x,      playerCamera->m_velocity.y,        playerCamera->m_velocity.z, 0.0f };
-                    Vec4 rot = { playerCamera->m_transform.m_yaw, playerCamera->m_transform.m_pitch, 0.0f,                       0.0f };
-                    GenericImGuiTable("Vel",   "%+08.2f", vel.e, 4);
-                    //GenericImGuiTable("Quat",  "%+08.2f", playerCamera->m_transform.m_quat.e, 4);
-                    GenericImGuiTable("Rot",   "%+08.2f", rot.e, 4);
-                    ImGui::EndTable();
-                }
-                ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+                ImGui::End();
             }
-            ImGui::End();
-        }
 
-        {
-            ImGui::Begin("Debug");
-
-            if (ImGui::TreeNode("Drawing"))
             {
-                ImGui::CheckboxFlags("Enable Debug Drawing", &s_debugFlags, +DebugOptions::Enabled);
-                ImGui::SameLine(); HelpMarker("Key: '`'");
-                //
-                ImGui::Indent();
-                ImGui::CheckboxFlags("All", &s_debugFlags, +DebugOptions::All);
-                //
-                ImGui::Indent();
-                ImGui::CheckboxFlags("Chunk Status", &s_debugFlags, +DebugOptions::ChunkStatus);
-                ImGui::SameLine(); HelpMarker("\
+                ImGui::Begin("Debug");
+
+                if (ImGui::TreeNode("Drawing"))
+                {
+                    ImGui::CheckboxFlags("Enable Debug Drawing", &s_debugFlags, +DebugOptions::Enabled);
+                    ImGui::SameLine(); HelpMarker("Key: '`'");
+                    //
+                    ImGui::Indent();
+                    ImGui::CheckboxFlags("All", &s_debugFlags, +DebugOptions::All);
+                    //
+                    ImGui::Indent();
+                    ImGui::CheckboxFlags("Chunk Status", &s_debugFlags, +DebugOptions::ChunkStatus);
+                    ImGui::SameLine(); HelpMarker("\
 Red:    Unloaded,\n\
 Green:  BlocksLoading,\n\
 Blue:   BlocksLoaded,\n\
 Yellow: VertexLoading,\n\
 Purple: VertexLoaded,\n\
 White:  Uploaded,");
-                ImGui::CheckboxFlags("Collision Triangles", &s_debugFlags, +DebugOptions::CollisionTriangles);
-                ImGui::CheckboxFlags("Raycast Block", &s_debugFlags, +DebugOptions::LookatBlock);
-                ImGui::Unindent();
-                ImGui::Unindent();
-                ImGui::TreePop();
-            }
+                    ImGui::CheckboxFlags("Collision Triangles", &s_debugFlags, +DebugOptions::CollisionTriangles);
+                    ImGui::CheckboxFlags("Raycast Block", &s_debugFlags, +DebugOptions::LookatBlock);
+                    ImGui::Unindent();
+                    ImGui::Unindent();
+                    ImGui::TreePop();
+                }
 
-            if (ImGui::TreeNode("Game Time"))
-            {
-                if (ImGui::Button("Reset Values"))
+                if (ImGui::TreeNode("Game Time"))
                 {
-                    g_gameData.m_timeOfDay = TimeOfDay::Afternoon;
-                    g_gameData.m_currentTime = s_timesOfDay[+g_gameData.m_timeOfDay];
-                    g_gameData.m_timeScale = 1.0f;
-                    g_gameData.m_gameTimePlaying = false;
-                }
-                //
-                ImGui::PushItemWidth(100);
-                ImGui::SliderFloat("Current Time", &g_gameData.m_currentTime, 0.0f, 24.0f, "%.2f");
-                ImGui::PopItemWidth();
-                //
-                if (ImGui::Checkbox("Use Time Scale", &g_gameData.m_gameTimePlaying) && !g_gameData.m_gameTimePlaying)
-                {
-                    g_gameData.m_currentTime = s_timesOfDay[+g_gameData.m_timeOfDay];
-                }
-                //
-                ImGui::PushItemWidth(100);
-                if (ImGui::SliderInt("Time Of Day", reinterpret_cast<int32*>(&g_gameData.m_timeOfDay), 0, +TimeOfDay::Count - 1, s_timesOfDayNames[+g_gameData.m_timeOfDay]) &&
-                    !g_gameData.m_gameTimePlaying)
-                {
-                    g_gameData.m_currentTime = s_timesOfDay[+g_gameData.m_timeOfDay];
-                }
-                ImGui::PopItemWidth();
-                //
-                ImGui::PushItemWidth(100);
-                ImGui::SliderFloat("Time Scale", &g_gameData.m_timeScale, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
-                ImGui::PopItemWidth();
-                //
-                ImGui::TreePop();
-            }
-
-            if (ImGui::TreeNode("Misc"))
-            {
-                ImGui::Text("Update the chunks based on:");
-                ImGui::RadioButton("Player", (int32*)&chunkUpdateOrigin, +ChunkUpdateOrigin::Player); ImGui::SameLine();
-                ImGui::RadioButton("Camera", (int32*)&chunkUpdateOrigin, +ChunkUpdateOrigin::Camera); //ImGui::SameLine();
-                //
-                ImGui::Text("Core Count:");
-                ImGui::RadioButton("Multi", (int32*)&multiThreading.threads, +MultiThreading::Threads::multi_thread); ImGui::SameLine();
-                ImGui::RadioButton("Single", (int32*)&multiThreading.threads, +MultiThreading::Threads::single_thread); //ImGui::SameLine();
-                //
-                if (ImGui::Button("Save Game"))
-                {
-                    //SaveGame();
-                }
-                //
-                ImVec4 greenColor = { 0.1f, 0.8f, 0.1f, 0.8f };
-                ImVec4 redColor   = { 0.8f, 0.1f, 0.1f, 0.8f };
-                //
-                if (g_gameData.m_gameSaveAttempt)
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Button, greenColor);
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, greenColor);
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, greenColor);
-                }
-                else
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Button, redColor);
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, redColor);
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, redColor);
-                }
-                ImGui::Button("Saving Attempt");
-                ImGui::PopStyleColor(3);
-                ImGui::SameLine();
-                //
-                if (g_gameData.m_gameSavedSuccessfully)
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Button, greenColor);
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, greenColor);
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, greenColor);
-                }
-                else
-                {
-                    ImGui::PushStyleColor(ImGuiCol_Button, redColor);
-                    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, redColor);
-                    ImGui::PushStyleColor(ImGuiCol_ButtonActive, redColor);
-                }
-                ImGui::Button("Saving Success");
-                ImGui::PopStyleColor(3);
-                //
-                int32 atomicCopy_progress = g_gameData.m_gameSaveProgress;
-                int32 atomicCopy_count = g_gameData.m_gameSaveDataCount;
-                std::string progressText = ToString("%i/%i", atomicCopy_progress, atomicCopy_count);
-                ImGui::ProgressBar(atomicCopy_progress / float(atomicCopy_count), ImVec2(0.f, 0.f), progressText.c_str());
-                //
-                {
-                    ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-                    if (show_demo_window)
-                        ImGui::ShowDemoWindow(&show_demo_window);
-                }
-                //
-                ImGui::TreePop();
-            }
-            ImGui::End();
-        }
-
-        {
-            const ImGuiViewport* viewport = ImGui::GetMainViewport();
-            ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
-            ImVec2 window_pos;//, window_pos_pivot;
-            window_pos.x = (viewport->WorkSize.x / 2) - 175;
-            window_pos.y = viewport->WorkSize.y - 75;
-            ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, {});
-
-            ImGui::SetNextWindowBgAlpha(0.75f); // Transparent background
-            ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
-                                           ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
-            ImGui::Begin("Block Hotbar", nullptr, windowFlags);
-
-            ImGuiTableFlags flags = ImGuiTableFlags_Borders;
-            if (ImGui::BeginTable("Position Info", MAX_SLOTS, flags))
-            {
-                ImU32 hotCellColor = ImGui::GetColorU32(ImVec4(0.5f, 0.5f, 1.0f, 0.65f));
-
-                for (int32 i = 0; i < MAX_SLOTS; i++)
-                {
-                    ImGui::TableSetupColumn(ToString("%i", i).c_str());
-                    if (i == player->m_inventory.m_slotSelected)
+                    if (ImGui::Button("Reset Values"))
                     {
-                        ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
+                        g_gameData.m_timeOfDay = TimeOfDay::Afternoon;
+                        g_gameData.m_currentTime = s_timesOfDay[+g_gameData.m_timeOfDay];
+                        g_gameData.m_timeScale = 1.0f;
+                        g_gameData.m_gameTimePlaying = false;
                     }
-                }
-
-                ImGui::TableNextRow();
-                for (int32 i = 0; i < MAX_SLOTS; i++)
-                {
-                    ImGui::TableSetColumnIndex(i);
-                    ImGui::TextUnformatted(ToString("%03i", player->m_inventory.m_slots[i].m_count).c_str());
-                    if (i == player->m_inventory.m_slotSelected)
+                    //
+                    ImGui::PushItemWidth(100);
+                    ImGui::SliderFloat("Current Time", &g_gameData.m_currentTime, 0.0f, 24.0f, "%.2f");
+                    ImGui::PopItemWidth();
+                    //
+                    if (ImGui::Checkbox("Use Time Scale", &g_gameData.m_gameTimePlaying) && !g_gameData.m_gameTimePlaying)
                     {
-                        ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
+                        g_gameData.m_currentTime = s_timesOfDay[+g_gameData.m_timeOfDay];
                     }
-                }
-
-                //(ImTextureID)(intptr_t)g_FontTexture
-                ImTextureID imMinecraftTextureID = (ImTextureID)(intptr_t)g_renderer.textures[Texture::Minecraft]->m_handle;//ImGui::Image();
-                ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);   // No tint
-                ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); // 50% opaque white
-                float sizeOnScreen = 32;
-
-                ImGui::TableNextRow();
-                for (int32 i = 0; i < MAX_SLOTS; i++)
-                {
-                    ImGui::TableSetColumnIndex(i);
-                    //ImGui::TextUnformatted(ToString("%2i", playerInventory.m_slots[i].m_block).c_str());
-                    auto spriteIndex = 31;
-                    if (player->m_inventory.m_slots[i].m_block != BlockType::Empty)
-                        spriteIndex = blockSprites[+player->m_inventory.m_slots[i].m_block].faceSprites[+Face::Right];
-
-                    Rect uvResult = GetUVsFromIndex(spriteIndex);
-                    ImGui::Image(imMinecraftTextureID, ImVec2(sizeOnScreen, sizeOnScreen), 
-                                                       ImVec2(uvResult.botLeft.x,  uvResult.botLeft.y), 
-                                                       ImVec2(uvResult.topRight.x, uvResult.topRight.y), 
-                                                       tint_col, border_col);
-
-                    if (i == player->m_inventory.m_slotSelected)
+                    //
+                    ImGui::PushItemWidth(100);
+                    if (ImGui::SliderInt("Time Of Day", reinterpret_cast<int32*>(&g_gameData.m_timeOfDay), 0, +TimeOfDay::Count - 1, s_timesOfDayNames[+g_gameData.m_timeOfDay]) &&
+                        !g_gameData.m_gameTimePlaying)
                     {
-                        ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
+                        g_gameData.m_currentTime = s_timesOfDay[+g_gameData.m_timeOfDay];
                     }
+                    ImGui::PopItemWidth();
+                    //
+                    ImGui::PushItemWidth(100);
+                    ImGui::SliderFloat("Time Scale", &g_gameData.m_timeScale, 0.0f, 10.0f, "%.2f", ImGuiSliderFlags_Logarithmic);
+                    ImGui::PopItemWidth();
+                    //
+                    ImGui::TreePop();
                 }
 
-
-                ImGui::EndTable();
+                if (ImGui::TreeNode("Misc"))
+                {
+                    ImGui::Text("Update the chunks based on:");
+                    ImGui::RadioButton("Player", (int32*)&chunkUpdateOrigin, +ChunkUpdateOrigin::Player); ImGui::SameLine();
+                    ImGui::RadioButton("Camera", (int32*)&chunkUpdateOrigin, +ChunkUpdateOrigin::Camera); //ImGui::SameLine();
+                    //
+                    ImGui::Text("Core Count:");
+                    ImGui::RadioButton("Multi", (int32*)&multiThreading.threads, +MultiThreading::Threads::multi_thread); ImGui::SameLine();
+                    ImGui::RadioButton("Single", (int32*)&multiThreading.threads, +MultiThreading::Threads::single_thread); //ImGui::SameLine();
+                    //
+                    if (ImGui::Button("Save Game"))
+                    {
+                        //SaveGame();
+                    }
+                    //
+                    ImVec4 greenColor = { 0.1f, 0.8f, 0.1f, 0.8f };
+                    ImVec4 redColor = { 0.8f, 0.1f, 0.1f, 0.8f };
+                    //
+                    if (g_gameData.m_gameSaveAttempt)
+                    {
+                        ImGui::PushStyleColor(ImGuiCol_Button, greenColor);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, greenColor);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, greenColor);
+                    }
+                    else
+                    {
+                        ImGui::PushStyleColor(ImGuiCol_Button, redColor);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, redColor);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, redColor);
+                    }
+                    ImGui::Button("Saving Attempt");
+                    ImGui::PopStyleColor(3);
+                    ImGui::SameLine();
+                    //
+                    if (g_gameData.m_gameSavedSuccessfully)
+                    {
+                        ImGui::PushStyleColor(ImGuiCol_Button, greenColor);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, greenColor);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, greenColor);
+                    }
+                    else
+                    {
+                        ImGui::PushStyleColor(ImGuiCol_Button, redColor);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, redColor);
+                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, redColor);
+                    }
+                    ImGui::Button("Saving Success");
+                    ImGui::PopStyleColor(3);
+                    //
+                    int32 atomicCopy_progress = g_gameData.m_gameSaveProgress;
+                    int32 atomicCopy_count = g_gameData.m_gameSaveDataCount;
+                    std::string progressText = ToString("%i/%i", atomicCopy_progress, atomicCopy_count);
+                    ImGui::ProgressBar(atomicCopy_progress / float(atomicCopy_count), ImVec2(0.f, 0.f), progressText.c_str());
+                    //
+                    {
+                        ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
+                        if (show_demo_window)
+                            ImGui::ShowDemoWindow(&show_demo_window);
+                    }
+                    //
+                    ImGui::TreePop();
+                }
+                ImGui::End();
             }
 
-            ImGui::End();
+            {
+                const ImGuiViewport* viewport = ImGui::GetMainViewport();
+                ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+                ImVec2 window_pos;//, window_pos_pivot;
+                window_pos.x = (viewport->WorkSize.x / 2) - 175;
+                window_pos.y = viewport->WorkSize.y - 75;
+                ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, {});
+
+                ImGui::SetNextWindowBgAlpha(0.75f); // Transparent background
+                ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+                    ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
+                ImGui::Begin("Block Hotbar", nullptr, windowFlags);
+
+                ImGuiTableFlags flags = ImGuiTableFlags_Borders;
+                if (ImGui::BeginTable("Position Info", MAX_SLOTS, flags))
+                {
+                    ImU32 hotCellColor = ImGui::GetColorU32(ImVec4(0.5f, 0.5f, 1.0f, 0.65f));
+
+                    for (int32 i = 0; i < MAX_SLOTS; i++)
+                    {
+                        ImGui::TableSetupColumn(ToString("%i", i).c_str());
+                        if (i == player->m_inventory.m_slotSelected)
+                        {
+                            ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
+                        }
+                    }
+
+                    ImGui::TableNextRow();
+                    for (int32 i = 0; i < MAX_SLOTS; i++)
+                    {
+                        ImGui::TableSetColumnIndex(i);
+                        ImGui::TextUnformatted(ToString("%03i", player->m_inventory.m_slots[i].m_count).c_str());
+                        if (i == player->m_inventory.m_slotSelected)
+                        {
+                            ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
+                        }
+                    }
+
+                    //(ImTextureID)(intptr_t)g_FontTexture
+                    ImTextureID imMinecraftTextureID = (ImTextureID)(intptr_t)g_renderer.textures[Texture::Minecraft]->m_handle;//ImGui::Image();
+                    ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);   // No tint
+                    ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); // 50% opaque white
+                    float sizeOnScreen = 32;
+
+                    ImGui::TableNextRow();
+                    for (int32 i = 0; i < MAX_SLOTS; i++)
+                    {
+                        ImGui::TableSetColumnIndex(i);
+                        //ImGui::TextUnformatted(ToString("%2i", playerInventory.m_slots[i].m_block).c_str());
+                        auto spriteIndex = 31;
+                        if (player->m_inventory.m_slots[i].m_block != BlockType::Empty)
+                            spriteIndex = blockSprites[+player->m_inventory.m_slots[i].m_block].faceSprites[+Face::Right];
+
+                        Rect uvResult = GetUVsFromIndex(spriteIndex);
+                        ImGui::Image(imMinecraftTextureID, ImVec2(sizeOnScreen, sizeOnScreen),
+                            ImVec2(uvResult.botLeft.x, uvResult.botLeft.y),
+                            ImVec2(uvResult.topRight.x, uvResult.topRight.y),
+                            tint_col, border_col);
+
+                        if (i == player->m_inventory.m_slotSelected)
+                        {
+                            ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
+                        }
+                    }
+
+
+                    ImGui::EndTable();
+                }
+
+                ImGui::End();
+            }
         }
 
         if (g_cursorEngaged)
@@ -1438,11 +1451,14 @@ White:  Uploaded,");
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
 
-        ImGui::Render();
-        //glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-        //glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
-        //glClear(GL_COLOR_BUFFER_BIT);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        if (showIMGUI)
+        {
+            ImGui::Render();
+            //glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+            //glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+            //glClear(GL_COLOR_BUFFER_BIT);
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        }
 
         if (g_cursorEngaged)
             SDL_ShowCursor(SDL_DISABLE);
