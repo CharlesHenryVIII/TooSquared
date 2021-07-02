@@ -441,16 +441,19 @@ Item* Items::Add(BlockType blockType, const WorldPos& position, const WorldPos& 
     newItem.m_lootableCountDown = 1.0f; //seconds
 
     Vec3 velocity = destination.p - position.p;
-    if (!isnormal(velocity.x))
-        velocity.x = 0;
-    if (!isnormal(velocity.y))
-        velocity.y = 0;
-    if (!isnormal(velocity.z))
-        velocity.z = 0;
-    velocity = NormalizeZero(velocity);
-    velocity.y = 0.5f;
-    velocity = NormalizeZero(velocity);
-    velocity *= 10;
+    if (!(velocity == Vec3({})))
+    {
+        velocity = NormalizeZero(velocity);
+        velocity.y = 0.5f;
+        velocity = NormalizeZero(velocity);
+        velocity *= 10;
+    }
+    //if (!isnormal(velocity.x))
+    //    velocity.x = 0;
+    //if (!isnormal(velocity.y))
+    //    velocity.y = 0;
+    //if (!isnormal(velocity.z))
+    //    velocity.z = 0;
 
     newItem.m_rigidBody.m_vel = velocity;
     newItem.m_rigidBody.m_terminalVel = { 100.0f, 100.0f, 100.0f };
