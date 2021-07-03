@@ -830,24 +830,55 @@ bool CubeVsBlock(Cube collider, const BlockSampler& blockSampler, Vec3& toOutsid
 
 bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionDelta, std::vector<Triangle>& debug_trianglesToDraw)
 {
+    //PROFILE_SCOPE_TAB("CubeVsWorldBlocks()");
     assert(OnMainThread());
     bool result = false;
 
     while (in_positionDelta.x != 0.0f || in_positionDelta.y != 0.0f || in_positionDelta.z != 0.0f)
     {
 
+        Vec3 pDelta = {};
+        float clampVal = 0.3f;
+        pDelta.x = Clamp(in_positionDelta.x, -clampVal, clampVal);
+        pDelta.y = Clamp(in_positionDelta.y, -clampVal, clampVal);
+        pDelta.z = Clamp(in_positionDelta.z, -clampVal, clampVal);
+
+        in_positionDelta -= pDelta;
+        collider.m_center.p += pDelta;
+
+#if 1
+        Vec3 offset = {};
+        if (pDelta.x < 0.0f)
+            offset.x = -1.0f;
+        else if (pDelta.x > 0)
+            offset.x = 1.0f;
+
+        if (pDelta.y < 0)
+            offset.y = -1.0f;
+        else if (pDelta.y > 0)
+            offset.y = 1.0f;
+
+        if (pDelta.z < 0)
+            offset.z = -1.0f;
+        else if (pDelta.z > 0)
+            offset.z = 1.0f;
+
+        offset *= collider.m_length / 2.0f;
+
+        BlockSampler blockSampler = {};
+        GamePos referenceGamePosition = ToGame(WorldPos(collider.m_center.p + offset));
+        if (!(blockSampler.RegionGather(GamePos(referenceGamePosition.p))))
+            continue;
+        if (blockSampler.m_baseBlockType == BlockType::Water)
+            continue;
+        Vec3 outsideOfBlock = {};
+        if (CubeVsBlock(collider, blockSampler, outsideOfBlock, debug_trianglesToDraw))
         {
-            Vec3 pDelta = {};
-            float clampVal = 0.3f;
-            pDelta.x = Clamp(in_positionDelta.x, -clampVal, clampVal);
-            pDelta.y = Clamp(in_positionDelta.y, -clampVal, clampVal);
-            pDelta.z = Clamp(in_positionDelta.z, -clampVal, clampVal);
-
-            in_positionDelta -= pDelta;
-            collider.m_center.p += pDelta;
+            out_positionDelta += outsideOfBlock;
+            collider.m_center.p += outsideOfBlock;
+            result = true;
         }
-
-
+#else
         //PROFILE_SCOPE_TAB("Collision Update");
         BlockSampler blockSampler = {};
 
@@ -874,6 +905,7 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                 }
             }
         }
+#endif
     }
     return result;
 }
