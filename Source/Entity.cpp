@@ -575,22 +575,31 @@ bool Items::Save(const ChunkPos& p, bool prelocking)
         }
     }
 
+    std::string entityFilePath = GetEntitySaveFilePathFromChunkPos(p);
+    File file(entityFilePath, File::Mode::Write, true);
     if (itemDiskData.size())
     {
-        std::string entityFilePath = GetEntitySaveFilePathFromChunkPos(p);
-        File file(entityFilePath, File::Mode::Write, true);
         if (file.m_handleIsValid)
         {
-            succeeded &= file.Write(&mainHeader, sizeof(mainHeader));
-            succeeded &= file.Write(&itemHeader, sizeof(itemHeader));
-            succeeded &= file.Write(itemDiskData.data(), itemDiskData.size() * sizeof(ItemDiskData));
-        }
-
-        std::erase_if(m_items,
-            [](Item e)
             {
-                return !e.inUse;
-            });
+                succeeded &= file.Write(&mainHeader, sizeof(mainHeader));
+                succeeded &= file.Write(&itemHeader, sizeof(itemHeader));
+                succeeded &= file.Write(itemDiskData.data(), itemDiskData.size() * sizeof(ItemDiskData));
+            }
+
+            std::erase_if(m_items,
+                [](Item e)
+                {
+                    return !e.inUse;
+                });
+        }
+    }
+    else
+    {
+        if (file.m_handleIsValid)
+            succeeded &= file.Delete();
+        else
+            succeeded = false;
     }
     return succeeded;
 }
@@ -631,7 +640,6 @@ bool Items::Load(const ChunkPos& p)
                 }
             }
         }
-        success &= file.Delete();
     }
     else
         success = false;
