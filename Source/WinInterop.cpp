@@ -150,6 +150,13 @@ bool File::Write(void* data, size_t sizeInBytes)
     return result != 0;
 }
 
+bool File::Write(const void* data, size_t sizeInBytes)
+{
+    LPDWORD bytesWritten = {};
+    BOOL result = WriteFile(m_handle, data, (DWORD)sizeInBytes, bytesWritten, NULL);
+    return result != 0;
+}
+
 bool File::Write(const std::string& text)
 {
     LPDWORD bytesWritten = {};

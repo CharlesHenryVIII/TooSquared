@@ -5,6 +5,8 @@
 #include "Input.h"
 #include "Inventory.h"
 
+#include <vector>
+
 enum class MovementType {
     Fly,
     Collision,
@@ -142,19 +144,32 @@ struct Item : public Entity
     float m_lootableCountDown = 1.0f; //seconds
 };
 
+#pragma pack(push, 1)
+struct ItemDiskData {
+    Transform m_transform;
+    std::underlying_type<BlockType>::type m_type;
+};
+#pragma pack(pop)
+
 struct Items
 {
     std::mutex        m_listVectorMutex;
     std::vector<Item> m_items;
 
-    Item* Add(BlockType blockType, const WorldPos& position, const WorldPos& destination);
+    //Item* Add(BlockType blockType, const WorldPos& position, const WorldPos& destination);
+    Item* Add(std::vector<EntityID>& itemIDs, BlockType blockType, const WorldPos& position, const WorldPos& destination);
+    Item* Get(EntityID ID);
     void Update(float deltaTime);
     void Render(float deltaTime, Camera* camera);
+    bool Save(const std::vector<ItemDiskData>& diskData, const ChunkPos& p);
     bool Save(const ChunkPos& p, bool prelocking = false);
     bool SaveAll();
-    bool Load(const ChunkPos& p);
+    bool Load(std::vector<EntityID>& itemIDs, const ChunkPos& p);
+    //bool Load(const ChunkPos& p, ChunkIndex i);
 };
+
 extern Items g_items;
 extern Entitys g_entityList;
+
 
 bool EntityInit();

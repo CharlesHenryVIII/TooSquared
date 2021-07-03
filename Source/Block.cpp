@@ -55,7 +55,6 @@ bool ChunkArray::GetChunkFromPosition(ChunkIndex& result, ChunkPos p)
 void ChunkArray::ClearChunk(ChunkIndex index)
 {
     SaveChunk(index);
-    g_items.Save(g_chunks->p[index]);
 
     auto it = chunkPosTable.find(PositionHash(p[index]));
     assert(it != chunkPosTable.end());
@@ -1655,7 +1654,10 @@ uint16 CreateBlockIndex(Vec3Int pos)
 
 void ChunkArray::BuildChunkVertices(RegionSampler region)
 {
+    //why am I sometimes hitting this assertion
     assert(g_chunks->state[region.center] == ChunkArray::VertexLoading);
+    if (g_chunks->state[region.center] != ChunkArray::VertexLoading)
+        return;
     ChunkIndex i = region.center;
     faceVertices[i].clear();
     faceVertices[i].reserve(10000);
@@ -1836,7 +1838,7 @@ void SetBlocks::DoThing()
     g_chunks->refs[chunk]++;
     if (!g_chunks->LoadChunk(chunk))
         g_chunks->SetBlocks(chunk);
-    g_items.Load(g_chunks->p[chunk]);
+    g_items.Load(g_chunks->itemIDs[chunk], g_chunks->p[chunk]);
     g_chunks->state[chunk] = ChunkArray::BlocksLoaded;
     g_chunks->refs[chunk]--;
 }
@@ -2187,14 +2189,18 @@ bool ChunkArray::GetBlock(BlockType& blockType, const GamePos& blockP)
 }
 
 
+#pragma pack(push, 1)
 struct ChunkSaveData {
     ChunkData blocks = {};
     ChunkPos  p = {};
     uint16    height = {};
 };
+#pragma pack(pop)
+
 
 struct SaveChunkJob : public Job {
-    ChunkSaveData m_data;
+    ChunkSaveData m_chunkData;
+    std::vector<ItemDiskData> m_itemData;
 
     void DoThing() override;
 };
@@ -2219,9 +2225,24 @@ bool ChunkArray::SaveChunk(ChunkIndex i)
     if (g_chunks->flags[i] & CHUNK_FLAG_MODIFIED)
     {
         SaveChunkJob* job = new SaveChunkJob();
-        job->m_data.p = g_chunks->p[i];
-        memcpy(job->m_data.blocks.e, g_chunks->blocks[i].e, CHUNK_X * CHUNK_Y * CHUNK_Z * sizeof(BlockType));
-        job->m_data.height = g_chunks->height[i];
+        job->m_chunkData.p = g_chunks->p[i];
+        memcpy(job->m_chunkData.blocks.e, g_chunks->blocks[i].e, CHUNK_X * CHUNK_Y * CHUNK_Z * sizeof(BlockType));
+        job->m_chunkData.height = g_chunks->height[i];
+
+        std::lock_guard<std::mutex> lock(g_items.m_listVectorMutex);
+        ItemDiskData itemData = {};
+        ChunkPos checkChunkPos = {};
+        for (EntityID itemID : g_chunks->itemIDs[i])
+        {
+            Item* item = g_items.Get(itemID);
+            if (item)
+            {
+                itemData.m_transform = item->m_transform;
+                itemData.m_type = +item->m_type;
+                job->m_itemData.push_back(itemData);
+                item->inUse = false;
+            }
+        }
 
         MultiThreading::GetInstance().SubmitJob(job);
         return true;
@@ -2262,12 +2283,12 @@ void SaveChunkJob::DoThing()
     ChunkDiskHeader chunkHeader = {};
     chunkHeader.m_magic_header = SDL_FOURCC('C', 'H', 'N', 'K');
     chunkHeader.m_magic_type   = SDL_FOURCC('D', 'A', 'T', 'A');
-    chunkHeader.m_height       = m_data.height;
+    chunkHeader.m_height       = m_chunkData.height;
 
     std::vector<ChunkDiskData> dataArray;
     dataArray.reserve(100);
     ChunkDiskData data;
-    data.m_type  = +m_data.blocks.e[0][0][0];
+    data.m_type  = +m_chunkData.blocks.e[0][0][0];
     data.m_count = 0;
     for (int32 y = 0; y < CHUNK_Y; y++)
     {
@@ -2275,14 +2296,14 @@ void SaveChunkJob::DoThing()
         {
             for (int32 z = 0; z < CHUNK_Z; z++)
             {
-                if (data.m_type == +m_data.blocks.e[x][y][z])
+                if (data.m_type == +m_chunkData.blocks.e[x][y][z])
                 {
                     data.m_count++;
                 }
                 else
                 {
                     dataArray.push_back(data);
-                    data.m_type  = +m_data.blocks.e[x][y][z];
+                    data.m_type  = +m_chunkData.blocks.e[x][y][z];
                     data.m_count = 1;
                 }
             }
@@ -2290,7 +2311,7 @@ void SaveChunkJob::DoThing()
     }
     dataArray.push_back(data);
 
-    std::string filename = GetChunkSaveFilePathFromChunkPos(m_data.p);/// g_gameData.m_saveFolderPath + g_gameData.m_saveFilename + "\\Chunk_Data\\" + ToString("%i_%i.wad", m_data.p.p.x, m_data.p.p.z);
+    std::string filename = GetChunkSaveFilePathFromChunkPos(m_chunkData.p);/// g_gameData.m_saveFolderPath + g_gameData.m_saveFilename + "\\Chunk_Data\\" + ToString("%i_%i.wad", m_data.p.p.x, m_data.p.p.z);
 
     File file(filename, File::Mode::Write, true);
 
@@ -2301,6 +2322,8 @@ void SaveChunkJob::DoThing()
         success &= file.Write(&chunkHeader, sizeof(ChunkDiskHeader));
         success &= file.Write(dataArray.data(), dataArray.size() * sizeof(ChunkDiskData));
     }
+
+    g_items.Save(m_itemData, m_chunkData.p);
 }
 
 bool ChunkArray::LoadChunk(ChunkIndex index)

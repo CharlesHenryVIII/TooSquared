@@ -428,7 +428,7 @@ void Item::Update(float dt)
 
 
 //Items
-Item* Items::Add(BlockType blockType, const WorldPos& position, const WorldPos& destination)
+Item* Items::Add(std::vector<EntityID>& itemIDs, BlockType blockType, const WorldPos& position, const WorldPos& destination)
 {
     Item newItem;
     assert(blockType != BlockType::Empty);
@@ -448,18 +448,35 @@ Item* Items::Add(BlockType blockType, const WorldPos& position, const WorldPos& 
         velocity = NormalizeZero(velocity);
         velocity *= 8;
     }
-    //if (!isnormal(velocity.x))
-    //    velocity.x = 0;
-    //if (!isnormal(velocity.y))
-    //    velocity.y = 0;
-    //if (!isnormal(velocity.z))
-    //    velocity.z = 0;
+    //ChunkIndex chunkIndex;
+    //bool chunkUnderBlock = g_chunks->GetChunkFromPosition(chunkIndex, ToChunk(newItem.m_transform.m_p));
+    //assert(chunkUnderBlock);
+    //if (chunkUnderBlock)
+    //{//Chunk is under new block
+    itemIDs.push_back(newItem.m_ID);
+    //}
+    //else
+    //{
+        ////TODO: Save block to disk?
+    //}
 
     newItem.m_rigidBody.m_vel = velocity;
     newItem.m_rigidBody.m_terminalVel = { 100.0f, 100.0f, 100.0f };
     std::lock_guard<std::mutex> lock(m_listVectorMutex);
     m_items.push_back(newItem);
     return &m_items[m_items.size() - 1];
+}
+
+//Must Lock Before?
+Item* Items::Get(EntityID ID)
+{
+    assert(OnMainThread());
+    for (int32 i = 0; i < m_items.size(); i++)
+    {
+        if (m_items[i].m_ID == ID)
+            return &m_items[i];
+    }
+    return nullptr;
 }
 
 void Items::Update(float dt)
@@ -513,14 +530,6 @@ struct ItemDiskHeader {
 };
 #pragma pack(pop)
 
-#pragma pack(push, 1)
-struct ItemDiskData {
-    Transform m_transform;
-    std::underlying_type<BlockType>::type m_type;
-};
-#pragma pack(pop)
-
-
 bool Items::SaveAll()
 {
     EntityDiskFileHeader mainHeader;
@@ -543,7 +552,7 @@ bool Items::SaveAll()
     return succeeded;
 }
 
-bool Items::Save(const ChunkPos& p, bool prelocking)
+bool Items::Save(const std::vector<ItemDiskData>& diskData, const ChunkPos& p)
 {
     EntityDiskFileHeader mainHeader;
     mainHeader.m_magic_header = SDL_FOURCC('E', 'N', 'T', 'Y');
@@ -554,37 +563,17 @@ bool Items::Save(const ChunkPos& p, bool prelocking)
     itemHeader.m_magic_header = SDL_FOURCC('I', 'T', 'E', 'M');
     itemHeader.m_magic_type = SDL_FOURCC('D', 'A', 'T', 'A');
 
-    ItemDiskData itemData = {};
-
     bool succeeded = true;
-    if (!prelocking)
-        std::lock_guard<std::mutex> lock(m_listVectorMutex);
-
-    std::vector<ItemDiskData> itemDiskData;
-    itemDiskData.reserve(200);
-
-    for (auto& i : m_items)
-    {
-        ChunkPos checkChunkPos = ToChunk(i.m_transform.m_p);
-        if (checkChunkPos.p == p.p)
-        {
-            itemData.m_transform = i.m_transform;
-            itemData.m_type = +i.m_type;
-            itemDiskData.push_back(itemData);
-            i.inUse = false;
-        }
-    }
-
     std::string entityFilePath = GetEntitySaveFilePathFromChunkPos(p);
     File file(entityFilePath, File::Mode::Write, true);
-    if (itemDiskData.size())
+    if (diskData.size())
     {
         if (file.m_handleIsValid)
         {
             {
                 succeeded &= file.Write(&mainHeader, sizeof(mainHeader));
                 succeeded &= file.Write(&itemHeader, sizeof(itemHeader));
-                succeeded &= file.Write(itemDiskData.data(), itemDiskData.size() * sizeof(ItemDiskData));
+                succeeded &= file.Write(diskData.data(), diskData.size() * sizeof(ItemDiskData));
             }
 
             std::erase_if(m_items,
@@ -604,8 +593,33 @@ bool Items::Save(const ChunkPos& p, bool prelocking)
     return succeeded;
 }
 
+bool Items::Save(const ChunkPos& p, bool prelocking)
+{
+    ItemDiskData itemData = {};
 
-bool Items::Load(const ChunkPos& p)
+    if (!prelocking)
+        std::lock_guard<std::mutex> lock(m_listVectorMutex);
+
+    std::vector<ItemDiskData> itemDiskData;
+    itemDiskData.reserve(200);
+
+    for (auto& i : m_items)
+    {
+        ChunkPos checkChunkPos = ToChunk(i.m_transform.m_p);
+        if (checkChunkPos.p == p.p)
+        {
+            itemData.m_transform = i.m_transform;
+            itemData.m_type = +i.m_type;
+            itemDiskData.push_back(itemData);
+            i.inUse = false;
+        }
+    }
+    return Save(itemDiskData, p);
+}
+
+
+bool Items::Load(std::vector<EntityID>& itemIDs, const ChunkPos& p)
+//bool Items::Load(const ChunkPos& p, ChunkIndex i)
 {
     EntityDiskFileHeader mainHeaderRef;
     mainHeaderRef.m_magic_header = SDL_FOURCC('E', 'N', 'T', 'Y');
@@ -635,7 +649,7 @@ bool Items::Load(const ChunkPos& p)
                     ItemDiskData* itemDataStart = (ItemDiskData*)(itemHeader + 1);
                     for (size_t i = 0; i < count; i++)
                     {
-                        Add((BlockType)itemDataStart[i].m_type, itemDataStart[i].m_transform.m_p, itemDataStart[i].m_transform.m_p);
+                        Item* item = Add(itemIDs, (BlockType)itemDataStart[i].m_type, itemDataStart[i].m_transform.m_p, itemDataStart[i].m_transform.m_p);
                     }
                 }
             }

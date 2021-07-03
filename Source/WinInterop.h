@@ -26,6 +26,7 @@ struct File {
 
     bool Write(const std::string& text);
     bool Write(void* data, size_t sizeInBytes);
+    bool Write(const void* data, size_t sizeInBytes);
     void GetData();
     void GetText();
     void GetTime();

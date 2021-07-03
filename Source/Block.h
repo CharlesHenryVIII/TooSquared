@@ -252,6 +252,7 @@ struct BlockSampler {
 };
 
 
+typedef uint32 EntityID;
 struct ChunkArray
 {
     enum State {
@@ -263,23 +264,23 @@ struct ChunkArray
         Uploaded,
     };
 
-    bool                                    active[MAX_CHUNKS];
-    ChunkData                               blocks[MAX_CHUNKS];
-    ChunkPos                                p[MAX_CHUNKS] = {};
-    std::vector<Vertex_Chunk>               faceVertices[MAX_CHUNKS] = {};
-    VertexBuffer                            vertexBuffer[MAX_CHUNKS] = {};
-    uint32                                  uploadedIndexCount[MAX_CHUNKS] = {};
-    //uint16                                  flags[MAX_CHUNKS] = {};
-    uint16                                  height[MAX_CHUNKS] = {};
-    std::atomic<State>                      state[MAX_CHUNKS] = {};
-    std::atomic<uint32>                     flags[MAX_CHUNKS] = {};
-    std::atomic<int32>                      refs[MAX_CHUNKS] = {};
+    bool                      active[MAX_CHUNKS];
+    ChunkData                 blocks[MAX_CHUNKS];
+    ChunkPos                  p[MAX_CHUNKS] = {};
+    std::vector<Vertex_Chunk> faceVertices[MAX_CHUNKS] = {};
+    VertexBuffer              vertexBuffer[MAX_CHUNKS] = {};
+    uint32                    uploadedIndexCount[MAX_CHUNKS] = {};
+    uint16                    height[MAX_CHUNKS] = {};
+    std::atomic<State>        state[MAX_CHUNKS] = {};
+    std::atomic<uint32>       flags[MAX_CHUNKS] = {};
+    std::atomic<int32>        refs[MAX_CHUNKS] = {};
+    std::vector<EntityID>     itemIDs[MAX_CHUNKS] = {};
 
-    ChunkType                               chunkType[MAX_CHUNKS] = {};
-    TerrainType                             terrainType[MAX_CHUNKS] = {};
+    ChunkType                 chunkType[MAX_CHUNKS] = {};
+    TerrainType               terrainType[MAX_CHUNKS] = {};
 
-    uint32                                  chunkCount = 0;
-    std::unordered_map<uint64, ChunkIndex>  chunkPosTable;
+    uint32 chunkCount = 0;
+    std::unordered_map<uint64, ChunkIndex> chunkPosTable;
 
     ChunkIndex highestActiveChunk;
 

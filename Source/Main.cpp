@@ -119,8 +119,8 @@ static void HelpMarker(const char* desc)
 
 void ExitApplication(Player* player, Camera* camera)
 {
-    g_items.SaveAll();
-
+//    g_items.SaveAll();
+//
     for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
     {
         if (g_chunks->active[i])
@@ -980,7 +980,11 @@ White:  Uploaded,");
                         WorldPos itemOrigin = ToWorld(hitBlock).p + 0.5f;
 
 
-                        g_items.Add(collectedBlockType, itemOrigin, playerCamera->GetWorldPosition());
+                        ChunkIndex chunkIndex;
+                        if (g_chunks->GetChunkFromPosition(chunkIndex, ToChunk(itemOrigin)))
+                        {
+                            g_items.Add(g_chunks->itemIDs[chunkIndex], collectedBlockType, itemOrigin, playerCamera->GetWorldPosition());
+                        }
                         //TODO: add feature to drop block if block could not be picked up
                         //if (auto overflow = player->m_inventory.Add(collectedBlockType, 1))
                         //{
@@ -1013,7 +1017,12 @@ White:  Uploaded,");
                     Vec3 playerForwardVector = player->GetForwardVector() * 10;
                     WorldPos finalPosition;
                     finalPosition.p = playerPosition.p + playerForwardVector;
-                    g_items.Add(is.m_block, player->m_transform.m_p, finalPosition);
+
+                    ChunkIndex chunkIndex;
+                    if (g_chunks->GetChunkFromPosition(chunkIndex, ToChunk(player->m_transform.m_p)))
+                    {
+                        g_items.Add(g_chunks->itemIDs[chunkIndex], is.m_block, player->m_transform.m_p, finalPosition);
+                    }
                     player->m_inventory.Remove(uint8(1));
                 }
             }
