@@ -846,37 +846,53 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
         in_positionDelta -= pDelta;
         collider.m_center.p += pDelta;
 
-#if 1
-        Vec3 offset = {};
+#if 0
+        Vec3Int range = {};
         if (pDelta.x < 0.0f)
-            offset.x = -1.0f;
+            range.x = -1;
         else if (pDelta.x > 0)
-            offset.x = 1.0f;
+            range.x = 1;
 
         if (pDelta.y < 0)
-            offset.y = -1.0f;
+            range.y = -1;
         else if (pDelta.y > 0)
-            offset.y = 1.0f;
+            range.y = 1;
 
         if (pDelta.z < 0)
-            offset.z = -1.0f;
+            range.z = -1;
         else if (pDelta.z > 0)
-            offset.z = 1.0f;
-
-        offset *= collider.m_length / 2.0f;
+            range.z = 1;
 
         BlockSampler blockSampler = {};
-        GamePos referenceGamePosition = ToGame(WorldPos(collider.m_center.p + offset));
-        if (!(blockSampler.RegionGather(GamePos(referenceGamePosition.p))))
-            continue;
-        if (blockSampler.m_baseBlockType == BlockType::Water)
-            continue;
-        Vec3 outsideOfBlock = {};
-        if (CubeVsBlock(collider, blockSampler, outsideOfBlock, debug_trianglesToDraw))
+        int32 ylow  = Min(range.y, 0);
+        int32 yhigh = Max(0, range.y);
+
+        int32 xlow  = Min(range.x, 0);
+        int32 xhigh = Max(0, range.x);
+
+        int32 zlow  = Min(range.z, 0);
+        int32 zhigh = Max(range.z, 0);
+        for (int32 y = ylow; y <= yhigh; y++)
         {
-            out_positionDelta += outsideOfBlock;
-            collider.m_center.p += outsideOfBlock;
-            result = true;
+            for (int32 x = xlow; x <= xhigh; x++)
+            {
+                for (int32 z = zlow; z <= zhigh; z++)
+                {
+                    Vec3Int offset = { x, y, z };
+                    GamePos referenceGamePosition = ToGame(WorldPos(collider.m_center.p));
+                    if (!(blockSampler.RegionGather(GamePos(referenceGamePosition.p + offset))))
+                        continue;
+                    if (blockSampler.m_baseBlockType == BlockType::Water)
+                        continue;
+                    Vec3 outsideOfBlock = {};
+                    if (CubeVsBlock(collider, blockSampler, outsideOfBlock, debug_trianglesToDraw))
+                    {
+                        out_positionDelta += outsideOfBlock;
+                        collider.m_center.p += outsideOfBlock;
+                        result = true;
+                    }
+                }
+            }
         }
 #else
         //PROFILE_SCOPE_TAB("Collision Update");
