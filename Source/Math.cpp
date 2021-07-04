@@ -836,7 +836,6 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
 
     while (in_positionDelta.x != 0.0f || in_positionDelta.y != 0.0f || in_positionDelta.z != 0.0f)
     {
-
         Vec3 pDelta = {};
         float clampVal = 0.3f;
         pDelta.x = Clamp(in_positionDelta.x, -clampVal, clampVal);
@@ -900,6 +899,7 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
 
         GamePos referenceGamePosition = ToGame(collider.m_center);
         int32 offset = Max(int32(collider.m_length), 1);
+        GamePos blockp = {};
 
         for (int32 y = -offset; y <= offset; y++)
         {
@@ -907,10 +907,12 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
             {
                 for (int32 z = -offset; z <= offset; z++)
                 {
-                    if (!(blockSampler.RegionGather(GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })))))
+                    BlockType blockCheck;
+                    blockp.p = referenceGamePosition.p + Vec3Int({ x, y, z });
+                    g_chunks->GetBlock(blockCheck, blockp);
+                    if (blockCheck == BlockType::Empty || blockCheck == BlockType::Water)
                         continue;
-                    if (blockSampler.m_baseBlockType == BlockType::Water)
-                        continue;
+                    blockSampler.RegionGather(blockp);
                     Vec3 outsideOfBlock = {};
                     if (CubeVsBlock(collider, blockSampler, outsideOfBlock, debug_trianglesToDraw))
                     {
