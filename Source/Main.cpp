@@ -829,10 +829,17 @@ White:  Uploaded,");
             g_entityList.InputUpdate(deltaTime, playerInput);
 
 
+#if 1
+        {
+            PROFILE_SCOPE("Chunk Items Update");
+            g_chunks->Update(deltaTime);
+        }
+#else
         {
             PROFILE_SCOPE("Items Update");
             g_items.Update(deltaTime);
         }
+#endif
 
         {
             PROFILE_SCOPE("Entity Update");

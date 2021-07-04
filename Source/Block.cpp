@@ -2249,7 +2249,15 @@ bool ChunkArray::SaveChunk(ChunkIndex i)
         if (job->m_itemData.size())
             MultiThreading::GetInstance().SubmitJob(job);
         else
+        {
             delete job;
+            std::string entityFilePath = GetEntitySaveFilePathFromChunkPos(g_chunks->p[i]);
+            File file(entityFilePath, File::Mode::Read, false);
+            if (file.m_handleIsValid)
+            {
+                file.Delete();
+            }
+        }
     }
 
     if (g_chunks->flags[i] & CHUNK_FLAG_MODIFIED)
@@ -2406,6 +2414,7 @@ bool ChunkArray::LoadChunk(ChunkIndex index)
 struct ItemToMove {
     ChunkIndex newChunk;
     ChunkIndex oldChunk;
+    bool erase;
     EntityID itemID;
 };
 
@@ -2420,19 +2429,49 @@ void ChunkArray::Update(float dt)
             for (EntityID id : itemIDs[i])
             {
                 Item* item = g_items.Get(id);
-                item->Update(dt);
-                ChunkPos updatedChunkPos = ToChunk(item->m_transform.m_p);
-                if (updatedChunkPos.p != p[i].p)
+                if (item)
                 {
-                    ChunkIndex newChunkIndex;
-                    bool checkForChunk = GetChunkFromPosition(newChunkIndex, updatedChunkPos);
-                    assert(checkForChunk);
-                    if (checkForChunk)
+                    item->Update(dt);
+                    ChunkPos updatedChunkPos = ToChunk(item->m_transform.m_p);
+                    if (updatedChunkPos.p != p[i].p)
                     {
-                        itemsToMove.push_back({newChunkIndex, id});
+                        ChunkIndex newChunkIndex;
+                        bool checkForChunk = GetChunkFromPosition(newChunkIndex, updatedChunkPos);
+                        assert(checkForChunk);
+                        if (checkForChunk)
+                        {
+                            ItemToMove itemToMove = {
+                            .newChunk = newChunkIndex,
+                            .oldChunk = i,
+                            .erase    = false,
+                            .itemID   = id,
+                            };
+                            itemsToMove.push_back(itemToMove);
+                        }
                     }
+                }
+                else
+                {
+                    ItemToMove itemToMove = {
+                    .newChunk = {},
+                    .oldChunk = i,
+                    .erase    = true,
+                    .itemID   = id,
+                    };
+                    itemsToMove.push_back(itemToMove);
                 }
             }
         }
+    }
+
+    for (auto& move : itemsToMove)
+    {
+        std::erase_if(g_chunks->itemIDs[move.oldChunk],
+            [move](EntityID id)
+            {
+                return id == move.itemID;
+            });
+        if (!move.erase)
+            g_chunks->itemIDs->push_back(move.itemID);
     }
 }
