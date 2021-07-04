@@ -547,7 +547,7 @@ bool Items::SaveAll()
     std::lock_guard<std::mutex> lock(m_listVectorMutex);
     while (m_items.size())
     {
-        succeeded &= Save(ToChunk(m_items[0].m_transform.m_p), true);
+        succeeded &= Save(ToChunk(m_items[0].m_transform.m_p));
     }
     return succeeded;
 }
@@ -593,16 +593,14 @@ bool Items::Save(const std::vector<ItemDiskData>& diskData, const ChunkPos& p)
     return succeeded;
 }
 
-bool Items::Save(const ChunkPos& p, bool prelocking)
+bool Items::Save(const ChunkPos& p)
 {
     ItemDiskData itemData = {};
-
-    if (!prelocking)
-        std::lock_guard<std::mutex> lock(m_listVectorMutex);
 
     std::vector<ItemDiskData> itemDiskData;
     itemDiskData.reserve(200);
 
+    std::lock_guard<std::mutex> lock(m_listVectorMutex);
     for (auto& i : m_items)
     {
         ChunkPos checkChunkPos = ToChunk(i.m_transform.m_p);

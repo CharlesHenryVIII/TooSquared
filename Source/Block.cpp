@@ -2382,3 +2382,36 @@ bool ChunkArray::LoadChunk(ChunkIndex index)
     }
     return false;
 }
+
+struct ItemToMove {
+    ChunkIndex newChunk;
+    EntityID itemID;
+};
+
+
+void ChunkArray::Update(float dt)
+{
+    std::vector<ItemToMove> itemsToMove;
+    for (ChunkIndex i = 0; i < highestActiveChunk; i++)
+    {
+        if (active[i])
+        {
+            for (EntityID id : itemIDs[i])
+            {
+                Item* item = g_items.Get(id);
+                item->Update(dt);
+                ChunkPos updatedChunkPos = ToChunk(item->m_transform.m_p);
+                if (updatedChunkPos.p != p[i].p)
+                {
+                    ChunkIndex newChunkIndex;
+                    bool checkForChunk = GetChunkFromPosition(newChunkIndex, updatedChunkPos);
+                    assert(checkForChunk);
+                    if (checkForChunk)
+                    {
+                        itemsToMove.push_back({newChunkIndex, id});
+                    }
+                }
+            }
+        }
+    }
+}

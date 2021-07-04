@@ -162,7 +162,7 @@ struct Items
     void Update(float deltaTime);
     void Render(float deltaTime, Camera* camera);
     bool Save(const std::vector<ItemDiskData>& diskData, const ChunkPos& p);
-    bool Save(const ChunkPos& p, bool prelocking = false);
+    bool Save(const ChunkPos& p);
     bool SaveAll();
     bool Load(std::vector<EntityID>& itemIDs, const ChunkPos& p);
     //bool Load(const ChunkPos& p, ChunkIndex i);

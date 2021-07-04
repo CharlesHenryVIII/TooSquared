@@ -296,6 +296,7 @@ struct ChunkArray
     bool SaveChunk(ChunkIndex i);
     bool LoadChunk(ChunkIndex i);
     bool Init();
+    void Update(float deltaTime);
 };
 extern ChunkArray* g_chunks;
 

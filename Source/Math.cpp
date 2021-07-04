@@ -260,8 +260,6 @@ bool AABBVsAABB(Vec3& out_intersection, const AABB& box1, const AABB& box2)
 {
     out_intersection = {};
 
-    bool result = true;
-
     const Vec3 box1Center  = box1.Center();
     const Vec3 box2Center  = box2.Center();
     const Vec3 box1Lengths = box1.GetLengths();
@@ -277,42 +275,33 @@ bool AABBVsAABB(Vec3& out_intersection, const AABB& box1, const AABB& box2)
     const float pz = (box1Lengths.z / 2 + box2Lengths.z / 2) - abs(dz);
 #if 0
     result = AABBVsAABB(box1, box2);
-             
+
 #else
     if (px <= 0)
-        result = false;
+        return false;
     if (py <= 0)
-        result = false;
+        return false;
     if (pz <= 0)
-        result = false;
+        return false;
 #endif
 
 
-    if (result)
+    if (py < px && py < pz)
     {
-        if (py < px && py < pz)
-        {
-            const float sy = Sign(dy);
-            out_intersection.y = py * sy;
-            //result = true;
-            return true;
-        }
-        else if (px < py && px < pz)
-        {
-            const float sx = Sign(dx);
-            out_intersection.x = px * sx;
-            //result = true;
-            return true;
-        }
-        else if (pz < px && pz < py)
-        {
-            const float sz = Sign(dz);
-            out_intersection.z = pz * sz;
-            //result = true;
-            return true;
-        }
+        const float sy = Sign(dy);
+        out_intersection.y = py * sy;
     }
-    return result;
+    else if (px < py && px < pz)
+    {
+        const float sx = Sign(dx);
+        out_intersection.x = px * sx;
+    }
+    else if (pz < px && pz < py)
+    {
+        const float sz = Sign(dz);
+        out_intersection.z = pz * sz;
+    }
+    return true;
 }
 
 bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal)
