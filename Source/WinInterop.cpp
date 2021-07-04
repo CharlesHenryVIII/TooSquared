@@ -33,7 +33,9 @@ File::File(const std::string& filename, File::Mode fileMode, bool updateFile)
 
 void File::GetHandle()
 {
-    m_handle = CreateFileA(m_filename.c_str(), m_accessType, m_shareType,
+    //MultiByteToWideChar(CP_UTF8, );
+    //TCHAR* test = TEXT("TEST");
+    m_handle = CreateFile(m_filename.c_str(), m_accessType, m_shareType,
         NULL, m_openType, FILE_ATTRIBUTE_NORMAL, NULL);
 }
 
@@ -54,8 +56,8 @@ void File::Init(const std::string& filename, File::Mode fileMode, bool createIfN
         break;
     case File::Mode::Write:
         m_openType = TRUNCATE_EXISTING;
-        [[fallthrough]];
-    case File::Mode::Append:
+        //[[fallthrough]];
+    //case File::Mode::Append:
         m_accessType = GENERIC_WRITE;
         m_shareType = FILE_SHARE_WRITE;
         break;
@@ -80,10 +82,8 @@ void File::Init(const std::string& filename, File::Mode fileMode, bool createIfN
         case File::Mode::Read:
             filePointerLocation = FILE_BEGIN;
             [[fallthrough]];
-        case File::Mode::Append:
-            GetText();
-            GetData();
-            break;
+        //case File::Mode::Append:
+        //    break;
         default:
             break;
         }
@@ -116,9 +116,9 @@ void File::GetText()
     static_assert(sizeof(LPVOID) == sizeof(void*));
 
     const uint32 fileSize = GetFileSize(m_handle, NULL);
-    m_contents.resize(fileSize, 0);
+    m_dataString.resize(fileSize, 0);
     m_textIsValid = true;
-    if (!ReadFile(m_handle, (LPVOID)m_contents.c_str(), (DWORD)fileSize, reinterpret_cast<LPDWORD>(&bytesRead), NULL))
+    if (!ReadFile(m_handle, (LPVOID)m_dataString.c_str(), (DWORD)fileSize, reinterpret_cast<LPDWORD>(&bytesRead), NULL))
     {
         //assert(false);
         m_textIsValid = false;
@@ -145,22 +145,22 @@ void File::GetData()
 }
 bool File::Write(void* data, size_t sizeInBytes)
 {
-    LPDWORD bytesWritten = {};
-    BOOL result = WriteFile(m_handle, data, (DWORD)sizeInBytes, bytesWritten, NULL);
+    DWORD bytesWritten = {};
+    BOOL result = WriteFile(m_handle, data, (DWORD)sizeInBytes, &bytesWritten, NULL);
     return result != 0;
 }
 
 bool File::Write(const void* data, size_t sizeInBytes)
 {
-    LPDWORD bytesWritten = {};
-    BOOL result = WriteFile(m_handle, data, (DWORD)sizeInBytes, bytesWritten, NULL);
+    DWORD bytesWritten = {};
+    BOOL result = WriteFile(m_handle, data, (DWORD)sizeInBytes, &bytesWritten, NULL);
     return result != 0;
 }
 
 bool File::Write(const std::string& text)
 {
-    LPDWORD bytesWritten = {};
-    BOOL result = WriteFile(m_handle, text.c_str(), (DWORD)text.size(), bytesWritten, NULL);
+    DWORD bytesWritten = {};
+    BOOL result = WriteFile(m_handle, text.c_str(), (DWORD)text.size(), &bytesWritten, NULL);
     return result != 0;
     //int32 result = fputs(text.c_str(), m_handle);
     //return (!(result == EOF));
@@ -192,8 +192,8 @@ bool File::Delete()
     if (m_handleIsValid)
     {
         FileDestructor();
-        std::wstring fuckingWide(m_filename.begin(), m_filename.end());
-        bool result = DeleteFile(fuckingWide.c_str());
+        //std::wstring fuckingWide(m_filename.begin(), m_filename.end());
+        bool result = DeleteFile(m_filename.c_str());
         m_handleIsValid = false;
         return result;
     }

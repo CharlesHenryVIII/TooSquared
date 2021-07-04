@@ -414,8 +414,8 @@ void ShaderProgram::CheckForUpdate()
         vertexFile.GetText();
         pixelFile.GetText();
 
-        if (!CompileShader(vhandle, "Vertex Shader", vertexFile.m_contents) ||
-            !CompileShader(phandle, "Pixel Shader",  pixelFile.m_contents))
+        if (!CompileShader(vhandle, "Vertex Shader", vertexFile.m_dataString) ||
+            !CompileShader(phandle, "Pixel Shader",  pixelFile.m_dataString))
             return;
 
 

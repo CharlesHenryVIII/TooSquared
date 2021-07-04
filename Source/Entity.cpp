@@ -254,6 +254,7 @@ void Player::Update(float dt)
     }
 
 
+    std::lock_guard<std::mutex> lock(g_items.m_listVectorMutex);
     for (auto& i : g_items.m_items)
     {
         if (i.m_lootable)
@@ -262,7 +263,7 @@ void Player::Update(float dt)
                 Distance(i.m_transform.m_p.p, this->m_collider.m_tip.p) < 1.5f)
             {
                 m_inventory.Add(i.m_type, 1);
-                i.m_looted = true;
+                i.inUse = false;
             }
         }
     }
@@ -304,22 +305,26 @@ bool Player::Load()
     File file(filename, File::Mode::Read, false);
     if (file.m_handleIsValid)
     {
-        uint32 header  = SDL_FOURCC('E', 'N', 'T', 'T');
-        uint32 type    = SDL_FOURCC('P', 'L', 'Y', 'R');
-        uint32 version = 1;
-
-        PlayerFileHeader* mainHeader = (PlayerFileHeader*)file.m_contents.data();
-        if (mainHeader->m_header == header && mainHeader->m_type == type && mainHeader->m_version == version)
+        file.GetData();
+        if (file.m_binaryDataIsValid)
         {
-            Transform* tran = (Transform*)(mainHeader + 1);
-            Inventory* inv  = (Inventory*)(tran + 1);
-            RigidBody* rb   = (RigidBody*)(inv + 1);
+            uint32 header = SDL_FOURCC('E', 'N', 'T', 'T');
+            uint32 type = SDL_FOURCC('P', 'L', 'Y', 'R');
+            uint32 version = 1;
 
-            m_transform = *tran;
-            m_inventory = *inv;
-            m_rigidBody = *rb;
+            PlayerFileHeader* mainHeader = (PlayerFileHeader*)file.m_dataBinary.data();
+            if (mainHeader->m_header == header && mainHeader->m_type == type && mainHeader->m_version == version)
+            {
+                Transform* tran = (Transform*)(mainHeader + 1);
+                Inventory* inv = (Inventory*)(tran + 1);
+                RigidBody* rb = (RigidBody*)(inv + 1);
 
-            return true;
+                m_transform = *tran;
+                m_inventory = *inv;
+                m_rigidBody = *rb;
+
+                return true;
+            }
         }
     }
     return false;
@@ -482,15 +487,10 @@ Item* Items::Get(EntityID ID)
 void Items::Update(float dt)
 {
     std::lock_guard<std::mutex> lock(m_listVectorMutex);
-    std::erase_if(m_items,
-        [](Item& i)
-        {
-            return (i.m_looted);
-        });
-
     for (auto& e : m_items)
     {
-        e.Update(dt);
+        if (e.inUse)
+            e.Update(dt);
     }
 }
 
@@ -575,12 +575,6 @@ bool Items::Save(const std::vector<ItemDiskData>& diskData, const ChunkPos& p)
                 succeeded &= file.Write(&itemHeader, sizeof(itemHeader));
                 succeeded &= file.Write(diskData.data(), diskData.size() * sizeof(ItemDiskData));
             }
-
-            std::erase_if(m_items,
-                [](Item e)
-                {
-                    return !e.inUse;
-                });
         }
     }
     else
@@ -656,6 +650,16 @@ bool Items::Load(std::vector<EntityID>& itemIDs, const ChunkPos& p)
     else
         success = false;
     return success;
+}
+
+void Items::CleanUp()
+{
+    std::lock_guard<std::mutex> lock(m_listVectorMutex);
+    std::erase_if(m_items, 
+        [](const Entity& e) 
+        {
+            return (!(e.inUse));
+        });
 }
 
 //Entitys

@@ -60,7 +60,7 @@ void ChunkArray::ClearChunk(ChunkIndex index)
     assert(it != chunkPosTable.end());
     chunkPosTable.erase(it);
 
-    active[index] = {};
+    flags[index] &= ~(CHUNK_FLAG_ACTIVE);
     blocks[index] = {};
     p[index] = {};
     height[index] = {};
@@ -78,7 +78,7 @@ void ChunkArray::ClearChunk(ChunkIndex index)
         ChunkIndex newHighest = 0;
         for (ChunkIndex i = 0; i < highestActiveChunk; i++)
         {
-            if (active[i])
+            if (flags[i] & CHUNK_FLAG_ACTIVE)
                 newHighest = i;
         }
         highestActiveChunk = newHighest;
@@ -96,9 +96,9 @@ ChunkIndex ChunkArray::AddChunk(ChunkPos position)
     assert(OnMainThread());
     for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
     {
-        if (!active[i])
+        if (!(flags[i] & CHUNK_FLAG_ACTIVE))
         {
-            active[i] = true;
+            flags[i] |= CHUNK_FLAG_ACTIVE;
             g_chunks->chunkCount++;
             g_chunks->chunkPosTable[PositionHash(position)] = i;
             g_chunks->p[i] = position;
@@ -243,7 +243,7 @@ void SetBlockSprites()
 //TODO: Move to ChunkPos
 GamePos Convert_ChunkIndexToGame(ChunkIndex i)
 {
-    if (g_chunks->active[i])
+    if (g_chunks->flags[i] & CHUNK_FLAG_ACTIVE)
         return ToGame(g_chunks->p[i]);
     return {};
 }
@@ -2200,8 +2200,12 @@ struct ChunkSaveData {
 
 struct SaveChunkJob : public Job {
     ChunkSaveData m_chunkData;
-    std::vector<ItemDiskData> m_itemData;
+    void DoThing() override;
+};
 
+struct SaveItemJob : public Job {
+    std::vector<ItemDiskData> m_itemData;
+    ChunkPos m_p;
     void DoThing() override;
 };
 
@@ -2222,16 +2226,14 @@ bool ChunkArray::Init()
 bool ChunkArray::SaveChunk(ChunkIndex i)
 {
     assert(OnMainThread());
-    if (g_chunks->flags[i] & CHUNK_FLAG_MODIFIED)
-    {
-        SaveChunkJob* job = new SaveChunkJob();
-        job->m_chunkData.p = g_chunks->p[i];
-        memcpy(job->m_chunkData.blocks.e, g_chunks->blocks[i].e, CHUNK_X * CHUNK_Y * CHUNK_Z * sizeof(BlockType));
-        job->m_chunkData.height = g_chunks->height[i];
 
-        std::lock_guard<std::mutex> lock(g_items.m_listVectorMutex);
+    bool result = false;
+    {
         ItemDiskData itemData = {};
         ChunkPos checkChunkPos = {};
+        SaveItemJob* job = new SaveItemJob();
+        job->m_p = g_chunks->p[i];
+        std::lock_guard<std::mutex> lock(g_items.m_listVectorMutex);
         for (EntityID itemID : g_chunks->itemIDs[i])
         {
             Item* item = g_items.Get(itemID);
@@ -2241,13 +2243,27 @@ bool ChunkArray::SaveChunk(ChunkIndex i)
                 itemData.m_type = +item->m_type;
                 job->m_itemData.push_back(itemData);
                 item->inUse = false;
+                result = true;
             }
         }
+        if (job->m_itemData.size())
+            MultiThreading::GetInstance().SubmitJob(job);
+        else
+            delete job;
+    }
+
+    if (g_chunks->flags[i] & CHUNK_FLAG_MODIFIED)
+    {
+        SaveChunkJob* job = new SaveChunkJob();
+        job->m_chunkData.p = g_chunks->p[i];
+        memcpy(job->m_chunkData.blocks.e, g_chunks->blocks[i].e, CHUNK_X * CHUNK_Y * CHUNK_Z * sizeof(BlockType));
+        job->m_chunkData.height = g_chunks->height[i];
+
 
         MultiThreading::GetInstance().SubmitJob(job);
-        return true;
+        result = true;
     }
-    return false;
+    return result;
 }
 
 #pragma pack(push, 1)
@@ -2323,7 +2339,11 @@ void SaveChunkJob::DoThing()
         success &= file.Write(dataArray.data(), dataArray.size() * sizeof(ChunkDiskData));
     }
 
-    g_items.Save(m_itemData, m_chunkData.p);
+}
+
+void SaveItemJob::DoThing()
+{
+    g_items.Save(m_itemData, m_p);
 }
 
 bool ChunkArray::LoadChunk(ChunkIndex index)
@@ -2385,6 +2405,7 @@ bool ChunkArray::LoadChunk(ChunkIndex index)
 
 struct ItemToMove {
     ChunkIndex newChunk;
+    ChunkIndex oldChunk;
     EntityID itemID;
 };
 
@@ -2394,7 +2415,7 @@ void ChunkArray::Update(float dt)
     std::vector<ItemToMove> itemsToMove;
     for (ChunkIndex i = 0; i < highestActiveChunk; i++)
     {
-        if (active[i])
+        if (flags[i] & CHUNK_FLAG_ACTIVE)
         {
             for (EntityID id : itemIDs[i])
             {

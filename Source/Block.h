@@ -96,9 +96,10 @@ enum class ChunkType : Uint8 {
 };
 ENUMOPS(ChunkType);
 
-#define CHUNK_FLAG_MODIFIED     BIT(1)
-#define CHUNK_FLAG_DIRTY        BIT(2)
-#define CHUNK_FLAG_TODELETE     BIT(3)
+#define CHUNK_FLAG_ACTIVE       BIT(1)
+#define CHUNK_FLAG_MODIFIED     BIT(2)
+#define CHUNK_FLAG_DIRTY        BIT(3)
+#define CHUNK_FLAG_TODELETE     BIT(4)
 
 constexpr uint32 CHUNK_X = 16;
 constexpr uint32 CHUNK_Y = 256;
@@ -264,7 +265,7 @@ struct ChunkArray
         Uploaded,
     };
 
-    bool                      active[MAX_CHUNKS];
+    //bool                      active[MAX_CHUNKS];
     ChunkData                 blocks[MAX_CHUNKS];
     ChunkPos                  p[MAX_CHUNKS] = {};
     std::vector<Vertex_Chunk> faceVertices[MAX_CHUNKS] = {};

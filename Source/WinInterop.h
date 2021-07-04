@@ -8,7 +8,7 @@ struct File {
     enum class Mode {
         Read,  //Read:   Open file for read access.
         Write, //Write:  Open and empty file for output.
-        Append,//Append: Open file for output.
+        //Append,//Append: Open file for output.
     };
 
     bool m_handleIsValid     = false;
@@ -16,8 +16,8 @@ struct File {
     bool m_timeIsValid       = false;
     bool m_binaryDataIsValid = false;
     std::string m_filename;
-    std::string m_contents;
-    std::vector<uint8> m_dataBinary;
+    std::string         m_dataString;
+    std::vector<uint8>  m_dataBinary;
     uint64 m_time = {};
 
     File(char const* fileName,        File::Mode fileMode, bool createIfNotFound);

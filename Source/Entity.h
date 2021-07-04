@@ -139,7 +139,6 @@ struct Item : public Entity
     Cube m_collider = {};
     RigidBody m_rigidBody = {};
     BlockType m_type;
-    bool m_looted = false;
     bool m_lootable = true;
     float m_lootableCountDown = 1.0f; //seconds
 };
@@ -165,6 +164,7 @@ struct Items
     bool Save(const ChunkPos& p);
     bool SaveAll();
     bool Load(std::vector<EntityID>& itemIDs, const ChunkPos& p);
+    void CleanUp();
     //bool Load(const ChunkPos& p, ChunkIndex i);
 };
 

@@ -123,7 +123,7 @@ void ExitApplication(Player* player, Camera* camera)
 //
     for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
     {
-        if (g_chunks->active[i])
+        if (g_chunks->flags[i] & CHUNK_FLAG_ACTIVE)
             g_chunks->flags[i] |= CHUNK_FLAG_TODELETE;
     }
     if (player)
@@ -1105,7 +1105,7 @@ White:  Uploaded,");
                 {
                     for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
                     {
-                        if (g_chunks->active[i])
+                        if (g_chunks->flags[i] & CHUNK_FLAG_ACTIVE)
                         {
                             if (((g_chunks->p[i].p.x > chunkPos.p.x + playerCamera->m_fogDistance || g_chunks->p[i].p.z > chunkPos.p.z + playerCamera->m_fogDistance) ||
                                 (g_chunks->p[i].p.x < chunkPos.p.x - playerCamera->m_fogDistance || g_chunks->p[i].p.z < chunkPos.p.z - playerCamera->m_fogDistance)) ||
@@ -1170,7 +1170,7 @@ White:  Uploaded,");
 
             for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
             {
-                if (!g_chunks->active[i])
+                if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
                     continue;
 
                 if (g_chunks->state[i] == ChunkArray::Unloaded)
@@ -1241,7 +1241,7 @@ White:  Uploaded,");
             PreChunkRender(playerCamera->m_perspective, playerCamera);
             for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
             {
-                if (!g_chunks->active[i])
+                if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
                     continue;
 
                 ChunkPos chunkP = g_chunks->p[i];
@@ -1286,7 +1286,7 @@ White:  Uploaded,");
                 {
                     for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
                     {
-                        if (!g_chunks->active[i])
+                        if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
                             continue;
 
                         Color colors[] = {
@@ -1370,7 +1370,7 @@ White:  Uploaded,");
             for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
             {
                 assert(g_chunks->refs[i] >= 0);
-                if (!g_chunks->active[i])
+                if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
                     continue;
                 if (g_chunks->state[i] == ChunkArray::VertexLoading)
                     continue;
@@ -1389,6 +1389,10 @@ White:  Uploaded,");
         {
             PROFILE_SCOPE("Entity Deletion");
             g_entityList.CleanUp();
+        }
+        {
+            PROFILE_SCOPE("Item Deletion");
+            g_items.CleanUp();
         }
         //gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
 
