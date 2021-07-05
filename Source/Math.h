@@ -786,6 +786,11 @@ Atan2f return value:
 {
     return { a.x * b.x, a.y * b.y, a.z * b.z };
 }
+//Multiplication of two vectors without adding each dimension to get the dot product
+[[nodiscard]] inline Vec3 HadamardProduct(Vec3 a, Vec3 b)
+{
+    return { a.x * b.x, a.y * b.y, a.z * b.z };
+}
 
 struct ChunkPos {
     Vec3Int p;
@@ -977,7 +982,7 @@ struct Transform {
 };
 
 struct BlockSampler;
-bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal);
+bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal, uint8& face);
 bool RayVsAABB(const Ray& ray, const AABB& box);
 bool AABBVsAABB(const AABB& box1, const AABB& box2);
 bool AABBVsAABB(Vec3& out_intersection, const AABB& box1, const AABB& box2);

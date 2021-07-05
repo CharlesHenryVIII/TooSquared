@@ -2111,8 +2111,9 @@ bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& di
                             float minDistanceToHit;
                             Vec3 intersectionPoint = {};
                             Vec3 normalFace;
+                            uint8 face;
                             rayCheckCount++;
-                            if (RayVsAABB(ray, boxX, minDistanceToHit, intersectionPoint, normalFace))
+                            if (RayVsAABB(ray, boxX, minDistanceToHit, intersectionPoint, normalFace, face))
                             {
                                 if (minDistanceToHit < distance)
                                 {

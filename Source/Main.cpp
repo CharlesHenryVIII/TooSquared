@@ -1028,7 +1028,13 @@ White:  Uploaded,");
                     ChunkIndex chunkIndex;
                     if (g_chunks->GetChunkFromPosition(chunkIndex, ToChunk(player->m_transform.m_p)))
                     {
-                        g_items.Add(g_chunks->itemIDs[chunkIndex], is.m_block, player->m_transform.m_p, finalPosition);
+#if 1
+                        WorldPos origin;
+                        origin.p = player->m_transform.m_p.p + Vec3{ 0, player->m_collider.m_height / 2, 0 };
+                        g_items.Add(g_chunks->itemIDs[chunkIndex], is.m_block, origin, finalPosition);
+#else
+                        g_items.Add(g_chunks->itemIDs[chunkIndex], is.m_block, player->m_transform.m_p.p, finalPosition);
+#endif
                     }
                     player->m_inventory.Remove(uint8(1));
                 }
