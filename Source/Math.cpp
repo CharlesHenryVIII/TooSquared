@@ -830,6 +830,7 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
     boxOrigin.p = collider.m_center.p;
     Vec3 deltaPOrigin = in_positionDelta;
     Vec3 normalMap = {};
+    Vec3 hackVec = {};
 
     while (in_positionDelta.x != 0.0f || in_positionDelta.y != 0.0f || in_positionDelta.z != 0.0f)
     {
@@ -893,6 +894,12 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                                     normalMap.z = 1;
 
                                 Vec3 delta = NormalizeZero(intersect - collider.m_center.p) * distanceToMove;
+                                //if (ray.origin.z == minkowskiSum.min.z)
+                                //    hackVec.z -= 0.001f;
+                                if (ray.origin.z <= minkowskiSum.max.z + 0.001f && ray.origin.z >= minkowskiSum.max.z - 0.001f)
+                                   hackVec.z += 0.01f;
+                                if (ray.origin.z <= minkowskiSum.min.z + 0.001f && ray.origin.z >= minkowskiSum.min.z - 0.001f)
+                                   hackVec.z -= 0.01f;
                                 //collider.m_center.p += HadamardProduct(Abs(normal), delta);
                                 collider.m_center.p += delta;
                                 result = true;
@@ -981,7 +988,7 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
         Vec3 test2 = (boxOrigin.p - collider.m_center.p) - deltaPOrigin;
         Vec3 test3 = deltaPOrigin - (collider.m_center.p - boxOrigin.p);
         //out_positionDelta = HadamardProduct((boxOrigin.p - collider.m_center.p) - deltaPOrigin, normalMap);
-        out_positionDelta = HadamardProduct((collider.m_center.p - boxOrigin.p) - deltaPOrigin, normalMap);
+        out_positionDelta = HadamardProduct((collider.m_center.p - boxOrigin.p) - deltaPOrigin, normalMap) + hackVec;
     }
 #endif
     return result;
