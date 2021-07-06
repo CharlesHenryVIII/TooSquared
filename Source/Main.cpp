@@ -1105,7 +1105,7 @@ White:  Uploaded,");
                             if (TEST_CREATE_AND_UPLOAD_CHUNKS)
                             if (!g_chunks->GetChunkFromPosition(funcResult, newBlockP))
                             {
-                                ChunkIndex chunki = g_chunks->AddChunk(newBlockP);
+                                g_chunks->AddChunk(newBlockP);
                             }
                         }
                     }
@@ -1116,7 +1116,7 @@ White:  Uploaded,");
                 PROFILE_SCOPE_TAB("Chunk Delete Check");
                 if (playerCamera->m_fogDistance)
                 {
-                    for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+                    for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
                     {
                         if (g_chunks->flags[i] & CHUNK_FLAG_ACTIVE)
                         {
@@ -1181,7 +1181,7 @@ White:  Uploaded,");
         {
             PROFILE_SCOPE_TAB("Semaphore Update");
 
-            for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+            for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
             {
                 if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
                     continue;
@@ -1252,7 +1252,7 @@ White:  Uploaded,");
             Frustum frustum = ComputeFrustum(playerCamera->m_viewProj);
             int32 uploadCount = 0;
             PreChunkRender(playerCamera->m_perspective, playerCamera);
-            for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+            for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
             {
                 if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
                     continue;

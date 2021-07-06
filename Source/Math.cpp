@@ -830,12 +830,12 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
     boxOrigin.p = collider.m_center.p;
     Vec3 deltaPOrigin = in_positionDelta;
     Vec3 normalMap = {};
-    Vec3 hackVec = {};
 
     while (in_positionDelta.x != 0.0f || in_positionDelta.y != 0.0f || in_positionDelta.z != 0.0f)
     {
 #define RAY_ATTEMPT 1
 #if RAY_ATTEMPT == 1
+        //at 100 items this took 8.27ms
         Vec3 pDelta = {};
         float clampVal = 0.3f;
         pDelta.x = Clamp(in_positionDelta.x, -clampVal, clampVal);
@@ -843,15 +843,11 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
         pDelta.z = Clamp(in_positionDelta.z, -clampVal, clampVal);
 
         in_positionDelta -= pDelta;
-        //collider.m_center.p += pDelta;
 
         Vec3 halfLengths = { collider.m_length / 2.0f, collider.m_length / 2.0f, collider.m_length / 2.0f };
 
-        //GamePos referenceGamePosition = ToGame(collider.m_center);
         int32 offset = Max(int32(collider.m_length), 1);
         GamePos blockp = {};
-        //Vec3 finalVectorTest = {};// = collider.m_center.p;
-        //Vec3 normalCollisions = {};
         for (int32 y = -offset; y <= offset; y++)
         {
             for (int32 x = -offset; x <= offset; x++)
@@ -886,10 +882,6 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                             blockRegion.RegionGather(blockp);
                             if (blockRegion.blocks[face] == BlockType::Empty || blockRegion.blocks[face] == BlockType::Water)
                             {
-                                //if ((ray.origin.z != minkowskiSum.min.z && ray.origin.z != minkowskiSum.max.z) &&
-                                //    (ray.origin.x != minkowskiSum.min.x && ray.origin.x != minkowskiSum.max.x))
-                                //{
-
                                 if (normal.x != 0)
                                     normalMap.x = 1;
                                 if (normal.y != 0)
@@ -898,51 +890,18 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                                     normalMap.z = 1;
 
                                 Vec3 delta = NormalizeZero(intersect - collider.m_center.p) * distanceToMove;
-                                //if (ray.origin.z <= minkowskiSum.max.z + 0.001f && ray.origin.z >= minkowskiSum.max.z - 0.001f)
-                                //    hackVec.z += 0.01f;
-                                //if (ray.origin.z <= minkowskiSum.min.z + 0.001f && ray.origin.z >= minkowskiSum.min.z - 0.001f)
-                                //    hackVec.z -= 0.01f;
-                                //collider.m_center.p += HadamardProduct(Abs(normal), delta);
                                 collider.m_center.p += delta;
                                 result = true;
-                                //}
                             }
                         }
-
-                        //Vec3 toOutside = intersect - (ray.origin + pDelta);
-                        //Vec3 toOutsideNormalized = HadamardProduct(Abs(normal), toOutside);
-                        //
-                        //out_positionDelta += toOutsideNormalized;
-                        //collider.m_center.p += toOutsideNormalized;
-                        //if (toOutsideNormalized != Vec3{})
-                        //    result = true;
-
-                        ////Vec3 toOutside = intersect - collider.m_center.p;
-                        //////out_positionDelta += intersect;
-                        //////collider.m_center.p += intersect;
-                        ////normalCollisions    += Abs(normal);
-                        ////assert(normalCollisions.x <= 1.0f && normalCollisions.x >= 0.0f);
-                        ////assert(normalCollisions.y <= 1.0f && normalCollisions.y >= 0.0f);
-                        ////assert(normalCollisions.z <= 1.0f && normalCollisions.z >= 0.0f);
-                        //////out_positionDelta   += HadamardProduct(toOutside - pDelta, normal);
-                        ////finalVectorTest     += HadamardProduct(intersect, Abs(normal));
-                        //////collider.m_center.p += toOutside - pDelta;
-                        ////result = true;
                     }
                 }
             }
         }
         int32 test = 10;
-        ////out_positionDelta = {};
-        //for (int32 a = 0; a < 3; a++)
-        //{
-        //    if (normalCollisions.e[a] > 0.0f)
-        //        out_positionDelta.e[a] += finalVectorTest.e[a] - collider.m_center.p.e[a];
-        //}
-        //collider.m_center.p += out_positionDelta;
-        ////collider.m_center.p += pDelta;
 
 #else
+        //at 100 items this took 20ms
         Vec3 pDelta = {};
         float clampVal = 0.3f;
         pDelta.x = Clamp(in_positionDelta.x, -clampVal, clampVal);
@@ -984,14 +943,10 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
 #endif
     }
 
-#if RAY_ATTEMPT == 1
+#if RAY_ATTEMPT != 0
     if (result)
     {
-        Vec3 test1 = collider.m_center.p - deltaPOrigin;
-        Vec3 test2 = (boxOrigin.p - collider.m_center.p) - deltaPOrigin;
-        Vec3 test3 = deltaPOrigin - (collider.m_center.p - boxOrigin.p);
-        //out_positionDelta = HadamardProduct((boxOrigin.p - collider.m_center.p) - deltaPOrigin, normalMap);
-        out_positionDelta = HadamardProduct((collider.m_center.p - boxOrigin.p) - deltaPOrigin, normalMap) + hackVec;
+        out_positionDelta = HadamardProduct((collider.m_center.p - boxOrigin.p) - deltaPOrigin, normalMap);
     }
 #endif
     return result;
