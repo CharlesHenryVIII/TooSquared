@@ -387,6 +387,24 @@ void Item::Update(float dt)
     Vec3 kinematicsPositionDelta = m_rigidBody.GetDeltaPosition(dt, { 3.0f, 1.0f, 3.0f });
     //Vec3 kinematicsPositionDelta = m_rigidBody.GetDeltaPosition(dt, { 0.0f, 0.0f, 0.0f }, 0.0f);
     m_collider.m_center = m_transform.m_p;
+    //Vec3 check = (Vec3{ fmodf(m_collider.m_center.p.x, 1.0f), fmodf(m_collider.m_center.p.y, 1.0f), fmodf(m_collider.m_center.p.z, 1.0f) });
+    //float hackOffset = 0.1f;
+    //if (check.x == 0.25f || check.x == -0.75f)
+    //    m_collider.m_center.p.x += hackOffset;
+    //else if (check.x == 0.75f || check.x == -0.25f)
+    //    m_collider.m_center.p.x -= hackOffset;
+
+    //if (check.y == 0.25f || check.y == -0.75f)
+    //    m_collider.m_center.p.y += hackOffset;
+    //else if (check.y == 0.75f || check.y == -0.25f)
+    //    m_collider.m_center.p.y -= hackOffset;
+
+    //if (check.z == 0.25f || check.z == -0.75f)
+    //    m_collider.m_center.p.z += hackOffset;
+    //else if (check.z == 0.75f || check.z == -0.25f)
+    //    m_collider.m_center.p.z -= hackOffset;
+
+    //if (m_collider.m_center.p.x == )
     m_transform.m_p.p += kinematicsPositionDelta;
     Vec3 collisionPositionDelta = {};
     m_rigidBody.m_isGrounded = false;

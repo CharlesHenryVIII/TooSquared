@@ -886,6 +886,10 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                             blockRegion.RegionGather(blockp);
                             if (blockRegion.blocks[face] == BlockType::Empty || blockRegion.blocks[face] == BlockType::Water)
                             {
+                                //if ((ray.origin.z != minkowskiSum.min.z && ray.origin.z != minkowskiSum.max.z) &&
+                                //    (ray.origin.x != minkowskiSum.min.x && ray.origin.x != minkowskiSum.max.x))
+                                //{
+
                                 if (normal.x != 0)
                                     normalMap.x = 1;
                                 if (normal.y != 0)
@@ -894,15 +898,14 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                                     normalMap.z = 1;
 
                                 Vec3 delta = NormalizeZero(intersect - collider.m_center.p) * distanceToMove;
-                                //if (ray.origin.z == minkowskiSum.min.z)
-                                //    hackVec.z -= 0.001f;
-                                if (ray.origin.z <= minkowskiSum.max.z + 0.001f && ray.origin.z >= minkowskiSum.max.z - 0.001f)
-                                   hackVec.z += 0.01f;
-                                if (ray.origin.z <= minkowskiSum.min.z + 0.001f && ray.origin.z >= minkowskiSum.min.z - 0.001f)
-                                   hackVec.z -= 0.01f;
+                                //if (ray.origin.z <= minkowskiSum.max.z + 0.001f && ray.origin.z >= minkowskiSum.max.z - 0.001f)
+                                //    hackVec.z += 0.01f;
+                                //if (ray.origin.z <= minkowskiSum.min.z + 0.001f && ray.origin.z >= minkowskiSum.min.z - 0.001f)
+                                //    hackVec.z -= 0.01f;
                                 //collider.m_center.p += HadamardProduct(Abs(normal), delta);
                                 collider.m_center.p += delta;
                                 result = true;
+                                //}
                             }
                         }
 
