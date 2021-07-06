@@ -1,6 +1,6 @@
 #include "Math.h"
 #include "Misc.h"
-#include "Block.h"
+#include "Chunk.h"
 
 
 //uint32 PCG32_Random_R(uint64& state, uint64& inc)
@@ -718,7 +718,8 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
 
     for (int32 faceIndex : faceIndices)
     {
-        if (blockSampler.blocks[faceIndex] != BlockType::Empty && blockSampler.blocks[faceIndex] != BlockType::Water)
+        
+        if (g_blocks[+blockSampler.blocks[faceIndex]].m_collidable)
             continue;
         for (int32 j = 0; j <= 1; j++)
         {
@@ -857,7 +858,7 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                     blockp.p = ToGame(collider.m_center).p + Vec3Int({ x, y, z });
                     BlockType blockCheck;
                     g_chunks->GetBlock(blockCheck, blockp);
-                    if (blockCheck == BlockType::Empty || blockCheck == BlockType::Water)
+                    if (!g_blocks[+blockCheck].m_collidable)
                         continue;
 
                     WorldPos worldBlockP = ToWorld(blockp);
@@ -880,7 +881,7 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                         {
                             BlockSampler blockRegion;
                             blockRegion.RegionGather(blockp);
-                            if (blockRegion.blocks[face] == BlockType::Empty || blockRegion.blocks[face] == BlockType::Water)
+                            if (!g_blocks[+blockRegion.blocks[face]].m_collidable)
                             {
                                 if (normal.x != 0)
                                     normalMap.x = 1;
@@ -927,7 +928,7 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                     BlockType blockCheck;
                     blockp.p = referenceGamePosition.p + Vec3Int({ x, y, z });
                     g_chunks->GetBlock(blockCheck, blockp);
-                    if (blockCheck == BlockType::Empty || blockCheck == BlockType::Water)
+                    if (!g_blocks[+blockCheck].m_collidable)
                         continue;
                     blockSampler.RegionGather(blockp);
                     Vec3 outsideOfBlock = {};

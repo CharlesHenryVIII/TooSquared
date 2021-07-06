@@ -2,7 +2,7 @@
 #include "Math.h"
 #include "WinInterop.h"
 
-#include "Block.h"
+#include "Chunk.h"
 #define STB_PERLIN_IMPLEMENTATION
 #include "STB\stb_perlin.h"
 

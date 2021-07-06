@@ -6,6 +6,7 @@
 #include "Inventory.h"
 
 #include <vector>
+#include <mutex>
 
 enum class MovementType {
     Fly,

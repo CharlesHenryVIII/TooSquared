@@ -1,4 +1,5 @@
 #include "Entity.h"
+#include "Chunk.h"
 
 Entitys g_entityList;
 Items   g_items;

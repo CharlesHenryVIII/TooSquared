@@ -7,7 +7,7 @@
 #include "STB/stb_image.h"
 #include "Misc.h"
 #include "Rendering.h"
-#include "Block.h"
+#include "Chunk.h"
 #include "Computer.h"
 #include "WinInterop.h"
 #include "Noise.h"
@@ -155,7 +155,7 @@ int main(int argc, char* argv[])
     srand(14);
 #endif
     NoiseInit();
-    SetBlockSprites();
+    BlockInit();
 
     //Initilizers
     g_chunks = new ChunkArray();
@@ -803,7 +803,7 @@ White:  Uploaded,");
                         //ImGui::TextUnformatted(ToString("%2i", playerInventory.m_slots[i].m_block).c_str());
                         auto spriteIndex = 31;
                         if (player->m_inventory.m_slots[i].m_block != BlockType::Empty)
-                            spriteIndex = blockSprites[+player->m_inventory.m_slots[i].m_block].faceSprites[+Face::Right];
+                            spriteIndex = g_blocks[+player->m_inventory.m_slots[i].m_block].m_spriteIndices[+Face::Right];
 
                         Rect uvResult = GetUVsFromIndex(spriteIndex);
                         ImGui::Image(imMinecraftTextureID, ImVec2(sizeOnScreen, sizeOnScreen),

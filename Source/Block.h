@@ -1,13 +1,7 @@
 #pragma once
-#include "Math.h"
+
 #include "Misc.h"
 #include "Rendering.h"
-#include "Computer.h"
-
-#include <memory>
-#include <vector>
-#include <unordered_map>
-
 
 enum class BlockType : uint8 {
     Empty,
@@ -42,73 +36,6 @@ enum class BlockType : uint8 {
 };
 ENUMOPS(BlockType);
 
-enum class BiomeType : Uint8 {
-    //None,
-    Grassland,
-    Desert,
-    Savanna,
-    TropicalRainforest,
-    Woodland,
-    SeasonalForest,
-    TemperateRainforest,
-    BorealForest,
-    Tundra,
-    Ice,
-    Count
-};
-ENUMOPS(BiomeType);
-
-enum class BiomeTemp : Uint8 {
-    Coldest,
-    Colder,
-    Cold,
-    Hot,
-    Hotter,
-    Hottest,
-    Count,
-};
-ENUMOPS(BiomeTemp);
-
-enum class BiomeMoist : Uint8 {
-    Dryest,
-    Dryer,
-    Dry,
-    Wet,
-    Wetter,
-    Wettest,
-    Count,
-};
-ENUMOPS(BiomeMoist);
-
-enum class TerrainType : Uint8 {
-    Plains,
-    Hills,
-    Mountains,
-    Count,
-};
-ENUMOPS(TerrainType);
-
-enum class ChunkType : Uint8 {
-    Ocean,
-    Coastal,
-    Inland,
-    Count,
-};
-ENUMOPS(ChunkType);
-
-#define CHUNK_FLAG_ACTIVE       BIT(1)
-#define CHUNK_FLAG_MODIFIED     BIT(2)
-#define CHUNK_FLAG_DIRTY        BIT(3)
-#define CHUNK_FLAG_TODELETE     BIT(4)
-
-constexpr uint32 CHUNK_X = 16;
-constexpr uint32 CHUNK_Y = 256;
-constexpr uint32 CHUNK_Z = 16;
-
-struct ChunkData {
-    BlockType e[CHUNK_X][CHUNK_Y][CHUNK_Z] = {};
-};
-
 enum class Face : uint8 {
     Right,
     Left,
@@ -120,129 +47,14 @@ enum class Face : uint8 {
 };
 ENUMOPS(Face);
 
-extern Vec3 faceNormals[+Face::Count];
-
-
-//NOTE: Wrong do later if needed
-//struct BlockPos {
-//    union {
-//        struct { int32 x, y, z; };
-//
-//        Vec2Int xy;
-//        int32 e[3];
-//    };
-//    ChunkPos ToWorld()
-//    {
-//        ChunkPos result = { static_cast<int32>(x) / static_cast<int32>(CHUNK_X),
-//                              static_cast<int32>(y) / static_cast<int32>(CHUNK_Y),
-//                              static_cast<int32>(z) / static_cast<int32>(CHUNK_Z) };
-//        return result;
-//    }
-//
-//};
-
-
 const uint32 defaultSpriteLocation = 254;
 struct Block {
-    Vec3 p = {};
-    Material material;
-    BlockType t = BlockType::Empty;
-    uint32 defaultSpriteLocation = 254;
-    uint32 spriteLocation[static_cast<uint32>(Face::Count)] = {
+    uint32 m_spriteIndices[+Face::Count] = {
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation,
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation };
-    VertexBuffer vertexBuffer;
-    IndexBuffer indexBuffer;
-};
-
-struct Grass : public Block {
-
-    Grass()
-    {
-        material.ambient = {  0.1f, 0.1f, 0.1f };
-        material.diffuse = {  1.0f, 1.0f, 1.0f };
-        material.specular = {     0.1f,   0.1f,   0.1f  };
-        material.shininess =  32;//0;
-
-        defaultSpriteLocation = 3;
-        spriteLocation[+Face::Top] = 0;
-        spriteLocation[+Face::Bot] = 2;
-    }
-};
-
-struct Dirt : public Block {
-
-    Dirt()
-    {
-        material.ambient = {  0.1f, 0.1f, 0.1f };
-        material.diffuse = {  1.0f, 1.0f, 1.0f };
-        material.specular = {     0.1f,   0.1f,   0.1f  };
-        material.shininess =  32;//0;
-
-        defaultSpriteLocation = 2;
-    }
-};
-
-struct Stone : public Block {
-    Stone()
-    {
-        material.ambient = { 0.02f, 0.02f, 0.02f };
-        material.diffuse = { 1.0f, 1.0f, 1.0f };
-        material.specular = { 0.4f, 0.4f,  0.4f };
-        material.shininess = 32;//0.78125f;
-
-        defaultSpriteLocation = 1;
-    }
-};
-
-struct IronBlock : public Block {
-    IronBlock()
-    {
-        material.ambient = {0.19225f, 0.19225f, 0.19225f };
-        material.diffuse = {0.50754f, 0.50754f, 0.50754f };
-        material.specular = {0.508273f, 0.508273f, 0.508273f };
-        material.shininess = 32;//0.4f;
-
-        defaultSpriteLocation = 22;
-    }
-};
-
-struct FireBlock : public Block {
-    FireBlock()
-    {
-        material.ambient = { 1.0f, 1.0f, 1.0f };
-        material.diffuse = { 1.0f, 1.0f, 1.0f };
-        material.specular = {   0,    0,    0 };
-        material.shininess = 32;
-
-        defaultSpriteLocation = 252;
-    }
-};
-
-struct BlockSprites
-{
-    uint8 faceSprites[+Face::Count] = {
-        defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation,
-        defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation };
-};
-
-extern BlockSprites blockSprites[+BlockType::Count];
-
-
-constexpr uint32 MAX_CHUNKS = 20000;
-typedef uint32 ChunkIndex;
-
-struct RegionSampler {
-
-    ChunkIndex neighbors[8] = {};
-    ChunkIndex center = 0;
-    ChunkPos centerP;
-    ChunkPos neighborsP[8];
-
-    bool GetBlock(BlockType& result, Vec3Int blockRelP);
-    bool RegionGather(ChunkIndex i);
-    void DecrimentRefCount();
-    void IncrimentRefCount();
+    bool m_transparent = false;
+    bool m_collidable  = true;
+    //Material material;
 };
 
 struct BlockSampler {
@@ -252,83 +64,14 @@ struct BlockSampler {
     bool RegionGather(GamePos m_baseBlockP);
 };
 
-
-typedef uint32 EntityID;
-struct ChunkArray
-{
-    enum State {
-        Unloaded,
-        BlocksLoading,
-        BlocksLoaded,
-        VertexLoading,
-        VertexLoaded,
-        Uploaded,
-    };
-
-    //bool                      active[MAX_CHUNKS];
-    ChunkData                 blocks[MAX_CHUNKS];
-    ChunkPos                  p[MAX_CHUNKS] = {};
-    std::vector<Vertex_Chunk> faceVertices[MAX_CHUNKS] = {};
-    VertexBuffer              vertexBuffer[MAX_CHUNKS] = {};
-    uint32                    uploadedIndexCount[MAX_CHUNKS] = {};
-    uint16                    height[MAX_CHUNKS] = {};
-    std::atomic<State>        state[MAX_CHUNKS] = {};
-    std::atomic<uint32>       flags[MAX_CHUNKS] = {};
-    std::atomic<int32>        refs[MAX_CHUNKS] = {};
-    std::vector<EntityID>     itemIDs[MAX_CHUNKS] = {};
-
-    ChunkType                 chunkType[MAX_CHUNKS] = {};
-    TerrainType               terrainType[MAX_CHUNKS] = {};
-
-    uint32 chunkCount = 0;
-    std::unordered_map<uint64, ChunkIndex> chunkPosTable;
-
-    ChunkIndex highestActiveChunk;
-
-    bool GetChunkFromPosition(ChunkIndex& result, ChunkPos p);
-    void ClearChunk(ChunkIndex index);
-    ChunkIndex AddChunk(ChunkPos position);
-    void SetBlocks(ChunkIndex i);
-    void BuildChunkVertices(RegionSampler region);
-    void UploadChunk(ChunkIndex i);
-    void RenderChunk(ChunkIndex i);
-    bool GetChunk(ChunkIndex& result, GamePos blockP);
-    bool GetBlock(BlockType& blockType, const GamePos& blockP);
-    bool SaveChunk(ChunkIndex i);
-    bool LoadChunk(ChunkIndex i);
-    bool Init();
-    void Update(float deltaTime);
-};
-extern ChunkArray* g_chunks;
-
-struct SetBlocks : public Job {
-    ChunkIndex chunk;
-    void DoThing() override;
-};
-
-struct CreateVertices : public Job {
-    RegionSampler region;
-    void DoThing() override;
-};
-
-extern std::vector<WorldPos> cubesToDraw;
-
-
-//Vec3Int Convert_GameToChunk(Vec3 p);
-GamePos Convert_ChunkIndexToGame(ChunkIndex i);
-GamePos Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP);
-Vec3Int Convert_GameToBlock(ChunkPos& result, GamePos inputP);
+extern Block g_blocks[+BlockType::Count];
 
 struct Camera;
-void SetBlockSprites();
-void PreChunkRender(const Mat4& perspective, Camera* camera);
+
+void BlockInit();
 Rect GetUVsFromIndex(uint8 index);
 void DrawBlock(const Mat4& mat, Color color, float scale, Camera* camera, Texture::T textureType, BlockType blockType);
 void DrawBlock(const Mat4& mat, Color color, Vec3 scale, Camera* camera, Texture::T textureType, BlockType blockType);
 void DrawCube(WorldPos p, Color color, Vec3  scale, Camera* camera, Texture::T textureType = Texture::T::Plain, BlockType blockType = BlockType::Empty);
 void DrawCube(WorldPos p, Color color, float scale, Camera* camera, Texture::T textureType = Texture::T::Plain, BlockType blockType = BlockType::Empty);
 void Draw2DSquare(Rect rect, Color color);
-
-int64 PositionHash(ChunkPos p);
-bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& distance, Vec3& normal);
-void SetBlock(GamePos hitBlock, BlockType setBlockType);

@@ -160,6 +160,7 @@
     <ClCompile Include="Contrib\imgui-master\imgui_tables.cpp" />
     <ClCompile Include="Contrib\imgui-master\imgui_widgets.cpp" />
     <ClCompile Include="Source\Block.cpp" />
+    <ClCompile Include="Source\Chunk.cpp" />
     <ClCompile Include="Source\Computer.cpp" />
     <ClCompile Include="Source\Entity.cpp" />
     <ClCompile Include="Source\Gameplay.cpp" />
@@ -193,6 +194,7 @@
     <ClInclude Include="Contrib\imgui-master\imstb_textedit.h" />
     <ClInclude Include="Contrib\imgui-master\imstb_truetype.h" />
     <ClInclude Include="Source\Block.h" />
+    <ClInclude Include="Source\Chunk.h" />
     <ClInclude Include="Source\Computer.h" />
     <ClInclude Include="Source\Entity.h" />
     <ClInclude Include="Source\Gameplay.h" />
