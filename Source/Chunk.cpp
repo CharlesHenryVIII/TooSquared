@@ -1825,13 +1825,13 @@ bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& di
     chunkBox.min = ToWorld(g_chunks->p[chunkIndex]).p;
     chunkBox.max = { chunkBox.min.x + CHUNK_X, chunkBox.min.y + CHUNK_Y, chunkBox.min.z + CHUNK_Z };
     {
-        PROFILE_SCOPE_TAB("RayVsChunk()/RayVsAABB()");
+        //PROFILE_SCOPE_TAB("RayVsChunk()/RayVsAABB()");
         rayCheckCount++;
         if (!RayVsAABB(ray, chunkBox))
             return false;
     }
 
-    PROFILE_SCOPE_TAB("RayVsChunk/BlockLoop");
+    //PROFILE_SCOPE_TAB("RayVsChunk/BlockLoop");
     for (int32 z = 0; z < CHUNK_Z; z++)
     {
         GamePos blockPZ = Convert_BlockToGame(chunkIndex, { 0, 0, z });

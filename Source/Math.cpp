@@ -846,9 +846,23 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
         in_positionDelta -= pDelta;
 
         Vec3 halfLengths = { collider.m_length / 2.0f, collider.m_length / 2.0f, collider.m_length / 2.0f };
-
-        int32 offset = Max(int32(collider.m_length), 1);
         GamePos blockp = {};
+#if 1
+        //2.5ms update with 100 items
+        WorldPos minBoundsCheckWorld = collider.m_center.p - halfLengths;
+        WorldPos maxBoundsCheckWorld = collider.m_center.p + halfLengths;
+        GamePos minBoundsCheck = ToGame(minBoundsCheckWorld);
+        GamePos maxBoundsCheck = ToGame(maxBoundsCheckWorld);
+        for (int32 y = minBoundsCheck.p.y; y <= maxBoundsCheck.p.y; y++)
+        {
+            for (int32 x = minBoundsCheck.p.x; x <= maxBoundsCheck.p.x; x++)
+            {
+                for (int32 z = minBoundsCheck.p.z; z <= maxBoundsCheck.p.z; z++)
+                {
+                    blockp.p = { x, y, z };
+#else
+        //7.5ms update with 100 items
+        int32 offset = Max(int32(collider.m_length), 1);
         for (int32 y = -offset; y <= offset; y++)
         {
             for (int32 x = -offset; x <= offset; x++)
@@ -856,6 +870,10 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                 for (int32 z = -offset; z <= offset; z++)
                 {
                     blockp.p = ToGame(collider.m_center).p + Vec3Int({ x, y, z });
+#endif
+
+
+
                     BlockType blockCheck;
                     g_chunks->GetBlock(blockCheck, blockp);
                     if (!g_blocks[+blockCheck].m_collidable)
@@ -884,17 +902,10 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
 
                         if (distanceToMove < Length(pDelta))
                         {
-#if 1
                             BlockType normalFaceBlockType;
-                            GamePos normalFaceBlockP = ToGame(WorldPos(worldBlockP.p + faceNormals[+face]));
+                            GamePos normalFaceBlockP = ToGame(WorldPos(worldBlockP.p + normal));
                             if (!(g_chunks->GetBlock(normalFaceBlockType, normalFaceBlockP)) || (!g_blocks[+normalFaceBlockType].m_collidable))
                             {
-#else
-                            BlockSampler blockRegion;
-                            blockRegion.RegionGather(blockp);
-                            if (!g_blocks[+blockRegion.blocks[face]].m_collidable)
-                            {
-#endif
                                 if (normal.x != 0)
                                     normalMap.x = 1;
                                 else if (normal.y != 0)

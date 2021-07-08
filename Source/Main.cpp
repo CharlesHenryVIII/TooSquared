@@ -918,7 +918,7 @@ White:  Uploaded,");
                 GamePos resultPos = {};
                 float distance;
                 {
-                    PROFILE_SCOPE_TAB("RayVsChunk");
+                    PROFILE_SCOPE_TAB("RayVsChunk Local");
                     if (RayVsChunk(ray, centerChunkIndex, resultPos, distance, hitNormal))
                     {
                         hitBlock = resultPos;
@@ -929,12 +929,12 @@ White:  Uploaded,");
                 PROFILE_SCOPE_TAB("Ray Neighbor gather and loop");
                 if (!validHit && localRegion.RegionGather(centerChunkIndex))
                 {
-                    PROFILE_SCOPE_TAB("Ray Neighbor loop");
+                    PROFILE_SCOPE_TAB("RayVsChunk Neighbors");
                     for (ChunkIndex neighbor : localRegion.neighbors)
                     {
                         float distanceComparison;
                         Vec3 neighborNormal;
-                        PROFILE_SCOPE_TAB("RayVsChunk2");
+                        //PROFILE_SCOPE_TAB("RayVsChunk2");
                         if (RayVsChunk(ray, neighbor, resultPos, distanceComparison, neighborNormal))
                         {
                             if (distanceComparison < distance)
