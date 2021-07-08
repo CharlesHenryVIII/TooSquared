@@ -881,17 +881,25 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                             (normal.y != 0.0f && Sign(normal.y) == Sign(pDelta.y)) ||
                             (normal.z != 0.0f && Sign(normal.z) == Sign(pDelta.z)))
                             continue;
+
                         if (distanceToMove < Length(pDelta))
                         {
+#if 1
+                            BlockType normalFaceBlockType;
+                            GamePos normalFaceBlockP = ToGame(WorldPos(worldBlockP.p + faceNormals[+face]));
+                            if (!(g_chunks->GetBlock(normalFaceBlockType, normalFaceBlockP)) || (!g_blocks[+normalFaceBlockType].m_collidable))
+                            {
+#else
                             BlockSampler blockRegion;
                             blockRegion.RegionGather(blockp);
                             if (!g_blocks[+blockRegion.blocks[face]].m_collidable)
                             {
+#endif
                                 if (normal.x != 0)
                                     normalMap.x = 1;
-                                if (normal.y != 0)
+                                else if (normal.y != 0)
                                     normalMap.y = 1;
-                                if (normal.z != 0)
+                                else if (normal.z != 0)
                                     normalMap.z = 1;
 
                                 Vec3 delta = NormalizeZero(intersect - collider.m_center.p) * distanceToMove;
