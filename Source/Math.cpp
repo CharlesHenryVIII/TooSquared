@@ -877,6 +877,10 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                     uint8 face;
                     if (RayVsAABB(ray, minkowskiSum, distanceToMove, intersect, normal, face))
                     {
+                        if ((normal.x != 0.0f && Sign(normal.x) == Sign(pDelta.x)) ||
+                            (normal.y != 0.0f && Sign(normal.y) == Sign(pDelta.y)) ||
+                            (normal.z != 0.0f && Sign(normal.z) == Sign(pDelta.z)))
+                            continue;
                         if (distanceToMove < Length(pDelta))
                         {
                             BlockSampler blockRegion;
@@ -899,7 +903,6 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                 }
             }
         }
-        int32 test = 10;
 
 #else
         //at 100 items this took 20ms

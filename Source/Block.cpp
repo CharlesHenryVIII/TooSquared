@@ -78,9 +78,15 @@ void SetBlockSprites()
     g_blocks[+BlockType::Water].m_collidable  = false;
     SetMultipleBlockSprites(BlockType::Bedrock, 17);
 
+    SetMultipleBlockSprites(BlockType::HalfSlab, 5);
+    g_blocks[+BlockType::HalfSlab].m_spriteIndices[+Face::Top] = 6;
+    g_blocks[+BlockType::HalfSlab].m_spriteIndices[+Face::Bot] = 6;
+    SetMultipleBlockSprites(BlockType::Slab, 5);
+    g_blocks[+BlockType::Slab].m_spriteIndices[+Face::Top] = 6;
+    g_blocks[+BlockType::Slab].m_spriteIndices[+Face::Bot] = 6;
+
     g_blocks[+BlockType::Empty].m_transparent = true;
     g_blocks[+BlockType::Empty].m_collidable  = false;
-
 }
 
 void BlockInit()

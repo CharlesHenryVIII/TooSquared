@@ -26,6 +26,8 @@ enum class BlockType : uint8 {
     Leaves,
     MossyCobblestone,
     Water,
+    HalfSlab,
+    Slab,
     Count,
 //CobWeb,
 //Flower_Red,

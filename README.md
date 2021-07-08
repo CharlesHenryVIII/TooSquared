@@ -2,8 +2,8 @@
 
 ###TODO: 
  * Optimize block creation and deletion
- * Saving chunks to disk
- * Block refactor to be structures of information about each block instead of being individual blocks
+ * Half height blocks
+ * Gameplay??? (Conveyers, mining, etc?)
 
  * Directional and point lighting
  * Block wireframe on target
