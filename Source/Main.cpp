@@ -192,6 +192,8 @@ int main(int argc, char* argv[])
     //bool debugDraw = false;
     uint32 s_debugFlags = +DebugOptions::LookatBlock | +DebugOptions::Enabled;
     bool TEST_CREATE_AND_UPLOAD_CHUNKS = true;
+    BlockType ItemToInventoryFromImGUIType = BlockType::Empty;
+    uint32 ItemToInventoryFromImGUICount = 0;
 
     //Item* parentItem= g_items.Add(BlockType::Grass, { 50, 150, 0 });
     //Item* childItem = g_items.Add(BlockType::Grass, {50, 150, 0});
@@ -692,54 +694,73 @@ White:  Uploaded,");
                     ImGui::Text("Update the chunks based on:");
                     ImGui::RadioButton("Player", (int32*)&chunkUpdateOrigin, +ChunkUpdateOrigin::Player); ImGui::SameLine();
                     ImGui::RadioButton("Camera", (int32*)&chunkUpdateOrigin, +ChunkUpdateOrigin::Camera); //ImGui::SameLine();
-                    //
+                    ImGui::Spacing();
                     ImGui::Text("Core Count:");
                     ImGui::RadioButton("Multi", (int32*)&multiThreading.threads, +MultiThreading::Threads::multi_thread); ImGui::SameLine();
                     ImGui::RadioButton("Single", (int32*)&multiThreading.threads, +MultiThreading::Threads::single_thread); //ImGui::SameLine();
-                    //
-                    if (ImGui::Button("Save Game"))
+                    ImGui::Spacing();
                     {
-                        //SaveGame();
+//#define RADIO_BUTTON_MACRO(type) 
+                        if (ImGui::Button("Add Blocks To Inventory"))
+                        {
+                            player->m_inventory.Add(ItemToInventoryFromImGUIType, ItemToInventoryFromImGUICount);
+                        }
+                        ImGui::InputInt("Amount", (int32*)&ItemToInventoryFromImGUICount);
+                        ImGui::SameLine(); HelpMarker(
+                            "You can apply arithmetic operators +,*,/ on numerical values.\n"
+                            "  e.g. [ 100 ], input \'*2\', result becomes [ 200 ]\n"
+                            "Use +- to subtract.");
+
+#define RADIO_BUTTON_MACRO(type) ImGui::RadioButton(#type, ((int32*)&ItemToInventoryFromImGUIType), +BlockType::type)
+                        RADIO_BUTTON_MACRO(Grass); 
+                        ImGui::SameLine();
+                        RADIO_BUTTON_MACRO(Dirt);  
+                        RADIO_BUTTON_MACRO(Stone);
+                        ImGui::SameLine();
+                        RADIO_BUTTON_MACRO(Planks); 
+                        RADIO_BUTTON_MACRO(StoneSlab); 
+                        ImGui::SameLine();
+                        RADIO_BUTTON_MACRO(Brick);
+                        RADIO_BUTTON_MACRO(TNT); 
+                        ImGui::SameLine();
+                        RADIO_BUTTON_MACRO(Cobblestone); 
+                        RADIO_BUTTON_MACRO(Bedrock);
+                        ImGui::SameLine();
+                        RADIO_BUTTON_MACRO(Sand); 
+                        RADIO_BUTTON_MACRO(Gravel); 
+                        ImGui::SameLine();
+                        RADIO_BUTTON_MACRO(Wood);
+                        RADIO_BUTTON_MACRO(Snow); 
+                        ImGui::SameLine();
+                        RADIO_BUTTON_MACRO(Ice); 
+                        RADIO_BUTTON_MACRO(Obsidian);
+                        ImGui::SameLine();
+                        RADIO_BUTTON_MACRO(Leaves); 
+                        RADIO_BUTTON_MACRO(MossyCobblestone);
+                        ImGui::SameLine();
+                        RADIO_BUTTON_MACRO(Water);
+                        RADIO_BUTTON_MACRO(HalfSlab); 
+                        ImGui::SameLine();
+                        RADIO_BUTTON_MACRO(Slab); 
+                            //Stone,
+                            //Planks,
+                            //StoneSlab,
+                            //Brick,
+                            //TNT,
+                            //Cobblestone,
+                            //Bedrock,
+                            //Sand,
+                            //Gravel,
+                            //Wood,
+                            //Snow,
+                            //Ice,
+                            //Obsidian,
+                            //Leaves,
+                            //MossyCobblestone,
+                            //Water,
+                            //HalfSlab,
+                            //Slab,
                     }
-                    //
-                    ImVec4 greenColor = { 0.1f, 0.8f, 0.1f, 0.8f };
-                    ImVec4 redColor = { 0.8f, 0.1f, 0.1f, 0.8f };
-                    //
-                    if (g_gameData.m_gameSaveAttempt)
-                    {
-                        ImGui::PushStyleColor(ImGuiCol_Button, greenColor);
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, greenColor);
-                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, greenColor);
-                    }
-                    else
-                    {
-                        ImGui::PushStyleColor(ImGuiCol_Button, redColor);
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, redColor);
-                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, redColor);
-                    }
-                    ImGui::Button("Saving Attempt");
-                    ImGui::PopStyleColor(3);
-                    ImGui::SameLine();
-                    //
-                    if (g_gameData.m_gameSavedSuccessfully)
-                    {
-                        ImGui::PushStyleColor(ImGuiCol_Button, greenColor);
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, greenColor);
-                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, greenColor);
-                    }
-                    else
-                    {
-                        ImGui::PushStyleColor(ImGuiCol_Button, redColor);
-                        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, redColor);
-                        ImGui::PushStyleColor(ImGuiCol_ButtonActive, redColor);
-                    }
-                    ImGui::Button("Saving Success");
-                    ImGui::PopStyleColor(3);
-                    //
-                    int32 atomicCopy_progress = g_gameData.m_gameSaveProgress;
-                    int32 atomicCopy_count = g_gameData.m_gameSaveDataCount;
-                    std::string progressText = ToString("%i/%i", atomicCopy_progress, atomicCopy_count);
-                    ImGui::ProgressBar(atomicCopy_progress / float(atomicCopy_count), ImVec2(0.f, 0.f), progressText.c_str());
                     //
                     {
                         ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state

@@ -52,6 +52,9 @@ void SetMultipleBlockSprites(BlockType bt, uint32 v)
 }
 void SetBlockSprites()
 {
+    g_blocks[+BlockType::Empty].m_transparent = true;
+    g_blocks[+BlockType::Empty].m_collidable  = false;
+
     SetMultipleBlockSprites(BlockType::Dirt, 2);
     SetMultipleBlockSprites(BlockType::Grass, 3);
     g_blocks[+BlockType::Grass].m_spriteIndices[+Face::Top] = 0;
@@ -66,6 +69,7 @@ void SetBlockSprites()
     g_blocks[+BlockType::Wood].m_spriteIndices[+Face::Top] = 21;
     g_blocks[+BlockType::Wood].m_spriteIndices[+Face::Bot] = 21;
     SetMultipleBlockSprites(BlockType::Ice, 67);
+    g_blocks[+BlockType::Wood].m_transparent = true;
     SetMultipleBlockSprites(BlockType::Obsidian, 37);
     SetMultipleBlockSprites(BlockType::Leaves, 53);
     //SetMultipleBlockSprites(BlockType::Leaves, 52);
@@ -81,12 +85,12 @@ void SetBlockSprites()
     SetMultipleBlockSprites(BlockType::HalfSlab, 5);
     g_blocks[+BlockType::HalfSlab].m_spriteIndices[+Face::Top] = 6;
     g_blocks[+BlockType::HalfSlab].m_spriteIndices[+Face::Bot] = 6;
+    g_blocks[+BlockType::HalfSlab].m_transparent               = true;
+    g_blocks[+BlockType::HalfSlab].m_collisionHeight           = 0.5f;
+
     SetMultipleBlockSprites(BlockType::Slab, 5);
     g_blocks[+BlockType::Slab].m_spriteIndices[+Face::Top] = 6;
     g_blocks[+BlockType::Slab].m_spriteIndices[+Face::Bot] = 6;
-
-    g_blocks[+BlockType::Empty].m_transparent = true;
-    g_blocks[+BlockType::Empty].m_collidable  = false;
 }
 
 void BlockInit()

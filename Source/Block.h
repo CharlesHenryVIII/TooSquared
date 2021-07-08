@@ -54,8 +54,9 @@ struct Block {
     uint32 m_spriteIndices[+Face::Count] = {
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation,
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation };
-    bool m_transparent = false;
-    bool m_collidable  = true;
+    float m_collisionHeight = 1.0f;
+    bool  m_transparent     = false;
+    bool  m_collidable      = true;
     //Material material;
 };
 

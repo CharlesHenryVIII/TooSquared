@@ -10,10 +10,10 @@ struct InventorySlot {
 
 struct Inventory {
 private:
-    bool AddBlocks(InventorySlot& slot, auto& count)
+    bool AddBlocks(InventorySlot& slot, uint8& count)
     {
-        auto availableCount = MAX_BLOCKS - slot.m_count;
-        auto incriment = Min(count, availableCount);
+        uint8 availableCount = MAX_BLOCKS - slot.m_count;
+        uint8 incriment = Min(count, availableCount);
         slot.m_count += incriment;
         assert(incriment <= count);
         count -= incriment;
@@ -24,7 +24,7 @@ public:
     InventorySlot m_slots[MAX_SLOTS] = {};
     uint32 m_slotSelected = {};
 
-    auto Add(BlockType block, auto count)
+    uint8 Add(BlockType block, uint8 count)
     {
         assert(count);
         if (count == 0)
@@ -55,10 +55,10 @@ public:
 
         return count;
     }
-    bool Remove(auto count)
+    bool Remove(uint8 count)
     {
         InventorySlot& slot = HotSlot();
-        auto removalAmount = Min(slot.m_count, count);
+        uint8 removalAmount = Min(slot.m_count, count);
         slot.m_count -= removalAmount;
         if (slot.m_count == 0)
         {
