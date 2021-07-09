@@ -9,4 +9,8 @@ out vec4 color;
 void main()
 {
     color = p_color * texture(sampler, p_uv);
+#if 1
+    if (color.a == 0)
+        discard;
+#endif
 }

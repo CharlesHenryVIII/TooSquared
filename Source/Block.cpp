@@ -73,7 +73,7 @@ void SetBlockSprites()
     SetMultipleBlockSprites(BlockType::Obsidian, 37);
 #if 1
     SetMultipleBlockSprites(BlockType::Leaves, 52);
-    g_blocks[+BlockType::Leaves].m_transparent = true;
+    g_blocks[+BlockType::Leaves].m_transparent = false;
 #else
     SetMultipleBlockSprites(BlockType::Leaves, 53);
 #endif

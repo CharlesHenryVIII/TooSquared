@@ -1673,7 +1673,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                         }
                         //if (getBlockResult && type == BlockType::Empty || (currentBlockType != BlockType::Water && type == BlockType::Water))
                         //if (/*getBlockResult && */g_blocks[+type].m_unUsualShape || (g_blocks[+type].m_transparent && ((currentBlockType != BlockType::Water && type == BlockType::Water) || type != BlockType::Water))) 
-                        if (g_blocks[+type].m_unUsualShape || (g_blocks[+type].m_transparent && (currentBlockType != type))) 
+                        if (g_blocks[+type].m_unUsualShape || (g_blocks[+type].m_transparent && (currentBlockType != type)) || type == BlockType::Leaves) 
                         {
                             Vertex_Chunk f = {};
                             Vec3 offset = { static_cast<float>(x + realP.p.x), static_cast<float>(y + realP.p.y), static_cast<float>(z + realP.p.z) };
