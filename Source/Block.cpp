@@ -85,8 +85,8 @@ void SetBlockSprites()
     SetMultipleBlockSprites(BlockType::HalfSlab, 5);
     g_blocks[+BlockType::HalfSlab].m_spriteIndices[+Face::Top] = 6;
     g_blocks[+BlockType::HalfSlab].m_spriteIndices[+Face::Bot] = 6;
-    g_blocks[+BlockType::HalfSlab].m_transparent               = true;
     g_blocks[+BlockType::HalfSlab].m_collisionHeight           = 0.5f;
+    g_blocks[+BlockType::HalfSlab].m_unUsualShape              = true;
 
     SetMultipleBlockSprites(BlockType::Slab, 5);
     g_blocks[+BlockType::Slab].m_spriteIndices[+Face::Top] = 6;

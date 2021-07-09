@@ -1354,8 +1354,8 @@ White:  Uploaded,");
                         pos = ToWorld(hitBlock);
                         pos.p = pos.p + 0.5f;
                         Color temp = Mint;
-                        temp.a = 0.6f;
-                        DrawCube(pos, temp, 1.1f, playerCamera);
+                        temp.a = 0.25f;
+                        DrawCube(pos, temp, 1.01f, playerCamera);
                     }
                 }
                 if (s_debugFlags & +DebugOptions::CollisionTriangles)

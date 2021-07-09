@@ -56,6 +56,7 @@ struct Block {
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation };
     float m_collisionHeight = 1.0f;
     bool  m_transparent     = false;
+    bool  m_unUsualShape    = false;
     bool  m_collidable      = true;
     //Material material;
 };

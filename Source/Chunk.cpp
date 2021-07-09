@@ -1414,9 +1414,9 @@ Vec3Int Convert_GameToBlock(ChunkPos& result, GamePos inputP)
 //returns true if the block is within the array
 bool RegionSampler::GetBlock(BlockType& result, Vec3Int blockRelP)
 {
+    result = BlockType::Empty;
     if (blockRelP.y >= CHUNK_Y || blockRelP.y < 0)
     {
-        result = BlockType::Empty;
         return false;
     }
     else
@@ -1654,7 +1654,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                             getBlockResult = (region.GetBlock(type, { xReal, yReal, zReal })) || (yReal == CHUNK_Y);
                         }
                         //if (getBlockResult && type == BlockType::Empty || (currentBlockType != BlockType::Water && type == BlockType::Water))
-                        if (getBlockResult && g_blocks[+type].m_transparent && ((currentBlockType != BlockType::Water && type == BlockType::Water) || type != BlockType::Water))
+                        if (/*getBlockResult && */g_blocks[+type].m_unUsualShape || (g_blocks[+type].m_transparent && ((currentBlockType != BlockType::Water && type == BlockType::Water) || type != BlockType::Water))) 
                         {
                             VertexFace f = {};
                             Vec3 offset = { static_cast<float>(x + realP.p.x), static_cast<float>(y + realP.p.y), static_cast<float>(z + realP.p.z) };
