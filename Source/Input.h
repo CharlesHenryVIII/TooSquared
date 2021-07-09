@@ -20,6 +20,8 @@ struct Mouse {
     Vec2Int pos = {};
     Vec2 pDelta = {};
     Vec2Int wheel = {}; //Y for vertical rotations, X for Horizontal rotations/movement
+    Vec2Int wheelInstant = {};
+    bool wheelModifiedLastFrame = false;
     SDL_Cursor* cursors[ImGuiMouseCursor_COUNT] = {};
     float m_sensitivity = 0.4f;
     bool canUseGlobalState = true;

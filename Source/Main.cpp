@@ -339,8 +339,8 @@ int main(int argc, char* argv[])
                 {
                     if(!imGuiIO.WantCaptureMouse)
                     {
-                        playerInput.mouse.wheel.x = SDLEvent.wheel.x;
-                        playerInput.mouse.wheel.y = SDLEvent.wheel.y;
+                        playerInput.mouse.wheelInstant.x = playerInput.mouse.wheel.x = SDLEvent.wheel.x;
+                        playerInput.mouse.wheelInstant.y = playerInput.mouse.wheel.y = SDLEvent.wheel.y;
                     }
                 }
                 break;
@@ -424,6 +424,15 @@ int main(int argc, char* argv[])
                 }
             }
             key.second.downPrevFrame = key.second.down;
+        }
+        if (playerInput.mouse.wheelModifiedLastFrame)
+        {
+            playerInput.mouse.wheelInstant.y = 0;
+            playerInput.mouse.wheelModifiedLastFrame = false;
+        }
+        else if (playerInput.mouse.wheelInstant.y)
+        {
+            playerInput.mouse.wheelModifiedLastFrame = true;
         }
 
 
@@ -975,15 +984,16 @@ White:  Uploaded,");
         {
             //Inventory Slot Selection:
             //TODO: improve
-            if (playerInput.mouse.wheel.y > 0)
-            {
-                player->m_inventory.m_slotSelected = (player->m_inventory.m_slotSelected + 1) % MAX_SLOTS;
-            }
-            else if (playerInput.mouse.wheel.y > 0)
-            {
-                if (player->m_inventory.m_slotSelected = (player->m_inventory.m_slotSelected - 1) < 0)
-                    player->m_inventory.m_slotSelected = MAX_SLOTS;
-            }
+            //if (playerInput.mouse.wheel.y > 0)
+            //{
+            if (playerInput.mouse.wheelInstant.y != 0)
+                player->m_inventory.m_slotSelected = Clamp<int32>(player->m_inventory.m_slotSelected + playerInput.mouse.wheelInstant.y, 0, MAX_SLOTS - 1);
+            //}
+            //else if (playerInput.mouse.wheel.y > 0)
+            //{
+            //    if (player->m_inventory.m_slotSelected = (player->m_inventory.m_slotSelected - 1) < 0)
+            //        player->m_inventory.m_slotSelected = MAX_SLOTS;
+            //}
             for (int32 c = SDLK_1; c <= SDLK_8; c++)
             {
                 if (playerInput.keyStates[c].downThisFrame)
