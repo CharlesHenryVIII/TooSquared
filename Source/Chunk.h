@@ -131,9 +131,12 @@ struct ChunkArray
     //bool                      active[MAX_CHUNKS];
     ChunkData                 blocks[MAX_CHUNKS];
     ChunkPos                  p[MAX_CHUNKS] = {};
-    std::vector<Vertex_Chunk> faceVertices[MAX_CHUNKS] = {};
-    VertexBuffer              vertexBuffer[MAX_CHUNKS] = {};
-    uint32                    uploadedIndexCount[MAX_CHUNKS] = {};
+    std::vector<Vertex_Chunk> opaqueFaceVertices[MAX_CHUNKS] = {};
+    std::vector<Vertex_Chunk> transparentFaceVertices[MAX_CHUNKS] = {};
+    VertexBuffer              opaqueVertexBuffer[MAX_CHUNKS] = {};
+    VertexBuffer              transparentVertexBuffer[MAX_CHUNKS] = {};
+    uint32                    opaqueIndexCount[MAX_CHUNKS] = {};
+    uint32                    transparentIndexCount[MAX_CHUNKS] = {};
     uint16                    height[MAX_CHUNKS] = {};
     std::atomic<State>        state[MAX_CHUNKS] = {};
     std::atomic<uint32>       flags[MAX_CHUNKS] = {};
@@ -154,7 +157,8 @@ struct ChunkArray
     void SetBlocks(ChunkIndex i);
     void BuildChunkVertices(RegionSampler region);
     void UploadChunk(ChunkIndex i);
-    void RenderChunk(ChunkIndex i);
+    void RenderOpaqueChunk(ChunkIndex i);
+    void RenderTransparentChunk(ChunkIndex i);
     bool GetChunk(ChunkIndex& result, GamePos blockP);
     bool GetBlock(BlockType& blockType, const GamePos& blockP);
     bool SaveChunk(ChunkIndex i);
@@ -183,7 +187,8 @@ GamePos Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP);
 Vec3Int Convert_GameToBlock(ChunkPos& result, GamePos inputP);
 
 struct Camera;
-void PreChunkRender(const Mat4& perspective, Camera* camera);
+void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera);
+void PreTransparentChunkRender();
 
 int64 PositionHash(ChunkPos p);
 bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& distance, Vec3& normal);

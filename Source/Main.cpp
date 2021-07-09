@@ -987,7 +987,7 @@ White:  Uploaded,");
             //if (playerInput.mouse.wheel.y > 0)
             //{
             if (playerInput.mouse.wheelInstant.y != 0)
-                player->m_inventory.m_slotSelected = Clamp<int32>(player->m_inventory.m_slotSelected + playerInput.mouse.wheelInstant.y, 0, MAX_SLOTS - 1);
+                player->m_inventory.m_slotSelected = Clamp<int32>(player->m_inventory.m_slotSelected - playerInput.mouse.wheelInstant.y, 0, MAX_SLOTS - 1);
             //}
             //else if (playerInput.mouse.wheel.y > 0)
             //{
@@ -1275,14 +1275,14 @@ White:  Uploaded,");
             const int32 uploadMax = 300;
 #endif
             struct Renderable {
-                ChunkIndex r;
-                int32 d;
+                ChunkIndex index;
+                int32 distance;
             };
             Renderable renderables[MAX_CHUNKS];
             int32 numRenderables = 0;
             Frustum frustum = ComputeFrustum(playerCamera->m_viewProj);
             int32 uploadCount = 0;
-            PreChunkRender(playerCamera->m_perspective, playerCamera);
+            PreOpaqueChunkRender(playerCamera->m_perspective, playerCamera);
             for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
             {
                 if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
@@ -1294,17 +1294,17 @@ White:  Uploaded,");
                 if (IsBoxInFrustum(frustum, ToWorld(min).p.e, ToWorld(max).p.e))
                 {
                     //renderables[numRenderables].d = ManhattanDistance(ToChunk(playerCamera->RealWorldPos().p).p, chunkP.p);
-                    renderables[numRenderables].d = ManhattanDistance(ToChunk(WorldPos(playerCamera->GetWorldPosition())).p, chunkP.p);
-                    renderables[numRenderables++].r = i;
+                    renderables[numRenderables].distance = ManhattanDistance(ToChunk(WorldPos(playerCamera->GetWorldPosition())).p, chunkP.p);
+                    renderables[numRenderables++].index = i;
                 }
             }
 
             std::sort(std::begin(renderables), std::begin(renderables) + numRenderables, [](Renderable a, Renderable b) {
-                return a.d < b.d;
+                return a.distance < b.distance;
             });
             for (int32 i = 0; i < numRenderables; i++)
             {
-                ChunkIndex renderChunk = renderables[i].r;
+                ChunkIndex renderChunk = renderables[i].index;
                 if (g_chunks->state[renderChunk] == ChunkArray::VertexLoaded)
                 {
                     if (uploadCount > uploadMax || (g_chunks->flags[renderChunk] & CHUNK_FLAG_TODELETE))
@@ -1315,7 +1315,17 @@ White:  Uploaded,");
                 }
                 if (g_chunks->state[renderChunk] == ChunkArray::Uploaded)
                 {
-                    g_chunks->RenderChunk(renderChunk);
+                    g_chunks->RenderOpaqueChunk(renderChunk);
+                }
+            }
+                
+            PreTransparentChunkRender();
+            for (int32 i = numRenderables - 1; i >= 0; --i)
+            {
+                ChunkIndex renderChunk = renderables[i].index;
+                if (g_chunks->state[renderChunk] == ChunkArray::Uploaded && g_chunks->transparentIndexCount[renderChunk] > 0)
+                {
+                    g_chunks->RenderTransparentChunk(renderChunk);
                 }
             }
         }

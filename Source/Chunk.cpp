@@ -65,11 +65,17 @@ void ChunkArray::ClearChunk(ChunkIndex index)
     p[index] = {};
     height[index] = {};
 
-    faceVertices[index].clear();
-    std::vector<Vertex_Chunk> swapping;
-    faceVertices[index].swap(swapping);
+    opaqueFaceVertices[index].clear();
+    std::vector<Vertex_Chunk> swap1;
+    opaqueFaceVertices[index].swap(swap1);
+
+    transparentFaceVertices[index].clear();
+    std::vector<Vertex_Chunk> swap2;
+    transparentFaceVertices[index].swap(swap2);
+
     state[index] = {};
-    uploadedIndexCount[index] = {};
+    opaqueIndexCount[index] = {};
+    transparentIndexCount[index] = {};
     flags[index] = {};
     refs[index] = {};
 
@@ -1622,9 +1628,12 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
     if (g_chunks->state[region.center] != ChunkArray::VertexLoading)
         return;
     ChunkIndex i = region.center;
-    faceVertices[i].clear();
-    faceVertices[i].reserve(10000);
-    uploadedIndexCount[i] = 0;
+    opaqueFaceVertices[i].clear();
+    opaqueFaceVertices[i].reserve(10000);
+    transparentFaceVertices[i].clear();
+    transparentFaceVertices[i].reserve(1000);
+    opaqueIndexCount[i] = 0;
+    transparentIndexCount[i] = 0;
     GamePos realP = Convert_ChunkIndexToGame(i);
     float timerTotal[+T_Vertices::Count] = {};
     uint16 heightOfChunk = height[i];
@@ -1639,6 +1648,15 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                     BlockType currentBlockType = blocks[i].e[x][y][z];
                     if (currentBlockType == BlockType::Empty)
                         continue;
+
+                    std::vector<Vertex_Chunk>* vertices = &opaqueFaceVertices[i];
+                    uint32*                    indexCount = &opaqueIndexCount[i];
+                    if (g_blocks[+currentBlockType].m_transparent)
+                    {
+                        vertices   = &transparentFaceVertices[i];
+                        indexCount = &transparentIndexCount[i];
+                    }
+
                     //ACCTIMER(T_Vertices::Faces);
                     for (uint32 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
                     {
@@ -1654,34 +1672,34 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                             getBlockResult = (region.GetBlock(type, { xReal, yReal, zReal })) || (yReal == CHUNK_Y);
                         }
                         //if (getBlockResult && type == BlockType::Empty || (currentBlockType != BlockType::Water && type == BlockType::Water))
-                        if (/*getBlockResult && */g_blocks[+type].m_unUsualShape || (g_blocks[+type].m_transparent && ((currentBlockType != BlockType::Water && type == BlockType::Water) || type != BlockType::Water))) 
+                        //if (/*getBlockResult && */g_blocks[+type].m_unUsualShape || (g_blocks[+type].m_transparent && ((currentBlockType != BlockType::Water && type == BlockType::Water) || type != BlockType::Water))) 
+                        if (g_blocks[+type].m_unUsualShape || (g_blocks[+type].m_transparent && (currentBlockType != type))) 
                         {
-                            VertexFace f = {};
+                            Vertex_Chunk f = {};
                             Vec3 offset = { static_cast<float>(x + realP.p.x), static_cast<float>(y + realP.p.y), static_cast<float>(z + realP.p.z) };
 
-                            f.a.blockIndex =
-                            f.b.blockIndex =
-                            f.c.blockIndex =
-                            f.d.blockIndex = CreateBlockIndex({ x, y, z });
+                            //f.a.blockIndex =
+                            //f.b.blockIndex =
+                            //f.c.blockIndex =
+                            f.blockIndex = CreateBlockIndex({ x, y, z });
 
-                            f.a.spriteIndex =
-                            f.b.spriteIndex =
-                            f.c.spriteIndex =
-                            f.d.spriteIndex = g_blocks[+currentBlockType].m_spriteIndices[faceIndex];
+                            //f.a.spriteIndex =
+                            //f.b.spriteIndex =
+                            //f.c.spriteIndex =
+                            f.spriteIndex = g_blocks[+currentBlockType].m_spriteIndices[faceIndex];
 
-                            f.a.nAndConnectedVertices = 
-                            f.b.nAndConnectedVertices = 
-                            f.c.nAndConnectedVertices =
-                            f.d.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
+                            //f.a.nAndConnectedVertices = 
+                            //f.b.nAndConnectedVertices = 
+                            //f.c.nAndConnectedVertices =
+                            f.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
 
                             //ACCTIMER(T_Vertices::Pushback);
-                            faceVertices[i].push_back(f.a);
-                            faceVertices[i].push_back(f.b);
-                            faceVertices[i].push_back(f.c);
-                            faceVertices[i].push_back(f.d);
-                            uploadedIndexCount[i] += 6;
+                            vertices->push_back(f);
+                            vertices->push_back(f);
+                            vertices->push_back(f);
+                            vertices->push_back(f);
+                            (*indexCount) += 6;
                         }
-
                     }
                 }
             }
@@ -1693,7 +1711,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
     //-X and -Z
     {
         //PROFILE_SCOPE("THREAD: AO Creation");
-        for (Vertex_Chunk& vert : faceVertices[i])
+        for (Vertex_Chunk& vert : opaqueFaceVertices[i])
         {
             uint8 normal = (vert.nAndConnectedVertices & 0xF0) >> 4;
             Vec3Int blockN = Vec3ToVec3Int(faceNormals[normal]);
@@ -1727,13 +1745,18 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
 
 void ChunkArray::UploadChunk(ChunkIndex i)
 {
-    vertexBuffer[i].Upload(faceVertices[i].data(), faceVertices[i].size());
-    std::vector<Vertex_Chunk> faces;
-    faceVertices[i].swap(faces);
+    opaqueVertexBuffer[i].Upload(opaqueFaceVertices[i].data(), opaqueFaceVertices[i].size());
+    std::vector<Vertex_Chunk> swap1;
+    opaqueFaceVertices[i].swap(swap1);
+
+    transparentVertexBuffer[i].Upload(transparentFaceVertices[i].data(), transparentFaceVertices[i].size());
+    std::vector<Vertex_Chunk> swap2;
+    transparentFaceVertices[i].swap(swap2);
+
     g_chunks->state[i] = ChunkArray::Uploaded;
 }
 
-void PreChunkRender(const Mat4& perspective, Camera* camera)
+void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera)
 {
     assert(g_renderer.chunkIB);
     if (g_renderer.chunkIB)
@@ -1774,11 +1797,13 @@ void PreChunkRender(const Mat4& perspective, Camera* camera)
     sp->UpdateUniformVec3( "material.specular", 1,  material.specular.e);
     sp->UpdateUniformFloat("material.shininess",    material.shininess);
 
+    glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_TRUE);
 }
 
-void ChunkArray::RenderChunk(ChunkIndex i)
+void ChunkArray::RenderOpaqueChunk(ChunkIndex i)
 {
-    vertexBuffer[i].Bind();
+    opaqueVertexBuffer[i].Bind();
 
     glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
     glEnableVertexArrayAttrib(g_renderer.vao, 0);
@@ -1792,8 +1817,42 @@ void ChunkArray::RenderChunk(ChunkIndex i)
     ShaderProgram* sp = g_renderer.programs[+Shader::Chunk];
     sp->UpdateUniformVec3("u_chunkP",      1,  ToWorld(Convert_ChunkIndexToGame(i)).p.e);
 
-    glDrawElements(GL_TRIANGLES, (GLsizei)uploadedIndexCount[i], GL_UNSIGNED_INT, 0);
-    g_renderer.numTrianglesDrawn += uploadedIndexCount[i] / 3;
+    glDrawElements(GL_TRIANGLES, (GLsizei)opaqueIndexCount[i], GL_UNSIGNED_INT, 0);
+    g_renderer.numTrianglesDrawn += opaqueIndexCount[i] / 3;
+}
+
+void PreTransparentChunkRender()
+{
+    assert(g_renderer.chunkIB);
+    if (g_renderer.chunkIB)
+        g_renderer.chunkIB->Bind();
+    else
+        return;
+    
+    glEnable(GL_DEPTH_TEST);
+    //glEnable(GL_DEPTH_TEST);
+    //glDepthMask(GL_TRUE);
+    glDepthMask(GL_FALSE);
+}
+
+void ChunkArray::RenderTransparentChunk(ChunkIndex i)
+{
+    transparentVertexBuffer[i].Bind();
+
+    glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
+    glEnableVertexArrayAttrib(g_renderer.vao, 0);
+    glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
+    glEnableVertexArrayAttrib(g_renderer.vao, 1);
+    glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, nAndConnectedVertices));
+    glEnableVertexArrayAttrib(g_renderer.vao, 2);
+    //glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, connectedVertices));
+    //glEnableVertexArrayAttrib(g_renderer.vao, 3);
+
+    ShaderProgram* sp = g_renderer.programs[+Shader::Chunk];
+    sp->UpdateUniformVec3("u_chunkP",      1,  ToWorld(Convert_ChunkIndexToGame(i)).p.e);
+
+    glDrawElements(GL_TRIANGLES, (GLsizei)transparentIndexCount[i], GL_UNSIGNED_INT, 0);
+    g_renderer.numTrianglesDrawn += transparentIndexCount[i] / 3;
 }
 
 void SetBlocks::DoThing()

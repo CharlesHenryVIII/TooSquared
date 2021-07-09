@@ -69,10 +69,14 @@ void SetBlockSprites()
     g_blocks[+BlockType::Wood].m_spriteIndices[+Face::Top] = 21;
     g_blocks[+BlockType::Wood].m_spriteIndices[+Face::Bot] = 21;
     SetMultipleBlockSprites(BlockType::Ice, 67);
-    g_blocks[+BlockType::Wood].m_transparent = true;
+    g_blocks[+BlockType::Ice].m_transparent = true;
     SetMultipleBlockSprites(BlockType::Obsidian, 37);
+#if 1
+    SetMultipleBlockSprites(BlockType::Leaves, 52);
+    g_blocks[+BlockType::Leaves].m_transparent = true;
+#else
     SetMultipleBlockSprites(BlockType::Leaves, 53);
-    //SetMultipleBlockSprites(BlockType::Leaves, 52);
+#endif
     SetMultipleBlockSprites(BlockType::MossyCobblestone, 36);
     SetMultipleBlockSprites(BlockType::TNT, 8);
     g_blocks[+BlockType::TNT].m_spriteIndices[+Face::Top] = 9;
