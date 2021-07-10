@@ -1320,12 +1320,15 @@ White:  Uploaded,");
             }
                 
             PreTransparentChunkRender();
-            for (int32 i = numRenderables - 1; i >= 0; --i)
             {
-                ChunkIndex renderChunk = renderables[i].index;
-                if (g_chunks->state[renderChunk] == ChunkArray::Uploaded && g_chunks->transparentIndexCount[renderChunk] > 0)
+                PROFILE_SCOPE("Transparent Render");
+                for (int32 i = numRenderables - 1; i >= 0; --i)
                 {
-                    g_chunks->RenderTransparentChunk(renderChunk, playerCamera->GetWorldPosition());
+                    ChunkIndex renderChunk = renderables[i].index;
+                    if (g_chunks->state[renderChunk] == ChunkArray::Uploaded && g_chunks->transparentIndexCount[renderChunk] > 0)
+                    {
+                        g_chunks->RenderTransparentChunk(renderChunk, playerCamera->GetWorldPosition());
+                    }
                 }
             }
         }

@@ -1686,9 +1686,12 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
 
                             //ACCTIMER(T_Vertices::Pushback);
                             vertices->push_back(f);
-                            vertices->push_back(f);
-                            vertices->push_back(f);
-                            vertices->push_back(f);
+                            if (!g_blocks[+currentBlockType].m_transparent)
+                            {
+                                vertices->push_back(f);
+                                vertices->push_back(f);
+                                vertices->push_back(f);
+                            }
                             (*indexCount) += 6;
                         }
                     }
@@ -1822,46 +1825,91 @@ void PreTransparentChunkRender()
     glDepthMask(GL_FALSE);
 }
 
-static GamePos s_transparentReferencePositionBlockPosition;
-static GamePos s_transparentCurrentChunkGamePosition;
-bool TransparentRenderSort(const Vertex_Chunk& a, const Vertex_Chunk& b)
+static WorldPos s_transparentReferencePositionBlockPosition;
+static WorldPos s_transparentCurrentChunkGamePosition;
+bool TransparentRenderStableSort(const Vertex_Chunk& a, const Vertex_Chunk& b)
 {
     Vec3Int blockP1 = GetBlockPosFromIndex(a.blockIndex);
     Vec3Int blockP2 = GetBlockPosFromIndex(b.blockIndex);
 
-    GamePos p1 = GamePos(s_transparentCurrentChunkGamePosition.p + blockP1);
-    GamePos p2 = GamePos(s_transparentCurrentChunkGamePosition.p + blockP2);
+    WorldPos p1 = WorldPos(s_transparentCurrentChunkGamePosition.p + Vec3{ float(blockP1.x), float(blockP1.y), float(blockP1.z) });
+    WorldPos p2 = WorldPos(s_transparentCurrentChunkGamePosition.p + Vec3{ float(blockP2.x), float(blockP2.y), float(blockP2.z) });
 
-    double dist1 = Distance(p1.p, s_transparentReferencePositionBlockPosition.p);
-    double dist2 = Distance(p2.p, s_transparentReferencePositionBlockPosition.p);
+    float dist1 = Distance(p1.p, s_transparentReferencePositionBlockPosition.p);
+    float dist2 = Distance(p2.p, s_transparentReferencePositionBlockPosition.p);
 
     return dist1 > dist2;
 }
 
+int TransparentRenderQuickSort(const void* a, const void* b)
+{
+    auto vert1 = reinterpret_cast<const Vertex_Chunk*>(a);
+    auto vert2 = reinterpret_cast<const Vertex_Chunk*>(b);
+
+    Vec3Int blockP1 = GetBlockPosFromIndex(vert1->blockIndex);
+    Vec3Int blockP2 = GetBlockPosFromIndex(vert2->blockIndex);
+
+    WorldPos p1 = WorldPos(s_transparentCurrentChunkGamePosition.p + Vec3{ float(blockP1.x), float(blockP1.y), float(blockP1.z) });
+    WorldPos p2 = WorldPos(s_transparentCurrentChunkGamePosition.p + Vec3{ float(blockP2.x), float(blockP2.y), float(blockP2.z) });
+
+    float dist1 = Distance(p1.p, s_transparentReferencePositionBlockPosition.p);
+    float dist2 = Distance(p2.p, s_transparentReferencePositionBlockPosition.p);
+
+    //return dist1 > dist2;
+    return int32(dist2 - dist1);
+}
+
+#define SortType 2
+
+std::vector<Vertex_Chunk> vertices;
 void ChunkArray::RenderTransparentChunk(ChunkIndex i, const WorldPos& referencePosition)
 {
-    s_transparentReferencePositionBlockPosition = ToGame(referencePosition);
-    s_transparentCurrentChunkGamePosition = ToGame(g_chunks->p[i]);
-    std::stable_sort(transparentFaceVertices[i].begin(), transparentFaceVertices[i].end(), TransparentRenderSort);
-    //std::stable_sort(transparentFaceVertices[i].data(), transparentFaceVertices[i].size(), sizeof(transparentFaceVertices[i][0]), TransparentRenderSort);
+    PROFILE_SCOPE("Transparent Render Per Chunk");
+    s_transparentReferencePositionBlockPosition = referencePosition;
+    s_transparentCurrentChunkGamePosition = ToWorld(g_chunks->p[i]);
+    {
+        PROFILE_SCOPE("Transparent Render Chunk Sort");
+#if SortType == 2
+        std::qsort(transparentFaceVertices[i].data(), transparentFaceVertices[i].size(), sizeof(transparentFaceVertices[i][0]), TransparentRenderQuickSort);
+        vertices.clear();
+        vertices.reserve(transparentFaceVertices[i].size() * 4);
+        for (Vertex_Chunk vc : transparentFaceVertices[i])
+        {
+            for (int32 index = 0; index < 4; index++)
+                vertices.push_back(vc);
+        }
+#elif SortType == 1
+        std::stable_sort(transparentFaceVertices[i].begin(), transparentFaceVertices[i].end(), TransparentRenderStableSort);
+#endif
+    }
     
     VertexBuffer transparentVertexBuffer;
-    transparentVertexBuffer.Upload(transparentFaceVertices[i].data(), transparentFaceVertices[i].size());
+    {
+        PROFILE_SCOPE("Transparent Render Chunk Upload");
+#if SortType == 2
+        transparentVertexBuffer.Upload(vertices.data(), vertices.size());
+#elif SortType == 1
+        transparentVertexBuffer.Upload(transparentFaceVertices[i].data(), transparentFaceVertices[i].size());
+#endif
+    }
 
-    glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
-    glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
-    glEnableVertexArrayAttrib(g_renderer.vao, 1);
-    glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, nAndConnectedVertices));
-    glEnableVertexArrayAttrib(g_renderer.vao, 2);
-    //glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, connectedVertices));
-    //glEnableVertexArrayAttrib(g_renderer.vao, 3);
+    {
+        PROFILE_SCOPE("Transparent Render Chunk Draw");
+        glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
+        glEnableVertexArrayAttrib(g_renderer.vao, 0);
+        glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
+        glEnableVertexArrayAttrib(g_renderer.vao, 1);
+        glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, nAndConnectedVertices));
+        glEnableVertexArrayAttrib(g_renderer.vao, 2);
+        //glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, connectedVertices));
+        //glEnableVertexArrayAttrib(g_renderer.vao, 3);
 
-    ShaderProgram* sp = g_renderer.programs[+Shader::Chunk];
-    sp->UpdateUniformVec3("u_chunkP", 1, ToWorld(Convert_ChunkIndexToGame(i)).p.e);
+        ShaderProgram* sp = g_renderer.programs[+Shader::Chunk];
+        sp->UpdateUniformVec3("u_chunkP", 1, ToWorld(Convert_ChunkIndexToGame(i)).p.e);
 
-    glDrawElements(GL_TRIANGLES, (GLsizei)transparentIndexCount[i], GL_UNSIGNED_INT, 0);
-    g_renderer.numTrianglesDrawn += transparentIndexCount[i] / 3;
+        glDrawElements(GL_TRIANGLES, (GLsizei)transparentIndexCount[i], GL_UNSIGNED_INT, 0);
+        g_renderer.numTrianglesDrawn += transparentIndexCount[i] / 3;
+    }
 }
 
 void SetBlocks::DoThing()
