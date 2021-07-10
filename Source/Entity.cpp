@@ -495,6 +495,7 @@ Item* Items::Add(std::vector<EntityID>& itemIDs, BlockType blockType, const Worl
 Item* Items::Get(EntityID ID)
 {
     assert(OnMainThread());
+    std::lock_guard<std::mutex> lock(m_listVectorMutex);
     for (int32 i = 0; i < m_items.size(); i++)
     {
         if (m_items[i].m_ID == ID)

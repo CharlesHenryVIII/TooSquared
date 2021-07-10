@@ -1620,6 +1620,15 @@ uint16 CreateBlockIndex(Vec3Int pos)
     return pos.z * CHUNK_Z + pos.y * CHUNK_Y + pos.x;
 }
 
+//struct TransparentBlock {
+//    uint16   m_blockIndex;
+//    ChunkPos m_chunkP;
+//};
+//
+//std::mutex transparentBlockLock;
+//std::vector<TransparentBlock> s_transparentBlocks;
+
+
 
 void ChunkArray::BuildChunkVertices(RegionSampler region)
 {
@@ -1815,7 +1824,7 @@ void ChunkArray::RenderOpaqueChunk(ChunkIndex i)
     //glEnableVertexArrayAttrib(g_renderer.vao, 3);
 
     ShaderProgram* sp = g_renderer.programs[+Shader::Chunk];
-    sp->UpdateUniformVec3("u_chunkP",      1,  ToWorld(Convert_ChunkIndexToGame(i)).p.e);
+    sp->UpdateUniformVec3("u_chunkP", 1, ToWorld(Convert_ChunkIndexToGame(i)).p.e);
 
     glDrawElements(GL_TRIANGLES, (GLsizei)opaqueIndexCount[i], GL_UNSIGNED_INT, 0);
     g_renderer.numTrianglesDrawn += opaqueIndexCount[i] / 3;
@@ -1849,7 +1858,7 @@ void ChunkArray::RenderTransparentChunk(ChunkIndex i)
     //glEnableVertexArrayAttrib(g_renderer.vao, 3);
 
     ShaderProgram* sp = g_renderer.programs[+Shader::Chunk];
-    sp->UpdateUniformVec3("u_chunkP",      1,  ToWorld(Convert_ChunkIndexToGame(i)).p.e);
+    sp->UpdateUniformVec3("u_chunkP", 1, ToWorld(Convert_ChunkIndexToGame(i)).p.e);
 
     glDrawElements(GL_TRIANGLES, (GLsizei)transparentIndexCount[i], GL_UNSIGNED_INT, 0);
     g_renderer.numTrianglesDrawn += transparentIndexCount[i] / 3;
