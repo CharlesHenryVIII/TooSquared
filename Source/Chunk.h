@@ -134,7 +134,6 @@ struct ChunkArray
     std::vector<Vertex_Chunk> opaqueFaceVertices[MAX_CHUNKS] = {};
     std::vector<Vertex_Chunk> transparentFaceVertices[MAX_CHUNKS] = {};
     VertexBuffer              opaqueVertexBuffer[MAX_CHUNKS] = {};
-    VertexBuffer              transparentVertexBuffer[MAX_CHUNKS] = {};
     uint32                    opaqueIndexCount[MAX_CHUNKS] = {};
     uint32                    transparentIndexCount[MAX_CHUNKS] = {};
     uint16                    height[MAX_CHUNKS] = {};
@@ -158,7 +157,7 @@ struct ChunkArray
     void BuildChunkVertices(RegionSampler region);
     void UploadChunk(ChunkIndex i);
     void RenderOpaqueChunk(ChunkIndex i);
-    void RenderTransparentChunk(ChunkIndex i);
+    void RenderTransparentChunk(ChunkIndex i, const WorldPos& referencePosition);
     bool GetChunk(ChunkIndex& result, GamePos blockP);
     bool GetBlock(BlockType& blockType, const GamePos& blockP);
     bool SaveChunk(ChunkIndex i);
@@ -184,7 +183,7 @@ extern std::vector<WorldPos> cubesToDraw;
 //Vec3Int Convert_GameToChunk(Vec3 p);
 GamePos Convert_ChunkIndexToGame(ChunkIndex i);
 GamePos Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP);
-Vec3Int Convert_GameToBlock(ChunkPos& result, GamePos inputP);
+Vec3Int Convert_GameToBlock(ChunkPos& result, const GamePos& inputP);
 
 struct Camera;
 void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera);

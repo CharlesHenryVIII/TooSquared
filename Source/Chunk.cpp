@@ -5,6 +5,7 @@
 #include "Misc.h"
 #include "Entity.h"
 
+#include <algorithm>
 #include <unordered_map>
 
 ChunkArray* g_chunks;
@@ -1410,7 +1411,7 @@ GamePos Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP)
     return { chunkLocation.p.x + blockP.x, chunkLocation.p.y + blockP.y, chunkLocation.p.z + blockP.z };
 }
 
-Vec3Int Convert_GameToBlock(ChunkPos& result, GamePos inputP)
+Vec3Int Convert_GameToBlock(ChunkPos& result, const GamePos& inputP)
 {
     result = ToChunk(inputP);
     GamePos chunkP = ToGame(result);
@@ -1620,16 +1621,6 @@ uint16 CreateBlockIndex(Vec3Int pos)
     return pos.z * CHUNK_Z + pos.y * CHUNK_Y + pos.x;
 }
 
-//struct TransparentBlock {
-//    uint16   m_blockIndex;
-//    ChunkPos m_chunkP;
-//};
-//
-//std::mutex transparentBlockLock;
-//std::vector<TransparentBlock> s_transparentBlocks;
-
-
-
 void ChunkArray::BuildChunkVertices(RegionSampler region)
 {
     //why am I sometimes hitting this assertion
@@ -1639,9 +1630,9 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
     ChunkIndex i = region.center;
     opaqueFaceVertices[i].clear();
     opaqueFaceVertices[i].reserve(10000);
+    opaqueIndexCount[i] = 0;
     transparentFaceVertices[i].clear();
     transparentFaceVertices[i].reserve(1000);
-    opaqueIndexCount[i] = 0;
     transparentIndexCount[i] = 0;
     GamePos realP = Convert_ChunkIndexToGame(i);
     float timerTotal[+T_Vertices::Count] = {};
@@ -1687,19 +1678,10 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                             Vertex_Chunk f = {};
                             Vec3 offset = { static_cast<float>(x + realP.p.x), static_cast<float>(y + realP.p.y), static_cast<float>(z + realP.p.z) };
 
-                            //f.a.blockIndex =
-                            //f.b.blockIndex =
-                            //f.c.blockIndex =
                             f.blockIndex = CreateBlockIndex({ x, y, z });
 
-                            //f.a.spriteIndex =
-                            //f.b.spriteIndex =
-                            //f.c.spriteIndex =
                             f.spriteIndex = g_blocks[+currentBlockType].m_spriteIndices[faceIndex];
 
-                            //f.a.nAndConnectedVertices = 
-                            //f.b.nAndConnectedVertices = 
-                            //f.c.nAndConnectedVertices =
                             f.nAndConnectedVertices = 0xF0 & (faceIndex << 4);
 
                             //ACCTIMER(T_Vertices::Pushback);
@@ -1724,7 +1706,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
         {
             uint8 normal = (vert.nAndConnectedVertices & 0xF0) >> 4;
             Vec3Int blockN = Vec3ToVec3Int(faceNormals[normal]);
-                Vec3Int blockP = GetBlockPosFromIndex(vert.blockIndex);
+            Vec3Int blockP = GetBlockPosFromIndex(vert.blockIndex);
 
             uint8 faceIndex = normal;
             Vec3Int a = *(&vertexBlocksToCheck[faceIndex].e0 + (vertIndex + 0));
@@ -1757,10 +1739,6 @@ void ChunkArray::UploadChunk(ChunkIndex i)
     opaqueVertexBuffer[i].Upload(opaqueFaceVertices[i].data(), opaqueFaceVertices[i].size());
     std::vector<Vertex_Chunk> swap1;
     opaqueFaceVertices[i].swap(swap1);
-
-    transparentVertexBuffer[i].Upload(transparentFaceVertices[i].data(), transparentFaceVertices[i].size());
-    std::vector<Vertex_Chunk> swap2;
-    transparentFaceVertices[i].swap(swap2);
 
     g_chunks->state[i] = ChunkArray::Uploaded;
 }
@@ -1844,9 +1822,31 @@ void PreTransparentChunkRender()
     glDepthMask(GL_FALSE);
 }
 
-void ChunkArray::RenderTransparentChunk(ChunkIndex i)
+static GamePos s_transparentReferencePositionBlockPosition;
+static GamePos s_transparentCurrentChunkGamePosition;
+bool TransparentRenderSort(const Vertex_Chunk& a, const Vertex_Chunk& b)
 {
-    transparentVertexBuffer[i].Bind();
+    Vec3Int blockP1 = GetBlockPosFromIndex(a.blockIndex);
+    Vec3Int blockP2 = GetBlockPosFromIndex(b.blockIndex);
+
+    GamePos p1 = GamePos(s_transparentCurrentChunkGamePosition.p + blockP1);
+    GamePos p2 = GamePos(s_transparentCurrentChunkGamePosition.p + blockP2);
+
+    double dist1 = Distance(p1.p, s_transparentReferencePositionBlockPosition.p);
+    double dist2 = Distance(p2.p, s_transparentReferencePositionBlockPosition.p);
+
+    return dist1 > dist2;
+}
+
+void ChunkArray::RenderTransparentChunk(ChunkIndex i, const WorldPos& referencePosition)
+{
+    s_transparentReferencePositionBlockPosition = ToGame(referencePosition);
+    s_transparentCurrentChunkGamePosition = ToGame(g_chunks->p[i]);
+    std::stable_sort(transparentFaceVertices[i].begin(), transparentFaceVertices[i].end(), TransparentRenderSort);
+    //std::stable_sort(transparentFaceVertices[i].data(), transparentFaceVertices[i].size(), sizeof(transparentFaceVertices[i][0]), TransparentRenderSort);
+    
+    VertexBuffer transparentVertexBuffer;
+    transparentVertexBuffer.Upload(transparentFaceVertices[i].data(), transparentFaceVertices[i].size());
 
     glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
     glEnableVertexArrayAttrib(g_renderer.vao, 0);

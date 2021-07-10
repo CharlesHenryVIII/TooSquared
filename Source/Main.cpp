@@ -1325,7 +1325,7 @@ White:  Uploaded,");
                 ChunkIndex renderChunk = renderables[i].index;
                 if (g_chunks->state[renderChunk] == ChunkArray::Uploaded && g_chunks->transparentIndexCount[renderChunk] > 0)
                 {
-                    g_chunks->RenderTransparentChunk(renderChunk);
+                    g_chunks->RenderTransparentChunk(renderChunk, playerCamera->GetWorldPosition());
                 }
             }
         }
