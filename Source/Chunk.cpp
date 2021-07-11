@@ -1859,16 +1859,50 @@ int TransparentRenderQuickSort(const void* a, const void* b)
     return int32(dist2 - dist1);
 }
 
-#define SortType 2
+struct TransparentSortData {
+    Vertex_Chunk m_vertex;
+    float m_distance;
+};
 
+int32 TransparentRenderQuickSortFast(const void* a, const void* b)
+{
+    auto d1 = reinterpret_cast<const TransparentSortData*>(a);
+    auto d2 = reinterpret_cast<const TransparentSortData*>(b);
+
+    return int32(d2->m_distance - d1->m_distance);
+    //return int32(d1->m_distance - d2->m_distance);
+}
+
+std::vector<TransparentSortData> transparentSortData;
+
+#define SortType 2
 std::vector<Vertex_Chunk> vertices;
 void ChunkArray::RenderTransparentChunk(ChunkIndex i, const WorldPos& referencePosition)
 {
-    PROFILE_SCOPE("Transparent Render Per Chunk");
     s_transparentReferencePositionBlockPosition = referencePosition;
     s_transparentCurrentChunkGamePosition = ToWorld(g_chunks->p[i]);
     {
-        PROFILE_SCOPE("Transparent Render Chunk Sort");
+        PROFILE_SCOPE_TAB("Transparent Render Chunk Sort");
+#if 1
+        transparentSortData.reserve(transparentFaceVertices[i].size());
+        transparentSortData.clear();
+        for (Vertex_Chunk vc : transparentFaceVertices[i])
+        {
+            Vec3Int blockP = GetBlockPosFromIndex(vc.blockIndex);
+            WorldPos p = WorldPos(s_transparentCurrentChunkGamePosition.p + Vec3{ float(blockP.x), float(blockP.y), float(blockP.z) });
+            float d = Distance(p.p, referencePosition.p);
+            transparentSortData.push_back({vc, d});
+        }
+        
+        std::qsort(transparentSortData.data(), transparentSortData.size(), sizeof(transparentSortData[0]), TransparentRenderQuickSortFast);
+        vertices.reserve(transparentFaceVertices[i].size() * 4);
+        vertices.clear();
+        for (TransparentSortData vc : transparentSortData)
+        {
+            for (int32 index = 0; index < 4; index++)
+                vertices.push_back(vc.m_vertex);
+        }
+#else
 #if SortType == 2
         std::qsort(transparentFaceVertices[i].data(), transparentFaceVertices[i].size(), sizeof(transparentFaceVertices[i][0]), TransparentRenderQuickSort);
         vertices.clear();
@@ -1881,11 +1915,12 @@ void ChunkArray::RenderTransparentChunk(ChunkIndex i, const WorldPos& referenceP
 #elif SortType == 1
         std::stable_sort(transparentFaceVertices[i].begin(), transparentFaceVertices[i].end(), TransparentRenderStableSort);
 #endif
+#endif
     }
     
     VertexBuffer transparentVertexBuffer;
     {
-        PROFILE_SCOPE("Transparent Render Chunk Upload");
+        PROFILE_SCOPE_TAB("Transparent Render Chunk Upload");
 #if SortType == 2
         transparentVertexBuffer.Upload(vertices.data(), vertices.size());
 #elif SortType == 1
@@ -1894,7 +1929,7 @@ void ChunkArray::RenderTransparentChunk(ChunkIndex i, const WorldPos& referenceP
     }
 
     {
-        PROFILE_SCOPE("Transparent Render Chunk Draw");
+        PROFILE_SCOPE_TAB("Transparent Render Chunk Draw");
         glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
         glEnableVertexArrayAttrib(g_renderer.vao, 0);
         glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
