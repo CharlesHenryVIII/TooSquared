@@ -751,6 +751,7 @@ White:  Uploaded,");
                         RADIO_BUTTON_MACRO(HalfSlab); 
                         ImGui::SameLine();
                         RADIO_BUTTON_MACRO(Slab); 
+                        RADIO_BUTTON_MACRO(Glass); 
                             //Stone,
                             //Planks,
                             //StoneSlab,

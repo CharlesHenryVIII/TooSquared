@@ -37,7 +37,7 @@ void main()
 {
     vec4 pixel = texture2DArray(sampler, vec3(p_uv, p_depth));
 #if 1
-    if (pixel.a == 0)
+    if (pixel.a != 1)
         discard;
 #endif
 

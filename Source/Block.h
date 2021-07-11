@@ -28,6 +28,7 @@ enum class BlockType : uint8 {
     Water,
     HalfSlab,
     Slab,
+    Glass,
     Count,
 //CobWeb,
 //Flower_Red,
@@ -54,10 +55,11 @@ struct Block {
     uint32 m_spriteIndices[+Face::Count] = {
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation,
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation };
-    float m_collisionHeight = 1.0f;
-    bool  m_transparent     = false;
-    bool  m_unUsualShape    = false;
-    bool  m_collidable      = true;
+    float m_collisionHeight       = 1.0f;
+    bool  m_transparent           = false;
+    bool  m_unUsualShape          = false;
+    bool  m_collidable            = true;
+    bool  m_sidesShouldBeRendered = false;
     //Material material;
 };
 
