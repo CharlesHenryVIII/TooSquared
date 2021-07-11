@@ -131,10 +131,11 @@ struct ChunkArray
     //bool                      active[MAX_CHUNKS];
     ChunkData                 blocks[MAX_CHUNKS];
     ChunkPos                  p[MAX_CHUNKS] = {};
-    std::vector<Vertex_Chunk> opaqueFaceVertices[MAX_CHUNKS] = {};
+    std::vector<Vertex_Chunk> opaqueFaceVertices[MAX_CHUNKS]      = {};
     std::vector<Vertex_Chunk> transparentFaceVertices[MAX_CHUNKS] = {};
-    VertexBuffer              opaqueVertexBuffer[MAX_CHUNKS] = {};
-    uint32                    opaqueIndexCount[MAX_CHUNKS] = {};
+    VertexBuffer              opaqueVertexBuffer[MAX_CHUNKS]      = {};
+    VertexBuffer              transparentVertexBuffer[MAX_CHUNKS] = {};
+    uint32                    opaqueIndexCount[MAX_CHUNKS]      = {};
     uint32                    transparentIndexCount[MAX_CHUNKS] = {};
     uint16                    height[MAX_CHUNKS] = {};
     std::atomic<State>        state[MAX_CHUNKS] = {};
@@ -157,7 +158,7 @@ struct ChunkArray
     void BuildChunkVertices(RegionSampler region);
     void UploadChunk(ChunkIndex i);
     void RenderOpaqueChunk(ChunkIndex i);
-    void RenderTransparentChunk(ChunkIndex i, const WorldPos& referencePosition);
+    void RenderTransparentChunk(ChunkIndex i);
     bool GetChunk(ChunkIndex& result, GamePos blockP);
     bool GetBlock(BlockType& blockType, const GamePos& blockP);
     bool SaveChunk(ChunkIndex i);

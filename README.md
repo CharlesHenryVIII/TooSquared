@@ -1,6 +1,6 @@
 # TooSquared
 
-###TODO: 
+### TODO: 
  * Optimize block creation and deletion
  * Half height blocks
  * Gameplay??? (Conveyers, mining, etc?)

@@ -1649,7 +1649,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                     if (currentBlockType == BlockType::Empty)
                         continue;
 
-                    std::vector<Vertex_Chunk>* vertices = &opaqueFaceVertices[i];
+                    std::vector<Vertex_Chunk>* vertices   = &opaqueFaceVertices[i];
                     uint32*                    indexCount = &opaqueIndexCount[i];
                     if (g_blocks[+currentBlockType].m_transparent)
                     {
@@ -1686,12 +1686,9 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
 
                             //ACCTIMER(T_Vertices::Pushback);
                             vertices->push_back(f);
-                            if (!g_blocks[+currentBlockType].m_transparent)
-                            {
-                                vertices->push_back(f);
-                                vertices->push_back(f);
-                                vertices->push_back(f);
-                            }
+                            vertices->push_back(f);
+                            vertices->push_back(f);
+                            vertices->push_back(f);
                             (*indexCount) += 6;
                         }
                     }
@@ -1742,6 +1739,10 @@ void ChunkArray::UploadChunk(ChunkIndex i)
     opaqueVertexBuffer[i].Upload(opaqueFaceVertices[i].data(), opaqueFaceVertices[i].size());
     std::vector<Vertex_Chunk> swap1;
     opaqueFaceVertices[i].swap(swap1);
+
+    transparentVertexBuffer[i].Upload(transparentFaceVertices[i].data(), transparentFaceVertices[i].size());
+    std::vector<Vertex_Chunk> swap2;
+    transparentFaceVertices[i].swap(swap2);
 
     g_chunks->state[i] = ChunkArray::Uploaded;
 }
@@ -1825,111 +1826,12 @@ void PreTransparentChunkRender()
     glDepthMask(GL_FALSE);
 }
 
-static WorldPos s_transparentReferencePositionBlockPosition;
-static WorldPos s_transparentCurrentChunkGamePosition;
-bool TransparentRenderStableSort(const Vertex_Chunk& a, const Vertex_Chunk& b)
+void ChunkArray::RenderTransparentChunk(ChunkIndex i)
 {
-    Vec3Int blockP1 = GetBlockPosFromIndex(a.blockIndex);
-    Vec3Int blockP2 = GetBlockPosFromIndex(b.blockIndex);
-
-    WorldPos p1 = WorldPos(s_transparentCurrentChunkGamePosition.p + Vec3{ float(blockP1.x), float(blockP1.y), float(blockP1.z) });
-    WorldPos p2 = WorldPos(s_transparentCurrentChunkGamePosition.p + Vec3{ float(blockP2.x), float(blockP2.y), float(blockP2.z) });
-
-    float dist1 = Distance(p1.p, s_transparentReferencePositionBlockPosition.p);
-    float dist2 = Distance(p2.p, s_transparentReferencePositionBlockPosition.p);
-
-    return dist1 > dist2;
-}
-
-int TransparentRenderQuickSort(const void* a, const void* b)
-{
-    auto vert1 = reinterpret_cast<const Vertex_Chunk*>(a);
-    auto vert2 = reinterpret_cast<const Vertex_Chunk*>(b);
-
-    Vec3Int blockP1 = GetBlockPosFromIndex(vert1->blockIndex);
-    Vec3Int blockP2 = GetBlockPosFromIndex(vert2->blockIndex);
-
-    WorldPos p1 = WorldPos(s_transparentCurrentChunkGamePosition.p + Vec3{ float(blockP1.x), float(blockP1.y), float(blockP1.z) });
-    WorldPos p2 = WorldPos(s_transparentCurrentChunkGamePosition.p + Vec3{ float(blockP2.x), float(blockP2.y), float(blockP2.z) });
-
-    float dist1 = Distance(p1.p, s_transparentReferencePositionBlockPosition.p);
-    float dist2 = Distance(p2.p, s_transparentReferencePositionBlockPosition.p);
-
-    //return dist1 > dist2;
-    return int32(dist2 - dist1);
-}
-
-struct TransparentSortData {
-    Vertex_Chunk m_vertex;
-    float m_distance;
-};
-
-int32 TransparentRenderQuickSortFast(const void* a, const void* b)
-{
-    auto d1 = reinterpret_cast<const TransparentSortData*>(a);
-    auto d2 = reinterpret_cast<const TransparentSortData*>(b);
-
-    return int32(d2->m_distance - d1->m_distance);
-    //return int32(d1->m_distance - d2->m_distance);
-}
-
-std::vector<TransparentSortData> transparentSortData;
-
-#define SortType 2
-std::vector<Vertex_Chunk> vertices;
-void ChunkArray::RenderTransparentChunk(ChunkIndex i, const WorldPos& referencePosition)
-{
-    s_transparentReferencePositionBlockPosition = referencePosition;
-    s_transparentCurrentChunkGamePosition = ToWorld(g_chunks->p[i]);
-    {
-        PROFILE_SCOPE_TAB("Transparent Render Chunk Sort");
-#if 1
-        transparentSortData.reserve(transparentFaceVertices[i].size());
-        transparentSortData.clear();
-        for (Vertex_Chunk vc : transparentFaceVertices[i])
-        {
-            Vec3Int blockP = GetBlockPosFromIndex(vc.blockIndex);
-            WorldPos p = WorldPos(s_transparentCurrentChunkGamePosition.p + Vec3{ float(blockP.x), float(blockP.y), float(blockP.z) });
-            float d = Distance(p.p, referencePosition.p);
-            transparentSortData.push_back({vc, d});
-        }
-        
-        std::qsort(transparentSortData.data(), transparentSortData.size(), sizeof(transparentSortData[0]), TransparentRenderQuickSortFast);
-        vertices.reserve(transparentFaceVertices[i].size() * 4);
-        vertices.clear();
-        for (TransparentSortData vc : transparentSortData)
-        {
-            for (int32 index = 0; index < 4; index++)
-                vertices.push_back(vc.m_vertex);
-        }
-#else
-#if SortType == 2
-        std::qsort(transparentFaceVertices[i].data(), transparentFaceVertices[i].size(), sizeof(transparentFaceVertices[i][0]), TransparentRenderQuickSort);
-        vertices.clear();
-        vertices.reserve(transparentFaceVertices[i].size() * 4);
-        for (Vertex_Chunk vc : transparentFaceVertices[i])
-        {
-            for (int32 index = 0; index < 4; index++)
-                vertices.push_back(vc);
-        }
-#elif SortType == 1
-        std::stable_sort(transparentFaceVertices[i].begin(), transparentFaceVertices[i].end(), TransparentRenderStableSort);
-#endif
-#endif
-    }
-    
-    VertexBuffer transparentVertexBuffer;
-    {
-        PROFILE_SCOPE_TAB("Transparent Render Chunk Upload");
-#if SortType == 2
-        transparentVertexBuffer.Upload(vertices.data(), vertices.size());
-#elif SortType == 1
-        transparentVertexBuffer.Upload(transparentFaceVertices[i].data(), transparentFaceVertices[i].size());
-#endif
-    }
-
     {
         PROFILE_SCOPE_TAB("Transparent Render Chunk Draw");
+        transparentVertexBuffer[i].Bind();
+
         glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
         glEnableVertexArrayAttrib(g_renderer.vao, 0);
         glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
