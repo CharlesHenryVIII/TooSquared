@@ -1333,8 +1333,8 @@ White:  Uploaded,");
                     }
                 }
             }
-            g_renderer.opaqueTarget->Bind();
-            //g_renderer.postTarget->Bind();
+            //g_renderer.opaqueTarget->Bind();
+            g_renderer.postTarget->Bind();
         }
 
         {
@@ -1509,7 +1509,7 @@ White:  Uploaded,");
             UI_Render();
         }
 
-        ResolveMSAAFramebuffer();
+        //ResolveMSAAFramebuffer();
         ResolveTransparentChunkFrameBuffer();
 
         glDisable(GL_DEPTH_TEST);

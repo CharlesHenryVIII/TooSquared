@@ -1800,7 +1800,8 @@ void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera)
     glDepthFunc(GL_LESS);
     glDisable(GL_BLEND);
 
-    g_renderer.opaqueTarget->Bind();
+    g_renderer.postTarget->Bind();
+    //g_renderer.opaqueTarget->Bind();
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 }
 

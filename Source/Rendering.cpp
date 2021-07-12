@@ -629,8 +629,8 @@ void RenderUpdate(Vec2Int windowSize, float deltaTime)
 
 
     UpdateFrameBuffers(windowSize, g_renderer.msaaEnabled ? g_renderer.maxMSAASamples : 1);
-    g_renderer.opaqueTarget->Bind();
-    //g_renderer.postTarget->Bind();
+    //g_renderer.opaqueTarget->Bind();
+    g_renderer.postTarget->Bind();
     glViewport(0, 0, windowSize.x, windowSize.y);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
@@ -774,18 +774,18 @@ void UpdateFrameBuffers(Vec2Int size, uint32 samples)
 {
     if (g_renderer.postTarget == nullptr)
     {
-        g_renderer.opaqueTarget = new FrameBuffer();
+        //g_renderer.opaqueTarget = new FrameBuffer();
         g_renderer.postTarget = new FrameBuffer();
         g_renderer.transparentTarget = new FrameBuffer();
     }
 
-    FrameBuffer* opaqueScene = g_renderer.opaqueTarget;
+    //FrameBuffer* opaqueScene = g_renderer.opaqueTarget;
     FrameBuffer* post = g_renderer.postTarget;
     FrameBuffer* transparentScene = g_renderer.transparentTarget;
     if (post->m_size.x == size.x && post->m_size.y == size.y && post->m_samples == samples)
         return;
 
-    opaqueScene->CreateTextures(size, samples, false);
+    //opaqueScene->CreateTextures(size, samples, false);
     post->CreateTextures(size, 1, false);
     transparentScene->CreateTextures(size, 1, true);
 }
