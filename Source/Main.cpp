@@ -1320,7 +1320,7 @@ White:  Uploaded,");
                 }
             }
                 
-            PreTransparentChunkRender();
+            PreTransparentChunkRender(playerCamera->m_perspective, playerCamera);
             {
                 PROFILE_SCOPE("Transparent Render");
                 for (int32 i = numRenderables - 1; i >= 0; --i)
@@ -1333,9 +1333,12 @@ White:  Uploaded,");
                     }
                 }
             }
+            g_renderer.opaqueTarget->Bind();
+            //g_renderer.postTarget->Bind();
         }
 
         {
+
             PROFILE_SCOPE_TAB("Debug Code");
             //DrawCube(testCamera.p.p, { 0, 1, 0, 1 }, 5.0f, perspective);
             //DrawCube(lookatPosition, { 1, 0, 0, 1 }, 5.0f, perspective);
@@ -1394,34 +1397,34 @@ White:  Uploaded,");
             }
         }
 
-        {
-            float angularVelocity = tau / 5; // rads per second
-            float yaw = deltaTime * angularVelocity;
+        //{
+        //    float angularVelocity = tau / 5; // rads per second
+        //    float yaw = deltaTime * angularVelocity;
 
-            debug_blockTransformParent.m_yaw += yaw;
-            debug_blockTransformChild.m_yaw += yaw;
+        //    debug_blockTransformParent.m_yaw += yaw;
+        //    debug_blockTransformChild.m_yaw += yaw;
 
-            Mat4 parentResult;
-            Mat4 parentTrans;
-            Mat4 parentRot;
-            gb_mat4_identity(&parentResult);
-            gb_mat4_rotate(&parentRot, { 0,1,0 }, (float(totalTime) * 3.0f) / (2 * 3.14f));
-            gb_mat4_translate(&parentTrans, debug_blockTransformParent.m_p.p);
-            parentResult = parentTrans * parentRot;
+        //    Mat4 parentResult;
+        //    Mat4 parentTrans;
+        //    Mat4 parentRot;
+        //    gb_mat4_identity(&parentResult);
+        //    gb_mat4_rotate(&parentRot, { 0,1,0 }, (float(totalTime) * 3.0f) / (2 * 3.14f));
+        //    gb_mat4_translate(&parentTrans, debug_blockTransformParent.m_p.p);
+        //    parentResult = parentTrans * parentRot;
 
-            DrawBlock(parentResult, White, 1.0f, playerCamera, Texture::T::Minecraft, BlockType::Grass);
+        //    DrawBlock(parentResult, White, 1.0f, playerCamera, Texture::T::Minecraft, BlockType::Grass);
 
 
-            Mat4 childResult;
-            Mat4 childTrans;
-            Mat4 childRot;
-            gb_mat4_rotate(&childRot, { 0,1,0 }, (float(totalTime) * 3.0f) / (2 * 3.14f));
-            gb_mat4_translate(&childTrans, debug_blockTransformChild.m_p.p);
-            childResult = childTrans * childRot;
+        //    Mat4 childResult;
+        //    Mat4 childTrans;
+        //    Mat4 childRot;
+        //    gb_mat4_rotate(&childRot, { 0,1,0 }, (float(totalTime) * 3.0f) / (2 * 3.14f));
+        //    gb_mat4_translate(&childTrans, debug_blockTransformChild.m_p.p);
+        //    childResult = childTrans * childRot;
 
-            Mat4 result = parentResult * childResult;
-            DrawBlock(result, White, 1.0f, playerCamera, Texture::T::Minecraft, BlockType::Grass);
-        }
+        //    Mat4 result = parentResult * childResult;
+        //    DrawBlock(result, White, 1.0f, playerCamera, Texture::T::Minecraft, BlockType::Grass);
+        //}
 
 
         {
@@ -1507,9 +1510,16 @@ White:  Uploaded,");
         }
 
         ResolveMSAAFramebuffer();
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        ResolveTransparentChunkFrameBuffer();
+
         glDisable(GL_DEPTH_TEST);
+        glDepthMask(GL_TRUE);
+        glDisable(GL_BLEND);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
         glViewport(0, 0, g_window.size.x, g_window.size.y);
+        glActiveTexture(GL_TEXTURE0);
         g_renderer.postTarget->m_color->Bind();
         g_renderer.programs[+Shader::BufferCopy]->UseShader();
         g_renderer.postVertexBuffer->Bind();
@@ -1521,7 +1531,6 @@ White:  Uploaded,");
         glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
         glEnableVertexArrayAttrib(g_renderer.vao, 2);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
 
         if (showIMGUI)
         {

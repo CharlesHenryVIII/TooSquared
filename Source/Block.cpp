@@ -74,7 +74,7 @@ void SetBlockSprites()
     SetMultipleBlockSprites(BlockType::Obsidian, 37);
 #if 1
     SetMultipleBlockSprites(BlockType::Leaves, 52);
-    g_blocks[+BlockType::Leaves].m_transparent = true;
+    g_blocks[+BlockType::Leaves].m_transparent = false;
     g_blocks[+BlockType::Leaves].m_sidesShouldBeRendered = true;
 #else
     SetMultipleBlockSprites(BlockType::Leaves, 53);
@@ -84,8 +84,9 @@ void SetBlockSprites()
     g_blocks[+BlockType::TNT].m_spriteIndices[+Face::Top] = 9;
     g_blocks[+BlockType::TNT].m_spriteIndices[+Face::Bot] = 10;
     SetMultipleBlockSprites(BlockType::Water, 255);
-    g_blocks[+BlockType::Water].m_transparent = true;
-    g_blocks[+BlockType::Water].m_collidable  = false;
+    g_blocks[+BlockType::Water].m_unUsualShape = true;
+    g_blocks[+BlockType::Water].m_transparent  = false;
+    g_blocks[+BlockType::Water].m_collidable   = false;
     SetMultipleBlockSprites(BlockType::Bedrock, 17);
 
     SetMultipleBlockSprites(BlockType::HalfSlab, 5);

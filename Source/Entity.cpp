@@ -516,6 +516,7 @@ void Items::Update(float dt)
 
 void Items::Render(float dt, Camera* camera)
 {
+    assert(OnMainThread());
     float scale = 0.5f;
     std::lock_guard<std::mutex> lock(m_listVectorMutex);
     for (auto& i : m_items)

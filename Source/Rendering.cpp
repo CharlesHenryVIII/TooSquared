@@ -613,6 +613,7 @@ double s_lastShaderUpdateTime = 0;
 double s_incrimentalTime = 0;
 void RenderUpdate(Vec2Int windowSize, float deltaTime)
 {
+    glClearColor(0.263f, 0.706f, 0.965f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     g_renderer.numTrianglesDrawn = 0;
     if (s_lastShaderUpdateTime + 0.1f <= s_incrimentalTime)
@@ -628,7 +629,8 @@ void RenderUpdate(Vec2Int windowSize, float deltaTime)
 
 
     UpdateFrameBuffers(windowSize, g_renderer.msaaEnabled ? g_renderer.maxMSAASamples : 1);
-    g_renderer.sceneTarget->Bind();
+    g_renderer.opaqueTarget->Bind();
+    //g_renderer.postTarget->Bind();
     glViewport(0, 0, windowSize.x, windowSize.y);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
@@ -715,10 +717,12 @@ FrameBuffer::FrameBuffer()
     Bind();
 }
 
-void FrameBuffer::CreateTextures(Vec2Int size, uint32 samples)
+void FrameBuffer::CreateTextures(Vec2Int size, uint32 samples, bool transparentFrameBuffer)
 {
     if (m_color && m_color->m_handle)
         delete m_color;
+    if (m_color2 && m_color2->m_handle)
+        delete m_color2;
     if (m_depth && m_depth->m_handle)
         delete m_depth;
 
@@ -728,15 +732,35 @@ void FrameBuffer::CreateTextures(Vec2Int size, uint32 samples)
     Texture::TextureParams tp = {};
     tp.samples = samples;
     tp.size = size;
-    tp.internalFormat = GL_RGB;
-    m_color = new Texture(tp);
-    tp.internalFormat = GL_DEPTH_COMPONENT;
-    tp.format = GL_DEPTH_COMPONENT;
-    m_depth = new Texture(tp);
+    if (transparentFrameBuffer)
+    {
+        tp.internalFormat = GL_RGBA16F;
+        tp.format = GL_RGBA;
+        tp.minFilter = tp.magFilter = GL_LINEAR;
+        tp.type = GL_HALF_FLOAT;
+        m_color = new Texture(tp);
 
-    Bind();
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_color->m_target, m_color->m_handle, 0);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_depth->m_target, m_depth->m_handle, 0);
+        tp.internalFormat = GL_R8;
+        tp.format = GL_RED;
+        tp.type = GL_FLOAT;
+        m_color2 = new Texture(tp);
+
+        Bind();
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_color->m_target,  m_color->m_handle, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, m_color2->m_target, m_color2->m_handle, 0);
+    }
+    else
+    {
+        tp.internalFormat = GL_RGB;
+        m_color = new Texture(tp);
+        tp.internalFormat = GL_DEPTH_COMPONENT;
+        tp.format = GL_DEPTH_COMPONENT;
+        m_depth = new Texture(tp);
+
+        Bind();
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_color->m_target, m_color->m_handle, 0);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_depth->m_target, m_depth->m_handle, 0);
+    }
 
     GLint err = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (err != GL_FRAMEBUFFER_COMPLETE)
@@ -748,26 +772,29 @@ void FrameBuffer::CreateTextures(Vec2Int size, uint32 samples)
 
 void UpdateFrameBuffers(Vec2Int size, uint32 samples)
 {
-    if (g_renderer.sceneTarget == nullptr)
+    if (g_renderer.postTarget == nullptr)
     {
-        g_renderer.sceneTarget = new FrameBuffer();
+        g_renderer.opaqueTarget = new FrameBuffer();
         g_renderer.postTarget = new FrameBuffer();
+        g_renderer.transparentTarget = new FrameBuffer();
     }
 
-    FrameBuffer* scene = g_renderer.sceneTarget;
+    FrameBuffer* opaqueScene = g_renderer.opaqueTarget;
     FrameBuffer* post = g_renderer.postTarget;
-    if (scene->m_size.x == size.x && scene->m_size.y == size.y && scene->m_samples == samples)
+    FrameBuffer* transparentScene = g_renderer.transparentTarget;
+    if (post->m_size.x == size.x && post->m_size.y == size.y && post->m_samples == samples)
         return;
 
-    scene->CreateTextures(size, samples);
-    post->CreateTextures(size, 1);
+    opaqueScene->CreateTextures(size, samples, false);
+    post->CreateTextures(size, 1, false);
+    transparentScene->CreateTextures(size, 1, true);
 }
 
 // Copying the multisampled framebuffer to a standard texture resolves the multiple samples per pixel. This must be done before using the
 // framebuffer for any read operations.
 void ResolveMSAAFramebuffer()
 {
-    FrameBuffer* scene = g_renderer.sceneTarget;
+    FrameBuffer* scene = g_renderer.opaqueTarget;
     FrameBuffer* post = g_renderer.postTarget;
     assert(post && scene);
 
@@ -775,6 +802,38 @@ void ResolveMSAAFramebuffer()
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, post->m_handle);
     glBlitFramebuffer(0, 0, scene->m_size.x, scene->m_size.y, 0, 0, scene->m_size.x, scene->m_size.y, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 }
+
+void ResolveTransparentChunkFrameBuffer()
+{
+    // set render states
+    glDepthFunc(GL_ALWAYS);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    // bind opaque framebuffer
+    g_renderer.postTarget->Bind();
+    //glBindFramebuffer(GL_FRAMEBUFFER, opaqueFBO);
+
+    //use composite shader
+    //compositeShader.use();
+    g_renderer.programs[+Shader::Composite]->UseShader();
+
+    // draw screen quad
+    glActiveTexture(GL_TEXTURE0);
+    g_renderer.transparentTarget->m_color->Bind();
+    glActiveTexture(GL_TEXTURE1);
+    g_renderer.transparentTarget->m_color2->Bind();
+
+    g_renderer.postVertexBuffer->Bind();
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+    glEnableVertexArrayAttrib(g_renderer.vao, 0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+    glEnableVertexArrayAttrib(g_renderer.vao, 1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
+    glEnableVertexArrayAttrib(g_renderer.vao, 2);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+}
+
 
 
 VertexBuffer* UI_VertexBuffer = nullptr;
@@ -1046,11 +1105,13 @@ void InitializeVideo()
     g_renderer.skyBoxDay = new TextureCube("Assets/sky.dds");//DayMinecraftSkybox2.dds");
     g_renderer.textures[Texture::T::Plain] = new Texture(s_pixelTextureData, { 1, 1 });
 
-    g_renderer.programs[+Shader::Chunk] = new ShaderProgram("Source/Shaders/Chunk.vert", "Source/Shaders/Chunk.frag");
-    g_renderer.programs[+Shader::Cube] = new ShaderProgram("Source/Shaders/Cube.vert", "Source/Shaders/Cube.frag");
-    g_renderer.programs[+Shader::BufferCopy] = new ShaderProgram("Source/Shaders/BufferCopy.vert", "Source/Shaders/BufferCopy.frag");
-    g_renderer.programs[+Shader::Sun] = new ShaderProgram("Source/Shaders/Sun.vert", "Source/Shaders/Sun.frag");
-    g_renderer.programs[+Shader::UI] = new ShaderProgram("Source/Shaders/UI.vert", "Source/Shaders/UI.frag");
+    g_renderer.programs[+Shader::OpaqueChunk] = new ShaderProgram("Source/Shaders/Chunk.vert",      "Source/Shaders/Chunk.frag");
+    g_renderer.programs[+Shader::Cube] = new ShaderProgram("Source/Shaders/Cube.vert",              "Source/Shaders/Cube.frag");
+    g_renderer.programs[+Shader::BufferCopy] = new ShaderProgram("Source/Shaders/BufferCopy.vert",  "Source/Shaders/BufferCopy.frag");
+    g_renderer.programs[+Shader::Sun] = new ShaderProgram("Source/Shaders/Sun.vert",                "Source/Shaders/Sun.frag");
+    g_renderer.programs[+Shader::UI] = new ShaderProgram("Source/Shaders/UI.vert",                  "Source/Shaders/UI.frag");
+    g_renderer.programs[+Shader::TransparentChunk] = new ShaderProgram("Source/Shaders/Chunk.vert", "Source/Shaders/ChunkTransparent.frag");
+    g_renderer.programs[+Shader::Composite] = new ShaderProgram("Source/Shaders/BufferCopy.vert",   "Source/Shaders/Composite.frag");
 
 #if DIRECTIONALLIGHT == 1
     g_renderer.sunLight.d = Normalize(Vec3({  0.0f, -1.0f,  0.0f }));

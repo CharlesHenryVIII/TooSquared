@@ -188,7 +188,7 @@ Vec3Int Convert_GameToBlock(ChunkPos& result, const GamePos& inputP);
 
 struct Camera;
 void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera);
-void PreTransparentChunkRender();
+void PreTransparentChunkRender(const Mat4& perspective, Camera* camera);
 
 int64 PositionHash(ChunkPos p);
 bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& distance, Vec3& normal);

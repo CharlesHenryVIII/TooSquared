@@ -55,7 +55,9 @@ enum class ts_MessageBox {
 
 enum class Shader : uint32 {
     Invalid,
-    Chunk,
+    OpaqueChunk,
+    TransparentChunk,
+    Composite,
     Cube,
     BufferCopy,
     Sun,
@@ -209,13 +211,14 @@ class FrameBuffer {
 public:
     GLuint m_handle = 0;
     Texture* m_color = nullptr;
+    Texture* m_color2 = nullptr;
     Texture* m_depth = nullptr;
     Vec2Int m_size = {};
     uint32  m_samples = 1;
 
     FrameBuffer();
     void Bind();
-    void CreateTextures(Vec2Int size, uint32 samples);
+    void CreateTextures(Vec2Int size, uint32 samples, bool transparentFrameBuffer);
 };
 
 struct Renderer {
@@ -226,7 +229,8 @@ struct Renderer {
     GLuint vao;
     IndexBuffer* chunkIB;
     TextureArray* spriteTextArray;
-    FrameBuffer* sceneTarget = nullptr;
+    FrameBuffer* opaqueTarget = nullptr;
+    FrameBuffer* transparentTarget = nullptr;
     FrameBuffer* postTarget  = nullptr;
     VertexBuffer* postVertexBuffer;
     VertexBuffer* cubeVertexBuffer;
@@ -250,6 +254,7 @@ void RenderUpdate(Vec2Int windowSize, float deltaTime);
 void InitializeVideo();
 void UpdateFrameBuffers(Vec2Int size, uint32 samples);
 void ResolveMSAAFramebuffer();
+void ResolveTransparentChunkFrameBuffer();
 void UI_AddDrawCall(RectInt sourceRect, RectInt _destRect, Color colorMod, Texture::T textureType);
 void UI_AddDrawCall(RectInt _sourceRect, Rect destRect, Color colorMod, Texture::T textureType);
 void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& view, const Mat4& perspective, bool depthWrite);
