@@ -1835,14 +1835,15 @@ void PreTransparentChunkRender(const Mat4& perspective, Camera* camera)
 
     GenericPreChunkWork(Shader::TransparentChunk, perspective, camera);
 
-    glDepthMask(GL_FALSE);
     glEnable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
     glBlendFunci(0, GL_ONE, GL_ONE);
     glBlendFunci(1, GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
     glBlendEquation(GL_FUNC_ADD);
 
     g_renderer.transparentTarget->Bind();
+    g_renderer.postTarget->m_depth->Bind();
 
     Vec4 clearVec0 = Vec4{ 0.0f, 0.0f, 0.0f, 0.0f };
     glClearBufferfv(GL_COLOR, 0, clearVec0.e);
@@ -2073,6 +2074,8 @@ bool ChunkArray::SaveChunk(ChunkIndex i)
         ChunkPos checkChunkPos = {};
         SaveItemJob* job = new SaveItemJob();
         job->m_p = g_chunks->p[i];
+
+        std::lock_guard<std::mutex> lock(g_items.m_listVectorMutex);
         for (EntityID itemID : g_chunks->itemIDs[i])
         {
             Item* item = g_items.Get(itemID);
@@ -2265,6 +2268,7 @@ void ChunkArray::Update(float dt)
     {
         if (flags[i] & CHUNK_FLAG_ACTIVE)
         {
+            std::lock_guard<std::mutex> lock(g_items.m_listVectorMutex);
             for (EntityID id : itemIDs[i])
             {
                 Item* item = g_items.Get(id);
@@ -2303,6 +2307,7 @@ void ChunkArray::Update(float dt)
         }
     }
 
+    std::lock_guard<std::mutex> lock(g_items.m_listVectorMutex);
     for (auto& move : itemsToMove)
     {
         std::erase_if(g_chunks->itemIDs[move.oldChunk],

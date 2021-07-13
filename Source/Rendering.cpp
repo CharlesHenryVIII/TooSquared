@@ -748,6 +748,8 @@ void FrameBuffer::CreateTextures(Vec2Int size, uint32 samples, bool transparentF
         Bind();
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_color->m_target,  m_color->m_handle, 0);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, m_color2->m_target, m_color2->m_handle, 0);
+        //this is bad dont do this.  Just want to get it working first
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  g_renderer.postTarget->m_depth->m_target, g_renderer.postTarget->m_depth->m_handle, 0);
     }
     else
     {
