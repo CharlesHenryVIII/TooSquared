@@ -316,7 +316,14 @@ void TextureCube::Bind()
     glBindTexture(GL_TEXTURE_CUBE_MAP, m_handle);
 }
 
-
+ShaderProgram::~ShaderProgram()
+{
+    //TODO: Delete shaders as well
+    glDeleteProgram(m_handle);
+#ifdef _DEBUGPRINT
+    DebugPrint("Shader Program Deleted\n");
+#endif
+}
 bool ShaderProgram::CompileShader(GLuint handle, const char* name, std::string text)
 {
     const char* strings[] = { text.c_str() };
@@ -352,7 +359,6 @@ bool ShaderProgram::CompileShader(GLuint handle, const char* name, std::string t
         {
             if (buttons[buttonID].buttonid == 0)//NOTE: Continue button
             {
-
                 return false;
             }
             else if (buttons[buttonID].buttonid == 1)//NOTE: Retry button
@@ -374,16 +380,13 @@ ShaderProgram::ShaderProgram(const std::string& vertexFileLocation, const std::s
 
     CheckForUpdate();
 }
-
-ShaderProgram::~ShaderProgram()
+void ShaderProgram::UseShader()
 {
-    //TODO: Delete shaders as well
-    glDeleteProgram(m_handle);
+    glUseProgram(m_handle);
 #ifdef _DEBUGPRINT
-    DebugPrint("Shader Deleted\n");
+    DebugPrint("Shader Used\n");
 #endif
 }
-
 void ShaderProgram::CheckForUpdate()
 {
     File vertexFile(m_vertexFile, File::Mode::Read, false);
@@ -468,14 +471,6 @@ void ShaderProgram::CheckForUpdate()
             glDeleteShader(phandle);
         }
     }
-}
-
-void ShaderProgram::UseShader()
-{
-    glUseProgram(m_handle);
-#ifdef _DEBUGPRINT
-    DebugPrint("Shader Used\n");
-#endif
 }
 
 //TODO: Put somewhere appropriate
@@ -629,8 +624,8 @@ void RenderUpdate(Vec2Int windowSize, float deltaTime)
 
 
     UpdateFrameBuffers(windowSize, g_renderer.msaaEnabled ? g_renderer.maxMSAASamples : 1);
-    //g_renderer.opaqueTarget->Bind();
-    g_renderer.postTarget->Bind();
+    g_renderer.opaqueTarget->Bind();
+    //g_renderer.postTarget->Bind();
     glViewport(0, 0, windowSize.x, windowSize.y);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
@@ -717,7 +712,7 @@ FrameBuffer::FrameBuffer()
     Bind();
 }
 
-void FrameBuffer::CreateTextures(Vec2Int size, uint32 samples, bool transparentFrameBuffer)
+void FrameBuffer::ClearTextures(Texture::TextureParams textureParams)
 {
     if (m_color && m_color->m_handle)
         delete m_color;
@@ -725,7 +720,33 @@ void FrameBuffer::CreateTextures(Vec2Int size, uint32 samples, bool transparentF
         delete m_color2;
     if (m_depth && m_depth->m_handle)
         delete m_depth;
+}
 
+void FrameBuffer::CreateTexture(Texture::TextureParams tp)
+{
+    tp.size = m_size;
+    tp.samples = m_samples;
+    Bind();
+
+    if (tp.internalFormat == GL_DEPTH_COMPONENT)
+    {
+        m_depth = new Texture(tp);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  m_depth->m_target, m_depth->m_handle, 0);
+    }
+    else if (m_color && m_color->m_handle)
+    {
+        m_color2 = new Texture(tp);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_color->m_target,  m_color->m_handle, 0);
+    }
+    else
+    {
+        m_color = new Texture(tp);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_color->m_target,  m_color->m_handle, 0);
+    }
+}
+
+void FrameBuffer::CreateTextures(Vec2Int size, uint32 samples, bool transparentFrameBuffer)
+{
     m_size = size;
     m_samples = samples;
 
@@ -749,12 +770,15 @@ void FrameBuffer::CreateTextures(Vec2Int size, uint32 samples, bool transparentF
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_color->m_target,  m_color->m_handle, 0);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, m_color2->m_target, m_color2->m_handle, 0);
         //this is bad dont do this.  Just want to get it working first
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  g_renderer.postTarget->m_depth->m_target, g_renderer.postTarget->m_depth->m_handle, 0);
+        //if (transparentFrameBuffer)
+            //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_depth->m_target, m_depth->m_handle, 0);
+        //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  g_renderer.opaqueTarget->m_depth->m_target, g_renderer.opaqueTarget->m_depth->m_handle, 0);
     }
     else
     {
         tp.internalFormat = GL_RGB;
         m_color = new Texture(tp);
+
         tp.internalFormat = GL_DEPTH_COMPONENT;
         tp.format = GL_DEPTH_COMPONENT;
         m_depth = new Texture(tp);
@@ -776,44 +800,64 @@ void UpdateFrameBuffers(Vec2Int size, uint32 samples)
 {
     if (g_renderer.postTarget == nullptr)
     {
-        //g_renderer.opaqueTarget = new FrameBuffer();
+        g_renderer.opaqueTarget = new FrameBuffer();
         g_renderer.postTarget = new FrameBuffer();
         g_renderer.transparentTarget = new FrameBuffer();
+        g_renderer.transparentPostTarget = new FrameBuffer();
     }
 
-    //FrameBuffer* opaqueScene = g_renderer.opaqueTarget;
+    FrameBuffer* opaqueScene = g_renderer.opaqueTarget;
     FrameBuffer* post = g_renderer.postTarget;
     FrameBuffer* transparentScene = g_renderer.transparentTarget;
-    if (post->m_size.x == size.x && post->m_size.y == size.y && post->m_samples == samples)
+    FrameBuffer* transparentPost = g_renderer.transparentPostTarget;
+    if (post->m_size.x == size.x && post->m_size.y == size.y && opaqueScene->m_samples == samples)
         return;
 
-    //opaqueScene->CreateTextures(size, samples, false);
+    opaqueScene->CreateTextures(size, samples, false);
     post->CreateTextures(size, 1, false);
-    transparentScene->CreateTextures(size, 1, true);
+    transparentScene->CreateTextures(size, samples, true);
+    transparentPost->CreateTextures(size, 1, true);
+
+    transparentScene->m_depth = opaqueScene->m_depth;
+    transparentScene->Bind();
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, transparentScene->m_depth->m_target, transparentScene->m_depth->m_handle, 0);
+    transparentPost->m_depth = post->m_depth;
+    transparentPost->Bind();
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, transparentPost->m_depth->m_target, transparentPost->m_depth->m_handle, 0);
+    opaqueScene->Bind();
 }
 
 // Copying the multisampled framebuffer to a standard texture resolves the multiple samples per pixel. This must be done before using the
 // framebuffer for any read operations.
-void ResolveMSAAFramebuffer()
+void ResolveMSAAFramebuffer(FrameBuffer* read, FrameBuffer* write, GLbitfield copyMask, GLenum mode)
 {
-    FrameBuffer* scene = g_renderer.opaqueTarget;
-    FrameBuffer* post = g_renderer.postTarget;
-    assert(post && scene);
-
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, scene->m_handle);
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, post->m_handle);
-    glBlitFramebuffer(0, 0, scene->m_size.x, scene->m_size.y, 0, 0, scene->m_size.x, scene->m_size.y, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    assert(read && write);
+    if (read && write)
+    {
+        glBindFramebuffer(GL_READ_FRAMEBUFFER, read->m_handle);
+        glReadBuffer(mode);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, write->m_handle);
+        glDrawBuffer(mode);
+        glBlitFramebuffer(0, 0, read->m_size.x, read->m_size.y, 0, 0, write->m_size.x, write->m_size.y, copyMask, GL_NEAREST);
+    }
 }
 
 void ResolveTransparentChunkFrameBuffer()
 {
+    ResolveMSAAFramebuffer(g_renderer.transparentTarget, g_renderer.transparentPostTarget, GL_COLOR_BUFFER_BIT);
+    ResolveMSAAFramebuffer(g_renderer.transparentTarget, g_renderer.transparentPostTarget, GL_COLOR_BUFFER_BIT, GL_COLOR_ATTACHMENT1);
+
     // set render states
     glDepthFunc(GL_ALWAYS);
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    // bind opaque framebuffer
+    //bind opaque framebuffer
     g_renderer.postTarget->Bind();
+    //g_renderer.transparentPostTarget->Bind();
+    //g_renderer.opaqueTarget->Bind();
     //glBindFramebuffer(GL_FRAMEBUFFER, opaqueFBO);
 
     //use composite shader
@@ -822,9 +866,11 @@ void ResolveTransparentChunkFrameBuffer()
 
     // draw screen quad
     glActiveTexture(GL_TEXTURE0);
-    g_renderer.transparentTarget->m_color->Bind();
+    g_renderer.transparentPostTarget->m_color->Bind();
+    //g_renderer.transparentTarget->m_color->Bind();
     glActiveTexture(GL_TEXTURE1);
-    g_renderer.transparentTarget->m_color2->Bind();
+    g_renderer.transparentPostTarget->m_color2->Bind();
+    //g_renderer.transparentTarget->m_color2->Bind();
 
     g_renderer.postVertexBuffer->Bind();
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
@@ -916,6 +962,13 @@ void UI_Render()
 {
     glDisable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);
+    //glDepthMask(GL_TRUE);
+    glEnable(GL_BLEND);
+    glBlendFunci(0, GL_ONE, GL_ONE);
+    glBlendFunci(1, GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
+    glBlendEquation(GL_FUNC_ADD);
+
+    g_renderer.transparentTarget->Bind();
 
     UI_VertexBuffer->Bind();
     UI_VertexBuffer->Upload(UI_Vertices.data(), UI_Vertices.size());
@@ -943,9 +996,6 @@ void UI_Render()
     }
     UI_Vertices.clear();
     UI_DrawCalls.clear();
-
-    glEnable(GL_DEPTH_TEST);
-    glDepthMask(GL_TRUE);
 }
 
 //The UV's are not setup to accept real images

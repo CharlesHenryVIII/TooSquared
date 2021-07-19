@@ -138,7 +138,6 @@ class ShaderProgram
 
     ShaderProgram(const ShaderProgram& rhs) = delete;
     ShaderProgram& operator=(const ShaderProgram& rhs) = delete;
-
     bool CompileShader(GLuint handle, const char* name, std::string text);
 
 public:
@@ -219,6 +218,8 @@ public:
     FrameBuffer();
     void Bind();
     void CreateTextures(Vec2Int size, uint32 samples, bool transparentFrameBuffer);
+    void CreateTexture(Texture::TextureParams tp);
+    void ClearTextures(Texture::TextureParams textureParams);
 };
 
 struct Renderer {
@@ -231,6 +232,7 @@ struct Renderer {
     TextureArray* spriteTextArray;
     FrameBuffer* opaqueTarget = nullptr;
     FrameBuffer* transparentTarget = nullptr;
+    FrameBuffer* transparentPostTarget = nullptr;
     FrameBuffer* postTarget  = nullptr;
     VertexBuffer* postVertexBuffer;
     VertexBuffer* cubeVertexBuffer;
@@ -253,7 +255,7 @@ Rect GetRectFromSprite(uint32 i);
 void RenderUpdate(Vec2Int windowSize, float deltaTime);
 void InitializeVideo();
 void UpdateFrameBuffers(Vec2Int size, uint32 samples);
-void ResolveMSAAFramebuffer();
+void ResolveMSAAFramebuffer(FrameBuffer* read, FrameBuffer* write, GLbitfield copyMask = (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT), GLenum mode = (GL_COLOR_ATTACHMENT0));
 void ResolveTransparentChunkFrameBuffer();
 void UI_AddDrawCall(RectInt sourceRect, RectInt _destRect, Color colorMod, Texture::T textureType);
 void UI_AddDrawCall(RectInt _sourceRect, Rect destRect, Color colorMod, Texture::T textureType);

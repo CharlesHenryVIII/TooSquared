@@ -1267,7 +1267,43 @@ White:  Uploaded,");
         }
 
         {
-            PROFILE_SCOPE_TAB("Chunk Upload and Render");
+            PROFILE_SCOPE("Chunk Deletion");
+            for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
+            {
+                assert(g_chunks->refs[i] >= 0);
+                if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
+                    continue;
+                if (g_chunks->state[i] == ChunkArray::VertexLoading)
+                    continue;
+                if (g_chunks->state[i] == ChunkArray::BlocksLoading)
+                    continue;
+
+                if ((g_chunks->flags[i] & CHUNK_FLAG_TODELETE) && (g_chunks->refs[i] == 0))
+                {
+                    g_chunks->ClearChunk(i);
+                }
+            }
+            while (g_running == false && multiThreading.GetJobsInFlight() > 0)
+                multiThreading.SleepThread(250);  //do nothing;
+        }
+
+        {
+            PROFILE_SCOPE("Entity Deletion");
+            g_entityList.CleanUp();
+        }
+        {
+            PROFILE_SCOPE("Item Deletion");
+            g_items.CleanUp();
+        }
+
+        struct Renderable {
+            ChunkIndex index;
+            int32 distance;
+        };
+        Renderable renderables[MAX_CHUNKS];
+        int32 numRenderables = 0;
+        {
+            PROFILE_SCOPE_TAB("Chunk Opaque Upload and Render");
 
 #ifdef _DEBUG
             const int32 uploadMax = 10;
@@ -1275,12 +1311,6 @@ White:  Uploaded,");
             //const int32 uploadMax = 40;
             const int32 uploadMax = 300;
 #endif
-            struct Renderable {
-                ChunkIndex index;
-                int32 distance;
-            };
-            Renderable renderables[MAX_CHUNKS];
-            int32 numRenderables = 0;
             Frustum frustum = ComputeFrustum(playerCamera->m_viewProj);
             int32 uploadCount = 0;
             PreOpaqueChunkRender(playerCamera->m_perspective, playerCamera);
@@ -1319,10 +1349,26 @@ White:  Uploaded,");
                     g_chunks->RenderOpaqueChunk(renderChunk);
                 }
             }
-                
+        }
+
+
+        {
+            PROFILE_SCOPE_TAB("Opaque Debug Code");
+            if (s_debugFlags & +DebugOptions::Enabled)
+            {
+                for (WorldPos p : cubesToDraw)
+                {
+                    g_renderer.opaqueTarget->Bind();
+                    //g_renderer.postTarget->Bind();
+                    DrawCube(p, Red, 2.0f, playerCamera);
+                }
+            }
+        }
+
+        {
+            PROFILE_SCOPE_TAB("Transparent Chunk Render");
             PreTransparentChunkRender(playerCamera->m_perspective, playerCamera);
             {
-                PROFILE_SCOPE("Transparent Render");
                 for (int32 i = numRenderables - 1; i >= 0; --i)
                 {
                     ChunkIndex renderChunk = renderables[i].index;
@@ -1333,19 +1379,17 @@ White:  Uploaded,");
                     }
                 }
             }
-            //g_renderer.opaqueTarget->Bind();
-            g_renderer.postTarget->Bind();
         }
 
         {
-
-            PROFILE_SCOPE_TAB("Debug Code");
+            PROFILE_SCOPE_TAB("Transparent Debug Code");
             //DrawCube(testCamera.p.p, { 0, 1, 0, 1 }, 5.0f, perspective);
             //DrawCube(lookatPosition, { 1, 0, 0, 1 }, 5.0f, perspective);
             if (s_debugFlags & +DebugOptions::Enabled)
             {
                 if (s_debugFlags & +DebugOptions::ChunkStatus)
                 {
+                    g_renderer.transparentTarget->Bind();
                     for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
                     {
                         if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
@@ -1370,14 +1414,11 @@ White:  Uploaded,");
                         DrawCube(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, playerCamera);
                     }
                 }
-                for (WorldPos p : cubesToDraw)
-                {
-                    DrawCube(p, Red, 2.0f, playerCamera);
-                }
                 if (s_debugFlags & +DebugOptions::LookatBlock)
                 {
                     if (validHit)
                     {
+                        g_renderer.transparentTarget->Bind();
                         WorldPos pos;
                         pos = ToWorld(hitBlock);
                         pos.p = pos.p + 0.5f;
@@ -1390,6 +1431,7 @@ White:  Uploaded,");
                 {
                     if (player->m_collider.m_collidedTriangles.size())
                     {
+                        g_renderer.opaqueTarget->Bind();
                         DrawTriangles(player->m_collider.m_collidedTriangles, Orange, playerCamera->m_view, playerCamera->m_perspective, false);
                         player->m_collider.m_collidedTriangles.clear();
                     }
@@ -1397,65 +1439,6 @@ White:  Uploaded,");
             }
         }
 
-        //{
-        //    float angularVelocity = tau / 5; // rads per second
-        //    float yaw = deltaTime * angularVelocity;
-
-        //    debug_blockTransformParent.m_yaw += yaw;
-        //    debug_blockTransformChild.m_yaw += yaw;
-
-        //    Mat4 parentResult;
-        //    Mat4 parentTrans;
-        //    Mat4 parentRot;
-        //    gb_mat4_identity(&parentResult);
-        //    gb_mat4_rotate(&parentRot, { 0,1,0 }, (float(totalTime) * 3.0f) / (2 * 3.14f));
-        //    gb_mat4_translate(&parentTrans, debug_blockTransformParent.m_p.p);
-        //    parentResult = parentTrans * parentRot;
-
-        //    DrawBlock(parentResult, White, 1.0f, playerCamera, Texture::T::Minecraft, BlockType::Grass);
-
-
-        //    Mat4 childResult;
-        //    Mat4 childTrans;
-        //    Mat4 childRot;
-        //    gb_mat4_rotate(&childRot, { 0,1,0 }, (float(totalTime) * 3.0f) / (2 * 3.14f));
-        //    gb_mat4_translate(&childTrans, debug_blockTransformChild.m_p.p);
-        //    childResult = childTrans * childRot;
-
-        //    Mat4 result = parentResult * childResult;
-        //    DrawBlock(result, White, 1.0f, playerCamera, Texture::T::Minecraft, BlockType::Grass);
-        //}
-
-
-        {
-            PROFILE_SCOPE("Chunk Deletion");
-            for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
-            {
-                assert(g_chunks->refs[i] >= 0);
-                if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
-                    continue;
-                if (g_chunks->state[i] == ChunkArray::VertexLoading)
-                    continue;
-                if (g_chunks->state[i] == ChunkArray::BlocksLoading)
-                    continue;
-
-                if ((g_chunks->flags[i] & CHUNK_FLAG_TODELETE) && (g_chunks->refs[i] == 0))
-                {
-                    g_chunks->ClearChunk(i);
-                }
-            }
-            while (g_running == false && multiThreading.GetJobsInFlight() > 0)
-                multiThreading.SleepThread(250);  //do nothing;
-        }
-
-        {
-            PROFILE_SCOPE("Entity Deletion");
-            g_entityList.CleanUp();
-        }
-        {
-            PROFILE_SCOPE("Item Deletion");
-            g_items.CleanUp();
-        }
         //gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
 
         //double renderTotalTime = SDL_GetPerformanceCounter() / freq;
@@ -1466,6 +1449,7 @@ White:  Uploaded,");
         //frameTimes.push_back(static_cast<float>(renderTotalTime));
 
         {
+            PROFILE_SCOPE_TAB("Transparent Crosshair");
             Color crosshairColor = { 0.5f, 0.5f, 0.5f, 0.5f };
             int32 lineThickness = 7;
             int32 lineBounds = 30;
@@ -1509,8 +1493,50 @@ White:  Uploaded,");
             UI_Render();
         }
 
-        //ResolveMSAAFramebuffer();
-        ResolveTransparentChunkFrameBuffer();
+        {
+            //PROFILE_SCOPE_TAB("Resolve Opaque Framebuffer");
+            PROFILE_SCOPE_TAB("Resolve Framebuffers");
+            //g_renderer.postTarget->Bind();
+            //glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            //glClearDepth(0.0f);
+            //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            ResolveMSAAFramebuffer(g_renderer.opaqueTarget, g_renderer.postTarget, (GL_COLOR_BUFFER_BIT));
+            ResolveTransparentChunkFrameBuffer();
+            
+            glDisable(GL_DEPTH_TEST);
+            glDepthMask(GL_FALSE);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glEnable(GL_BLEND);
+            g_renderer.postTarget->Bind();
+            //glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glActiveTexture(GL_TEXTURE0);
+            g_renderer.transparentPostTarget->m_color->Bind();
+            g_renderer.programs[+Shader::BufferCopy]->UseShader();
+            g_renderer.postVertexBuffer->Bind();
+
+            //ResolveMSAAFramebuffer(g_renderer.opaqueTarget, g_renderer.postTarget, (GL_COLOR_BUFFER_BIT));
+
+            //FrameBuffer* read = g_renderer.opaqueTarget;
+            //FrameBuffer* draw = g_renderer.postTarget;
+            //glBindFramebuffer(GL_READ_FRAMEBUFFER, read->m_handle);
+            ////glReadBuffer(GL_NONE);
+            //glBindFramebuffer(GL_DRAW_FRAMEBUFFER, draw->m_handle);
+            ////glDrawBuffer(GL_NONE);
+            //glBlitFramebuffer(0, 0, read->m_size.x, read->m_size.y, 0, 0, read->m_size.x, read->m_size.y, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+            //glBlitFramebuffer(0, 0, read->m_size.x, read->m_size.y, 0, 0, read->m_size.x, read->m_size.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+
+            //ResolveMSAAFramebuffer(g_renderer.opaqueTarget, g_renderer.postTarget, GL_DEPTH_BUFFER_BIT);
+            //g_renderer.computePrograms[+ComputeShader::MSAADepthResolve]->UseShader();
+            //Vec3Int maxWorkers = {};
+            //glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &maxWorkers.x);
+            //glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &maxWorkers.y);
+            //glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &maxWorkers.z);
+            //maxWorkers = Min(maxWorkers, {16, 16, 1});
+            //glDispatchCompute(maxWorkers.x, maxWorkers.y, maxWorkers.z);
+            ////ResolveMSAAFramebuffer(g_renderer.opaqueTarget, g_renderer.postTarget, GL_DEPTH_BUFFER_BIT);
+            ////g_renderer.opaqueTarget->Bind();
+            ////g_renderer.postTarget->Bind();
+        }
 
         glDisable(GL_DEPTH_TEST);
         glDepthMask(GL_TRUE);

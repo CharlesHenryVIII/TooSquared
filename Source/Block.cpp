@@ -201,16 +201,38 @@ void DrawCube(WorldPos p, Color color, Vec3  scale, Camera* camera, Texture::T t
     g_renderer.cubeVertexBuffer->Bind();
     g_renderer.chunkIB->Bind();
 
+    ShaderProgram* sp = nullptr;
+    if (g_blocks[+blockType].m_transparent)
+    {
+        glEnable(GL_DEPTH_TEST);
+        glDepthMask(GL_FALSE);
+        glEnable(GL_BLEND);
+        glBlendFunci(0, GL_ONE, GL_ONE);
+        glBlendFunci(1, GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
+        glBlendEquation(GL_FUNC_ADD);
+
+        sp = g_renderer.programs[+Shader::Cube];
+        g_renderer.transparentTarget->Bind();
+    }
+    else
+    {
+        glEnable(GL_DEPTH_TEST);
+        glDepthMask(GL_TRUE);
+        glDisable(GL_BLEND);
+        g_renderer.opaqueTarget->Bind();
+        sp = g_renderer.programs[+Shader::Cube];
+    }
+
     Mat4 transform;
     gb_mat4_translate(&transform, { p.p.x, p.p.y, p.p.z });
     g_renderer.textures[textureType]->Bind();
     ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
     sp->UseShader();
-    sp->UpdateUniformMat4("u_perspective", 1, false, camera->m_perspective.e);
-    sp->UpdateUniformMat4("u_view",        1, false, camera->m_view.e);
-    sp->UpdateUniformMat4("u_model",       1, false, transform.e);
-    sp->UpdateUniformVec3("u_scale",       1,        scale.e);
-    sp->UpdateUniformVec4("u_color",       1,        color.e);
+    sp->UpdateUniformMat4("u_perspective",  1, false, camera->m_perspective.e);
+    sp->UpdateUniformMat4("u_view",         1, false, camera->m_view.e);
+    sp->UpdateUniformMat4("u_model",        1, false, transform.e);
+    sp->UpdateUniformVec3("u_scale",        1,        scale.e);
+    sp->UpdateUniformVec4("u_color",        1,        color.e);
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
     glEnableVertexArrayAttrib(g_renderer.vao, 0);
