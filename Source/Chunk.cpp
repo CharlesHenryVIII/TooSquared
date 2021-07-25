@@ -1673,7 +1673,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                         }
                         //if (getBlockResult && type == BlockType::Empty || (currentBlockType != BlockType::Water && type == BlockType::Water))
                         //if (/*getBlockResult && */g_blocks[+type].m_unUsualShape || (g_blocks[+type].m_transparent && ((currentBlockType != BlockType::Water && type == BlockType::Water) || type != BlockType::Water))) 
-                        if (g_blocks[+type].m_unUsualShape || (g_blocks[+type].m_transparent && (currentBlockType != type)) || type == BlockType::Leaves) 
+                        if ((g_blocks[+type].m_seeThrough && (currentBlockType != type)) || (g_blocks[+type].m_transparent && (currentBlockType != type)) || type == BlockType::Leaves) 
                         {
                             Vertex_Chunk f = {};
                             Vec3 offset = { static_cast<float>(x + realP.p.x), static_cast<float>(y + realP.p.y), static_cast<float>(z + realP.p.z) };
@@ -1844,13 +1844,13 @@ void PreTransparentChunkRender(const Mat4& perspective, Camera* camera)
     glBlendEquation(GL_FUNC_ADD);
 
     g_renderer.transparentTarget->Bind();
-    //g_renderer.postTarget->m_depth->Bind();
+    ////g_renderer.postTarget->m_depth->Bind();
 
-    Vec4 clearVec0 = Vec4{ 0.0f, 0.0f, 0.0f, 0.0f };
-    glClearBufferfv(GL_COLOR, 0, clearVec0.e);
-    //Vec4 clearVec1 = Vec4{ 1.0f, 1.0f, 1.0f, 1.0f }; //is this right or is only the first value 1.0f and the rest 0.0f?
-    Vec4 clearVec1 = Vec4{ 1.0f, 0.0f, 0.0f, 0.0f };
-    glClearBufferfv(GL_COLOR, 1, clearVec1.e);
+    //Vec4 clearVec0 = Vec4{ 0.0f, 0.0f, 0.0f, 0.0f };
+    //glClearBufferfv(GL_COLOR, 0, clearVec0.e);
+    ////Vec4 clearVec1 = Vec4{ 1.0f, 1.0f, 1.0f, 1.0f }; //is this right or is only the first value 1.0f and the rest 0.0f?
+    //Vec4 clearVec1 = Vec4{ 1.0f, 0.0f, 0.0f, 0.0f };
+    //glClearBufferfv(GL_COLOR, 1, clearVec1.e);
 }
 
 void ChunkArray::RenderTransparentChunk(ChunkIndex i)

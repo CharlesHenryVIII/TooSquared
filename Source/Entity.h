@@ -160,7 +160,9 @@ struct Items
     Item* Add(std::vector<EntityID>& itemIDs, BlockType blockType, const WorldPos& position, const WorldPos& destination);
     Item* Get(EntityID ID);
     void Update(float deltaTime);
-    void Render(float deltaTime, Camera* camera);
+    void RenderOpaque(float dt, Camera* camera);
+    void RenderTransparent(float dt, Camera* camera);
+    //void Render(float deltaTime, Camera* camera);
     bool Save(const std::vector<ItemDiskData>& diskData, const ChunkPos& p);
     bool Save(const ChunkPos& p);
     bool SaveAll();

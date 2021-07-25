@@ -59,6 +59,7 @@ enum class Shader : uint32 {
     TransparentChunk,
     Composite,
     Cube,
+    TransparentCube,
     BufferCopy,
     Sun,
     UI,

@@ -57,7 +57,7 @@ struct Block {
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation };
     float m_collisionHeight       = 1.0f;
     bool  m_transparent           = false;
-    bool  m_unUsualShape          = false;
+    bool  m_seeThrough          = false;
     bool  m_collidable            = true;
     bool  m_sidesShouldBeRendered = false;
     //Material material;
@@ -76,8 +76,8 @@ struct Camera;
 
 void BlockInit();
 Rect GetUVsFromIndex(uint8 index);
-void DrawBlock(const Mat4& mat, Color color, float scale, Camera* camera, Texture::T textureType, BlockType blockType);
-void DrawBlock(const Mat4& mat, Color color, Vec3 scale, Camera* camera, Texture::T textureType, BlockType blockType);
-void DrawCube(WorldPos p, Color color, Vec3  scale, Camera* camera, Texture::T textureType = Texture::T::Plain, BlockType blockType = BlockType::Empty);
-void DrawCube(WorldPos p, Color color, float scale, Camera* camera, Texture::T textureType = Texture::T::Plain, BlockType blockType = BlockType::Empty);
+void DrawBlock(const Mat4& modelMatrix, float scale, Camera* camera, Color color, Texture::T textureType, BlockType blockType);
+void DrawBlock(const Mat4& modelMatrix, Vec3 scale,  Camera* camera, Color color, Texture::T textureType, BlockType blockType);
+void DrawCube(WorldPos p, Color color, Vec3  scale, Camera* camera);
+void DrawCube(WorldPos p, Color color, float scale, Camera* camera);
 void Draw2DSquare(Rect rect, Color color);

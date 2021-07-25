@@ -487,8 +487,16 @@ Item* Items::Add(std::vector<EntityID>& itemIDs, BlockType blockType, const Worl
     newItem.m_rigidBody.m_vel = velocity;
     newItem.m_rigidBody.m_terminalVel = { 100.0f, 100.0f, 100.0f };
     std::lock_guard<std::mutex> lock(m_listVectorMutex);
-    m_items.push_back(newItem);
-    return &m_items[m_items.size() - 1];
+    if (g_blocks[+blockType].m_transparent)
+    {
+        m_items.push_back(newItem);
+        return &m_items[m_items.size() - 1];
+    }
+    else
+    {
+        m_items.insert(m_items.begin(), newItem);
+        return &m_items[0];
+    }
 }
 
 //Must Lock Before?
@@ -513,13 +521,15 @@ void Items::Update(float dt)
     }
 }
 
-void Items::Render(float dt, Camera* camera)
+void Items::RenderOpaque(float dt, Camera* camera)
 {
     assert(OnMainThread());
     float scale = 0.5f;
     std::lock_guard<std::mutex> lock(m_listVectorMutex);
-    for (auto& i : m_items)
+    //for (auto& i : m_items)
+    for (int32 i = 0; m_items.size() && !g_blocks[+m_items[i].m_type].m_transparent; i++)
     {
+        Item* item = &m_items[i];
         Mat4 result;
         Mat4 translation;
         //Mat4 rotation;
@@ -527,10 +537,33 @@ void Items::Render(float dt, Camera* camera)
         //gb_mat4_from_quat(&rotation, gb_quat_euler_angles(DegToRad(i.m_transform.m_pitch), DegToRad(i.m_transform.m_yaw), 0.0f));
         //gb_mat4_rotate(&rotation, { 0,1,0 }, (totalTime * 3.0f) / (2 * 3.14f));
         //gb_mat4_translate(&translation, { i.m_transform.m_p.p.x, i.m_transform.m_p.p.y - (scale / 2.0f), i.m_transform.m_p.p.z });
-        gb_mat4_translate(&translation, i.m_transform.m_p.p); // based on m_transform being the center
+        gb_mat4_translate(&translation, item->m_transform.m_p.p); // based on m_transform being the center
         //result = translation * rotation;
         result = translation;
-        DrawBlock(result, White, scale, camera, Texture::T::Minecraft, i.m_type);
+        DrawBlock(result, scale, camera, White, Texture::T::Minecraft, item->m_type);
+    }
+
+}
+
+void Items::RenderTransparent(float dt, Camera* camera)
+{
+    assert(OnMainThread());
+    float scale = 0.5f;
+    std::lock_guard<std::mutex> lock(m_listVectorMutex);
+    for (int32 i = ((int32)m_items.size() - 1); m_items.size() && g_blocks[+m_items[i].m_type].m_transparent; i--)
+    {
+        Item* item = &m_items[i];
+        Mat4 result;
+        Mat4 translation;
+        //Mat4 rotation;
+        gb_mat4_identity(&result);
+        //gb_mat4_from_quat(&rotation, gb_quat_euler_angles(DegToRad(i.m_transform.m_pitch), DegToRad(i.m_transform.m_yaw), 0.0f));
+        //gb_mat4_rotate(&rotation, { 0,1,0 }, (totalTime * 3.0f) / (2 * 3.14f));
+        //gb_mat4_translate(&translation, { i.m_transform.m_p.p.x, i.m_transform.m_p.p.y - (scale / 2.0f), i.m_transform.m_p.p.z });
+        gb_mat4_translate(&translation, item->m_transform.m_p.p); // based on m_transform being the center
+        //result = translation * rotation;
+        result = translation;
+        DrawBlock(result, scale, camera, White, Texture::T::Minecraft, item->m_type);
     }
 }
 

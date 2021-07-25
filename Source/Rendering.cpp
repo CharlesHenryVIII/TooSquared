@@ -393,6 +393,7 @@ void ShaderProgram::CheckForUpdate()
     vertexFile.GetTime();
     if (!vertexFile.m_timeIsValid)
     {
+        assert(false);
         return;
     }
 
@@ -400,6 +401,7 @@ void ShaderProgram::CheckForUpdate()
     pixelFile.GetTime();
     if (!pixelFile.m_timeIsValid)
     {
+        assert(false);
         return;
     }
 
@@ -628,6 +630,18 @@ void RenderUpdate(Vec2Int windowSize, float deltaTime)
     //g_renderer.postTarget->Bind();
     glViewport(0, 0, windowSize.x, windowSize.y);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+    g_renderer.transparentTarget->Bind();
+    //g_renderer.postTarget->m_depth->Bind();
+
+    Vec4 clearVec0 = Vec4{ 0.0f, 0.0f, 0.0f, 0.0f };
+    glClearBufferfv(GL_COLOR, 0, clearVec0.e);
+    //Vec4 clearVec1 = Vec4{ 1.0f, 1.0f, 1.0f, 1.0f }; //is this right or is only the first value 1.0f and the rest 0.0f?
+    Vec4 clearVec1 = Vec4{ 1.0f, 0.0f, 0.0f, 0.0f };
+    glClearBufferfv(GL_COLOR, 1, clearVec1.e);
+
+    g_renderer.opaqueTarget->Bind();
 }
 
 Rect GetRectFromSprite(uint32 i)
@@ -1154,16 +1168,17 @@ void InitializeVideo()
 #endif
     //g_renderer.skyBox = new TextureCube("Assets/skybox.dds");
     g_renderer.skyBoxNight = new TextureCube("Assets/skyboxNight.dds");
-    g_renderer.skyBoxDay = new TextureCube("Assets/sky.dds");//DayMinecraftSkybox2.dds");
+    g_renderer.skyBoxDay   = new TextureCube("Assets/sky.dds");//DayMinecraftSkybox2.dds");
     g_renderer.textures[Texture::T::Plain] = new Texture(s_pixelTextureData, { 1, 1 });
 
-    g_renderer.programs[+Shader::OpaqueChunk] = new ShaderProgram("Source/Shaders/Chunk.vert",      "Source/Shaders/Chunk.frag");
-    g_renderer.programs[+Shader::Cube] = new ShaderProgram("Source/Shaders/Cube.vert",              "Source/Shaders/Cube.frag");
-    g_renderer.programs[+Shader::BufferCopy] = new ShaderProgram("Source/Shaders/BufferCopy.vert",  "Source/Shaders/BufferCopy.frag");
-    g_renderer.programs[+Shader::Sun] = new ShaderProgram("Source/Shaders/Sun.vert",                "Source/Shaders/Sun.frag");
-    g_renderer.programs[+Shader::UI] = new ShaderProgram("Source/Shaders/UI.vert",                  "Source/Shaders/UI.frag");
-    g_renderer.programs[+Shader::TransparentChunk] = new ShaderProgram("Source/Shaders/Chunk.vert", "Source/Shaders/ChunkTransparent.frag");
-    g_renderer.programs[+Shader::Composite] = new ShaderProgram("Source/Shaders/BufferCopy.vert",   "Source/Shaders/Composite.frag");
+    g_renderer.programs[+Shader::OpaqueChunk]      = new ShaderProgram("Source/Shaders/Chunk.vert",      "Source/Shaders/Chunk.frag");
+    g_renderer.programs[+Shader::TransparentChunk] = new ShaderProgram("Source/Shaders/Chunk.vert",      "Source/Shaders/ChunkTransparent.frag");
+    g_renderer.programs[+Shader::Cube]             = new ShaderProgram("Source/Shaders/Cube.vert",       "Source/Shaders/Cube.frag");
+    g_renderer.programs[+Shader::TransparentCube]  = new ShaderProgram("Source/Shaders/Cube.vert",       "Source/Shaders/CubeTransparent.frag");
+    g_renderer.programs[+Shader::BufferCopy]       = new ShaderProgram("Source/Shaders/BufferCopy.vert", "Source/Shaders/BufferCopy.frag");
+    g_renderer.programs[+Shader::Sun]              = new ShaderProgram("Source/Shaders/Sun.vert",        "Source/Shaders/Sun.frag");
+    g_renderer.programs[+Shader::UI]               = new ShaderProgram("Source/Shaders/UI.vert",         "Source/Shaders/UI.frag");
+    g_renderer.programs[+Shader::Composite]        = new ShaderProgram("Source/Shaders/BufferCopy.vert", "Source/Shaders/Composite.frag");
 
 #if DIRECTIONALLIGHT == 1
     g_renderer.sunLight.d = Normalize(Vec3({  0.0f, -1.0f,  0.0f }));

@@ -1201,16 +1201,6 @@ White:  Uploaded,");
         }
 
         {
-            PROFILE_SCOPE("Items Render");
-            g_items.Render(deltaTime, playerCamera);
-        }
-
-        {
-            PROFILE_SCOPE("Entity Render");
-            g_entityList.Render(deltaTime, playerCamera);
-        }
-
-        {
             PROFILE_SCOPE_TAB("Semaphore Update");
 
             for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
@@ -1351,6 +1341,10 @@ White:  Uploaded,");
             }
         }
 
+        {
+            PROFILE_SCOPE("Items Render");
+            g_items.RenderOpaque(deltaTime, playerCamera);
+        }
 
         {
             PROFILE_SCOPE_TAB("Opaque Debug Code");
@@ -1437,6 +1431,16 @@ White:  Uploaded,");
                     }
                 }
             }
+        }
+
+        {
+            PROFILE_SCOPE("Entity Render");
+            g_entityList.Render(deltaTime, playerCamera);
+        }
+
+        {
+            PROFILE_SCOPE("Items Render");
+            g_items.RenderTransparent(deltaTime, playerCamera);
         }
 
         //gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
