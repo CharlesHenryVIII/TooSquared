@@ -181,10 +181,15 @@
     <None Include="Source\Shaders\BufferCopy.vert" />
     <None Include="Source\Shaders\Chunk.frag" />
     <None Include="Source\Shaders\Chunk.vert" />
+    <None Include="Source\Shaders\ChunkTransparent.frag" />
+    <None Include="Source\Shaders\Composite.frag" />
     <None Include="Source\Shaders\Cube.frag" />
     <None Include="Source\Shaders\Cube.vert" />
+    <None Include="Source\Shaders\CubeTransparent.frag" />
     <None Include="Source\Shaders\Sun.frag" />
     <None Include="Source\Shaders\Sun.vert" />
+    <None Include="Source\Shaders\UI.frag" />
+    <None Include="Source\Shaders\UI.vert" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Contrib\imgui-master\imconfig.h" />

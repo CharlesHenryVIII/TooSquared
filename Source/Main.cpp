@@ -282,107 +282,110 @@ int main(int argc, char* argv[])
 
         SDL_Event SDLEvent;
         playerInput.mouse.pDelta = {};
-        while (SDL_PollEvent(&SDLEvent))
         {
-            ImGui_ImplSDL2_ProcessEvent(&SDLEvent);
+            PROFILE_SCOPE_TAB("Poll Events");
+            while (SDL_PollEvent(&SDLEvent))
+            {
+                ImGui_ImplSDL2_ProcessEvent(&SDLEvent);
 
-            switch (SDLEvent.type)
-            {
-            case SDL_QUIT:
-                ExitApplication(player, playerCamera);
-                break;
-            case SDL_KEYDOWN:
-            case SDL_KEYUP:
-                if (g_window.hasAttention)
+                switch (SDLEvent.type)
                 {
-                    if (!imGuiIO.WantCaptureKeyboard)
+                case SDL_QUIT:
+                    ExitApplication(player, playerCamera);
+                    break;
+                case SDL_KEYDOWN:
+                case SDL_KEYUP:
+                    if (g_window.hasAttention)
                     {
-                        playerInput.keyStates[SDLEvent.key.keysym.sym].down = (SDLEvent.type == SDL_KEYDOWN);
+                        if (!imGuiIO.WantCaptureKeyboard)
+                        {
+                            playerInput.keyStates[SDLEvent.key.keysym.sym].down = (SDLEvent.type == SDL_KEYDOWN);
+                        }
                     }
-                }
-                break;
-            case SDL_MOUSEBUTTONDOWN:
-            case SDL_MOUSEBUTTONUP:
-                if (g_window.hasAttention)
-                {
-                    if(!imGuiIO.WantCaptureMouse)
+                    break;
+                case SDL_MOUSEBUTTONDOWN:
+                case SDL_MOUSEBUTTONUP:
+                    if (g_window.hasAttention)
                     {
-                        playerInput.keyStates[SDLEvent.button.button].down = SDLEvent.button.state;
+                        if (!imGuiIO.WantCaptureMouse)
+                        {
+                            playerInput.keyStates[SDLEvent.button.button].down = SDLEvent.button.state;
+                        }
                     }
-                }
-                break;
-            case SDL_MOUSEMOTION:
-            {
-                if (g_window.hasAttention)
+                    break;
+                case SDL_MOUSEMOTION:
                 {
-                    if (!imGuiIO.WantCaptureMouse)
+                    if (g_window.hasAttention)
                     {
+                        if (!imGuiIO.WantCaptureMouse)
+                        {
+                            if (g_cursorEngaged)
+                            {
+                                playerInput.mouse.pDelta.x += (static_cast<float>(SDLEvent.motion.x) - playerInput.mouse.pos.x);
+                                playerInput.mouse.pDelta.y += (static_cast<float>(SDLEvent.motion.y) - playerInput.mouse.pos.y);// reversed since y-coordinates go from bottom to top
+
+                                SDL_WarpMouseInWindow(g_window.SDL_Context, g_window.size.x / 2, g_window.size.y / 2);
+                                //playerInput.mouse.pos.x = SDLEvent.motion.x;
+                                //playerInput.mouse.pos.y = SDLEvent.motion.y;
+                                playerInput.mouse.pos.x = g_window.size.x / 2;
+                                playerInput.mouse.pos.y = g_window.size.y / 2;
+                            }
+
+                        }
+                    }
+                    break;
+                }
+                case SDL_MOUSEWHEEL:
+                {
+                    if (g_window.hasAttention)
+                    {
+                        if (!imGuiIO.WantCaptureMouse)
+                        {
+                            playerInput.mouse.wheelInstant.x = playerInput.mouse.wheel.x = SDLEvent.wheel.x;
+                            playerInput.mouse.wheelInstant.y = playerInput.mouse.wheel.y = SDLEvent.wheel.y;
+                        }
+                    }
+                    break;
+                }
+
+                case SDL_WINDOWEVENT:
+                {
+                    switch (SDLEvent.window.event)
+                    {
+                    case SDL_WINDOWEVENT_SIZE_CHANGED:
+                    {
+                        g_window.size.x = SDLEvent.window.data1;
+                        g_window.size.y = SDLEvent.window.data2;
+                        glViewport(0, 0, g_window.size.x, g_window.size.y);
+                        break;
+                    }
+                    case SDL_WINDOWEVENT_FOCUS_GAINED:
+                    {
+                        g_window.hasAttention = true;
+                        playerInput.mouse.pDelta = {};
+                        SDL_GetMouseState(&playerInput.mouse.pos.x, &playerInput.mouse.pos.y);
                         if (g_cursorEngaged)
                         {
-                            playerInput.mouse.pDelta.x += (static_cast<float>(SDLEvent.motion.x) - playerInput.mouse.pos.x);
-                            playerInput.mouse.pDelta.y += (static_cast<float>(SDLEvent.motion.y) - playerInput.mouse.pos.y);// reversed since y-coordinates go from bottom to top
-
-                            SDL_WarpMouseInWindow(g_window.SDL_Context, g_window.size.x / 2, g_window.size.y / 2);
-                            //playerInput.mouse.pos.x = SDLEvent.motion.x;
-                            //playerInput.mouse.pos.y = SDLEvent.motion.y;
-                            playerInput.mouse.pos.x = g_window.size.x / 2;
-                            playerInput.mouse.pos.y = g_window.size.y / 2;
+                            SDL_CaptureMouse(SDL_TRUE);
+                            SDL_ShowCursor(SDL_DISABLE);
                         }
 
+                        break;
                     }
-                }
-                break;
-            }
-            case SDL_MOUSEWHEEL:
-            {
-                if (g_window.hasAttention)
-                {
-                    if(!imGuiIO.WantCaptureMouse)
+                    case SDL_WINDOWEVENT_LEAVE:
                     {
-                        playerInput.mouse.wheelInstant.x = playerInput.mouse.wheel.x = SDLEvent.wheel.x;
-                        playerInput.mouse.wheelInstant.y = playerInput.mouse.wheel.y = SDLEvent.wheel.y;
+                        //g_window.hasAttention = false;
+                        break;
                     }
-                }
-                break;
-            }
-
-            case SDL_WINDOWEVENT:
-            {
-                switch (SDLEvent.window.event)
-                {
-                case SDL_WINDOWEVENT_SIZE_CHANGED:
-                {
-                    g_window.size.x = SDLEvent.window.data1;
-                    g_window.size.y = SDLEvent.window.data2;
-                    glViewport(0, 0, g_window.size.x, g_window.size.y);
-                    break;
-                }
-                case SDL_WINDOWEVENT_FOCUS_GAINED:
-                {
-                    g_window.hasAttention = true;
-                    playerInput.mouse.pDelta = {};
-                    SDL_GetMouseState(&playerInput.mouse.pos.x, &playerInput.mouse.pos.y);
-                    if (g_cursorEngaged)
+                    case SDL_WINDOWEVENT_FOCUS_LOST:
                     {
-                        SDL_CaptureMouse(SDL_TRUE);
-                        SDL_ShowCursor(SDL_DISABLE);
+                        g_window.hasAttention = false;
+                        break;
                     }
-
-                    break;
-                }
-                case SDL_WINDOWEVENT_LEAVE:
-                {
-                    //g_window.hasAttention = false;
-                    break;
-                }
-                case SDL_WINDOWEVENT_FOCUS_LOST:
-                {
-                    g_window.hasAttention = false;
+                    }
                     break;
                 }
                 }
-                break;
-            }
             }
         }
 
@@ -392,88 +395,91 @@ int main(int argc, char* argv[])
          *
          ********/
 
-        for (auto& key : playerInput.keyStates)
         {
-            if (key.second.down)
+            PROFILE_SCOPE_TAB("Key Updates");
+            for (auto& key : playerInput.keyStates)
             {
-                key.second.upThisFrame = false;
-                if (key.second.downPrevFrame)
+                if (key.second.down)
                 {
-                    //DebugPrint("KeyDown && DownPreviousFrame: %f\n", totalTime);
-                    key.second.downThisFrame = false;
-
-                }
-                else
-                {
-                    //DebugPrint("Down this frame: %f\n", totalTime);
-                    key.second.downThisFrame = true;
-                }
-            }
-            else
-            {
-                key.second.downThisFrame = false;
-                if (key.second.downPrevFrame)
-                {
-                    //DebugPrint("Up This frame: %f\n", totalTime);
-                    key.second.upThisFrame = true;
-                }
-                else
-                {
-                    //DebugPrint("KeyNOTDown && NotDownPreviousFrame: %f\n", totalTime);
                     key.second.upThisFrame = false;
+                    if (key.second.downPrevFrame)
+                    {
+                        //DebugPrint("KeyDown && DownPreviousFrame: %f\n", totalTime);
+                        key.second.downThisFrame = false;
+
+                    }
+                    else
+                    {
+                        //DebugPrint("Down this frame: %f\n", totalTime);
+                        key.second.downThisFrame = true;
+                    }
+                }
+                else
+                {
+                    key.second.downThisFrame = false;
+                    if (key.second.downPrevFrame)
+                    {
+                        //DebugPrint("Up This frame: %f\n", totalTime);
+                        key.second.upThisFrame = true;
+                    }
+                    else
+                    {
+                        //DebugPrint("KeyNOTDown && NotDownPreviousFrame: %f\n", totalTime);
+                        key.second.upThisFrame = false;
+                    }
+                }
+                key.second.downPrevFrame = key.second.down;
+            }
+            if (playerInput.mouse.wheelModifiedLastFrame)
+            {
+                playerInput.mouse.wheelInstant.y = 0;
+                playerInput.mouse.wheelModifiedLastFrame = false;
+            }
+            else if (playerInput.mouse.wheelInstant.y)
+            {
+                playerInput.mouse.wheelModifiedLastFrame = true;
+            }
+
+
+            if (playerInput.keyStates[SDLK_0].downThisFrame)
+            {
+                if (player->m_hasCamera)
+                {
+                    player->DecoupleCamera();
+                }
+                else
+                {
+                    player->ChildCamera(playerCamera);
                 }
             }
-            key.second.downPrevFrame = key.second.down;
-        }
-        if (playerInput.mouse.wheelModifiedLastFrame)
-        {
-            playerInput.mouse.wheelInstant.y = 0;
-            playerInput.mouse.wheelModifiedLastFrame = false;
-        }
-        else if (playerInput.mouse.wheelInstant.y)
-        {
-            playerInput.mouse.wheelModifiedLastFrame = true;
-        }
 
 
-        if (playerInput.keyStates[SDLK_0].downThisFrame)
-        {
-            if (player->m_hasCamera)
+
+            if (playerInput.keyStates[SDLK_ESCAPE].down)
+                ExitApplication(player, playerCamera);
+            if (playerInput.keyStates[SDLK_BACKQUOTE].downThisFrame)
+                s_debugFlags ^= +DebugOptions::Enabled;
+            //if (playerInput.keyStates[SDLK_c].downThisFrame)
+            //    TEST_CREATE_AND_UPLOAD_CHUNKS = !TEST_CREATE_AND_UPLOAD_CHUNKS;
+            if (playerInput.keyStates[SDLK_v].downThisFrame)
+                g_renderer.msaaEnabled = !g_renderer.msaaEnabled;
+            if (playerInput.keyStates[SDLK_m].downThisFrame)
             {
-                player->DecoupleCamera();
+                switch (multiThreading.threads)
+                {
+                case MultiThreading::single_thread:
+                    multiThreading.threads = MultiThreading::multi_thread;
+                    break;
+                case MultiThreading::multi_thread:
+                    multiThreading.threads = MultiThreading::single_thread;
+                    break;
+                }
             }
-            else
+
+            if (playerInput.keyStates[SDLK_z].downThisFrame)
             {
-                player->ChildCamera(playerCamera);
+                showIMGUI = !showIMGUI;
             }
-        }
-
-
-
-        if (playerInput.keyStates[SDLK_ESCAPE].down)
-            ExitApplication(player, playerCamera);
-        if (playerInput.keyStates[SDLK_BACKQUOTE].downThisFrame)
-            s_debugFlags ^= +DebugOptions::Enabled;
-        //if (playerInput.keyStates[SDLK_c].downThisFrame)
-        //    TEST_CREATE_AND_UPLOAD_CHUNKS = !TEST_CREATE_AND_UPLOAD_CHUNKS;
-        if (playerInput.keyStates[SDLK_v].downThisFrame)
-            g_renderer.msaaEnabled = !g_renderer.msaaEnabled;
-        if (playerInput.keyStates[SDLK_m].downThisFrame)
-        {
-            switch (multiThreading.threads)
-            {
-            case MultiThreading::single_thread:
-                multiThreading.threads = MultiThreading::multi_thread;
-                break;
-            case MultiThreading::multi_thread:
-                multiThreading.threads = MultiThreading::single_thread;
-                break;
-            }
-        }
-
-        if (playerInput.keyStates[SDLK_z].downThisFrame)
-        {
-            showIMGUI = !showIMGUI;
         }
 
         // change this value to your liking
@@ -522,6 +528,7 @@ int main(int argc, char* argv[])
 
         if (showIMGUI)
         {
+            PROFILE_SCOPE_TAB("ImGui Update");
             {
                 // Start the Dear ImGui frame
                 ImGui_ImplOpenGL3_NewFrame();
@@ -756,26 +763,26 @@ White:  Uploaded,");
                             //Planks,
                             //StoneSlab,
                             //Brick,
-                            //TNT,
-                            //Cobblestone,
-                            //Bedrock,
-                            //Sand,
-                            //Gravel,
-                            //Wood,
-                            //Snow,
-                            //Ice,
-                            //Obsidian,
-                            //Leaves,
-                            //MossyCobblestone,
-                            //Water,
-                            //HalfSlab,
-                            //Slab,
+//TNT,
+//Cobblestone,
+//Bedrock,
+//Sand,
+//Gravel,
+//Wood,
+//Snow,
+//Ice,
+//Obsidian,
+//Leaves,
+//MossyCobblestone,
+//Water,
+//HalfSlab,
+//Slab,
                     }
                     //
                     {
-                        ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
-                        if (show_demo_window)
-                            ImGui::ShowDemoWindow(&show_demo_window);
+                    ImGui::Checkbox("Demo Window", &show_demo_window);      // Edit bools storing our window open/close state
+                    if (show_demo_window)
+                        ImGui::ShowDemoWindow(&show_demo_window);
                     }
                     //
                     ImGui::TreePop();
@@ -784,102 +791,107 @@ White:  Uploaded,");
             }
 
             {
-                const ImGuiViewport* viewport = ImGui::GetMainViewport();
-                ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
-                ImVec2 window_pos;//, window_pos_pivot;
-                window_pos.x = (viewport->WorkSize.x / 2) - 175;
-                window_pos.y = viewport->WorkSize.y - 75;
-                ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, {});
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            ImVec2 work_pos = viewport->WorkPos; // Use work area to avoid menu-bar/task-bar, if any!
+            ImVec2 window_pos;//, window_pos_pivot;
+            window_pos.x = (viewport->WorkSize.x / 2) - 175;
+            window_pos.y = viewport->WorkSize.y - 75;
+            ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, {});
 
-                ImGui::SetNextWindowBgAlpha(0.75f); // Transparent background
-                ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
-                    ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
-                ImGui::Begin("Block Hotbar", nullptr, windowFlags);
+            ImGui::SetNextWindowBgAlpha(0.75f); // Transparent background
+            ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+                ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoMove;
+            ImGui::Begin("Block Hotbar", nullptr, windowFlags);
 
-                ImGuiTableFlags flags = ImGuiTableFlags_Borders;
-                if (ImGui::BeginTable("Position Info", MAX_SLOTS, flags))
+            ImGuiTableFlags flags = ImGuiTableFlags_Borders;
+            if (ImGui::BeginTable("Position Info", MAX_SLOTS, flags))
+            {
+                ImU32 hotCellColor = ImGui::GetColorU32(ImVec4(0.5f, 0.5f, 1.0f, 0.65f));
+
+                for (int32 i = 0; i < MAX_SLOTS; i++)
                 {
-                    ImU32 hotCellColor = ImGui::GetColorU32(ImVec4(0.5f, 0.5f, 1.0f, 0.65f));
-
-                    for (int32 i = 0; i < MAX_SLOTS; i++)
+                    ImGui::TableSetupColumn(ToString("%i", i).c_str());
+                    if (i == player->m_inventory.m_slotSelected)
                     {
-                        ImGui::TableSetupColumn(ToString("%i", i).c_str());
-                        if (i == player->m_inventory.m_slotSelected)
-                        {
-                            ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
-                        }
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
                     }
-
-                    ImGui::TableNextRow();
-                    for (int32 i = 0; i < MAX_SLOTS; i++)
-                    {
-                        ImGui::TableSetColumnIndex(i);
-                        ImGui::TextUnformatted(ToString("%03i", player->m_inventory.m_slots[i].m_count).c_str());
-                        if (i == player->m_inventory.m_slotSelected)
-                        {
-                            ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
-                        }
-                    }
-
-                    //(ImTextureID)(intptr_t)g_FontTexture
-                    ImTextureID imMinecraftTextureID = (ImTextureID)(intptr_t)g_renderer.textures[Texture::Minecraft]->m_handle;//ImGui::Image();
-                    ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);   // No tint
-                    ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); // 50% opaque white
-                    float sizeOnScreen = 32;
-
-                    ImGui::TableNextRow();
-                    for (int32 i = 0; i < MAX_SLOTS; i++)
-                    {
-                        ImGui::TableSetColumnIndex(i);
-                        //ImGui::TextUnformatted(ToString("%2i", playerInventory.m_slots[i].m_block).c_str());
-                        auto spriteIndex = 31;
-                        if (player->m_inventory.m_slots[i].m_block != BlockType::Empty)
-                            spriteIndex = g_blocks[+player->m_inventory.m_slots[i].m_block].m_spriteIndices[+Face::Right];
-
-                        Rect uvResult = GetUVsFromIndex(spriteIndex);
-                        ImGui::Image(imMinecraftTextureID, ImVec2(sizeOnScreen, sizeOnScreen),
-                            ImVec2(uvResult.botLeft.x, uvResult.botLeft.y),
-                            ImVec2(uvResult.topRight.x, uvResult.topRight.y),
-                            tint_col, border_col);
-
-                        if (i == player->m_inventory.m_slotSelected)
-                        {
-                            ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
-                        }
-                    }
-
-
-                    ImGui::EndTable();
                 }
 
-                ImGui::End();
+                ImGui::TableNextRow();
+                for (int32 i = 0; i < MAX_SLOTS; i++)
+                {
+                    ImGui::TableSetColumnIndex(i);
+                    ImGui::TextUnformatted(ToString("%03i", player->m_inventory.m_slots[i].m_count).c_str());
+                    if (i == player->m_inventory.m_slotSelected)
+                    {
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
+                    }
+                }
+
+                //(ImTextureID)(intptr_t)g_FontTexture
+                ImTextureID imMinecraftTextureID = (ImTextureID)(intptr_t)g_renderer.textures[Texture::Minecraft]->m_handle;//ImGui::Image();
+                ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);   // No tint
+                ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); // 50% opaque white
+                float sizeOnScreen = 32;
+
+                ImGui::TableNextRow();
+                for (int32 i = 0; i < MAX_SLOTS; i++)
+                {
+                    ImGui::TableSetColumnIndex(i);
+                    //ImGui::TextUnformatted(ToString("%2i", playerInventory.m_slots[i].m_block).c_str());
+                    auto spriteIndex = 31;
+                    if (player->m_inventory.m_slots[i].m_block != BlockType::Empty)
+                        spriteIndex = g_blocks[+player->m_inventory.m_slots[i].m_block].m_spriteIndices[+Face::Right];
+
+                    Rect uvResult = GetUVsFromIndex(spriteIndex);
+                    ImGui::Image(imMinecraftTextureID, ImVec2(sizeOnScreen, sizeOnScreen),
+                        ImVec2(uvResult.botLeft.x, uvResult.botLeft.y),
+                        ImVec2(uvResult.topRight.x, uvResult.topRight.y),
+                        tint_col, border_col);
+
+                    if (i == player->m_inventory.m_slotSelected)
+                    {
+                        ImGui::TableSetBgColor(ImGuiTableBgTarget_CellBg, hotCellColor);
+                    }
+                }
+
+
+                ImGui::EndTable();
+            }
+
+            ImGui::End();
             }
         }
 
+
         if (g_cursorEngaged)
+        {
+            PROFILE_SCOPE_TAB("Entity Input Update");
             g_entityList.InputUpdate(deltaTime, playerInput);
+        }
 
 
 #if 1
         {
-            PROFILE_SCOPE("Chunk Items Update");
+            PROFILE_SCOPE_TAB("Chunk Items Update");
             g_chunks->Update(deltaTime);
         }
 #else
         {
-            PROFILE_SCOPE("Items Update");
+            PROFILE_SCOPE_TAB("Items Update");
             g_items.Update(deltaTime);
         }
 #endif
 
         {
-            PROFILE_SCOPE("Entity Update");
+            PROFILE_SCOPE_TAB("Entity Update");
             g_entityList.Update(deltaTime);
         }
 
 
         Vec3 lookTarget = {};
         {
+            PROFILE_SCOPE_TAB("Sun/Moon Update");
             //Vec3 front = playerCamera->GetTrueRotation() * faceNormals[+Face::Front];
             Vec3 front = playerCamera->GetForwardVector();// (playerCamera->GetWorldMatrix()* g_forwardVectorRotation).xyz;
             //front.x = cos(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
@@ -983,6 +995,7 @@ White:  Uploaded,");
 
         if (g_cursorEngaged)
         {
+            PROFILE_SCOPE_TAB("Player Input Update");
             //Inventory Slot Selection:
             //TODO: improve
             //if (playerInput.mouse.wheel.y > 0)
@@ -1257,7 +1270,7 @@ White:  Uploaded,");
         }
 
         {
-            PROFILE_SCOPE("Chunk Deletion");
+            PROFILE_SCOPE_TAB("Chunk Deletion");
             for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
             {
                 assert(g_chunks->refs[i] >= 0);
@@ -1278,11 +1291,11 @@ White:  Uploaded,");
         }
 
         {
-            PROFILE_SCOPE("Entity Deletion");
+            PROFILE_SCOPE_TAB("Entity Deletion");
             g_entityList.CleanUp();
         }
         {
-            PROFILE_SCOPE("Item Deletion");
+            PROFILE_SCOPE_TAB("Item Deletion");
             g_items.CleanUp();
         }
 
@@ -1434,12 +1447,12 @@ White:  Uploaded,");
         }
 
         {
-            PROFILE_SCOPE("Entity Render");
+            PROFILE_SCOPE_TAB("Entity Render");
             g_entityList.Render(deltaTime, playerCamera);
         }
 
         {
-            PROFILE_SCOPE("Items Render");
+            PROFILE_SCOPE_TAB("Items Render");
             g_items.RenderTransparent(deltaTime, playerCamera);
         }
 
@@ -1542,28 +1555,32 @@ White:  Uploaded,");
             ////g_renderer.postTarget->Bind();
         }
 
-        glDisable(GL_DEPTH_TEST);
-        glDepthMask(GL_TRUE);
-        glDisable(GL_BLEND);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-        glViewport(0, 0, g_window.size.x, g_window.size.y);
-        glActiveTexture(GL_TEXTURE0);
-        g_renderer.postTarget->m_color->Bind();
-        g_renderer.programs[+Shader::BufferCopy]->UseShader();
-        g_renderer.postVertexBuffer->Bind();
+        {
+            PROFILE_SCOPE_TAB("Buffer Copy To Backbuffer");
+            glDisable(GL_DEPTH_TEST);
+            glDepthMask(GL_TRUE);
+            glDisable(GL_BLEND);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+            glViewport(0, 0, g_window.size.x, g_window.size.y);
+            glActiveTexture(GL_TEXTURE0);
+            g_renderer.postTarget->m_color->Bind();
+            g_renderer.programs[+Shader::BufferCopy]->UseShader();
+            g_renderer.postVertexBuffer->Bind();
 
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
-        glEnableVertexArrayAttrib(g_renderer.vao, 0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
-        glEnableVertexArrayAttrib(g_renderer.vao, 1);
-        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
-        glEnableVertexArrayAttrib(g_renderer.vao, 2);
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+            glEnableVertexArrayAttrib(g_renderer.vao, 0);
+            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+            glEnableVertexArrayAttrib(g_renderer.vao, 1);
+            glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
+            glEnableVertexArrayAttrib(g_renderer.vao, 2);
+            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        }
 
         if (showIMGUI)
         {
+            PROFILE_SCOPE_TAB("ImGui Render");
             ImGui::Render();
             //glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
             //glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);

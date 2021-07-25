@@ -211,95 +211,14 @@ void DrawBlock(const Mat4& model, Vec3 scale, Camera* camera, Color color, Textu
 void DrawCube(WorldPos p, Color color, float scale, Camera* camera)
 {
     Mat4 modelMatrix;
-    gb_mat4_translate(&modelMatrix, p.p); // based on m_transform being the center
+    gb_mat4_translate(&modelMatrix, p.p);
     DrawBlock(modelMatrix, scale, camera, color, Texture::T::Plain, BlockType::Empty);
-    //DrawCube(p, color, { scale, scale, scale }, camera);
 }
 void DrawCube(WorldPos p, Color color, Vec3  scale, Camera* camera)
 {
-#if 1
-
     Mat4 modelMatrix;
-    gb_mat4_translate(&modelMatrix, p.p); // based on m_transform being the center
+    gb_mat4_translate(&modelMatrix, p.p);
     DrawBlock(modelMatrix, scale, camera, color, Texture::T::Plain, BlockType::Empty);
-#else
-
-    if (g_renderer.cubeVertexBuffer == nullptr)
-    {
-        g_renderer.cubeVertexBuffer = new VertexBuffer();
-
-        Vertex vertices[arrsize(cubeVertices)] = {};
-        Vec2 uvOffset = { 1.0f, 1.0f };
-
-        for (int32 i = 0; i < arrsize(cubeVertices); i++)
-        {
-            vertices[i].p  = cubeVertices[i] - 0.5f;
-            vertices[i].uv = faceUV[i % 4];
-        }
-
-        g_renderer.cubeVertexBuffer->Upload(vertices, arrsize(vertices));
-    }
-
-    g_renderer.cubeVertexBuffer->Bind();
-    g_renderer.chunkIB->Bind();
-
-    if (color.a == 1.0f)
-    {
-        glEnable(GL_DEPTH_TEST);
-        glDepthMask(GL_TRUE);
-        glDisable(GL_BLEND);
-        g_renderer.opaqueTarget->Bind();
-
-        Mat4 transform;
-        gb_mat4_translate(&transform, { p.p.x, p.p.y, p.p.z });
-        g_renderer.textures[Texture::T::Plain]->Bind();
-        ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
-        sp->UseShader();
-        sp->UpdateUniformMat4("u_perspective", 1, false, camera->m_perspective.e);
-        sp->UpdateUniformMat4("u_view", 1, false, camera->m_view.e);
-        sp->UpdateUniformMat4("u_model", 1, false, transform.e);
-        sp->UpdateUniformVec3("u_scale", 1, scale.e);
-        sp->UpdateUniformVec4("u_color", 1, color.e);
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
-        glEnableVertexArrayAttrib(g_renderer.vao, 0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
-        glEnableVertexArrayAttrib(g_renderer.vao, 1);
-        glDisableVertexArrayAttrib(g_renderer.vao, 2);
-        glDisableVertexArrayAttrib(g_renderer.vao, 3);
-
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-        g_renderer.numTrianglesDrawn += 36 / 3;
-    }
-    else
-    {
-        glEnable(GL_DEPTH_TEST);
-        glDepthMask(GL_TRUE);
-        glDisable(GL_BLEND);
-        g_renderer.opaqueTarget->Bind();
-
-        Mat4 transform;
-        gb_mat4_translate(&transform, { p.p.x, p.p.y, p.p.z });
-        g_renderer.textures[Texture::T::Plain]->Bind();
-        ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
-        sp->UseShader();
-        sp->UpdateUniformMat4("u_perspective", 1, false, camera->m_perspective.e);
-        sp->UpdateUniformMat4("u_view", 1, false, camera->m_view.e);
-        sp->UpdateUniformMat4("u_model", 1, false, transform.e);
-        sp->UpdateUniformVec3("u_scale", 1, scale.e);
-        sp->UpdateUniformVec4("u_color", 1, color.e);
-
-        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
-        glEnableVertexArrayAttrib(g_renderer.vao, 0);
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
-        glEnableVertexArrayAttrib(g_renderer.vao, 1);
-        glDisableVertexArrayAttrib(g_renderer.vao, 2);
-        glDisableVertexArrayAttrib(g_renderer.vao, 3);
-
-        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-        g_renderer.numTrianglesDrawn += 36 / 3;
-    }
-#endif
 }
 
 //UNTESTED AND DOES NOT WORK

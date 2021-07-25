@@ -113,6 +113,21 @@
     <None Include="Source\Shaders\BufferCopy.vert">
       <Filter>Source Files\Shaders</Filter>
     </None>
+    <None Include="Source\Shaders\ChunkTransparent.frag">
+      <Filter>Source Files\Shaders</Filter>
+    </None>
+    <None Include="Source\Shaders\Composite.frag">
+      <Filter>Source Files\Shaders</Filter>
+    </None>
+    <None Include="Source\Shaders\CubeTransparent.frag">
+      <Filter>Source Files\Shaders</Filter>
+    </None>
+    <None Include="Source\Shaders\UI.frag">
+      <Filter>Source Files\Shaders</Filter>
+    </None>
+    <None Include="Source\Shaders\UI.vert">
+      <Filter>Source Files\Shaders</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Source\Misc.h">

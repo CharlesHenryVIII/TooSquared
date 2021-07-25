@@ -527,7 +527,7 @@ void Items::RenderOpaque(float dt, Camera* camera)
     float scale = 0.5f;
     std::lock_guard<std::mutex> lock(m_listVectorMutex);
     //for (auto& i : m_items)
-    for (int32 i = 0; m_items.size() && !g_blocks[+m_items[i].m_type].m_transparent; i++)
+    for (int32 i = 0; m_items.size() && i < m_items.size() && !g_blocks[+m_items[i].m_type].m_transparent; i++)
     {
         Item* item = &m_items[i];
         Mat4 result;
@@ -550,7 +550,7 @@ void Items::RenderTransparent(float dt, Camera* camera)
     assert(OnMainThread());
     float scale = 0.5f;
     std::lock_guard<std::mutex> lock(m_listVectorMutex);
-    for (int32 i = ((int32)m_items.size() - 1); m_items.size() && g_blocks[+m_items[i].m_type].m_transparent; i--)
+    for (int32 i = ((int32)m_items.size() - 1); m_items.size() && i && g_blocks[+m_items[i].m_type].m_transparent; i--)
     {
         Item* item = &m_items[i];
         Mat4 result;
