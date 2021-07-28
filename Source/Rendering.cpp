@@ -4,6 +4,7 @@
 #include "WinInterop.h"
 #include "Input.h"
 
+#include "tracy-master/Tracy.hpp"
 #include "STB/stb_image.h"
 #include "imgui-master/imgui.h"
 #include "SDL/include/SDL.h"
@@ -610,6 +611,7 @@ double s_lastShaderUpdateTime = 0;
 double s_incrimentalTime = 0;
 void RenderUpdate(Vec2Int windowSize, float deltaTime)
 {
+    ZoneScopedN("Render Update");
     glClearColor(0.263f, 0.706f, 0.965f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     g_renderer.numTrianglesDrawn = 0;

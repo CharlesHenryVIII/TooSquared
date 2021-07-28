@@ -1,5 +1,6 @@
 #pragma once
 #include "WinInterop.h"
+#include "tracy-master/Tracy.hpp"
 
 #include "imgui.h"
 
@@ -77,7 +78,8 @@ struct ScopeTimer
 
 #define PROFILE_FUNCTION() ScopeTimer TS_CONCAT(__timer_, __COUNTER__)(__FUNCTION__)
 #define PROFILE_SCOPE(name) ScopeTimer TS_CONCAT(__timer_, __COUNTER__)(name)
-#define PROFILE_SCOPE_TAB(name) ScopeTimer TS_CONCAT(__timer_, __COUNTER__)(name, 1)
+#define PROFILE_SCOPE_TAB(name) ScopeTimer TS_CONCAT(__timer_, __COUNTER__)(name, 1); \
+ZoneScopedN(name)
 
 #else
 #define PROFILE_FUNCTION() (void)0

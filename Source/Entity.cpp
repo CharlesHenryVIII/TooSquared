@@ -1,5 +1,6 @@
 #include "Entity.h"
 #include "Chunk.h"
+#include "tracy-master/Tracy.hpp"
 
 Entitys g_entityList;
 Items   g_items;
@@ -384,28 +385,8 @@ void Item::Update(float dt)
 {
 #if 1
 
-    //New Movement Code
     Vec3 kinematicsPositionDelta = m_rigidBody.GetDeltaPosition(dt, { 3.0f, 1.0f, 3.0f });
-    //Vec3 kinematicsPositionDelta = m_rigidBody.GetDeltaPosition(dt, { 0.0f, 0.0f, 0.0f }, 0.0f);
     m_collider.m_center = m_transform.m_p;
-    //Vec3 check = (Vec3{ fmodf(m_collider.m_center.p.x, 1.0f), fmodf(m_collider.m_center.p.y, 1.0f), fmodf(m_collider.m_center.p.z, 1.0f) });
-    //float hackOffset = 0.1f;
-    //if (check.x == 0.25f || check.x == -0.75f)
-    //    m_collider.m_center.p.x += hackOffset;
-    //else if (check.x == 0.75f || check.x == -0.25f)
-    //    m_collider.m_center.p.x -= hackOffset;
-
-    //if (check.y == 0.25f || check.y == -0.75f)
-    //    m_collider.m_center.p.y += hackOffset;
-    //else if (check.y == 0.75f || check.y == -0.25f)
-    //    m_collider.m_center.p.y -= hackOffset;
-
-    //if (check.z == 0.25f || check.z == -0.75f)
-    //    m_collider.m_center.p.z += hackOffset;
-    //else if (check.z == 0.75f || check.z == -0.25f)
-    //    m_collider.m_center.p.z -= hackOffset;
-
-    //if (m_collider.m_center.p.x == )
     m_transform.m_p.p += kinematicsPositionDelta;
     Vec3 collisionPositionDelta = {};
     m_rigidBody.m_isGrounded = false;
@@ -502,6 +483,7 @@ Item* Items::Add(std::vector<EntityID>& itemIDs, BlockType blockType, const Worl
 //Must Lock Before?
 Item* Items::Get(EntityID ID)
 {
+    ZoneScopedN("Get Item");
     assert(OnMainThread());
     for (int32 i = 0; i < m_items.size(); i++)
     {
@@ -529,6 +511,7 @@ void Items::RenderOpaque(float dt, Camera* camera)
     //for (auto& i : m_items)
     for (int32 i = 0; m_items.size() && i < m_items.size() && !g_blocks[+m_items[i].m_type].m_transparent; i++)
     {
+        ZoneScopedN("Individual Loop");
         Item* item = &m_items[i];
         Mat4 result;
         Mat4 translation;
@@ -540,7 +523,11 @@ void Items::RenderOpaque(float dt, Camera* camera)
         gb_mat4_translate(&translation, item->m_transform.m_p.p); // based on m_transform being the center
         //result = translation * rotation;
         result = translation;
-        DrawBlock(result, scale, camera, White, Texture::T::Minecraft, item->m_type);
+
+        {
+            ZoneScopedN("Draw Block");
+            DrawBlock(result, scale, camera, White, Texture::T::Minecraft, item->m_type);
+        }
     }
 
 }
@@ -748,6 +735,7 @@ void Entitys::Remove(EntityID ID)
 
 void Entitys::InputUpdate(float dt,CommandHandler& commands)
 {
+    ZoneScopedN("Entity Input Update");
     for (auto e : list)
     {
         e->InputUpdate(dt, commands);

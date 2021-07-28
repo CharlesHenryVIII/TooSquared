@@ -2265,58 +2265,73 @@ struct ItemToMove {
 void ChunkArray::Update(float dt)
 {
     std::vector<ItemToMove> itemsToMove;
-    for (ChunkIndex i = 0; i < highestActiveChunk; i++)
+    itemsToMove.reserve(100);
+
     {
-        if (flags[i] & CHUNK_FLAG_ACTIVE)
+        ZoneScopedN("Updating Items");
+        for (ChunkIndex i = 0; i < highestActiveChunk; i++)
         {
-            std::lock_guard<std::mutex> lock(g_items.m_listVectorMutex);
-            for (EntityID id : itemIDs[i])
+            if (flags[i] & CHUNK_FLAG_ACTIVE)
             {
-                Item* item = g_items.Get(id);
-                if (item)
+                std::lock_guard<std::mutex> lock(g_items.m_listVectorMutex);
+                for (EntityID id : itemIDs[i])
                 {
-                    item->Update(dt);
-                    ChunkPos updatedChunkPos = ToChunk(item->m_transform.m_p);
-                    if (updatedChunkPos.p != p[i].p)
+                    Item* item = g_items.Get(id);
+                    if (item)
                     {
-                        ChunkIndex newChunkIndex;
-                        bool checkForChunk = GetChunkFromPosition(newChunkIndex, updatedChunkPos);
-                        assert(checkForChunk);
-                        if (checkForChunk)
+
                         {
-                            ItemToMove itemToMove = {
-                            .newChunk = newChunkIndex,
-                            .oldChunk = i,
-                            .erase    = false,
-                            .itemID   = id,
-                            };
-                            itemsToMove.push_back(itemToMove);
+                            ZoneScopedN("Item Update");
+                            item->Update(dt);
+                        }
+                        {
+                            ZoneScopedN("Check For Item Move");
+                            ChunkPos updatedChunkPos = ToChunk(item->m_transform.m_p);
+                            if (updatedChunkPos.p != p[i].p)
+                            {
+                                ChunkIndex newChunkIndex;
+                                bool checkForChunk = GetChunkFromPosition(newChunkIndex, updatedChunkPos);
+                                assert(checkForChunk);
+                                if (checkForChunk)
+                                {
+                                    ItemToMove itemToMove = {
+                                    .newChunk = newChunkIndex,
+                                    .oldChunk = i,
+                                    .erase = false,
+                                    .itemID = id,
+                                    };
+                                    itemsToMove.push_back(itemToMove);
+                                }
+                            }
                         }
                     }
-                }
-                else
-                {
-                    ItemToMove itemToMove = {
-                    .newChunk = {},
-                    .oldChunk = i,
-                    .erase    = true,
-                    .itemID   = id,
-                    };
-                    itemsToMove.push_back(itemToMove);
+                    else
+                    {
+                        ItemToMove itemToMove = {
+                        .newChunk = {},
+                        .oldChunk = i,
+                        .erase = true,
+                        .itemID = id,
+                        };
+                        itemsToMove.push_back(itemToMove);
+                    }
                 }
             }
         }
     }
 
-    std::lock_guard<std::mutex> lock(g_items.m_listVectorMutex);
-    for (auto& move : itemsToMove)
     {
-        std::erase_if(g_chunks->itemIDs[move.oldChunk],
-            [move](EntityID id)
-            {
-                return id == move.itemID;
-            });
-        if (!move.erase)
-            g_chunks->itemIDs->push_back(move.itemID);
+        ZoneScopedN("Moving Items Between Chunks");
+        std::lock_guard<std::mutex> lock(g_items.m_listVectorMutex);
+        for (auto& move : itemsToMove)
+        {
+            std::erase_if(g_chunks->itemIDs[move.oldChunk],
+                [move](EntityID id)
+                {
+                    return id == move.itemID;
+                });
+            if (!move.erase)
+                g_chunks->itemIDs->push_back(move.itemID);
+        }
     }
 }

@@ -18,6 +18,7 @@
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
 #include "imgui_impl_opengl3.h"
+#include "tracy-master/Tracy.hpp"
 
 #include <unordered_map>
 #include <vector>
@@ -1136,6 +1137,7 @@ White:  Uploaded,");
                 break;
             }
 
+            //PROFILE_SCOPE_TAB("Distance Check For Chunk");
             for (int32 _drawDistance = 0; _drawDistance < playerCamera->m_drawDistance; _drawDistance++)
             {
                 for (int32 z = -_drawDistance; z <= _drawDistance; z++)
@@ -1237,32 +1239,43 @@ White:  Uploaded,");
 
             for (int32 _drawDistance = 0; _drawDistance < playerCamera->m_drawDistance; _drawDistance++)
             {
+                ZoneScopedN("Draw Distance Loop");
                 for (int32 drawZ = -_drawDistance; drawZ <= _drawDistance; drawZ++)
                 {
+                    ZoneScopedN("Z Loop");
                     for (int32 drawX = -_drawDistance; drawX <= _drawDistance; drawX++)
                     {
+                        ZoneScopedN("X Loop");
+                        //Skipping middle sections
                         if ((drawX < _drawDistance && drawX > -_drawDistance) &&
                             (drawZ < _drawDistance && drawZ > -_drawDistance))
                             continue;
 
-                        //ChunkPos cameraChunkP = playerCamera->RealChunkPos();
-                        ChunkPos cameraChunkP = ToChunk(WorldPos(playerCamera->GetWorldPosition()));
-                        ChunkIndex originChunk = 0;
-                        ChunkPos drawDistanceChunk = { cameraChunkP.p.x + drawX, 0, cameraChunkP.p.z + drawZ };
-                        if (!g_chunks->GetChunkFromPosition(originChunk, drawDistanceChunk))
-                            continue;
-                        if (g_chunks->state[originChunk] != ChunkArray::BlocksLoaded)
-                            continue;
-
-                        RegionSampler regionSampler = {};
-
-                        if (regionSampler.RegionGather(originChunk))
                         {
-                            CreateVertices* job = new CreateVertices();
-                            job->region = regionSampler;
+                            ZoneScopedN("Outer Loop");
+                            //ChunkPos cameraChunkP = playerCamera->RealChunkPos();
+                            ChunkPos cameraChunkP = ToChunk(WorldPos(playerCamera->GetWorldPosition()));
+                            ChunkIndex originChunk = 0;
+                            ChunkPos drawDistanceChunk = { cameraChunkP.p.x + drawX, 0, cameraChunkP.p.z + drawZ };
+                            if (!g_chunks->GetChunkFromPosition(originChunk, drawDistanceChunk))
+                                continue;
+                            if (g_chunks->state[originChunk] != ChunkArray::BlocksLoaded)
+                                continue;
 
-                            g_chunks->state[originChunk] = ChunkArray::VertexLoading;
-                            multiThreading.SubmitJob(job);
+                            {
+                                ZoneScopedN("Passed Checks");
+                                RegionSampler regionSampler = {};
+
+                                if (regionSampler.RegionGather(originChunk))
+                                {
+                                    ZoneScopedN("RegionGather Passed");
+                                    CreateVertices* job = new CreateVertices();
+                                    job->region = regionSampler;
+
+                                    g_chunks->state[originChunk] = ChunkArray::VertexLoading;
+                                    multiThreading.SubmitJob(job);
+                                }
+                            }
                         }
                     }
                 }
@@ -1355,7 +1368,7 @@ White:  Uploaded,");
         }
 
         {
-            PROFILE_SCOPE("Items Render");
+            PROFILE_SCOPE_TAB("Items Opaque Render");
             g_items.RenderOpaque(deltaTime, playerCamera);
         }
 
@@ -1452,7 +1465,7 @@ White:  Uploaded,");
         }
 
         {
-            PROFILE_SCOPE_TAB("Items Render");
+            PROFILE_SCOPE_TAB("Items Transparent Render");
             g_items.RenderTransparent(deltaTime, playerCamera);
         }
 
@@ -1588,11 +1601,15 @@ White:  Uploaded,");
             ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         }
 
-        if (g_cursorEngaged)
-            SDL_ShowCursor(SDL_DISABLE);
+        {
+            ZoneScopedN("Frame End");
+            if (g_cursorEngaged)
+                SDL_ShowCursor(SDL_DISABLE);
 
-        SDL_GL_SwapWindow(g_window.SDL_Context);
-        glEnable(GL_DEPTH_TEST);
+            SDL_GL_SwapWindow(g_window.SDL_Context);
+            glEnable(GL_DEPTH_TEST);
+        }
+        FrameMark;
     }
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
