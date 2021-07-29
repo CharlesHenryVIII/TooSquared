@@ -1913,17 +1913,20 @@ bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& di
     distance = inf;
     int32 rayCheckCount = 0;
 
-    AABB chunkBox;
-    chunkBox.min = ToWorld(g_chunks->p[chunkIndex]).p;
-    chunkBox.max = { chunkBox.min.x + CHUNK_X, chunkBox.min.y + CHUNK_Y, chunkBox.min.z + CHUNK_Z };
     {
-        //PROFILE_SCOPE_TAB("RayVsChunk()/RayVsAABB()");
-        rayCheckCount++;
-        if (!RayVsAABB(ray, chunkBox))
-            return false;
+        ZoneScopedN("RayVsAABB Chunk");
+        AABB chunkBox;
+        chunkBox.min = ToWorld(g_chunks->p[chunkIndex]).p;
+        chunkBox.max = { chunkBox.min.x + CHUNK_X, chunkBox.min.y + CHUNK_Y, chunkBox.min.z + CHUNK_Z };
+        {
+            rayCheckCount++;
+            if (!RayVsAABB(ray, chunkBox))
+                return false;
+        }
     }
 
     //PROFILE_SCOPE_TAB("RayVsChunk/BlockLoop");
+    ZoneScopedN("RayVsAABB Blocks");
     for (int32 z = 0; z < CHUNK_Z; z++)
     {
         GamePos blockPZ = Convert_BlockToGame(chunkIndex, { 0, 0, z });
@@ -1937,7 +1940,8 @@ bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& di
         rayCheckCount++;
         if (RayVsAABB(ray, boxZ))
         {
-            for (int32 y = 0; y < CHUNK_Y; y++)
+            ZoneScopedN("RayVsAABB YLoop");
+            for (int32 y = 0; y < g_chunks->height[chunkIndex]; y++)
             {
                 GamePos blockPY = Convert_BlockToGame(chunkIndex, { 0, y, z });
                 AABB boxY;
@@ -1950,6 +1954,7 @@ bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& di
                 rayCheckCount++;
                 if (RayVsAABB(ray, boxY))
                 {
+                    ZoneScopedN("RayVsAABB XLoop");
                     for (int32 x = 0; x < CHUNK_X; x++)
                     {
                         if (g_chunks->blocks[chunkIndex].e[x][y][z] != BlockType::Empty)
