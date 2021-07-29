@@ -1710,9 +1710,14 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
         //PROFILE_SCOPE("THREAD: AO Creation");
         for (Vertex_Chunk& vert : opaqueFaceVertices[i])
         {
+            Vec3Int blockP = GetBlockPosFromIndex(vert.blockIndex);
+            BlockType baseBlockType;
+            region.GetBlock(baseBlockType, blockP);
+            if (!g_blocks[+baseBlockType].m_hasShading)
+                continue;
+
             uint8 normal = (vert.nAndConnectedVertices & 0xF0) >> 4;
             Vec3Int blockN = Vec3ToVec3Int(faceNormals[normal]);
-            Vec3Int blockP = GetBlockPosFromIndex(vert.blockIndex);
 
             uint8 faceIndex = normal;
             Vec3Int a = *(&vertexBlocksToCheck[faceIndex].e0 + (vertIndex + 0));
@@ -1726,11 +1731,11 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
             region.GetBlock(bType, blockP + blockN + b);
             region.GetBlock(cType, blockP + blockN + c);
 
-            if (aType != BlockType::Empty)
+            if (g_blocks[+aType].m_hasShading)
                 vert.nAndConnectedVertices += 1;
-            if (bType != BlockType::Empty)
+            if (g_blocks[+bType].m_hasShading)
                 vert.nAndConnectedVertices += 1;
-            if (cType != BlockType::Empty)
+            if (g_blocks[+cType].m_hasShading)
                 vert.nAndConnectedVertices += 1;
 
             vertIndex += 2;

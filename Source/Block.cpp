@@ -54,6 +54,7 @@ void SetBlockSprites()
 {
     g_blocks[+BlockType::Empty].m_transparent = true;
     g_blocks[+BlockType::Empty].m_collidable  = false;
+    g_blocks[+BlockType::Empty].m_hasShading  = false;
 
     SetMultipleBlockSprites(BlockType::Dirt, 2);
     SetMultipleBlockSprites(BlockType::Grass, 3);
@@ -85,9 +86,9 @@ void SetBlockSprites()
     g_blocks[+BlockType::TNT].m_spriteIndices[+Face::Top] = 9;
     g_blocks[+BlockType::TNT].m_spriteIndices[+Face::Bot] = 10;
     SetMultipleBlockSprites(BlockType::Water, 255);
-    g_blocks[+BlockType::Water].m_seeThrough = true;
-    g_blocks[+BlockType::Water].m_transparent  = false;
-    g_blocks[+BlockType::Water].m_collidable   = false;
+    g_blocks[+BlockType::Water].m_seeThrough  = true;
+    g_blocks[+BlockType::Water].m_transparent = false;
+    g_blocks[+BlockType::Water].m_collidable  = false;
     SetMultipleBlockSprites(BlockType::Bedrock, 17);
 
     SetMultipleBlockSprites(BlockType::HalfSlab, 5);
@@ -101,10 +102,10 @@ void SetBlockSprites()
     g_blocks[+BlockType::Slab].m_spriteIndices[+Face::Bot] = 6;
 
     SetMultipleBlockSprites(BlockType::Glass, 49);
-    g_blocks[+BlockType::Glass].m_seeThrough = true;
-    //g_blocks[+BlockType::Glass].m_transparent = true;
-    g_blocks[+BlockType::Glass].m_transparent = false;
+    g_blocks[+BlockType::Glass].m_seeThrough            = true;
+    g_blocks[+BlockType::Glass].m_transparent           = false;
     g_blocks[+BlockType::Glass].m_sidesShouldBeRendered = false;
+    g_blocks[+BlockType::Glass].m_hasShading            = false;
 }
 
 void BlockInit()

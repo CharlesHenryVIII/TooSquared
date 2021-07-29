@@ -12,6 +12,7 @@
  * Render water correctly
  * Added perlin seeding
  * Convert from key inputs to action keys.  Do not trigger action keys when the g_cursorEngaged is false
+ * Add bit to nAndConnectedVertices for whether the shader should apply lighting effects to blocks or not
 
 
 
