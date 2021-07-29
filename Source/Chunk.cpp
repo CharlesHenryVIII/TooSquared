@@ -1454,25 +1454,31 @@ bool RegionSampler::GetBlock(BlockType& result, Vec3Int blockRelP)
 
 bool RegionSampler::RegionGather(ChunkIndex i)
 {
+    ZoneScopedN("RegionGather");
     center = i;
 
     int32 numIndices = 0;
     centerP = g_chunks->p[i];
     for (int32 z = -1; z <= 1; z++)
     {
+        ZoneScopedN("Z loop");
         for (int32 x = -1; x <= 1; x++)
         {
+            ZoneScopedN("X loop");
             if (x == 0 && z == 0)
                 continue;
-            ChunkIndex chunkIndex = 0;
-            ChunkPos newChunkP = { centerP.p.x + x, 0, centerP.p.z + z };
-            int64 tesHash = PositionHash(newChunkP);
-            if (g_chunks->GetChunkFromPosition(chunkIndex, newChunkP))
+            //int64 tesHash = PositionHash(newChunkP);
             {
-                if (g_chunks->state[chunkIndex] >= ChunkArray::BlocksLoaded)
+                ZoneScopedN("Get Chunk From Position");
+                ChunkIndex chunkIndex = 0;
+                ChunkPos newChunkP = { centerP.p.x + x, 0, centerP.p.z + z };
+                if (g_chunks->GetChunkFromPosition(chunkIndex, newChunkP))
                 {
-                    neighborsP[numIndices] = g_chunks->p[chunkIndex];
-                    neighbors[numIndices++] = chunkIndex;
+                    if (g_chunks->state[chunkIndex] >= ChunkArray::BlocksLoaded)
+                    {
+                        neighborsP[numIndices] = g_chunks->p[chunkIndex];
+                        neighbors[numIndices++] = chunkIndex;
+                    }
                 }
             }
         }

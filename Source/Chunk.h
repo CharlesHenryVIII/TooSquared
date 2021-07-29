@@ -106,7 +106,7 @@ struct RegionSampler {
 
     ChunkIndex neighbors[8] = {};
     ChunkIndex center = 0;
-    ChunkPos centerP;
+    ChunkPos centerP = {};
     ChunkPos neighborsP[8];
 
     bool GetBlock(BlockType& result, Vec3Int blockRelP);

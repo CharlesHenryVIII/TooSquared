@@ -1236,6 +1236,60 @@ White:  Uploaded,");
 
         {
             PROFILE_SCOPE_TAB("Chunk Loading Vertex Loop");
+#if 1
+            ChunkIndex originChunk = 0;
+            //Range<int32> xLoopRange;
+            int32 xIncrimentAmount = 0;
+            RegionSampler regionSampler = {};
+
+            for (int32 _drawDistance = 0; _drawDistance < playerCamera->m_drawDistance; _drawDistance++)
+            {
+                ZoneScopedN("Draw Distance Loop");
+                for (int32 drawZ = -_drawDistance; drawZ <= _drawDistance; drawZ++)
+                {
+                    ZoneScopedN("Z Loop");
+                    if (drawZ == -_drawDistance || drawZ == _drawDistance)
+                    {
+                        //Top and Bottom need to do whole row
+                        xIncrimentAmount = 1;
+                    }
+                    else
+                    {
+                        //Sides need to just do min and max
+                        xIncrimentAmount = _drawDistance * 2;
+                    }
+                    for (int32 drawX = -_drawDistance; drawX <= _drawDistance; drawX += xIncrimentAmount)
+                    {
+                        ZoneScopedN("X Loop");
+                        {
+                            ZoneScopedN("Pos and Status Check");
+                            //ChunkPos cameraChunkP = playerCamera->RealChunkPos();
+                            ChunkPos cameraChunkP = ToChunk(WorldPos(playerCamera->GetWorldPosition()));
+                            originChunk = 0;
+                            ChunkPos drawDistanceChunk = { cameraChunkP.p.x + drawX, 0, cameraChunkP.p.z + drawZ };
+                            if (!g_chunks->GetChunkFromPosition(originChunk, drawDistanceChunk))
+                                continue;
+                            if (g_chunks->state[originChunk] != ChunkArray::BlocksLoaded)
+                                continue;
+                        }
+
+                        {
+                            regionSampler = {};
+                            if (regionSampler.RegionGather(originChunk))
+                            {
+                                ZoneScopedN("Success");
+                                CreateVertices* job = new CreateVertices();
+                                job->region = regionSampler;
+
+                                g_chunks->state[originChunk] = ChunkArray::VertexLoading;
+                                multiThreading.SubmitJob(job);
+                            }
+                        }
+                    }
+                }
+            }
+#else
+            ChunkIndex originChunk = 0;
 
             for (int32 _drawDistance = 0; _drawDistance < playerCamera->m_drawDistance; _drawDistance++)
             {
@@ -1252,34 +1306,34 @@ White:  Uploaded,");
                             continue;
 
                         {
-                            ZoneScopedN("Outer Loop");
+                            ZoneScopedN("Pos and Status Check");
                             //ChunkPos cameraChunkP = playerCamera->RealChunkPos();
                             ChunkPos cameraChunkP = ToChunk(WorldPos(playerCamera->GetWorldPosition()));
-                            ChunkIndex originChunk = 0;
+                            originChunk = 0;
                             ChunkPos drawDistanceChunk = { cameraChunkP.p.x + drawX, 0, cameraChunkP.p.z + drawZ };
                             if (!g_chunks->GetChunkFromPosition(originChunk, drawDistanceChunk))
                                 continue;
                             if (g_chunks->state[originChunk] != ChunkArray::BlocksLoaded)
                                 continue;
+                        }
 
+                        {
+                            RegionSampler regionSampler = {};
+
+                            if (regionSampler.RegionGather(originChunk))
                             {
-                                ZoneScopedN("Passed Checks");
-                                RegionSampler regionSampler = {};
+                                ZoneScopedN("Success");
+                                CreateVertices* job = new CreateVertices();
+                                job->region = regionSampler;
 
-                                if (regionSampler.RegionGather(originChunk))
-                                {
-                                    ZoneScopedN("RegionGather Passed");
-                                    CreateVertices* job = new CreateVertices();
-                                    job->region = regionSampler;
-
-                                    g_chunks->state[originChunk] = ChunkArray::VertexLoading;
-                                    multiThreading.SubmitJob(job);
-                                }
+                                g_chunks->state[originChunk] = ChunkArray::VertexLoading;
+                                multiThreading.SubmitJob(job);
                             }
                         }
                     }
                 }
             }
+#endif
         }
 
         {
