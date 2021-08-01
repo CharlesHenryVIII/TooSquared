@@ -2,6 +2,7 @@
 #include "Math.h"
 #include "WinInterop.h"
 #include "SDL\include\SDL.h"
+#include "tracy-master/Tracy.hpp"
 
 #include <Chrono>
 
@@ -78,6 +79,7 @@ int32 MultiThreading::ThreadFunction(void* data)
             continue;
 
         {
+            ZoneScopedN("Running Job");
             job->DoThing();
         }
 

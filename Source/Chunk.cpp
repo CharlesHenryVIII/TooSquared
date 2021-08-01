@@ -1889,6 +1889,7 @@ void ChunkArray::RenderTransparentChunk(ChunkIndex i)
 
 void SetBlocks::DoThing()
 {
+    ZoneScopedN("Building Blocks");
     //PROFILE_SCOPE("THREAD: SetBlocks()");
     g_chunks->refs[chunk]++;
     if (!g_chunks->LoadChunk(chunk))
@@ -1900,6 +1901,7 @@ void SetBlocks::DoThing()
 
 void CreateVertices::DoThing()
 {
+    ZoneScopedN("Building Vertices");
     //PROFILE_SCOPE("THREAD: CreateVertices()");
     region.IncrimentRefCount();
     g_chunks->BuildChunkVertices(region);
@@ -2159,6 +2161,7 @@ struct ChunkDiskData {
 
 void SaveChunkJob::DoThing()
 {
+    ZoneScopedN("Save Chunk Job");
     ChunkDiskFileHeader mainHeader = {};
     mainHeader.m_magic_header = SDL_FOURCC('C', 'H', 'N', 'K');
     mainHeader.m_magic_type   = SDL_FOURCC('H', 'E', 'A', 'D');
@@ -2211,6 +2214,7 @@ void SaveChunkJob::DoThing()
 
 void SaveItemJob::DoThing()
 {
+    ZoneScopedN("Save Items Job");
     g_items.Save(m_itemData, m_p);
 }
 

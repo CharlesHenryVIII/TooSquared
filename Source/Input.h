@@ -2,7 +2,7 @@
 #include "Math.h"
 
 #include "SDL/include/SDL.h"
-#include "imgui-master/imgui.h"
+#include "imgui.h"
 
 #include <unordered_map>
 

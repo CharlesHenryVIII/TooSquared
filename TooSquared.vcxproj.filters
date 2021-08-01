@@ -51,21 +51,6 @@
     <ClCompile Include="Source\Input.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Contrib\imgui-master\imgui.cpp">
-      <Filter>Source Files\imGui</Filter>
-    </ClCompile>
-    <ClCompile Include="Contrib\imgui-master\imgui_demo.cpp">
-      <Filter>Source Files\imGui</Filter>
-    </ClCompile>
-    <ClCompile Include="Contrib\imgui-master\imgui_draw.cpp">
-      <Filter>Source Files\imGui</Filter>
-    </ClCompile>
-    <ClCompile Include="Contrib\imgui-master\imgui_tables.cpp">
-      <Filter>Source Files\imGui</Filter>
-    </ClCompile>
-    <ClCompile Include="Contrib\imgui-master\imgui_widgets.cpp">
-      <Filter>Source Files\imGui</Filter>
-    </ClCompile>
     <ClCompile Include="Source\imgui_impl_sdl.cpp">
       <Filter>Source Files\imGui</Filter>
     </ClCompile>
@@ -86,6 +71,21 @@
     </ClCompile>
     <ClCompile Include="Contrib\tracy-master\TracyClient.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Contrib\imgui\imgui_demo.cpp">
+      <Filter>Source Files\imGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Contrib\imgui\imgui_draw.cpp">
+      <Filter>Source Files\imGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Contrib\imgui\imgui.cpp">
+      <Filter>Source Files\imGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Contrib\imgui\imgui_tables.cpp">
+      <Filter>Source Files\imGui</Filter>
+    </ClCompile>
+    <ClCompile Include="Contrib\imgui\imgui_widgets.cpp">
+      <Filter>Source Files\imGui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -157,24 +157,6 @@
     <ClInclude Include="Source\Input.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="Contrib\imgui-master\imgui.h">
-      <Filter>Source Files\imGui</Filter>
-    </ClInclude>
-    <ClInclude Include="Contrib\imgui-master\imconfig.h">
-      <Filter>Source Files\imGui</Filter>
-    </ClInclude>
-    <ClInclude Include="Contrib\imgui-master\imgui_internal.h">
-      <Filter>Source Files\imGui</Filter>
-    </ClInclude>
-    <ClInclude Include="Contrib\imgui-master\imstb_rectpack.h">
-      <Filter>Source Files\imGui</Filter>
-    </ClInclude>
-    <ClInclude Include="Contrib\imgui-master\imstb_textedit.h">
-      <Filter>Source Files\imGui</Filter>
-    </ClInclude>
-    <ClInclude Include="Contrib\imgui-master\imstb_truetype.h">
-      <Filter>Source Files\imGui</Filter>
-    </ClInclude>
     <ClInclude Include="Source\imgui_impl_opengl3.h">
       <Filter>Source Files\imGui</Filter>
     </ClInclude>
@@ -192,6 +174,24 @@
     </ClInclude>
     <ClInclude Include="Source\Chunk.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Contrib\imgui\imconfig.h">
+      <Filter>Source Files\imGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Contrib\imgui\imgui.h">
+      <Filter>Source Files\imGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Contrib\imgui\imstb_rectpack.h">
+      <Filter>Source Files\imGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Contrib\imgui\imstb_textedit.h">
+      <Filter>Source Files\imGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Contrib\imgui\imstb_truetype.h">
+      <Filter>Source Files\imGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Contrib\imgui\imgui_internal.h">
+      <Filter>Source Files\imGui</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

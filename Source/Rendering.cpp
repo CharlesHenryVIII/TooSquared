@@ -6,7 +6,7 @@
 
 #include "tracy-master/Tracy.hpp"
 #include "STB/stb_image.h"
-#include "imgui-master/imgui.h"
+#include "imgui.h"
 #include "SDL/include/SDL.h"
 #include "SDL/include/SDL_syswm.h"
 

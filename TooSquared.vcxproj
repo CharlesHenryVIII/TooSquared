@@ -120,7 +120,7 @@
       <ConformanceMode>true</ConformanceMode>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>Contrib;Contrib/Glew/include;Contrib/Glew/include/GL;Contrib/imgui-master;Contrib/SDL/include;ontrib/tracy-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>Contrib;Contrib/Glew/include;Contrib/Glew/include/GL;Contrib/imgui;Contrib/SDL/include;ontrib/tracy-master;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
@@ -128,7 +128,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>SDL2.lib;SDL2main.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>Contrib\SDL\lib\x64;Contrib/Glew/src;Contrib/Glew/include;Contrib\imgui-master;ontrib/tracy-master</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>Contrib\SDL\lib\x64;Contrib/Glew/src;Contrib/Glew/include;Contrib/imgui;ontrib/tracy-master</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -155,11 +155,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Contrib\Glew\src\glew.c" />
-    <ClCompile Include="Contrib\imgui-master\imgui.cpp" />
-    <ClCompile Include="Contrib\imgui-master\imgui_demo.cpp" />
-    <ClCompile Include="Contrib\imgui-master\imgui_draw.cpp" />
-    <ClCompile Include="Contrib\imgui-master\imgui_tables.cpp" />
-    <ClCompile Include="Contrib\imgui-master\imgui_widgets.cpp" />
+    <ClCompile Include="Contrib\imgui\imgui.cpp" />
+    <ClCompile Include="Contrib\imgui\imgui_demo.cpp" />
+    <ClCompile Include="Contrib\imgui\imgui_draw.cpp" />
+    <ClCompile Include="Contrib\imgui\imgui_tables.cpp" />
+    <ClCompile Include="Contrib\imgui\imgui_widgets.cpp" />
     <ClCompile Include="Contrib\tracy-master\TracyClient.cpp" />
     <ClCompile Include="Source\Block.cpp" />
     <ClCompile Include="Source\Chunk.cpp" />
@@ -194,12 +194,12 @@
     <None Include="Source\Shaders\UI.vert" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Contrib\imgui-master\imconfig.h" />
-    <ClInclude Include="Contrib\imgui-master\imgui.h" />
-    <ClInclude Include="Contrib\imgui-master\imgui_internal.h" />
-    <ClInclude Include="Contrib\imgui-master\imstb_rectpack.h" />
-    <ClInclude Include="Contrib\imgui-master\imstb_textedit.h" />
-    <ClInclude Include="Contrib\imgui-master\imstb_truetype.h" />
+    <ClInclude Include="Contrib\imgui\imconfig.h" />
+    <ClInclude Include="Contrib\imgui\imgui.h" />
+    <ClInclude Include="Contrib\imgui\imgui_internal.h" />
+    <ClInclude Include="Contrib\imgui\imstb_rectpack.h" />
+    <ClInclude Include="Contrib\imgui\imstb_textedit.h" />
+    <ClInclude Include="Contrib\imgui\imstb_truetype.h" />
     <ClInclude Include="Source\Block.h" />
     <ClInclude Include="Source\Chunk.h" />
     <ClInclude Include="Source\Computer.h" />
