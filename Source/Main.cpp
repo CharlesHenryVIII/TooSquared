@@ -253,7 +253,7 @@ int main(int argc, char* argv[])
     cubesToDraw.reserve(100000);
     while (g_running)
     {
-        PROFILE_SCOPE_TAB("FRAMETIME:");
+        ZoneScopedN("FRAMETIME:");
         totalTime = SDL_GetPerformanceCounter() / freq - startTime;
         float deltaTime = float(totalTime - previousTime);// / 10;
         previousTime = totalTime;
@@ -284,7 +284,7 @@ int main(int argc, char* argv[])
         SDL_Event SDLEvent;
         playerInput.mouse.pDelta = {};
         {
-            PROFILE_SCOPE_TAB("Poll Events");
+            ZoneScopedN("Poll Events");
             while (SDL_PollEvent(&SDLEvent))
             {
                 ImGui_ImplSDL2_ProcessEvent(&SDLEvent);
@@ -397,7 +397,7 @@ int main(int argc, char* argv[])
          ********/
 
         {
-            PROFILE_SCOPE_TAB("Key Updates");
+            ZoneScopedN("Key Updates");
             for (auto& key : playerInput.keyStates)
             {
                 if (key.second.down)
@@ -529,7 +529,7 @@ int main(int argc, char* argv[])
 
         if (showIMGUI)
         {
-            PROFILE_SCOPE_TAB("ImGui Update");
+            ZoneScopedN("ImGui Update");
             {
                 // Start the Dear ImGui frame
                 ImGui_ImplOpenGL3_NewFrame();
@@ -867,32 +867,32 @@ White:  Uploaded,");
 
         if (g_cursorEngaged)
         {
-            PROFILE_SCOPE_TAB("Entity Input Update");
+            ZoneScopedN("Entity Input Update");
             g_entityList.InputUpdate(deltaTime, playerInput);
         }
 
 
 #if 1
         {
-            PROFILE_SCOPE_TAB("Chunk Items Update");
+            ZoneScopedN("Chunk Items Update");
             g_chunks->Update(deltaTime);
         }
 #else
         {
-            PROFILE_SCOPE_TAB("Items Update");
+            ZoneScopedN("Items Update");
             g_items.Update(deltaTime);
         }
 #endif
 
         {
-            PROFILE_SCOPE_TAB("Entity Update");
+            ZoneScopedN("Entity Update");
             g_entityList.Update(deltaTime);
         }
 
 
         Vec3 lookTarget = {};
         {
-            PROFILE_SCOPE_TAB("Sun/Moon Update");
+            ZoneScopedN("Sun/Moon Update");
             //Vec3 front = playerCamera->GetTrueRotation() * faceNormals[+Face::Front];
             Vec3 front = playerCamera->GetForwardVector();// (playerCamera->GetWorldMatrix()* g_forwardVectorRotation).xyz;
             //front.x = cos(DegToRad(playerCamera->m_yaw)) * cos(DegToRad(playerCamera->m_pitch));
@@ -947,7 +947,7 @@ White:  Uploaded,");
         Vec3 hitNormal;
 
         {
-            PROFILE_SCOPE_TAB("Raycast");
+            ZoneScopedN("Raycast");
             RegionSampler localRegion;
             ChunkIndex centerChunkIndex;
             //WorldPos cameraRealWorldPosition = playerCamera->RealWorldPos();
@@ -962,7 +962,7 @@ White:  Uploaded,");
                 GamePos resultPos = {};
                 float distance;
                 {
-                    PROFILE_SCOPE_TAB("RayVsChunk Local");
+                    ZoneScopedN("RayVsChunk Local");
                     if (RayVsChunk(ray, centerChunkIndex, resultPos, distance, hitNormal))
                     {
                         hitBlock = resultPos;
@@ -970,15 +970,15 @@ White:  Uploaded,");
                     }
                 }
 
-                PROFILE_SCOPE_TAB("Ray Neighbor gather and loop");
+                ZoneScopedN("Ray Neighbor gather and loop");
                 if (!validHit && localRegion.RegionGather(centerChunkIndex))
                 {
-                    PROFILE_SCOPE_TAB("RayVsChunk Neighbors");
+                    ZoneScopedN("RayVsChunk Neighbors");
                     for (ChunkIndex neighbor : localRegion.neighbors)
                     {
                         float distanceComparison;
                         Vec3 neighborNormal;
-                        //PROFILE_SCOPE_TAB("RayVsChunk2");
+                        //ZoneScopedN("RayVsChunk2");
                         if (RayVsChunk(ray, neighbor, resultPos, distanceComparison, neighborNormal))
                         {
                             if (distanceComparison < distance)
@@ -996,7 +996,7 @@ White:  Uploaded,");
 
         if (g_cursorEngaged)
         {
-            PROFILE_SCOPE_TAB("Player Input Update");
+            ZoneScopedN("Player Input Update");
             //Inventory Slot Selection:
             //TODO: improve
             //if (playerInput.mouse.wheel.y > 0)
@@ -1116,7 +1116,7 @@ White:  Uploaded,");
 
 
         {
-            PROFILE_SCOPE_TAB("Camera Position Chunk Update");
+            ZoneScopedN("Camera Position Chunk Update");
 
 #ifdef _DEBUG
             playerCamera->m_drawDistance = 10;
@@ -1137,7 +1137,7 @@ White:  Uploaded,");
                 break;
             }
 
-            //PROFILE_SCOPE_TAB("Distance Check For Chunk");
+            //ZoneScopedN("Distance Check For Chunk");
             for (int32 _drawDistance = 0; _drawDistance < playerCamera->m_drawDistance; _drawDistance++)
             {
                 for (int32 z = -_drawDistance; z <= _drawDistance; z++)
@@ -1160,7 +1160,7 @@ White:  Uploaded,");
             }
 
             {
-                PROFILE_SCOPE_TAB("Chunk Delete Check");
+                ZoneScopedN("Chunk Delete Check");
                 if (playerCamera->m_fogDistance)
                 {
                     for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
@@ -1184,7 +1184,7 @@ White:  Uploaded,");
         //SKYBOX
         {
             //glBlendFunc(GL_ONE, GL_ONE);
-            PROFILE_SCOPE_TAB("Draw Skybox");
+            ZoneScopedN("Draw Skybox");
 
             glDepthMask(GL_FALSE);
             ShaderProgram* sp = g_renderer.programs[+Shader::Sun];
@@ -1216,7 +1216,7 @@ White:  Uploaded,");
         }
 
         {
-            PROFILE_SCOPE_TAB("Semaphore Update");
+            ZoneScopedN("Semaphore Update");
 
             for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
             {
@@ -1235,7 +1235,7 @@ White:  Uploaded,");
         }
 
         {
-            PROFILE_SCOPE_TAB("Chunk Loading Vertex Loop");
+            ZoneScopedN("Chunk Loading Vertex Loop");
 
             ChunkIndex originChunk = 0;
             int32 xIncrimentAmount = 0;
@@ -1290,7 +1290,7 @@ White:  Uploaded,");
         }
 
         {
-            PROFILE_SCOPE_TAB("Chunk Deletion");
+            ZoneScopedN("Chunk Deletion");
             for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
             {
                 assert(g_chunks->refs[i] >= 0);
@@ -1311,11 +1311,11 @@ White:  Uploaded,");
         }
 
         {
-            PROFILE_SCOPE_TAB("Entity Deletion");
+            ZoneScopedN("Entity Deletion");
             g_entityList.CleanUp();
         }
         {
-            PROFILE_SCOPE_TAB("Item Deletion");
+            ZoneScopedN("Item Deletion");
             g_items.CleanUp();
         }
 
@@ -1326,7 +1326,7 @@ White:  Uploaded,");
         Renderable renderables[MAX_CHUNKS];
         int32 numRenderables = 0;
         {
-            PROFILE_SCOPE_TAB("Chunk Opaque Upload and Render");
+            ZoneScopedN("Chunk Opaque Upload and Render");
 
 #ifdef _DEBUG
             const int32 uploadMax = 10;
@@ -1375,12 +1375,12 @@ White:  Uploaded,");
         }
 
         {
-            PROFILE_SCOPE_TAB("Items Opaque Render");
+            ZoneScopedN("Items Opaque Render");
             g_items.RenderOpaque(deltaTime, playerCamera);
         }
 
         {
-            PROFILE_SCOPE_TAB("Opaque Debug Code");
+            ZoneScopedN("Opaque Debug Code");
             if (s_debugFlags & +DebugOptions::Enabled)
             {
                 for (WorldPos p : cubesToDraw)
@@ -1393,7 +1393,7 @@ White:  Uploaded,");
         }
 
         {
-            PROFILE_SCOPE_TAB("Transparent Chunk Render");
+            ZoneScopedN("Transparent Chunk Render");
             PreTransparentChunkRender(playerCamera->m_perspective, playerCamera);
             {
                 for (int32 i = numRenderables - 1; i >= 0; --i)
@@ -1401,7 +1401,7 @@ White:  Uploaded,");
                     ChunkIndex renderChunk = renderables[i].index;
                     if (g_chunks->state[renderChunk] == ChunkArray::Uploaded && g_chunks->transparentIndexCount[renderChunk] > 0)
                     {
-                        PROFILE_SCOPE_TAB("Transparent Render Per Chunk");
+                        ZoneScopedN("Transparent Render Per Chunk");
                         g_chunks->RenderTransparentChunk(renderChunk);
                     }
                 }
@@ -1409,7 +1409,7 @@ White:  Uploaded,");
         }
 
         {
-            PROFILE_SCOPE_TAB("Transparent Debug Code");
+            ZoneScopedN("Transparent Debug Code");
             //DrawCube(testCamera.p.p, { 0, 1, 0, 1 }, 5.0f, perspective);
             //DrawCube(lookatPosition, { 1, 0, 0, 1 }, 5.0f, perspective);
             if (s_debugFlags & +DebugOptions::Enabled)
@@ -1467,12 +1467,12 @@ White:  Uploaded,");
         }
 
         {
-            PROFILE_SCOPE_TAB("Entity Render");
+            ZoneScopedN("Entity Render");
             g_entityList.Render(deltaTime, playerCamera);
         }
 
         {
-            PROFILE_SCOPE_TAB("Items Transparent Render");
+            ZoneScopedN("Items Transparent Render");
             g_items.RenderTransparent(deltaTime, playerCamera);
         }
 
@@ -1486,7 +1486,7 @@ White:  Uploaded,");
         //frameTimes.push_back(static_cast<float>(renderTotalTime));
 
         {
-            PROFILE_SCOPE_TAB("Transparent Crosshair");
+            ZoneScopedN("Transparent Crosshair");
             Color crosshairColor = { 0.5f, 0.5f, 0.5f, 0.5f };
             int32 lineThickness = 7;
             int32 lineBounds = 30;
@@ -1531,8 +1531,7 @@ White:  Uploaded,");
         }
 
         {
-            //PROFILE_SCOPE_TAB("Resolve Opaque Framebuffer");
-            PROFILE_SCOPE_TAB("Resolve Framebuffers");
+            ZoneScopedN("Resolve Framebuffers");
             //g_renderer.postTarget->Bind();
             //glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
             //glClearDepth(0.0f);
@@ -1576,7 +1575,7 @@ White:  Uploaded,");
         }
 
         {
-            PROFILE_SCOPE_TAB("Buffer Copy To Backbuffer");
+            ZoneScopedN("Buffer Copy To Backbuffer");
             glDisable(GL_DEPTH_TEST);
             glDepthMask(GL_TRUE);
             glDisable(GL_BLEND);
@@ -1600,7 +1599,7 @@ White:  Uploaded,");
 
         if (showIMGUI)
         {
-            PROFILE_SCOPE_TAB("ImGui Render");
+            ZoneScopedN("ImGui Render");
             ImGui::Render();
             //glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
             //glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);

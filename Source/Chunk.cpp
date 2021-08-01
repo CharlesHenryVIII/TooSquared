@@ -1866,7 +1866,7 @@ void PreTransparentChunkRender(const Mat4& perspective, Camera* camera)
 
 void ChunkArray::RenderTransparentChunk(ChunkIndex i)
 {
-    PROFILE_SCOPE_TAB("Transparent Render Chunk Draw");
+    ZoneScopedN("Transparent Render Chunk Draw");
     transparentVertexBuffer[i].Bind();
 
     glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
@@ -1928,7 +1928,7 @@ bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& di
         }
     }
 
-    //PROFILE_SCOPE_TAB("RayVsChunk/BlockLoop");
+    //ZoneScopedN("RayVsChunk/BlockLoop");
     ZoneScopedN("RayVsAABB Blocks");
     for (int32 z = 0; z < CHUNK_Z; z++)
     {
@@ -2005,14 +2005,14 @@ void ChunkUpdateBlocks(ChunkPos p, Vec3Int offset = {})
 }
 void SetBlock(GamePos hitBlock, BlockType setBlockType)
 {
-    PROFILE_SCOPE_TAB("SetBlock");
+    ZoneScopedN("SetBlock");
 
     ChunkPos hitChunkPos;
     Vec3Int hitBlockRelP = Convert_GameToBlock(hitChunkPos, hitBlock);
     ChunkIndex hitChunkIndex;
     if (g_chunks->GetChunkFromPosition(hitChunkIndex, hitChunkPos) && (hitBlock.p.y >= 0) && (hitBlock.p.y < CHUNK_Y))
     {
-        PROFILE_SCOPE_TAB("SetBlock Success");
+        ZoneScopedN("SetBlock Success");
 
         g_chunks->blocks[hitChunkIndex].e[hitBlockRelP.x][hitBlockRelP.y][hitBlockRelP.z] = setBlockType;
         g_chunks->height[hitChunkIndex] = Max((uint16)(hitBlockRelP.y + 1), g_chunks->height[hitChunkIndex]);

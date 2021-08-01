@@ -776,7 +776,7 @@ bool CapsuleVsWorldBlocks(Capsule capsuleCollider, Vec3 in_positionDelta, Vec3& 
         }
 
 
-        //PROFILE_SCOPE_TAB("Collision Update");
+        //ZoneScopedN("Collision Update");
         BlockSampler blockSampler = {};
 
         GamePos referenceGamePosition = ToGame(capsuleCollider.m_tip);
@@ -824,7 +824,7 @@ bool CubeVsBlock(Cube collider, const BlockSampler& blockSampler, Vec3& toOutsid
 
 bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionDelta, std::vector<Triangle>& debug_trianglesToDraw)
 {
-    //PROFILE_SCOPE_TAB("CubeVsWorldBlocks()");
+    //ZoneScopedN("CubeVsWorldBlocks()");
     assert(OnMainThread());
     bool result = false;
     WorldPos boxOrigin;
@@ -934,7 +934,7 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
         in_positionDelta -= pDelta;
         collider.m_center.p += pDelta;
 
-        //PROFILE_SCOPE_TAB("Collision Update");
+        //ZoneScopedN("Collision Update");
         BlockSampler blockSampler = {};
 
         GamePos referenceGamePosition = ToGame(collider.m_center);
