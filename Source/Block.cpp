@@ -52,7 +52,7 @@ void SetMultipleBlockSprites(BlockType bt, uint32 v)
 }
 void SetBlockSprites()
 {
-    g_blocks[+BlockType::Empty].m_transparent = true;
+    g_blocks[+BlockType::Empty].m_translucent = true;
     g_blocks[+BlockType::Empty].m_collidable  = false;
     g_blocks[+BlockType::Empty].m_hasShading  = false;
 
@@ -70,13 +70,13 @@ void SetBlockSprites()
     g_blocks[+BlockType::Wood].m_spriteIndices[+Face::Top] = 21;
     g_blocks[+BlockType::Wood].m_spriteIndices[+Face::Bot] = 21;
     SetMultipleBlockSprites(BlockType::Ice, 67);
-    g_blocks[+BlockType::Ice].m_transparent = true;
+    g_blocks[+BlockType::Ice].m_translucent = true;
     g_blocks[+BlockType::Leaves].m_sidesShouldBeRendered = false;
     SetMultipleBlockSprites(BlockType::Obsidian, 37);
 #if 1
     SetMultipleBlockSprites(BlockType::Leaves, 52);
     g_blocks[+BlockType::Leaves].m_seeThrough = true;
-    g_blocks[+BlockType::Leaves].m_transparent = false;
+    g_blocks[+BlockType::Leaves].m_translucent = false;
     g_blocks[+BlockType::Leaves].m_sidesShouldBeRendered = true;
 #else
     SetMultipleBlockSprites(BlockType::Leaves, 53);
@@ -87,7 +87,7 @@ void SetBlockSprites()
     g_blocks[+BlockType::TNT].m_spriteIndices[+Face::Bot] = 10;
     SetMultipleBlockSprites(BlockType::Water, 255);
     g_blocks[+BlockType::Water].m_seeThrough  = true;
-    g_blocks[+BlockType::Water].m_transparent = false;
+    g_blocks[+BlockType::Water].m_translucent = false;
     g_blocks[+BlockType::Water].m_collidable  = false;
     SetMultipleBlockSprites(BlockType::Bedrock, 17);
 
@@ -103,7 +103,7 @@ void SetBlockSprites()
 
     SetMultipleBlockSprites(BlockType::Glass, 49);
     g_blocks[+BlockType::Glass].m_seeThrough            = true;
-    g_blocks[+BlockType::Glass].m_transparent           = false;
+    g_blocks[+BlockType::Glass].m_translucent           = false;
     g_blocks[+BlockType::Glass].m_sidesShouldBeRendered = false;
     g_blocks[+BlockType::Glass].m_hasShading            = false;
 }
@@ -161,7 +161,7 @@ void DrawBlock(const Mat4& model, Vec3 scale, Camera* camera, Color color, Textu
     g_renderer.chunkIB->Bind();
 
     ShaderProgram* sp = nullptr;
-    if (color.a < 1.0f || (g_blocks[+blockType].m_transparent && Texture::T::Minecraft))
+    if (color.a < 1.0f || (g_blocks[+blockType].m_translucent && Texture::T::Minecraft))
     {
         sp = g_renderer.programs[+Shader::TransparentCube];
 

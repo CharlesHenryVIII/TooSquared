@@ -1399,7 +1399,7 @@ White:  Uploaded,");
                 for (int32 i = numRenderables - 1; i >= 0; --i)
                 {
                     ChunkIndex renderChunk = renderables[i].index;
-                    if (g_chunks->state[renderChunk] == ChunkArray::Uploaded && g_chunks->transparentIndexCount[renderChunk] > 0)
+                    if (g_chunks->state[renderChunk] == ChunkArray::Uploaded && g_chunks->translucentIndexCount[renderChunk] > 0)
                     {
                         ZoneScopedN("Transparent Render Per Chunk");
                         g_chunks->RenderTransparentChunk(renderChunk);

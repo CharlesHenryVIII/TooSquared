@@ -70,13 +70,13 @@ void ChunkArray::ClearChunk(ChunkIndex index)
     std::vector<Vertex_Chunk> swap1;
     opaqueFaceVertices[index].swap(swap1);
 
-    transparentFaceVertices[index].clear();
+    translucentFaceVertices[index].clear();
     std::vector<Vertex_Chunk> swap2;
-    transparentFaceVertices[index].swap(swap2);
+    translucentFaceVertices[index].swap(swap2);
 
     state[index] = {};
     opaqueIndexCount[index] = {};
-    transparentIndexCount[index] = {};
+    translucentIndexCount[index] = {};
     flags[index] = {};
     refs[index] = {};
 
@@ -1637,9 +1637,9 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
     opaqueFaceVertices[i].clear();
     opaqueFaceVertices[i].reserve(10000);
     opaqueIndexCount[i] = 0;
-    transparentFaceVertices[i].clear();
-    transparentFaceVertices[i].reserve(1000);
-    transparentIndexCount[i] = 0;
+    translucentFaceVertices[i].clear();
+    translucentFaceVertices[i].reserve(1000);
+    translucentIndexCount[i] = 0;
     GamePos realP = Convert_ChunkIndexToGame(i);
     float timerTotal[+T_Vertices::Count] = {};
     uint16 heightOfChunk = height[i];
@@ -1657,10 +1657,10 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
 
                     std::vector<Vertex_Chunk>* vertices   = &opaqueFaceVertices[i];
                     uint32*                    indexCount = &opaqueIndexCount[i];
-                    if (g_blocks[+currentBlockType].m_transparent)
+                    if (g_blocks[+currentBlockType].m_translucent)
                     {
-                        vertices   = &transparentFaceVertices[i];
-                        indexCount = &transparentIndexCount[i];
+                        vertices   = &translucentFaceVertices[i];
+                        indexCount = &translucentIndexCount[i];
                     }
 
                     //ACCTIMER(T_Vertices::Faces);
@@ -1678,8 +1678,8 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                             getBlockResult = (region.GetBlock(type, { xReal, yReal, zReal })) || (yReal == CHUNK_Y);
                         }
                         //if (getBlockResult && type == BlockType::Empty || (currentBlockType != BlockType::Water && type == BlockType::Water))
-                        //if (/*getBlockResult && */g_blocks[+type].m_unUsualShape || (g_blocks[+type].m_transparent && ((currentBlockType != BlockType::Water && type == BlockType::Water) || type != BlockType::Water))) 
-                        if ((g_blocks[+type].m_seeThrough && (currentBlockType != type)) || (g_blocks[+type].m_transparent && (currentBlockType != type)) || type == BlockType::Leaves) 
+                        //if (/*getBlockResult && */g_blocks[+type].m_unUsualShape || (g_blocks[+type].m_translucent && ((currentBlockType != BlockType::Water && type == BlockType::Water) || type != BlockType::Water))) 
+                        if ((g_blocks[+type].m_seeThrough && (currentBlockType != type)) || (g_blocks[+type].m_translucent && (currentBlockType != type)) || type == BlockType::Leaves) 
                         {
                             Vertex_Chunk f = {};
                             Vec3 offset = { static_cast<float>(x + realP.p.x), static_cast<float>(y + realP.p.y), static_cast<float>(z + realP.p.z) };
@@ -1751,9 +1751,9 @@ void ChunkArray::UploadChunk(ChunkIndex i)
     std::vector<Vertex_Chunk> swap1;
     opaqueFaceVertices[i].swap(swap1);
 
-    transparentVertexBuffer[i].Upload(transparentFaceVertices[i].data(), transparentFaceVertices[i].size());
+    translucentVertexBuffer[i].Upload(translucentFaceVertices[i].data(), translucentFaceVertices[i].size());
     std::vector<Vertex_Chunk> swap2;
-    transparentFaceVertices[i].swap(swap2);
+    translucentFaceVertices[i].swap(swap2);
 
     g_chunks->state[i] = ChunkArray::Uploaded;
 }
@@ -1834,6 +1834,26 @@ void ChunkArray::RenderOpaqueChunk(ChunkIndex i)
 
     glDrawElements(GL_TRIANGLES, (GLsizei)opaqueIndexCount[i], GL_UNSIGNED_INT, 0);
     g_renderer.numTrianglesDrawn += opaqueIndexCount[i] / 3;
+
+
+    if (translucentIndexCount[i] == 0)
+        return;
+
+    translucentVertexBuffer[i].Bind();
+
+    glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
+    glEnableVertexArrayAttrib(g_renderer.vao, 0);
+    glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
+    glEnableVertexArrayAttrib(g_renderer.vao, 1);
+    glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, nAndConnectedVertices));
+    glEnableVertexArrayAttrib(g_renderer.vao, 2);
+    //glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, connectedVertices));
+    //glEnableVertexArrayAttrib(g_renderer.vao, 3);
+
+    sp->UpdateUniformVec3("u_chunkP", 1, ToWorld(Convert_ChunkIndexToGame(i)).p.e);
+
+    glDrawElements(GL_TRIANGLES, (GLsizei)translucentIndexCount[i], GL_UNSIGNED_INT, 0);
+    g_renderer.numTrianglesDrawn += translucentIndexCount[i] / 3;
 }
 
 void PreTransparentChunkRender(const Mat4& perspective, Camera* camera)
@@ -1866,8 +1886,11 @@ void PreTransparentChunkRender(const Mat4& perspective, Camera* camera)
 
 void ChunkArray::RenderTransparentChunk(ChunkIndex i)
 {
+    if (translucentIndexCount[i] == 0)
+        return;
+
     ZoneScopedN("Transparent Render Chunk Draw");
-    transparentVertexBuffer[i].Bind();
+    translucentVertexBuffer[i].Bind();
 
     glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
     glEnableVertexArrayAttrib(g_renderer.vao, 0);
@@ -1883,8 +1906,8 @@ void ChunkArray::RenderTransparentChunk(ChunkIndex i)
 
     const GLenum transparentDrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
     glDrawBuffers(2, transparentDrawBuffers);
-    glDrawElements(GL_TRIANGLES, (GLsizei)transparentIndexCount[i], GL_UNSIGNED_INT, 0);
-    g_renderer.numTrianglesDrawn += transparentIndexCount[i] / 3;
+    glDrawElements(GL_TRIANGLES, (GLsizei)translucentIndexCount[i], GL_UNSIGNED_INT, 0);
+    g_renderer.numTrianglesDrawn += translucentIndexCount[i] / 3;
 }
 
 void SetBlocks::DoThing()

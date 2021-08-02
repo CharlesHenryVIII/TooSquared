@@ -132,11 +132,11 @@ struct ChunkArray
     ChunkData                 blocks[MAX_CHUNKS];
     ChunkPos                  p[MAX_CHUNKS] = {};
     std::vector<Vertex_Chunk> opaqueFaceVertices[MAX_CHUNKS]      = {};
-    std::vector<Vertex_Chunk> transparentFaceVertices[MAX_CHUNKS] = {};
+    std::vector<Vertex_Chunk> translucentFaceVertices[MAX_CHUNKS] = {};
     VertexBuffer              opaqueVertexBuffer[MAX_CHUNKS]      = {};
-    VertexBuffer              transparentVertexBuffer[MAX_CHUNKS] = {};
+    VertexBuffer              translucentVertexBuffer[MAX_CHUNKS] = {};
     uint32                    opaqueIndexCount[MAX_CHUNKS]      = {};
-    uint32                    transparentIndexCount[MAX_CHUNKS] = {};
+    uint32                    translucentIndexCount[MAX_CHUNKS] = {};
     uint16                    height[MAX_CHUNKS] = {};
     std::atomic<State>        state[MAX_CHUNKS] = {};
     std::atomic<uint32>       flags[MAX_CHUNKS] = {};
