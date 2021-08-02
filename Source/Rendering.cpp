@@ -390,38 +390,44 @@ void ShaderProgram::UseShader()
 }
 void ShaderProgram::CheckForUpdate()
 {
-    File vertexFile(m_vertexFile, File::Mode::Read, false);
-    vertexFile.GetTime();
-    if (!vertexFile.m_timeIsValid)
+    std::string vertexText;
+    uint64 vertexFileTime;
+    std::string pixelText;
+    uint64 pixelFileTime;
     {
-        assert(false);
-        return;
+
+        File vertexFile(m_vertexFile, File::Mode::Read, false);
+        vertexFile.GetTime();
+        if (!vertexFile.m_timeIsValid)
+        {
+            assert(false);
+            return;
+        }
+        vertexFile.GetText();
+        vertexText = vertexFile.m_dataString;
+        vertexFileTime = vertexFile.m_time;
+
+        File pixelFile(m_pixelFile, File::Mode::Read, false);
+        pixelFile.GetTime();
+        if (!pixelFile.m_timeIsValid)
+        {
+            assert(false);
+            return;
+        }
+        pixelFile.GetText();
+        pixelText = pixelFile.m_dataString;
+        pixelFileTime = pixelFile.m_time;
     }
 
-    File pixelFile(m_pixelFile, File::Mode::Read, false);
-    pixelFile.GetTime();
-    if (!pixelFile.m_timeIsValid)
-    {
-        assert(false);
-        return;
-    }
-
-    if (m_vertexLastWriteTime < vertexFile.m_time ||
-        m_pixelLastWriteTime  < pixelFile.m_time)
+    if (m_vertexLastWriteTime < vertexFileTime ||
+        m_pixelLastWriteTime  < pixelFileTime)
     {
         //Compile shaders and link to program
         GLuint vhandle = glCreateShader(GL_VERTEX_SHADER);
         GLuint phandle = glCreateShader(GL_FRAGMENT_SHADER);
 
-        //std::string vertexText;
-        //std::string pixelText;
-        //GetFileText(vertexText, m_vertexFile);
-        //GetFileText(pixelText, m_pixelFile);
-        vertexFile.GetText();
-        pixelFile.GetText();
-
-        if (!CompileShader(vhandle, "Vertex Shader", vertexFile.m_dataString) ||
-            !CompileShader(phandle, "Pixel Shader",  pixelFile.m_dataString))
+        if (!CompileShader(vhandle, "Vertex Shader", vertexText) ||
+            !CompileShader(phandle, "Pixel Shader",  pixelText))
             return;
 
 
@@ -447,6 +453,7 @@ void ShaderProgram::CheckForUpdate()
                 { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 1, "Stop" },
             };
             int32 buttonID = CreateMessageWindow(buttons, arrsize(buttons), ts_MessageBox::Error, "Shader Compilation Error", reinterpret_cast<char*>(info));
+
             if (buttonID = 0)
             {
                 CheckForUpdate();
@@ -468,8 +475,8 @@ void ShaderProgram::CheckForUpdate()
 #ifdef _DEBUGPRINT
             DebugPrint("Shader Created\n");
 #endif
-            m_vertexLastWriteTime = vertexFile.m_time;
-            m_pixelLastWriteTime = pixelFile.m_time;
+            m_vertexLastWriteTime = vertexFileTime;
+            m_pixelLastWriteTime = pixelFileTime;
             glDeleteShader(vhandle);
             glDeleteShader(phandle);
         }
