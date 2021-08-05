@@ -141,7 +141,7 @@
       <ConformanceMode>true</ConformanceMode>
       <TreatWarningAsError>true</TreatWarningAsError>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
-      <AdditionalIncludeDirectories>Contrib;Contrib/Glew/include;Contrib/Glew/include/GL;Contrib/imgui-master;Contrib/SDL/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>Contrib;Contrib/Glew/include;Contrib/Glew/include/GL;Contrib/imgui;Contrib/SDL/include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpplatest</LanguageStandard>
     </ClCompile>
     <Link>
@@ -150,7 +150,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>SDL2.lib;SDL2main.lib;OpenGL32.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>Contrib\SDL\lib\x64;Contrib/Glew/src;Contrib/Glew/include;Contrib\imgui-master</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>Contrib\SDL\lib\x64;Contrib/Glew/src;Contrib/Glew/include;Contrib\imgui</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
