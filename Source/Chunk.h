@@ -135,19 +135,20 @@ struct ChunkArray
     std::vector<Vertex_Chunk> translucentFaceVertices[MAX_CHUNKS] = {};
     VertexBuffer              opaqueVertexBuffer[MAX_CHUNKS]      = {};
     VertexBuffer              translucentVertexBuffer[MAX_CHUNKS] = {};
-    uint32                    opaqueIndexCount[MAX_CHUNKS]      = {};
-    uint32                    translucentIndexCount[MAX_CHUNKS] = {};
-    uint16                    height[MAX_CHUNKS] = {};
-    std::atomic<State>        state[MAX_CHUNKS] = {};
-    std::atomic<uint32>       flags[MAX_CHUNKS] = {};
-    std::atomic<int32>        refs[MAX_CHUNKS] = {};
-    std::vector<EntityID>     itemIDs[MAX_CHUNKS] = {};
+    uint32                    opaqueIndexCount[MAX_CHUNKS]        = {};
+    uint32                    translucentIndexCount[MAX_CHUNKS]   = {};
+    uint16                    height[MAX_CHUNKS]   = {};
+    std::atomic<State>        state[MAX_CHUNKS]    = {};
+    std::atomic<uint32>       flags[MAX_CHUNKS]    = {};
+    std::atomic<int32>        refs[MAX_CHUNKS]     = {};
+    std::vector<EntityID>     itemIDs[MAX_CHUNKS]  = {};
 
     ChunkType                 chunkType[MAX_CHUNKS] = {};
     TerrainType               terrainType[MAX_CHUNKS] = {};
 
     uint32 chunkCount = 0;
     std::unordered_map<uint64, ChunkIndex> chunkPosTable;
+    std::vector<ChunkIndex> chunksLoadingBlocks;
 
     ChunkIndex highestActiveChunk;
 

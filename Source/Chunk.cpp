@@ -1454,22 +1454,21 @@ bool RegionSampler::GetBlock(BlockType& result, Vec3Int blockRelP)
 
 bool RegionSampler::RegionGather(ChunkIndex i)
 {
-    ZoneScopedN("RegionGather");
+    //ZoneScopedN("RegionGather");
     center = i;
 
     int32 numIndices = 0;
     centerP = g_chunks->p[i];
     for (int32 z = -1; z <= 1; z++)
     {
-        ZoneScopedN("Z loop");
+        //ZoneScopedN("Z loop");
         for (int32 x = -1; x <= 1; x++)
         {
-            ZoneScopedN("X loop");
+            //ZoneScopedN("X loop");
             if (x == 0 && z == 0)
                 continue;
-            //int64 tesHash = PositionHash(newChunkP);
             {
-                ZoneScopedN("Get Chunk From Position");
+                //ZoneScopedN("Get Chunk From Position");
                 ChunkIndex chunkIndex = 0;
                 ChunkPos newChunkP = { centerP.p.x + x, 0, centerP.p.z + z };
                 if (g_chunks->GetChunkFromPosition(chunkIndex, newChunkP))
@@ -2329,7 +2328,6 @@ void ChunkArray::Update(float dt)
                             item->Update(dt);
                         }
                         {
-                            ZoneScopedN("Check For Item Move");
                             ChunkPos updatedChunkPos = ToChunk(item->m_transform.m_p);
                             if (updatedChunkPos.p != p[i].p)
                             {

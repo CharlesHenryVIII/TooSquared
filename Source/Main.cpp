@@ -1149,11 +1149,46 @@ White:  Uploaded,");
                     SetBlocks* job = new SetBlocks();
                     job->chunk = i;
                     g_chunks->state[i] = ChunkArray::BlocksLoading;
+                    g_chunks->chunksLoadingBlocks.push_back(i);
                     multiThreading.SubmitJob(job);
                 }
             }
         }
 
+#if 1
+        {
+            ZoneScopedN("Chunk Loading Vertex Loop");
+            RegionSampler regionSampler = {};
+            bool loopSucceeded = false;
+            for (auto& i : g_chunks->chunksLoadingBlocks)
+            {
+                if (g_chunks->state[i] == ChunkArray::BlocksLoaded)
+                {
+                    regionSampler = {};
+                    if (regionSampler.RegionGather(i))
+                    {
+                        CreateVertices* job = new CreateVertices();
+                        job->region = regionSampler;
+
+                        g_chunks->state[i] = ChunkArray::VertexLoading;
+                        multiThreading.SubmitJob(job);
+                        loopSucceeded = true;
+                    }
+                }
+            }
+
+            if (loopSucceeded)
+            {
+                std::erase_if(g_chunks->chunksLoadingBlocks,
+                    [](ChunkIndex i)
+                    {
+                        return g_chunks->state[i] == ChunkArray::VertexLoading;
+                    });
+            }
+        }
+
+#else
+#define REMOVED_SCOPED_PROFILING 1
         {
             ZoneScopedN("Chunk Loading Vertex Loop");
 
@@ -1163,10 +1198,14 @@ White:  Uploaded,");
 
             for (int32 _drawDistance = 0; _drawDistance < playerCamera->m_drawDistance; _drawDistance++)
             {
+#if REMOVED_SCOPED_PROFILING == 0
                 ZoneScopedN("Draw Distance Loop");
+#endif
                 for (int32 drawZ = -_drawDistance; drawZ <= _drawDistance; drawZ++)
                 {
+#if REMOVED_SCOPED_PROFILING == 0
                     ZoneScopedN("Z Loop");
+#endif
                     if (drawZ == -_drawDistance || drawZ == _drawDistance)
                     {
                         //Top and Bottom need to do whole row
@@ -1179,9 +1218,13 @@ White:  Uploaded,");
                     }
                     for (int32 drawX = -_drawDistance; drawX <= _drawDistance; drawX += xIncrimentAmount)
                     {
+#if REMOVED_SCOPED_PROFILING == 0
                         ZoneScopedN("X Loop");
+#endif
                         {
+#if REMOVED_SCOPED_PROFILING == 0
                             ZoneScopedN("Pos and Status Check");
+#endif
                             //ChunkPos cameraChunkP = playerCamera->RealChunkPos();
                             ChunkPos cameraChunkP = ToChunk(WorldPos(playerCamera->GetWorldPosition()));
                             originChunk = 0;
@@ -1196,7 +1239,9 @@ White:  Uploaded,");
                             regionSampler = {};
                             if (regionSampler.RegionGather(originChunk))
                             {
+#if REMOVED_SCOPED_PROFILING == 0
                                 ZoneScopedN("Success");
+#endif
                                 CreateVertices* job = new CreateVertices();
                                 job->region = regionSampler;
 
@@ -1208,6 +1253,7 @@ White:  Uploaded,");
                 }
             }
         }
+#endif
 
         {
             ZoneScopedN("Chunk Deletion");

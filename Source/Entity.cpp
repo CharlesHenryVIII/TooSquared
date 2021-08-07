@@ -483,7 +483,6 @@ Item* Items::Add(std::vector<EntityID>& itemIDs, BlockType blockType, const Worl
 //Must Lock Before?
 Item* Items::Get(EntityID ID)
 {
-    ZoneScopedN("Get Item");
     assert(OnMainThread());
     for (int32 i = 0; i < m_items.size(); i++)
     {
