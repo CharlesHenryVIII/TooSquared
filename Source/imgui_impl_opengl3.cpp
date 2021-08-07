@@ -472,7 +472,11 @@ bool ImGui_ImplOpenGL3_CreateFontsTexture()
 #ifdef GL_UNPACK_ROW_LENGTH
     glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 #endif
+#if 1
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8_ALPHA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+#else
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+#endif
 
     // Store our identifier
     io.Fonts->SetTexID((ImTextureID)(intptr_t)g_FontTexture);

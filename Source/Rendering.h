@@ -72,6 +72,7 @@ public:
     enum T : uint32 {
         Invalid,
         Minecraft,
+        MinecraftRGB,
         Test,
         Plain,
         Count,
@@ -101,8 +102,8 @@ public:
 
 
     Texture(Texture::TextureParams tp);
-    Texture(const char* fileLocation);
-    Texture(uint8* data, Vec2Int size);//, int32 m_bytesPerPixel = 2);
+    Texture(const char* fileLocation, GLint colorFormat);
+    Texture(uint8* data, Vec2Int size, GLint colorFormat);//, int32 m_bytesPerPixel = 2);
     ~Texture();
     void Bind();
 };

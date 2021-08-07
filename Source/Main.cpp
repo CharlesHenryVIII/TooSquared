@@ -196,10 +196,6 @@ int main(int argc, char* argv[])
     BlockType ItemToInventoryFromImGUIType = BlockType::Empty;
     uint32 ItemToInventoryFromImGUICount = 0;
 
-    //Item* parentItem= g_items.Add(BlockType::Grass, { 50, 150, 0 });
-    //Item* childItem = g_items.Add(BlockType::Grass, {50, 150, 0});
-    //parentItem->m
-
     //___________
     //IMGUI SETUP
     //___________
@@ -229,24 +225,6 @@ int main(int argc, char* argv[])
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     ImGuiIO& imGuiIO = ImGui::GetIO();
-
-
-
-
-
-    //_______________
-    //Player Types TO BE MOVED LATER
-    //_______________
-
-    //Inventory playerInventory = {};
-    //Capsule playerCollider = {
-    //.m_radius = 0.25f,
-    //.m_height = 1.8f,
-    //};
-    //MovementType playerMovementType = MovementType::Fly;
-
-
-
 
     bool g_cursorEngaged = true;
 
@@ -486,36 +464,6 @@ int main(int argc, char* argv[])
         // change this value to your liking
         float sensitivity = 0.3f;
         playerInput.mouse.pDelta *= sensitivity;
-
-
-        //if (playerInput.keyStates[SDL_BUTTON_LEFT].down)
-        {
-#if 0
-            float mouseSensativity = 0.4f;
-            float yaw   = -(playerInput.mouse.pDelta.x * mouseSensativity);
-            float pitch = -(playerInput.mouse.pDelta.y * mouseSensativity);
-
-#if 1
-            //player->m_transform.m_quat *= gb_quat_euler_angles(pitch, yaw, 0.0f);
-
-            float newpitch = gb_quat_pitch(player->m_transform.m_quat) + DegToRad(pitch);
-            //newpitch = Clamp<float>(newpitch, DegToRad(-89.0f), DegToRad(89.0f));
-            float newyaw = gb_quat_yaw(player->m_transform.m_quat) + DegToRad(yaw);
-            player->m_transform.m_quat = gb_quat_euler_angles(newpitch, newyaw, 0.0f);
-
-#else
-            playerCamera->m_transform.m_quat *= gb_quat_euler_angles(pitch, 0.0f, 0.0f);
-            player->m_transform.m_quat       *= gb_quat_euler_angles(0.0f, yaw, 0.0f);
-#endif
-#elif 0
-            float mouseSensativity = 0.4f;
-            playerCamera->m_yaw   += playerInput.mouse.pDelta.x * mouseSensativity;
-            playerCamera->m_pitch -= playerInput.mouse.pDelta.y * mouseSensativity;
-
-            //make sure that when pitch is out of bounds, screen doesn't get flipped
-            playerCamera->m_pitch = Clamp<float>(playerCamera->m_pitch, -89.0f, 89.0f);
-#endif
-        }
 
         if (playerInput.keyStates[SDLK_e].downThisFrame)
         {
@@ -830,7 +778,7 @@ White:  Uploaded,");
                 }
 
                 //(ImTextureID)(intptr_t)g_FontTexture
-                ImTextureID imMinecraftTextureID = (ImTextureID)(intptr_t)g_renderer.textures[Texture::Minecraft]->m_handle;//ImGui::Image();
+                ImTextureID imMinecraftTextureID = (ImTextureID)(intptr_t)g_renderer.textures[Texture::MinecraftRGB]->m_handle;//ImGui::Image();
                 ImVec4 tint_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f);   // No tint
                 ImVec4 border_col = ImVec4(1.0f, 1.0f, 1.0f, 1.0f); // 50% opaque white
                 float sizeOnScreen = 32;
@@ -998,17 +946,9 @@ White:  Uploaded,");
         {
             ZoneScopedN("Player Input Update");
             //Inventory Slot Selection:
-            //TODO: improve
-            //if (playerInput.mouse.wheel.y > 0)
-            //{
             if (playerInput.mouse.wheelInstant.y != 0)
                 player->m_inventory.m_slotSelected = Clamp<int32>(player->m_inventory.m_slotSelected - playerInput.mouse.wheelInstant.y, 0, MAX_SLOTS - 1);
-            //}
-            //else if (playerInput.mouse.wheel.y > 0)
-            //{
-            //    if (player->m_inventory.m_slotSelected = (player->m_inventory.m_slotSelected - 1) < 0)
-            //        player->m_inventory.m_slotSelected = MAX_SLOTS;
-            //}
+
             for (int32 c = SDLK_1; c <= SDLK_8; c++)
             {
                 if (playerInput.keyStates[c].downThisFrame)
@@ -1086,23 +1026,6 @@ White:  Uploaded,");
                 }
             }
         }
-
-
-
-        ////TODO: Optimize to update corners (max 4 chunks)
-        //for (int32 c = SDLK_1; c <= SDLK_9; c++)
-        //{
-        //    //if (playerInput.keyStates[c].downThisFrame)
-        //    if (playerInput.keyStates[c].downThisFrame && g_cursorEngaged)
-        //    {
-        //        if (validHit)
-        //        {
-        //            //SetBlock(hitBlock, hitNormal, BlockType(c - SDLK_1 + 1));
-        //            SetBlock({ hitBlock.p.x + int32(hitNormal.x), hitBlock.p.y + int32(hitNormal.y), hitBlock.p.z + int32(hitNormal.z) }, BlockType(c - SDLK_1 + 1));
-        //            break;
-        //        }
-        //    }
-        //}
 
         //testCamera.p = { 0, 100, 0 };
         //gb_mat4_look_at(&g_camera.view, g_camera.p.p, testCamera.p.p, {0, 1, 0});
@@ -1183,7 +1106,6 @@ White:  Uploaded,");
 
         //SKYBOX
         {
-            //glBlendFunc(GL_ONE, GL_ONE);
             ZoneScopedN("Draw Skybox");
 
             glDepthMask(GL_FALSE);
@@ -1212,7 +1134,6 @@ White:  Uploaded,");
             glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
             glDepthMask(GL_TRUE);
-            //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         }
 
         {
@@ -1231,7 +1152,6 @@ White:  Uploaded,");
                     multiThreading.SubmitJob(job);
                 }
             }
-            //SDL_SemWait(g_jobHandler.wait_semaphore);
         }
 
         {
@@ -1532,10 +1452,6 @@ White:  Uploaded,");
 
         {
             ZoneScopedN("Resolve Framebuffers");
-            //g_renderer.postTarget->Bind();
-            //glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            //glClearDepth(0.0f);
-            //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             ResolveMSAAFramebuffer(g_renderer.opaqueTarget, g_renderer.postTarget, (GL_COLOR_BUFFER_BIT));
             ResolveTransparentChunkFrameBuffer();
             
@@ -1544,34 +1460,10 @@ White:  Uploaded,");
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             glEnable(GL_BLEND);
             g_renderer.postTarget->Bind();
-            //glBindFramebuffer(GL_FRAMEBUFFER, 0);
             glActiveTexture(GL_TEXTURE0);
             g_renderer.transparentPostTarget->m_color->Bind();
             g_renderer.programs[+Shader::BufferCopy]->UseShader();
             g_renderer.postVertexBuffer->Bind();
-
-            //ResolveMSAAFramebuffer(g_renderer.opaqueTarget, g_renderer.postTarget, (GL_COLOR_BUFFER_BIT));
-
-            //FrameBuffer* read = g_renderer.opaqueTarget;
-            //FrameBuffer* draw = g_renderer.postTarget;
-            //glBindFramebuffer(GL_READ_FRAMEBUFFER, read->m_handle);
-            ////glReadBuffer(GL_NONE);
-            //glBindFramebuffer(GL_DRAW_FRAMEBUFFER, draw->m_handle);
-            ////glDrawBuffer(GL_NONE);
-            //glBlitFramebuffer(0, 0, read->m_size.x, read->m_size.y, 0, 0, read->m_size.x, read->m_size.y, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-            //glBlitFramebuffer(0, 0, read->m_size.x, read->m_size.y, 0, 0, read->m_size.x, read->m_size.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-
-            //ResolveMSAAFramebuffer(g_renderer.opaqueTarget, g_renderer.postTarget, GL_DEPTH_BUFFER_BIT);
-            //g_renderer.computePrograms[+ComputeShader::MSAADepthResolve]->UseShader();
-            //Vec3Int maxWorkers = {};
-            //glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &maxWorkers.x);
-            //glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &maxWorkers.y);
-            //glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &maxWorkers.z);
-            //maxWorkers = Min(maxWorkers, {16, 16, 1});
-            //glDispatchCompute(maxWorkers.x, maxWorkers.y, maxWorkers.z);
-            ////ResolveMSAAFramebuffer(g_renderer.opaqueTarget, g_renderer.postTarget, GL_DEPTH_BUFFER_BIT);
-            ////g_renderer.opaqueTarget->Bind();
-            ////g_renderer.postTarget->Bind();
         }
 
         {
@@ -1594,17 +1486,21 @@ White:  Uploaded,");
             glEnableVertexArrayAttrib(g_renderer.vao, 1);
             glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
             glEnableVertexArrayAttrib(g_renderer.vao, 2);
+            glEnable(GL_FRAMEBUFFER_SRGB);
             glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+            glDisable(GL_FRAMEBUFFER_SRGB);
         }
 
-        if (showIMGUI)
         {
             ZoneScopedN("ImGui Render");
-            ImGui::Render();
-            //glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-            //glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
-            //glClear(GL_COLOR_BUFFER_BIT);
-            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+            if (showIMGUI)
+            {
+                ImGui::Render();
+                //glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+                //glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+                //glClear(GL_COLOR_BUFFER_BIT);
+                ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+            }
         }
 
         {
@@ -1613,7 +1509,6 @@ White:  Uploaded,");
                 SDL_ShowCursor(SDL_DISABLE);
 
             SDL_GL_SwapWindow(g_window.SDL_Context);
-            glEnable(GL_DEPTH_TEST);
         }
         FrameMark;
     }

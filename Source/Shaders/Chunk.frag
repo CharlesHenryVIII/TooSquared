@@ -94,8 +94,8 @@ void main()
     float adjustedVertexCount = min(p_connectedVertices, 2);
     float ambientOcclusion = adjustedVertexCount / 3.0;
     ambientOcclusion = clamp(ambientOcclusion, 0, 1);
-    //ambientOcclusion = ambientOcclusion * ambientOcclusion * ambientOcclusion;
-    ambientOcclusion = ambientOcclusion * ambientOcclusion;
+    ambientOcclusion = ambientOcclusion * ambientOcclusion * ambientOcclusion;
+    //ambientOcclusion = ambientOcclusion * ambientOcclusion;
 
 
     //

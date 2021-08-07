@@ -647,7 +647,7 @@ Vec3 Voronoi_DistanceAndPositionOfCenter2(Vec2 v)
 
 void NoiseInit()
 {
-    s_randomNoise = new Texture("Assets/noise_texture_0002.png");
+    s_randomNoise = new Texture("Assets/noise_texture_0002.png", GL_RGBA);
 }
 
 Vec3 Voronoi_DAndP(Vec2 v)

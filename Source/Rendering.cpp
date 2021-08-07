@@ -97,7 +97,7 @@ Texture::Texture(TextureParams tp)
 #endif
 }
 
-Texture::Texture(const char* fileLocation)
+Texture::Texture(const char* fileLocation, GLint colorFormat)
 {
     m_data = stbi_load(fileLocation, &m_size.x, &m_size.y, &m_bytesPerPixel, STBI_rgb_alpha);
 
@@ -107,13 +107,14 @@ Texture::Texture(const char* fileLocation)
     glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(m_target, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(m_target, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexImage2D(m_target, 0, GL_RGBA, m_size.x, m_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_data);
+    glTexImage2D(m_target, 0, colorFormat, m_size.x, m_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_data);
+    //glTexImage2D(m_target, 0, GL_RGBA, m_size.x, m_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_data);
 #ifdef _DEBUGPRINT
     DebugPrint("Texture Created\n");
 #endif
 }
 
-Texture::Texture(uint8* data, Vec2Int size)//, int32 m_bytesPerPixel)
+Texture::Texture(uint8* data, Vec2Int size, GLint colorFormat)//, int32 m_bytesPerPixel)
 {
     m_data = data;
     m_size = size;
@@ -125,7 +126,7 @@ Texture::Texture(uint8* data, Vec2Int size)//, int32 m_bytesPerPixel)
     glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(m_target, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(m_target, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexImage2D(m_target, 0, GL_RGBA, m_size.x, m_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_data);
+    glTexImage2D(m_target, 0, colorFormat, m_size.x, m_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_data);
 #ifdef _DEBUGPRINT
     DebugPrint("Texture Created\n");
 #endif
@@ -168,7 +169,8 @@ TextureArray::TextureArray(const char* fileLocation)
     uint32 width = m_spritesPerSide.x;
     uint32 depth = 256;
 
-    glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipMapLevels, GL_RGBA8, width, height, depth);
+    //glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipMapLevels, GL_RGBA8, width, height, depth);
+    glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipMapLevels, GL_SRGB8_ALPHA8, width, height, depth);
 
     //TODO: Fix
     uint32 colors[16 * 16] = {};
@@ -1164,6 +1166,7 @@ void InitializeVideo()
     glDepthMask(GL_TRUE);
     glEnable(GL_CULL_FACE);
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    glEnable(GL_FRAMEBUFFER_SRGB); 
 
     glGenVertexArrays(1, &g_renderer.vao);
     glBindVertexArray(g_renderer.vao);
@@ -1172,13 +1175,14 @@ void InitializeVideo()
     g_renderer.textures[Texture::Minecraft] = new Texture("Assets/TestSpriteSheet.png");
     g_renderer.spriteTextArray = new TextureArray("Assets/TestSpriteSheet.png");
 #else
-    g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png");
+    g_renderer.textures[Texture::MinecraftRGB] = new Texture("Assets/MinecraftSpriteSheet20120215.png", GL_RGBA);
+    g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png", GL_SRGB8_ALPHA8);
     g_renderer.spriteTextArray = new TextureArray("Assets/MinecraftSpriteSheet20120215.png");
 #endif
     //g_renderer.skyBox = new TextureCube("Assets/skybox.dds");
     g_renderer.skyBoxNight = new TextureCube("Assets/skyboxNight.dds");
     g_renderer.skyBoxDay   = new TextureCube("Assets/sky.dds");//DayMinecraftSkybox2.dds");
-    g_renderer.textures[Texture::T::Plain] = new Texture(s_pixelTextureData, { 1, 1 });
+    g_renderer.textures[Texture::T::Plain] = new Texture(s_pixelTextureData, { 1, 1 }, GL_RGBA);
 
     g_renderer.programs[+Shader::OpaqueChunk]      = new ShaderProgram("Source/Shaders/Chunk.vert",      "Source/Shaders/Chunk.frag");
     g_renderer.programs[+Shader::TransparentChunk] = new ShaderProgram("Source/Shaders/Chunk.vert",      "Source/Shaders/ChunkTransparent.frag");
