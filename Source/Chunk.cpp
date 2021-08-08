@@ -2134,7 +2134,7 @@ bool RayVsChunk(const Ray& ray, const ChunkIndex& chunkIndex, GamePos& block, fl
     {
         AABB chunkBox;
         chunkBox.min = ToWorld(g_chunks->p[chunkIndex]).p;
-        chunkBox.max = chunkBox.min + (Vec3({ CHUNK_X, CHUNK_X, CHUNK_Z }));
+        chunkBox.max = chunkBox.min + (Vec3({ CHUNK_X, CHUNK_Y, CHUNK_Z }));
         float chunkDistance;
         Vec3 chunkIntersectionPoint;
         Vec3 chunkNormal;
@@ -2155,9 +2155,12 @@ bool RayVsChunk(const Ray& ray, const ChunkIndex& chunkIndex, GamePos& block, fl
         Vec3 dummyIntersectionPoint;
         Vec3 dummyNormal;
         uint8 dummyFace;
-        c.hit = RayVsAABB(ray, c.box, c.distance, dummyIntersectionPoint, dummyNormal, dummyFace);
+        AABB testBox;
+        testBox.min = c.box.min;
+        testBox.max = c.box.max + 1.0f;
+        c.hit = RayVsAABB(ray, testBox, c.distance, dummyIntersectionPoint, dummyNormal, dummyFace);
         //c.distance = Distance(ray.origin, chunkPieces[y].box.Center());
-        c.underMaxHeight = chunkPieces[y].box.max.y < g_chunks->height[chunkIndex];
+        c.underMaxHeight = chunkPieces[y].box.min.y <= g_chunks->height[chunkIndex];
     }
 
     QuickSort((uint8*)&chunkPieces, arrsize(chunkPieces), sizeof(chunkPieces[0]), RayVsChunkYSectionComparisonFunction);
