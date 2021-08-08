@@ -1930,11 +1930,248 @@ void CreateVertices::DoThing()
     region.DecrimentRefCount();
 }
 
-            //Draw2DSquare(horz);
+//#if 0
+//void OcTree(points)
+//{
+//    binDepths = [0] // Initialize an array of bin depths with this single base - level bin
+//    binParents = [0] // This base level bin is not a child of other bins
+//    binCorners = [min(points) max(points)] // It surrounds all points in XYZ space
+//    pointBins(:) = 1 // Initially, all points are assigned to this first bin
+//    divide(1) // Begin dividing this first bin
+//}
+//
+//    function divide(binNo)
+//
+//    // If this bin meets any exit conditions, do not divide it any further.
+//    binPointCount = nnz(pointBins == binNo)
+//    binEdgeLengths = binCorners(binNo, 1:3) - binCorners(binNo, 4:6)
+//    binDepth = binDepths(binNo)
+//    exitConditionsMet = binPointCount < value || min(binEdgeLengths) < value || binDepth > value
+//    if exitConditionsMet
+//        return;// Exit recursive function
+//    end
+//
+//    // Otherwise, split this bin into 8 new sub - bins with a new division point
+//    newDiv = (binCorners(binNo, 1:3) + binCorners(binNo, 4:6)) / 2
+//    for i = 1:8
+//        newBinNo = length(binDepths) + 1
+//        binDepths(newBinNo) = binDepths(binNo) + 1
+//        binParents(newBinNo) = binNo
+//        binCorners(newBinNo) = [one of the 8 pairs of the newDiv with minCorner or maxCorner]
+//        oldBinMask = pointBins == binNo
+//        // Calculate which points in pointBins == binNo now belong in newBinNo
+//        pointBins(newBinMask) = newBinNo
+//        // Recursively divide this newly created bin
+//        divide(newBinNo)
+//    end
+//#endif
 
-bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& distance, Vec3& normal)
+struct OctreeBoxes {
+    AABB box;
+    float distance;
+    bool hit;
+    Vec3 normal;
+};
+
+int32 OctreeComparisonFunction(const void* a, const void* b)
 {
+    OctreeBoxes* a_ = (OctreeBoxes*)(a);
+    OctreeBoxes* b_ = (OctreeBoxes*)(b);
+    if (a_->hit > b_->hit)
+        return 1;
+    else if (a_->hit == b_->hit)
+        return a_->distance < b_->distance;
+    else
+        return 0;
+}
+
+bool OctreeCheck(const Ray& ray, const AABB& box, const ChunkIndex& chunkIndex, GamePos& block, float& distance, Vec3& normal, bool& hitBottom)
+{
+#define OctreeImplimentationTry 0
+
+#if OctreeImplimentationTry == 1
+
+    //Doesnt work since we are not looking for the closest hit object
+    //only returning on the first hit object.
+    if (box.min == box.max)
+    {
+        ChunkPos chunkPos;
+        Vec3Int blockPos = Convert_GameToBlock(chunkPos, ToGame(WorldPos(box.min)));
+        if (g_chunks->blocks[chunkIndex].e[blockPos.x][blockPos.y][blockPos.z] != BlockType::Empty)
+            return true;
+        else
+            return false;
+    }
+   
+    Vec3 halfDiff = (box.max - box.min) / 2.0f;
+    AABB boxbox;
+
+    for (int32 y = 0; y < 2; y++)
+    {
+        for (int32 z = 0; z < 2; z++)
+        {
+            for (int32 x = 0; x < 2; x++)
+            {
+                Vec3 offsets = { (float)x, (float)y, (float)z };
+                boxbox.min = box.min + HadamardProduct(offsets, Ceiling(halfDiff));
+                boxbox.max = box.max - HadamardProduct(Vec3({ 1.0f, 1.0f, 1.0f }) - offsets, Ceiling(halfDiff));
+
+                assert(fmodf(boxbox.min.x, 1.0f) == 0.0f);
+                assert(fmodf(boxbox.min.y, 1.0f) == 0.0f);
+                assert(fmodf(boxbox.min.z, 1.0f) == 0.0f);
+                assert(fmodf(boxbox.max.x, 1.0f) == 0.0f);
+                assert(fmodf(boxbox.max.y, 1.0f) == 0.0f);
+                assert(fmodf(boxbox.max.z, 1.0f) == 0.0f);
+
+                Vec3 intersectionPoint;
+                uint8 testFace;
+                float testDistance;
+                Vec3 testNormal;
+                AABB testBox;
+                testBox.min = boxbox.min;
+                testBox.max = boxbox.max + Vec3({1, 1, 1});
+                if (RayVsAABB(ray, testBox, testDistance, intersectionPoint, testNormal, testFace))
+                {
+                    if (OctreeCheck(ray, boxbox, chunkIndex, block, distance, normal, hitBottom))
+                    {
+                        if (!hitBottom)
+                        {
+                            block.p = { (int32)boxbox.min.x, (int32)boxbox.min.y, (int32)boxbox.min.z };
+                            distance = testDistance;
+                            normal = testNormal;
+                            hitBottom = true;
+                        }
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    return false;
+
+#else
+
+    if (box.min == box.max)
+    {
+        ChunkPos chunkPos;
+        Vec3Int blockPos = Convert_GameToBlock(chunkPos, ToGame(WorldPos(box.min)));
+        if (g_chunks->blocks[chunkIndex].e[blockPos.x][blockPos.y][blockPos.z] != BlockType::Empty)
+        {
+            return true;
+        }
+        return false;
+    }
+   
+    OctreeBoxes boxes[8] = {};
+    Vec3 halfDiff = (box.max - box.min) / 2.0f;
+
+    for (int32 y = 0; y < 2; y++)
+    {
+        for (int32 z = 0; z < 2; z++)
+        {
+            for (int32 x = 0; x < 2; x++)
+            {
+                Vec3 offsets = { (float)x, (float)y, (float)z };
+                int32 indexNumber = x + y * 2 + z * 4;
+                AABB& boxbox = boxes[indexNumber].box;
+                boxbox = {};
+                boxbox.min = box.min + HadamardProduct(offsets, Ceiling(halfDiff));
+                boxbox.max = box.max - HadamardProduct(Vec3({ 1.0f, 1.0f, 1.0f }) - offsets, Ceiling(halfDiff));
+
+                Vec3 intersectionPoint;
+                uint8 face;
+                AABB testBox;
+                testBox.min = boxbox.min;
+                testBox.max = boxbox.max + Vec3({1, 1, 1});
+                boxes[indexNumber].hit = RayVsAABB(ray, testBox, boxes[indexNumber].distance, intersectionPoint, boxes[indexNumber].normal, face);
+            }
+        }
+    }
+
+    //void QuickSort(uint8* data, const int32 length, const int32 itemSize, int32 (*compare)(const void* a, const void* b))
+    QuickSort((uint8*)&boxes, arrsize(boxes), sizeof(boxes[0]), OctreeComparisonFunction);
+    for (int32 i = 0; i < arrsize(boxes) && boxes[i].hit; i++)
+    {
+        if (OctreeCheck(ray, boxes[i].box, chunkIndex, block, distance, normal, hitBottom))
+        {
+            if (!hitBottom)
+            {
+                block.p = { (int32)boxes[i].box.min.x, (int32)boxes[i].box.min.y, (int32)boxes[i].box.min.z };
+                distance = boxes[i].distance;
+                normal = boxes[i].normal;
+                hitBottom = true;
+            }
+            return true;
+        }
+    }
+    return false;
+    
+#endif
+}
+
+struct RayVsChunkYSection {
+    float distance;
+    bool underMaxHeight;
+    bool hit;
+    AABB box;
+};
+int32 RayVsChunkYSectionComparisonFunction(const void* a, const void* b)
+{
+    RayVsChunkYSection* a_ = (RayVsChunkYSection*)(a);
+    RayVsChunkYSection* b_ = (RayVsChunkYSection*)(b);
+    if (a_->underMaxHeight > b_->underMaxHeight)
+        return 1;
+    else if (a_->underMaxHeight == b_->underMaxHeight)
+        return a_->distance < b_->distance;
+    else
+        return 0;
+}
+bool RayVsChunk(const Ray& ray, const ChunkIndex& chunkIndex, GamePos& block, float& distance, Vec3& normal)
+{
+#if 1
     distance = inf;
+
+    {
+        AABB chunkBox;
+        chunkBox.min = ToWorld(g_chunks->p[chunkIndex]).p;
+        chunkBox.max = chunkBox.min + (Vec3({ CHUNK_X, CHUNK_X, CHUNK_Z }));
+        float chunkDistance;
+        Vec3 chunkIntersectionPoint;
+        Vec3 chunkNormal;
+        uint8 chunkFace;
+        if (!RayVsAABB(ray, chunkBox, chunkDistance, chunkIntersectionPoint, chunkNormal, chunkFace))
+            return false;
+    }
+
+    const int32 ySplits = CHUNK_Y / CHUNK_X;
+    RayVsChunkYSection chunkPieces[ySplits];
+    for (int32 y = 0; y < ySplits; y++)
+    {
+        RayVsChunkYSection& c = chunkPieces[y];
+        c.box.min = ToWorld(g_chunks->p[chunkIndex]).p;
+        c.box.min.y = float(y * CHUNK_X);
+        c.box.max = chunkPieces[y].box.min + (Vec3({CHUNK_X, CHUNK_X, CHUNK_Z}) - 1.0f);
+
+        Vec3 dummyIntersectionPoint;
+        Vec3 dummyNormal;
+        uint8 dummyFace;
+        c.hit = RayVsAABB(ray, c.box, c.distance, dummyIntersectionPoint, dummyNormal, dummyFace);
+        //c.distance = Distance(ray.origin, chunkPieces[y].box.Center());
+        c.underMaxHeight = chunkPieces[y].box.max.y < g_chunks->height[chunkIndex];
+    }
+
+    QuickSort((uint8*)&chunkPieces, arrsize(chunkPieces), sizeof(chunkPieces[0]), RayVsChunkYSectionComparisonFunction);
+    for (int32 y = 0; y < ySplits && chunkPieces[y].underMaxHeight; y++)
+    {
+        bool hitBottom = false;
+        if (chunkPieces[y].hit && OctreeCheck(ray, chunkPieces[y].box, chunkIndex, block, distance, normal, hitBottom))
+            return true;
+    }
+    return distance != inf;
+
+    //chunkBox.max = chunkBox.min + Vec3({ octreeCubeDimensions, octreeCubeDimensions, octreeCubeDimensions });
+
+#else
     int32 rayCheckCount = 0;
     int32 maxYHeight = g_chunks->height[chunkIndex];
 
@@ -2011,6 +2248,7 @@ bool RayVsChunk(const Ray& ray, ChunkIndex chunkIndex, GamePos& block, float& di
         }
     }
     return distance != inf;
+#endif
 }
 
 void ChunkUpdateBlocks(ChunkPos p, Vec3Int offset = {})

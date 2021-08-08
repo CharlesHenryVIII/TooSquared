@@ -913,6 +913,7 @@ White:  Uploaded,");
                     ZoneScopedN("RayVsChunk Local");
                     if (RayVsChunk(ray, centerChunkIndex, resultPos, distance, hitNormal))
                     {
+                        assert(distance != inf);
                         hitBlock = resultPos;
                         validHit = (distance < 5.0f);
                     }
@@ -926,7 +927,6 @@ White:  Uploaded,");
                     {
                         float distanceComparison;
                         Vec3 neighborNormal;
-                        //ZoneScopedN("RayVsChunk2");
                         if (RayVsChunk(ray, neighbor, resultPos, distanceComparison, neighborNormal))
                         {
                             if (distanceComparison < distance)
@@ -1155,7 +1155,6 @@ White:  Uploaded,");
             }
         }
 
-#if 1
         {
             ZoneScopedN("Chunk Loading Vertex Loop");
             RegionSampler regionSampler = {};
@@ -1186,74 +1185,6 @@ White:  Uploaded,");
                     });
             }
         }
-
-#else
-#define REMOVED_SCOPED_PROFILING 1
-        {
-            ZoneScopedN("Chunk Loading Vertex Loop");
-
-            ChunkIndex originChunk = 0;
-            int32 xIncrimentAmount = 0;
-            RegionSampler regionSampler = {};
-
-            for (int32 _drawDistance = 0; _drawDistance < playerCamera->m_drawDistance; _drawDistance++)
-            {
-#if REMOVED_SCOPED_PROFILING == 0
-                ZoneScopedN("Draw Distance Loop");
-#endif
-                for (int32 drawZ = -_drawDistance; drawZ <= _drawDistance; drawZ++)
-                {
-#if REMOVED_SCOPED_PROFILING == 0
-                    ZoneScopedN("Z Loop");
-#endif
-                    if (drawZ == -_drawDistance || drawZ == _drawDistance)
-                    {
-                        //Top and Bottom need to do whole row
-                        xIncrimentAmount = 1;
-                    }
-                    else
-                    {
-                        //Sides need to just do min and max
-                        xIncrimentAmount = _drawDistance * 2;
-                    }
-                    for (int32 drawX = -_drawDistance; drawX <= _drawDistance; drawX += xIncrimentAmount)
-                    {
-#if REMOVED_SCOPED_PROFILING == 0
-                        ZoneScopedN("X Loop");
-#endif
-                        {
-#if REMOVED_SCOPED_PROFILING == 0
-                            ZoneScopedN("Pos and Status Check");
-#endif
-                            //ChunkPos cameraChunkP = playerCamera->RealChunkPos();
-                            ChunkPos cameraChunkP = ToChunk(WorldPos(playerCamera->GetWorldPosition()));
-                            originChunk = 0;
-                            ChunkPos drawDistanceChunk = { cameraChunkP.p.x + drawX, 0, cameraChunkP.p.z + drawZ };
-                            if (!g_chunks->GetChunkFromPosition(originChunk, drawDistanceChunk))
-                                continue;
-                            if (g_chunks->state[originChunk] != ChunkArray::BlocksLoaded)
-                                continue;
-                        }
-
-                        {
-                            regionSampler = {};
-                            if (regionSampler.RegionGather(originChunk))
-                            {
-#if REMOVED_SCOPED_PROFILING == 0
-                                ZoneScopedN("Success");
-#endif
-                                CreateVertices* job = new CreateVertices();
-                                job->region = regionSampler;
-
-                                g_chunks->state[originChunk] = ChunkArray::VertexLoading;
-                                multiThreading.SubmitJob(job);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-#endif
 
         {
             ZoneScopedN("Chunk Deletion");
@@ -1297,7 +1228,6 @@ White:  Uploaded,");
 #ifdef _DEBUG
             const int32 uploadMax = 10;
 #elif NDEBUG
-            //const int32 uploadMax = 40;
             const int32 uploadMax = 300;
 #endif
             Frustum frustum = ComputeFrustum(playerCamera->m_viewProj);

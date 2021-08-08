@@ -457,6 +457,26 @@ template <typename T>
     return { floorf(v.x), floorf(v.y), floorf(v.z), floorf(v.w)  };
 }
 
+[[nodiscard]] inline Vec3 Trunc(Vec3 v)
+{
+    return { truncf(v.x), truncf(v.y), truncf(v.z) };
+}
+
+[[nodiscard]] inline Vec4 Trunc(Vec4 v)
+{
+    return { truncf(v.x), truncf(v.y), truncf(v.z), truncf(v.w)  };
+}
+
+[[nodiscard]] inline Vec3 Ceiling(Vec3 v)
+{
+    return { ceilf(v.x), ceilf(v.y), ceilf(v.z) };
+}
+
+[[nodiscard]] inline Vec4 Ceiling(Vec4 v)
+{
+    return { ceilf(v.x), ceilf(v.y), ceilf(v.z), ceilf(v.w)  };
+}
+
 [[nodiscard]] inline float Fract(float a)
 {
     return a - floorf(a);
