@@ -116,31 +116,24 @@ struct RegionSampler {
 };
 
 #define OCTREE 1
+//From 86 bytes to 60 bytes using the union
 struct ChunkOctreeSet
 {
-    bool            m_isBranch    = false;
-    int32           m_branch_children[2][2][2] = {};
-    Range<Vec3Int>  m_branch_range = {};
-
-    BlockType       m_block       = BlockType::Empty;
-    GamePos         m_position    = {};
+    bool m_isBranch = false;
+    union {
+        struct Branch {
+            int32           m_children[2][2][2] = {};
+            Range<Vec3Int>  m_range = {};
+        } branch;
+        struct Block {
+            BlockType m_block = BlockType::Empty;
+            GamePos   m_position = {};
+        } block;
+    };
 };
-struct ChunkOctree {
+class ChunkOctree {
 
-    bool                         m_isInitialized = false;
-    std::vector <ChunkOctreeSet> m_octrees;
-    void Init(ChunkPos baseChunkPosition)
-    {
-        m_octrees.clear();
-        ChunkOctreeSet octree;
-        octree.m_isBranch = true;
-        octree.m_branch_range.min = ToGame(baseChunkPosition).p;
-        octree.m_branch_range.max = octree.m_branch_range.min + Vec3Int({ CHUNK_X, CHUNK_Y, CHUNK_Z });
-        octree.m_branch_range.max = octree.m_branch_range.max - 1;
-        m_octrees.push_back(octree);
-        m_isInitialized = true;
-    }
-    bool Add(const GamePos& p, const BlockType blockType, int32 index = 0)
+    bool Add(const GamePos& p, const BlockType blockType, int32 index)
     {
         //check array bounds
         if (index >= m_octrees.size())
@@ -153,23 +146,23 @@ struct ChunkOctree {
         //confirm octree is branch
         if (octree.m_isBranch)
         {
-            if (p.p >= octree.m_branch_range.min && p.p <= octree.m_branch_range.max)
+            if (p.p >= octree.branch.m_range.min && p.p <= octree.branch.m_range.max)
             {
                 Vec3Int indices = {};
-                Vec3Int center = octree.m_branch_range.Center();
+                Vec3Int center = octree.branch.m_range.Center();
                 indices.x = p.p.x > center.x;
                 indices.y = p.p.y > center.y;
                 indices.z = p.p.z > center.z;
-                const auto childIndex = octree.m_branch_children[indices.x][indices.y][indices.z];
+                const auto childIndex = octree.branch.m_children[indices.x][indices.y][indices.z];
                 if (childIndex == 0)
                 {
                     //child is empty (empty leaf), fill it and return success
                     ChunkOctreeSet octreeSet = {};
                     octreeSet.m_isBranch = false;
-                    octreeSet.m_position = p;
-                    octreeSet.m_block    = blockType;
+                    octreeSet.block.m_position = p;
+                    octreeSet.block.m_block    = blockType;
                     m_octrees.push_back(octreeSet);
-                    m_octrees[index].m_branch_children[indices.x][indices.y][indices.z] = int32(m_octrees.size()) - 1;
+                    m_octrees[index].branch.m_children[indices.x][indices.y][indices.z] = int32(m_octrees.size()) - 1;
                     return true;
                 }
 
@@ -179,11 +172,11 @@ struct ChunkOctree {
                     //child is branch
                     return Add(p, blockType, childIndex);
                 }
-                else if (m_octrees[childIndex].m_block == BlockType::Empty)
+                else if (m_octrees[childIndex].block.m_block == BlockType::Empty)
                 {
                     //child is empty leaf
-                    m_octrees[childIndex].m_position = p;
-                    m_octrees[childIndex].m_block = blockType;
+                    m_octrees[childIndex].block.m_position = p;
+                    m_octrees[childIndex].block.m_block = blockType;
                     return true;
                 }
                 else
@@ -193,20 +186,13 @@ struct ChunkOctree {
                     ChunkOctreeSet tempFilledLeaf = m_octrees[childIndex];
                     m_octrees[childIndex] = {};
                     m_octrees[childIndex].m_isBranch = true;
-#if 1
-                    m_octrees[childIndex].m_branch_range.min.x = (indices.x)  ? center.x + 1 : octree.m_branch_range.min.x;
-                    m_octrees[childIndex].m_branch_range.min.y = (indices.y)  ? center.y + 1 : octree.m_branch_range.min.y;
-                    m_octrees[childIndex].m_branch_range.min.z = (indices.z)  ? center.z + 1 : octree.m_branch_range.min.z;
-                    m_octrees[childIndex].m_branch_range.max.x = (!indices.x) ? center.x : octree.m_branch_range.max.x;
-                    m_octrees[childIndex].m_branch_range.max.y = (!indices.y) ? center.y : octree.m_branch_range.max.y;
-                    m_octrees[childIndex].m_branch_range.max.z = (!indices.z) ? center.z : octree.m_branch_range.max.z;
-#else
-                    Vec3Int halfDiff = (octree.m_branch_range.max - octree.m_branch_range.min) / 2.0f;
-                    child.m_branch_range.min = octree.m_branch_range.min + HadamardProduct(indices, Ceiling(halfDiff));
-                    boxbox.min = box.min + HadamardProduct(offsets, Ceiling(halfDiff));
-                    boxbox.max = box.max - HadamardProduct(Vec3({ 1.0f, 1.0f, 1.0f }) - offsets, Ceiling(halfDiff));
-#endif
-                    bool succesfullyAddedTemp = Add(tempFilledLeaf.m_position, tempFilledLeaf.m_block, childIndex);
+                    m_octrees[childIndex].branch.m_range.min.x = (indices.x)  ? center.x + 1 : octree.branch.m_range.min.x;
+                    m_octrees[childIndex].branch.m_range.min.y = (indices.y)  ? center.y + 1 : octree.branch.m_range.min.y;
+                    m_octrees[childIndex].branch.m_range.min.z = (indices.z)  ? center.z + 1 : octree.branch.m_range.min.z;
+                    m_octrees[childIndex].branch.m_range.max.x = (!indices.x) ? center.x : octree.branch.m_range.max.x;
+                    m_octrees[childIndex].branch.m_range.max.y = (!indices.y) ? center.y : octree.branch.m_range.max.y;
+                    m_octrees[childIndex].branch.m_range.max.z = (!indices.z) ? center.z : octree.branch.m_range.max.z;
+                    bool succesfullyAddedTemp = Add(tempFilledLeaf.block.m_position, tempFilledLeaf.block.m_block, childIndex);
                     return Add(p, blockType, childIndex) && succesfullyAddedTemp;
                 }
             }
@@ -215,6 +201,28 @@ struct ChunkOctree {
             assert(false);
 
         return false;
+    }
+
+public:
+
+    bool                         m_isInitialized = false;
+    std::vector <ChunkOctreeSet> m_octrees;
+    void Init(ChunkPos baseChunkPosition)
+    {
+        m_octrees.clear();
+        m_octrees.reserve(30000);
+        ChunkOctreeSet octree = {};
+        octree.m_isBranch = true;
+        octree.branch.m_range.min = ToGame(baseChunkPosition).p;
+        octree.branch.m_range.max = octree.branch.m_range.min + Vec3Int({ CHUNK_X, CHUNK_Y, CHUNK_Z });
+        octree.branch.m_range.max = octree.branch.m_range.max - 1;
+        m_octrees.push_back(octree);
+        m_isInitialized = true;
+    }
+
+    bool Add(const GamePos& p, const BlockType blockType)
+    {
+        return Add(p, blockType, 0);
     }
 };
 

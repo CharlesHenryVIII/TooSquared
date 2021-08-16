@@ -1964,43 +1964,41 @@ bool ChunkOctreeCheck(const Ray& ray, const ChunkIndex chunkIndex, const ChunkOc
     };
     std::vector<CollisionData> collisions;
     collisions.reserve(8);
-    bool hadCollision = false;
-    bool hitBlock = false;
 
     {
+        //ZoneScopedN("Octree Raycast Loop");
         for (int32 x = 0; x < 2; x++)
         {
             for (int32 y = 0; y < 2; y++)
             {
                 for (int32 z = 0; z < 2; z++)
                 {
-                    const auto  childIndex = chunkOctree.m_octrees[octreeIndex].m_branch_children[x][y][z];
+                    const auto& childIndex = chunkOctree.m_octrees[octreeIndex].branch.m_children[x][y][z];
                     if (childIndex)
                     {
-                        const auto  child = chunkOctree.m_octrees[childIndex];
+                        const auto& child = chunkOctree.m_octrees[childIndex];
                         AABB box;
                         CollisionData cd = {};
                         cd.distance = inf;
                         cd.index = childIndex;
                         if (child.m_isBranch)
                         {
-                            box.min = ToWorld(GamePos(child.m_branch_range.min)).p;
-                            box.max = ToWorld(GamePos(child.m_branch_range.max)).p + 1.0f;
+                            box.min = ToWorld(GamePos(child.branch.m_range.min)).p;
+                            box.max = ToWorld(GamePos(child.branch.m_range.max)).p + 1.0f;
                             cd.isBlock = false;
                         }
-                        else if (child.m_block != BlockType::Empty)
+                        else if (child.block.m_block != BlockType::Empty)
                         {
-                            box.min = ToWorld(child.m_position).p;
+                            box.min = ToWorld(child.block.m_position).p;
                             box.max = box.min + 1.0f;
                             cd.isBlock = true;
-                            cd.position = child.m_position;
+                            cd.position = child.block.m_position;
                         }
 
                         Vec3  unused_intersect;
                         uint8 unused_face;
                         if (RayVsAABB(ray, box, cd.distance, unused_intersect, cd.normal, unused_face))
                         {
-                            hadCollision = true;
                             bool foundInsertion = false;
                             for (int32 i = 0; i < collisions.size(); i++)
                             {
@@ -2014,7 +2012,6 @@ bool ChunkOctreeCheck(const Ray& ray, const ChunkIndex chunkIndex, const ChunkOc
                             if (!foundInsertion)
                             {
                                 collisions.push_back(cd);
-                                hadCollision = true;
                             }
                         }
                     }
@@ -2025,21 +2022,18 @@ bool ChunkOctreeCheck(const Ray& ray, const ChunkIndex chunkIndex, const ChunkOc
 
     {
         //ZoneScopedN("Octree Collision Loop");
-        if (hadCollision)
+        for (const auto& collision : collisions)
         {
-            for (const auto& collision : collisions)
+            if (collision.isBlock)
             {
-                if (collision.isBlock)
-                {
-                    block = collision.position;
-                    distance = collision.distance;
-                    normal = collision.normal;
-                    return true;
-                }
-                else if (ChunkOctreeCheck(ray, chunkIndex, chunkOctree, collision.index, block, distance, normal))
-                {
-                    return true;
-                }
+                block = collision.position;
+                distance = collision.distance;
+                normal = collision.normal;
+                return true;
+            }
+            else if (ChunkOctreeCheck(ray, chunkIndex, chunkOctree, collision.index, block, distance, normal))
+            {
+                return true;
             }
         }
     }
