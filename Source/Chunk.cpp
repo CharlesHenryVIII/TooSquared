@@ -74,6 +74,8 @@ void ChunkArray::ClearChunk(ChunkIndex index)
     std::vector<Vertex_Chunk> swap2;
     translucentFaceVertices[index].swap(swap2);
 
+    octree[index].Clear();
+
     state[index] = {};
     opaqueIndexCount[index] = {};
     translucentIndexCount[index] = {};

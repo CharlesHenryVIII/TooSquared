@@ -116,7 +116,6 @@ struct RegionSampler {
 };
 
 #define OCTREE 1
-//From 86 bytes to 60 bytes using the union
 struct ChunkOctreeSet
 {
     bool m_isBranch = false;
@@ -209,7 +208,7 @@ public:
     std::vector <ChunkOctreeSet> m_octrees;
     void Init(ChunkPos baseChunkPosition)
     {
-        m_octrees.clear();
+        Clear();
         m_octrees.reserve(30000);
         ChunkOctreeSet octree = {};
         octree.m_isBranch = true;
@@ -218,6 +217,13 @@ public:
         octree.branch.m_range.max = octree.branch.m_range.max - 1;
         m_octrees.push_back(octree);
         m_isInitialized = true;
+    }
+    void Clear()
+    {
+        m_octrees.clear();
+        std::vector<ChunkOctreeSet> swap3;
+        m_octrees.swap(swap3);
+        m_isInitialized = false;
     }
 
     bool Add(const GamePos& p, const BlockType blockType)
