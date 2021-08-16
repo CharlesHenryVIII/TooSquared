@@ -123,24 +123,24 @@ struct ChunkOctreeSet
     Range<Vec3Int>  m_branch_range = {};
 
     BlockType       m_block       = BlockType::Empty;
-    Vec3Int         m_position    = {};
+    GamePos         m_position    = {};
 };
 struct ChunkOctree {
 
     bool                         m_isInitialized = false;
     std::vector <ChunkOctreeSet> m_octrees;
-    void Init()
+    void Init(ChunkPos baseChunkPosition)
     {
         m_octrees.clear();
         ChunkOctreeSet octree;
         octree.m_isBranch = true;
-        octree.m_branch_range.min = {};
-        octree.m_branch_range.max = { CHUNK_X, CHUNK_Y, CHUNK_Z };
+        octree.m_branch_range.min = ToGame(baseChunkPosition).p;
+        octree.m_branch_range.max = octree.m_branch_range.min + Vec3Int({ CHUNK_X, CHUNK_Y, CHUNK_Z });
         octree.m_branch_range.max = octree.m_branch_range.max - 1;
         m_octrees.push_back(octree);
         m_isInitialized = true;
     }
-    bool Add(const Vec3Int& p, const BlockType blockType, int32 index = 0)
+    bool Add(const GamePos& p, const BlockType blockType, int32 index = 0)
     {
         //check array bounds
         if (index >= m_octrees.size())
@@ -153,13 +153,13 @@ struct ChunkOctree {
         //confirm octree is branch
         if (octree.m_isBranch)
         {
-            if (p >= octree.m_branch_range.min && p <= octree.m_branch_range.max)
+            if (p.p >= octree.m_branch_range.min && p.p <= octree.m_branch_range.max)
             {
                 Vec3Int indices = {};
                 Vec3Int center = octree.m_branch_range.Center();
-                indices.x = p.x > center.x;
-                indices.y = p.y > center.y;
-                indices.z = p.z > center.z;
+                indices.x = p.p.x > center.x;
+                indices.y = p.p.y > center.y;
+                indices.z = p.p.z > center.z;
                 const auto childIndex = octree.m_branch_children[indices.x][indices.y][indices.z];
                 if (childIndex == 0)
                 {
