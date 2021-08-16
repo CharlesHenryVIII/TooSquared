@@ -911,6 +911,7 @@ White:  Uploaded,");
                 float distance;
                 {
                     ZoneScopedN("RayVsChunk Local");
+                    DebugPrint("\nnew:\n");
                     if (RayVsChunk(ray, centerChunkIndex, resultPos, distance, hitNormal))
                     {
                         assert(distance != inf);

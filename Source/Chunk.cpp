@@ -700,7 +700,6 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
         g_chunks->height[chunkIndex] = Max(uint16(newHeight), g_chunks->height[chunkIndex]);
     }
 
-    
 
     //Add water
     for (int32 z = 0; z < CHUNK_Z; z++)
@@ -1391,7 +1390,7 @@ Vec3Int GetBlockPosFromIndex(uint16 index)
     return { blockX, blockY, blockZ };
 }
 
-//returns false on failure and true on success/found
+//returns false on failure and true on success/added
 bool ChunkArray::GetChunk(ChunkIndex& result, GamePos blockP)
 {
     assert(OnMainThread());
@@ -1405,7 +1404,7 @@ bool ChunkArray::GetChunk(ChunkIndex& result, GamePos blockP)
         return false;
 }
 
-GamePos Convert_BlockToGame(ChunkIndex blockParentIndex, Vec3Int blockP)
+GamePos Convert_BlockToGame(const ChunkIndex blockParentIndex, const Vec3Int blockP)
 {
     GamePos chunkLocation = ToGame(g_chunks->p[blockParentIndex]);
     return { chunkLocation.p.x + blockP.x, chunkLocation.p.y + blockP.y, chunkLocation.p.z + blockP.z };
@@ -1740,8 +1739,28 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
             vertIndex += 2;
             vertIndex = vertIndex % 8;
         }
-        g_chunks->state[region.center] = ChunkArray::VertexLoaded;
     }
+
+    {
+        //Build Block Octree
+        g_chunks->octree[region.center].Init();
+        //g_chunks->octree[chunkIndex]();
+        for (int32 x = 0; x < CHUNK_X; x++)
+        {
+            for (int32 y = 0; y < g_chunks->height[region.center]; y++)
+            {
+                for (int32 z = 0; z < CHUNK_Z; z++)
+                {
+                    const BlockType& blockType = g_chunks->blocks[region.center].e[x][y][z];
+                    if (blockType != BlockType::Empty)
+                        g_chunks->octree[region.center].Add({x, y, z}, blockType);
+                }
+            }
+        }
+    }
+    
+
+    g_chunks->state[region.center] = ChunkArray::VertexLoaded;
 }
 
 void ChunkArray::UploadChunk(ChunkIndex i)
@@ -1966,17 +1985,27 @@ void CreateVertices::DoThing()
 //    end
 //#endif
 
-struct OctreeBoxes {
+/*
+    Octree blockOctree = Octree;
+    blockOctree.Add(x, y, z);
+    blockOctree.Add(1, 14, 2)
+
+    blockOctree.
+*/
+
+#define OCTSPLIT_IMPLIMENTATION 0
+#if OCTSPLIT_IMPLIMENTATION == 1
+struct OctBoxes {
     AABB box;
     float distance;
     bool hit;
     Vec3 normal;
 };
 
-int32 OctreeComparisonFunction(const void* a, const void* b)
+int32 OctComparisonFunction(const void* a, const void* b)
 {
-    OctreeBoxes* a_ = (OctreeBoxes*)(a);
-    OctreeBoxes* b_ = (OctreeBoxes*)(b);
+    OctBoxes* a_ = (OctBoxes*)(a);
+    OctBoxes* b_ = (OctBoxes*)(b);
     if (a_->hit > b_->hit)
         return 1;
     else if (a_->hit == b_->hit)
@@ -1985,11 +2014,11 @@ int32 OctreeComparisonFunction(const void* a, const void* b)
         return 0;
 }
 
-bool OctreeCheck(const Ray& ray, const AABB& box, const ChunkIndex& chunkIndex, GamePos& block, float& distance, Vec3& normal, bool& hitBottom)
+bool OctCheck(const Ray& ray, const AABB& box, const ChunkIndex& chunkIndex, GamePos& block, float& distance, Vec3& normal, bool& hitBottom)
 {
-#define OctreeImplimentationTry 0
+#define OctImplimentationTry 0
 
-#if OctreeImplimentationTry == 1
+#if OctImplimentationTry == 1
 
     //Doesnt work since we are not looking for the closest hit object
     //only returning on the first hit object.
@@ -2032,7 +2061,7 @@ bool OctreeCheck(const Ray& ray, const AABB& box, const ChunkIndex& chunkIndex, 
                 testBox.max = boxbox.max + Vec3({1, 1, 1});
                 if (RayVsAABB(ray, testBox, testDistance, intersectionPoint, testNormal, testFace))
                 {
-                    if (OctreeCheck(ray, boxbox, chunkIndex, block, distance, normal, hitBottom))
+                    if (OctCheck(ray, boxbox, chunkIndex, block, distance, normal, hitBottom))
                     {
                         if (!hitBottom)
                         {
@@ -2062,7 +2091,7 @@ bool OctreeCheck(const Ray& ray, const AABB& box, const ChunkIndex& chunkIndex, 
         return false;
     }
    
-    OctreeBoxes boxes[8] = {};
+    OctBoxes boxes[8] = {};
     Vec3 halfDiff = (box.max - box.min) / 2.0f;
 
     for (int32 y = 0; y < 2; y++)
@@ -2089,10 +2118,10 @@ bool OctreeCheck(const Ray& ray, const AABB& box, const ChunkIndex& chunkIndex, 
     }
 
     //void QuickSort(uint8* data, const int32 length, const int32 itemSize, int32 (*compare)(const void* a, const void* b))
-    QuickSort((uint8*)&boxes, arrsize(boxes), sizeof(boxes[0]), OctreeComparisonFunction);
+    QuickSort((uint8*)&boxes, arrsize(boxes), sizeof(boxes[0]), OctComparisonFunction);
     for (int32 i = 0; i < arrsize(boxes) && boxes[i].hit; i++)
     {
-        if (OctreeCheck(ray, boxes[i].box, chunkIndex, block, distance, normal, hitBottom))
+        if (OctCheck(ray, boxes[i].box, chunkIndex, block, distance, normal, hitBottom))
         {
             if (!hitBottom)
             {
@@ -2108,7 +2137,156 @@ bool OctreeCheck(const Ray& ray, const AABB& box, const ChunkIndex& chunkIndex, 
     
 #endif
 }
+#endif
 
+bool ChunkOctreeCheck(const Ray& ray, const ChunkIndex chunkIndex, const ChunkOctree& chunkOctree, int32 octreeIndex, GamePos& block, float& distance, Vec3& normal)
+{
+    //ZoneScopedN("Octree Recursion");
+    struct CollisionData {
+        float distance = inf;
+        int32 index = -1;
+        Vec3 normal = {};
+        bool isBlock = false;
+        Vec3Int position = {};
+    };
+    std::vector<CollisionData> collisions;
+    collisions.reserve(8);
+    //float   shortestDistVal = inf;
+    //int32   shortestDistIndex = -1;
+    ////Vec3Int shortestDistIndices = {-1, -1, -1};
+    //Vec3    shortestDistNormal = {};
+    bool foundShortestDist = false;
+    bool hitBlock = false;
+    //Vec3Int position = {};
+
+    {
+        //ZoneScopedN("Octree Raycast Loop");
+        for (int32 x = 0; x < 2; x++)
+        {
+            for (int32 y = 0; y < 2; y++)
+            {
+                for (int32 z = 0; z < 2; z++)
+                {
+                    //bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal, uint8& face)
+                    const auto  childIndex = chunkOctree.m_octrees[octreeIndex].m_branch_children[x][y][z];
+                    if (childIndex)
+                    {
+                        const auto  child = chunkOctree.m_octrees[childIndex];
+                        if (child.m_isBranch)
+                        {
+                            AABB box;
+                            box.min = ToWorld(Convert_BlockToGame(chunkIndex, child.m_branch_range.min)).p;
+                            box.max = ToWorld(Convert_BlockToGame(chunkIndex, child.m_branch_range.max + 1)).p;
+                            CollisionData cd;
+                            cd.distance = inf;
+                            cd.index = childIndex;
+                            cd.isBlock = false;
+                            //float tempDist = inf;
+                            //Vec3 tempNormal = {};
+                            Vec3  unused_intersect = {};
+                            uint8 unused_face;
+                            if (RayVsAABB(ray, box, cd.distance, unused_intersect, cd.normal, unused_face))
+                            {
+                                bool foundInsertion = false;
+                                for (int32 i = 0; i < collisions.size(); i++)
+                                {
+                                    if (cd.distance < collisions[i].distance)
+                                    {
+                                        collisions.insert(collisions.begin() + i, cd);
+                                        foundShortestDist = true;
+                                        foundInsertion = true;
+                                        break;
+                                    }
+                                }
+                                if (!foundInsertion)
+                                {
+                                    collisions.push_back(cd);
+                                    foundShortestDist = true;
+                                }
+                                //shortestDistVal = tempDist;
+                                //shortestDistIndex = childIndex;
+                                //foundShortestDist = true;
+                                //hitBlock = false;
+                            }
+                        }
+                        else if (child.m_block != BlockType::Empty)
+                        {
+                            AABB box;
+                            box.min = ToWorld(Convert_BlockToGame(chunkIndex, child.m_position)).p;
+                            box.max = box.min + 1.0f;
+                            CollisionData cd;
+                            cd.distance = inf;
+                            cd.index = childIndex;
+                            cd.isBlock = true;
+                            cd.position = child.m_position;
+                            //float tempDist = inf;
+                            Vec3  unused_intersect = {};
+                            uint8 unused_face;
+                            if (RayVsAABB(ray, box, cd.distance, unused_intersect, cd.normal, unused_face))
+                            {
+                                bool foundInsertion = false;
+                                for (int32 i = 0; i < collisions.size(); i++)
+                                {
+                                    if (cd.distance < collisions[i].distance)
+                                    {
+                                        collisions.insert(collisions.begin() + i, cd);
+                                        foundShortestDist = true;
+                                        foundInsertion = true;
+                                        break;
+                                    }
+                                }
+                                if (!foundInsertion)
+                                {
+                                    collisions.push_back(cd);
+                                    foundShortestDist = true;
+                                }
+                                //Vec3  unused_intersect = {};
+                                //uint8 unused_face;
+                                //if (RayVsAABB(ray, box, tempDist, unused_intersect, shortestDistNormal, unused_face) && tempDist < shortestDistVal)
+                                //{
+                                //    shortestDistVal = tempDist;
+                                //    shortestDistIndex = childIndex;
+                                //    foundShortestDist = true;
+                                //    position = child.m_position;
+                                //    hitBlock = true;
+                                //}
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    {
+        //ZoneScopedN("Octree Collision Loop");
+        if (foundShortestDist)
+        {
+            for (const auto& collision : collisions)
+            {
+                if (collision.isBlock)
+                {
+                    block = Convert_BlockToGame(chunkIndex, collision.position);
+                    //DebugPrint("Shortest dist to block, <%i, %i, %i>\n", block.p.x, block.p.y, block.p.z);
+                    distance = collision.distance;
+                    normal = collision.normal;
+                    return true;
+                }
+                else
+                {
+                    //auto rangeLo = Convert_BlockToGame(chunkIndex, chunkOctree.m_octrees[collision.index].m_branch_range.min).p;
+                    //auto rangeHi = Convert_BlockToGame(chunkIndex, chunkOctree.m_octrees[collision.index].m_branch_range.max).p;
+                    //DebugPrint("Shortest dist to region, <%i, %i, %i> to <%i, %i, %i>\n", rangeLo.x, rangeLo.y, rangeLo.z, rangeHi.x, rangeHi.y, rangeHi.z);
+                    if (ChunkOctreeCheck(ray, chunkIndex, chunkOctree, collision.index, block, distance, normal))
+                        return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+#if OCTSPLIT_IMPLIMENTATION
 struct RayVsChunkYSection {
     float distance;
     bool underMaxHeight;
@@ -2126,11 +2304,12 @@ int32 RayVsChunkYSectionComparisonFunction(const void* a, const void* b)
     else
         return 0;
 }
+#endif
 bool RayVsChunk(const Ray& ray, const ChunkIndex& chunkIndex, GamePos& block, float& distance, Vec3& normal)
 {
-#if 1
     distance = inf;
-
+#if 1
+#if OCTSPLIT_IMPLIMENTATION
     {
         AABB chunkBox;
         chunkBox.min = ToWorld(g_chunks->p[chunkIndex]).p;
@@ -2167,10 +2346,31 @@ bool RayVsChunk(const Ray& ray, const ChunkIndex& chunkIndex, GamePos& block, fl
     for (int32 y = 0; y < ySplits && chunkPieces[y].underMaxHeight; y++)
     {
         bool hitBottom = false;
-        if (chunkPieces[y].hit && OctreeCheck(ray, chunkPieces[y].box, chunkIndex, block, distance, normal, hitBottom))
+        if (chunkPieces[y].hit && OctCheck(ray, chunkPieces[y].box, chunkIndex, block, distance, normal, hitBottom))
             return true;
     }
     return distance != inf;
+#else
+    //bool RayVsChunk(const Ray & ray, const ChunkIndex & chunkIndex, GamePos & block, float& distance, Vec3 & normal)
+    if ((+g_chunks->state[chunkIndex] >= +ChunkArray::State::VertexLoaded) && 
+         (g_chunks->flags[chunkIndex] & CHUNK_FLAG_ACTIVE) &&
+         (g_chunks->octree[chunkIndex].m_isInitialized))
+    {
+        {
+            AABB chunkBox;
+            chunkBox.min = ToWorld(g_chunks->p[chunkIndex]).p;
+            chunkBox.max = chunkBox.min + (Vec3({ CHUNK_X, float(g_chunks->height[chunkIndex] + 1), CHUNK_Z }));
+            if (!RayVsAABB(ray, chunkBox))
+                return false;
+        }
+
+        const ChunkOctree& chunkOctree = g_chunks->octree[chunkIndex];
+        bool result = ChunkOctreeCheck(ray, chunkIndex, chunkOctree, 0, block, distance, normal);
+        return result;
+    }
+    return false;
+
+#endif
 
     //chunkBox.max = chunkBox.min + Vec3({ octreeCubeDimensions, octreeCubeDimensions, octreeCubeDimensions });
 
@@ -2205,7 +2405,7 @@ bool RayVsChunk(const Ray& ray, const ChunkIndex& chunkIndex, GamePos& block, fl
         rayCheckCount++;
         if (RayVsAABB(ray, boxZ))
         {
-            ZoneScopedN("RayVsAABB YLoop");
+            //ZoneScopedN("RayVsAABB YLoop");
             for (int32 y = 0; y < maxYHeight; y++)
             {
                 GamePos blockPY = Convert_BlockToGame(chunkIndex, { 0, y, z });
@@ -2219,7 +2419,7 @@ bool RayVsChunk(const Ray& ray, const ChunkIndex& chunkIndex, GamePos& block, fl
                 rayCheckCount++;
                 if (RayVsAABB(ray, boxY))
                 {
-                    ZoneScopedN("RayVsAABB XLoop");
+                    //ZoneScopedN("RayVsAABB XLoop");
                     for (int32 x = 0; x < CHUNK_X; x++)
                     {
                         if (g_chunks->blocks[chunkIndex].e[x][y][z] != BlockType::Empty)

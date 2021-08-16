@@ -66,6 +66,8 @@ typedef gbMat3 Mat3;
 typedef gbMat4 Mat4;
 typedef gbQuat Quat;
 
+#define MATH_PREFIX [[nodiscard]] inline
+
 [[nodiscard]] inline Vec4 GetVec4(Vec3 a, float b)
 {
     return { a.x, a.y, a.z, b };
@@ -176,6 +178,11 @@ struct Range {
 //        min = angle - range / 2;
 //        max = angle + range / 2;
 //    }
+    //[[nodiscard]] inline T Center()
+    MATH_PREFIX T Center() const
+    {
+        return min + ((max - min) / 2);
+    }
 };
 
 
@@ -267,6 +274,22 @@ inline void operator+=(Vec3& a, float b)
 {
     return ((a.x == b.x) && (a.y == b.y) && (a.z == b.z));
 }
+[[nodiscard]] inline bool operator>(Vec3Int a, Vec3Int b)
+{
+    return ((a.x > b.x) && (a.y > b.y) && (a.z > b.z));
+}
+[[nodiscard]] inline bool operator<(Vec3Int a, Vec3Int b)
+{
+    return ((a.x < b.x) && (a.y < b.y) && (a.z < b.z));
+}
+[[nodiscard]] inline bool operator>=(Vec3Int a, Vec3Int b)
+{
+    return ((a.x >= b.x) && (a.y >= b.y) && (a.z >= b.z));
+}
+[[nodiscard]] inline bool operator<=(Vec3Int a, Vec3Int b)
+{
+    return ((a.x <= b.x) && (a.y <= b.y) && (a.z <= b.z));
+}
 [[nodiscard]] inline Vec3Int operator-(Vec3Int a, Vec3Int b)
 {
     Vec3Int r = {a.x - b.x, a.y - b.y, a.z - b.z};
@@ -346,6 +369,11 @@ inline Vec3Int& operator-=(Vec3Int &a, Vec3Int b)
     Vec3Int r = { a + b.x, a + b.y, a + b.z };
     return r;
 }
+[[nodiscard]] inline Vec3Int operator-(Vec3Int a, int32 b)
+{
+    Vec3Int r = { a.x - b, a.y - b, a.z - b };
+    return r;
+}
 [[nodiscard]] inline Vec2Int operator+(Vec2Int a, int32 b)
 {
     Vec2Int r = { a.x + b, a.y + b};
@@ -356,11 +384,32 @@ inline Vec3Int& operator-=(Vec3Int &a, Vec3Int b)
     Vec2Int r = { a + b.x, a + b.y };
     return r;
 }
+[[nodiscard]] inline Vec2Int operator-(Vec2Int a, int32 b)
+{
+    Vec2Int r = { a.x - b, a.y - b};
+    return r;
+}
 
 
 [[nodiscard]] inline bool operator==(Vec2Int a, Vec2Int b)
 {
     return ((a.x == b.x) && (a.y == b.y));
+}
+[[nodiscard]] inline bool operator>(Vec2Int a, Vec2Int b)
+{
+    return ((a.x > b.x) && (a.y > b.y));
+}
+[[nodiscard]] inline bool operator<(Vec2Int a, Vec2Int b)
+{
+    return ((a.x < b.x) && (a.y < b.y));
+}
+[[nodiscard]] inline bool operator>=(Vec2Int a, Vec2Int b)
+{
+    return ((a.x >= b.x) && (a.y >= b.y));
+}
+[[nodiscard]] inline bool operator<=(Vec2Int a, Vec2Int b)
+{
+    return ((a.x <= b.x) && (a.y <= b.y));
 }
 [[nodiscard]] inline Vec2Int operator-(Vec2Int a, Vec2Int b)
 {
