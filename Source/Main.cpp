@@ -99,6 +99,7 @@ enum class DebugOptions : uint32 {
     ChunkStatus = BIT(0),
     CollisionTriangles = BIT(1),
     LookatBlock = BIT(2),
+    OldRaycast = BIT(3),
     Enabled = BIT(14),
     All = ChunkStatus | CollisionTriangles | LookatBlock,
     Count,
@@ -615,6 +616,7 @@ Purple: VertexLoaded,\n\
 White:  Uploaded,");
                     ImGui::CheckboxFlags("Collision Triangles", &s_debugFlags, +DebugOptions::CollisionTriangles);
                     ImGui::CheckboxFlags("Raycast Block", &s_debugFlags, +DebugOptions::LookatBlock);
+                    ImGui::CheckboxFlags("Old Raycast Logic", &s_debugFlags, +DebugOptions::OldRaycast);
                     ImGui::Unindent();
                     ImGui::Unindent();
                     ImGui::TreePop();
@@ -911,8 +913,7 @@ White:  Uploaded,");
                 float distance;
                 {
                     ZoneScopedN("RayVsChunk Local");
-                    DebugPrint("\nnew:\n");
-                    if (RayVsChunk(ray, centerChunkIndex, resultPos, distance, hitNormal))
+                    if (RayVsChunk(ray, centerChunkIndex, resultPos, distance, hitNormal, 5.0f, s_debugFlags & +DebugOptions::OldRaycast))
                     {
                         assert(distance != inf);
                         hitBlock = resultPos;
@@ -921,24 +922,27 @@ White:  Uploaded,");
                 }
 
                 ZoneScopedN("Ray Neighbor gather and loop");
-                if (!validHit && localRegion.RegionGather(centerChunkIndex))
+                if (s_debugFlags & +DebugOptions::OldRaycast)
                 {
-                    ZoneScopedN("RayVsChunk Neighbors");
-                    for (ChunkIndex neighbor : localRegion.neighbors)
+                    if (!validHit && localRegion.RegionGather(centerChunkIndex))
                     {
-                        float distanceComparison;
-                        Vec3 neighborNormal;
-                        if (RayVsChunk(ray, neighbor, resultPos, distanceComparison, neighborNormal))
+                        ZoneScopedN("RayVsChunk Neighbors");
+                        for (ChunkIndex neighbor : localRegion.neighbors)
                         {
-                            if (distanceComparison < distance)
+                            float distanceComparison;
+                            Vec3 neighborNormal;
+                            if (RayVsChunk(ray, neighbor, resultPos, distanceComparison, neighborNormal, 5.0f, s_debugFlags & +DebugOptions::OldRaycast))
                             {
-                                hitBlock = resultPos;
-                                distance = distanceComparison;
-                                hitNormal = neighborNormal;
+                                if (distanceComparison < distance)
+                                {
+                                    hitBlock = resultPos;
+                                    distance = distanceComparison;
+                                    hitNormal = neighborNormal;
+                                }
                             }
                         }
+                        validHit = (distance < 5.0f);
                     }
-                    validHit = (distance < 5.0f);
                 }
             }
         }

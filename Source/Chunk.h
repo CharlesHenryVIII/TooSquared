@@ -311,5 +311,5 @@ void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera);
 void PreTransparentChunkRender(const Mat4& perspective, Camera* camera);
 
 int64 PositionHash(ChunkPos p);
-bool RayVsChunk(const Ray& ray, const ChunkIndex& chunkIndex, GamePos& block, float& distance, Vec3& normal);
+bool RayVsChunk(const Ray& ray, const ChunkIndex& chunkIndex, GamePos& block, float& distance, Vec3& normal, float length, bool usingOldRaycastLogic);
 void SetBlock(GamePos hitBlock, BlockType setBlockType);

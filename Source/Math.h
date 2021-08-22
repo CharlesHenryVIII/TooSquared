@@ -309,6 +309,16 @@ inline Vec3Int& operator-=(Vec3Int &a, Vec3Int b)
     return (a = a - b);
 }
 //
+[[nodiscard]] inline Vec3 operator/(float a, Vec3 b)
+{
+    Vec3 r = { a / b.x, a / b.y, a / b.z };
+    return r;
+}
+[[nodiscard]] inline Vec2 operator/(float a, Vec2 b)
+{
+    Vec2 r = { a / b.x, a / b.y };
+    return r;
+}
 [[nodiscard]] inline Vec3Int operator/(Vec3Int a, int32 b)
 {
     Vec3Int r = {a.x / b, a.y / b, a.z / b };

@@ -1417,6 +1417,7 @@ Vec3Int Convert_GameToBlock(ChunkPos& result, const GamePos& inputP)
     result = ToChunk(inputP);
     GamePos chunkP = ToGame(result);
     return Abs(Vec3Int({ inputP.p.x - chunkP.p.x, inputP.p.y - chunkP.p.y, inputP.p.z - chunkP.p.z }));
+
 }
 
 //returns true if the block is within the array
@@ -1955,6 +1956,57 @@ void CreateVertices::DoThing()
     region.DecrimentRefCount();
 }
 
+struct RaycastResult {
+    GamePos p;
+    float distance;
+    Vec3 normal;
+    BlockType block;
+};
+
+bool LineCast(const Ray& ray, float length, RaycastResult& result)
+{
+    Vec3 p = Vec3IntToVec3(ToGame((WorldPos(ray.origin))).p);
+    Vec3 step = {};
+    step.x = ray.direction.x >= 0 ? 1.0f : -1.0f;
+    step.y = ray.direction.y >= 0 ? 1.0f : -1.0f;
+    step.z = ray.direction.z >= 0 ? 1.0f : -1.0f;
+    Vec3 pClose = Vec3IntToVec3(ToGame((WorldPos(Round(ray.origin + (step / 2))))).p);
+    Vec3 tMax = Abs((pClose - ray.origin) / ray.direction);
+    Vec3 tDelta = Abs(1.0f / ray.direction);
+    result.block = BlockType::Empty;
+    result.p.p = {};
+
+    while (result.block == BlockType::Empty) {
+        if (Distance(p, ray.origin) > length)
+            return false;
+
+        result.normal = {};
+        if (tMax.x < tMax.y && tMax.x < tMax.z)
+        {
+            p.x += step.x;
+            tMax.x += tDelta.x;
+            result.normal.x = float(-1.0) * step.x;
+        }
+        else if (tMax.y < tMax.x && tMax.y < tMax.z)
+        {
+            p.y += step.y;
+            tMax.y += tDelta.y;
+            result.normal.y = float(-1.0) * step.y;
+        }
+        else 
+        {
+            p.z += step.z;
+            tMax.z += tDelta.z;
+            result.normal.z = float(-1.0) * step.z;
+        }
+
+        result.p.p = Vec3ToVec3Int(p);
+        bool getBlockResult = g_chunks->GetBlock(result.block, result.p);
+    }
+    result.distance = Distance(ray.origin, p);
+    return result.block != BlockType::Empty;
+}
+
 bool ChunkOctreeCheck(const Ray& ray, const ChunkIndex chunkIndex, const ChunkOctree& chunkOctree, int32 octreeIndex, GamePos& block, float& distance, Vec3& normal)
 {
     struct CollisionData {
@@ -2042,30 +2094,43 @@ bool ChunkOctreeCheck(const Ray& ray, const ChunkIndex chunkIndex, const ChunkOc
     return false;
 }
 
-bool RayVsChunk(const Ray& ray, const ChunkIndex& chunkIndex, GamePos& block, float& distance, Vec3& normal)
+bool RayVsChunk(const Ray& ray, const ChunkIndex& chunkIndex, GamePos& block, float& distance, Vec3& normal, float length, bool usingOldRaycastLogic)
 {
     distance = inf;
-#if 1
-    //bool RayVsChunk(const Ray & ray, const ChunkIndex & chunkIndex, GamePos & block, float& distance, Vec3 & normal)
-    if ((+g_chunks->state[chunkIndex] >= +ChunkArray::State::VertexLoaded) && 
-         (g_chunks->flags[chunkIndex] & CHUNK_FLAG_ACTIVE) &&
-         (g_chunks->octree[chunkIndex].m_isInitialized))
+
+    if (usingOldRaycastLogic)
     {
+        //bool RayVsChunk(const Ray & ray, const ChunkIndex & chunkIndex, GamePos & block, float& distance, Vec3 & normal)
+        if ((+g_chunks->state[chunkIndex] >= +ChunkArray::State::VertexLoaded) &&
+            (g_chunks->flags[chunkIndex] & CHUNK_FLAG_ACTIVE) &&
+            (g_chunks->octree[chunkIndex].m_isInitialized))
         {
-            AABB chunkBox;
-            chunkBox.min = ToWorld(g_chunks->p[chunkIndex]).p;
-            chunkBox.max = chunkBox.min + (Vec3({ CHUNK_X, float(g_chunks->height[chunkIndex] + 1), CHUNK_Z }));
-            if (!RayVsAABB(ray, chunkBox))
-                return false;
+            {
+                AABB chunkBox;
+                chunkBox.min = ToWorld(g_chunks->p[chunkIndex]).p;
+                chunkBox.max = chunkBox.min + (Vec3({ CHUNK_X, float(g_chunks->height[chunkIndex] + 1), CHUNK_Z }));
+                if (!RayVsAABB(ray, chunkBox))
+                    return false;
+            }
+
+            const ChunkOctree& chunkOctree = g_chunks->octree[chunkIndex];
+            bool result = ChunkOctreeCheck(ray, chunkIndex, chunkOctree, 0, block, distance, normal);
+            return result;
         }
-
-        const ChunkOctree& chunkOctree = g_chunks->octree[chunkIndex];
-        bool result = ChunkOctreeCheck(ray, chunkIndex, chunkOctree, 0, block, distance, normal);
-        return result;
+        return false;
     }
-    return false;
+    else
+    {
+        RaycastResult result;
+        bool success = LineCast(ray, length, result);
+        block = result.p;
+        normal = result.normal;
+        distance = result.distance;
+        return success;
 
-#else
+    }
+
+#if 0
     int32 rayCheckCount = 0;
     int32 maxYHeight = g_chunks->height[chunkIndex];
 
