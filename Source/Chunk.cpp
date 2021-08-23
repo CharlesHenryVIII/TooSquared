@@ -1930,56 +1930,6 @@ void CreateVertices::DoThing()
     region.DecrimentRefCount();
 }
 
-RaycastResult LineCast(const Ray& ray, float length)
-{
-    RaycastResult result = {};
-
-    Vec3 p = Vec3IntToVec3(ToGame((WorldPos(ray.origin))).p);
-    Vec3 step = {};
-    step.x = ray.direction.x >= 0 ? 1.0f : -1.0f;
-    step.y = ray.direction.y >= 0 ? 1.0f : -1.0f;
-    step.z = ray.direction.z >= 0 ? 1.0f : -1.0f;
-    Vec3 pClose = Vec3IntToVec3(ToGame((WorldPos(Round(ray.origin + (step / 2))))).p);
-    Vec3 tMax = Abs((pClose - ray.origin) / ray.direction);
-    Vec3 tDelta = Abs(1.0f / ray.direction);
-
-    while (result.block == BlockType::Empty) {
-        if (Distance(p, ray.origin) > length)
-            break;
-
-        result.normal = {};
-        if (tMax.x < tMax.y && tMax.x < tMax.z)
-        {
-            p.x += step.x;
-            tMax.x += tDelta.x;
-            result.normal.x = float(-1.0) * step.x;
-        }
-        else if (tMax.y < tMax.x && tMax.y < tMax.z)
-        {
-            p.y += step.y;
-            tMax.y += tDelta.y;
-            result.normal.y = float(-1.0) * step.y;
-        }
-        else 
-        {
-            p.z += step.z;
-            tMax.z += tDelta.z;
-            result.normal.z = float(-1.0) * step.z;
-        }
-
-        result.p.p = Vec3ToVec3Int(p);
-        g_chunks->GetBlock(result.block, result.p);
-    }
-    result.distance = Distance(ray.origin, p);
-    result.success = result.block != BlockType::Empty;
-    return result;
-}
-
-RaycastResult RayVsChunk(const Ray& ray, float length)
-{
-    RaycastResult result = LineCast(ray, length);
-    return result;
-}
 
 void ChunkUpdateBlocks(ChunkPos p, Vec3Int offset = {})
 {

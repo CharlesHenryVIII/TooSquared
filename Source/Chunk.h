@@ -9,13 +9,6 @@
 #include <vector>
 #include <unordered_map>
 
-struct RaycastResult {
-    bool success = false;
-    GamePos p = {};
-    float distance = {};
-    Vec3 normal = {};
-    BlockType block = BlockType::Empty;
-};
 
 
 
@@ -318,5 +311,4 @@ void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera);
 void PreTransparentChunkRender(const Mat4& perspective, Camera* camera);
 
 int64 PositionHash(ChunkPos p);
-RaycastResult RayVsChunk(const Ray& ray, float length);
 void SetBlock(GamePos hitBlock, BlockType setBlockType);

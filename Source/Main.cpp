@@ -14,6 +14,7 @@
 #include "Input.h"
 #include "Gameplay.h"
 #include "Entity.h"
+#include "Raycast.h"
 
 #include "imgui.h"
 #include "imgui_impl_sdl.h"

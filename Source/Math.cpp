@@ -1,6 +1,7 @@
 #include "Math.h"
 #include "Misc.h"
 #include "Chunk.h"
+#include "Raycast.h"
 
 
 //uint32 PCG32_Random_R(uint64& state, uint64& inc)
@@ -302,81 +303,6 @@ bool AABBVsAABB(Vec3& out_intersection, const AABB& box1, const AABB& box2)
         out_intersection.z = pz * sz;
     }
     return true;
-}
-
-bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal, uint8& face)
-{
-    float tmin = 0;
-    float tmax = FLT_MAX;
-
-    for (int32 slab = 0; slab < 3; ++slab)
-    {
-        if (::fabs(ray.direction.e[slab]) < FLT_EPSILON)
-        {
-            // Ray is parallel to the slab
-            if (ray.origin.e[slab] < box.min.e[slab] || ray.origin.e[slab] > box.max.e[slab])
-                return false;
-        }
-        else
-        {
-
-            float ood = 1.0f / ray.direction.e[slab];
-            float t1 = (box.min.e[slab] - ray.origin.e[slab]) * ood;
-            float t2 = (box.max.e[slab] - ray.origin.e[slab]) * ood;
-            if (t1 > t2)
-            {
-                std::swap(t1, t2);
-            }
-
-            tmin = Max(tmin, t1);
-            tmax = Min(tmax, t2);
-
-            if (tmin > tmax)
-                return false;
-
-        }
-    }
-
-
-    intersect = ray.origin + ray.direction * tmin;
-    min = tmin;
-
-    Vec3 center = (box.max + box.min) / 2.0f;
-    Vec3 toNormal = intersect - center;
-    Vec3 normalized = Normalize(toNormal);
-    Vec3 normals[] = {
-        {1, 0, 0},
-        {-1, 0, 0},
-        {0, 1, 0},
-        {0, -1, 0},
-        {0, 0, 1},
-        {0, 0, -1},
-    };
-
-    float distance = -1;
-    int32 index = 0;
-    for (Vec3 n : normals)
-    {
-        float newDistance = DotProduct(normalized, n);
-        if (newDistance > distance)
-        {
-            distance = newDistance;
-            normal = n;
-            face = index;
-        }
-        index++;
-    }
-
-    return true;
-}
-
-bool RayVsAABB(const Ray& ray, const AABB& box)
-{
-    float min;
-    Vec3 intersect;
-    Vec3 normal;
-    uint8 face;
-    return RayVsAABB(ray, box, min, intersect, normal, face);
 }
 
 //https://wickedengine.net/2020/04/26/capsule-collision-detection/
@@ -835,8 +761,6 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
 
     while (in_positionDelta.x != 0.0f || in_positionDelta.y != 0.0f || in_positionDelta.z != 0.0f)
     {
-#define RAY_ATTEMPT 1
-#if RAY_ATTEMPT == 1
         //at 100 items this took 8.27ms
         Vec3 pDelta = {};
         float clampVal = 0.3f;
@@ -848,8 +772,7 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
 
         Vec3 halfLengths = { collider.m_length / 2.0f, collider.m_length / 2.0f, collider.m_length / 2.0f };
         GamePos blockp = {};
-#if 1
-        //2.5ms update with 100 items
+
         WorldPos minBoundsCheckWorld = collider.m_center.p - halfLengths;
         WorldPos maxBoundsCheckWorld = collider.m_center.p + halfLengths;
         GamePos minBoundsCheck = ToGame(minBoundsCheckWorld);
@@ -861,17 +784,6 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                 for (int32 z = minBoundsCheck.p.z; z <= maxBoundsCheck.p.z; z++)
                 {
                     blockp.p = { x, y, z };
-#else
-        //7.5ms update with 100 items
-        int32 offset = Max(int32(collider.m_length), 1);
-        for (int32 y = -offset; y <= offset; y++)
-        {
-            for (int32 x = -offset; x <= offset; x++)
-            {
-                for (int32 z = -offset; z <= offset; z++)
-                {
-                    blockp.p = ToGame(collider.m_center).p + Vec3Int({ x, y, z });
-#endif
 
 
 
@@ -924,47 +836,6 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
             }
         }
 
-#else
-        //at 100 items this took 20ms
-        Vec3 pDelta = {};
-        float clampVal = 0.3f;
-        pDelta.x = Clamp(in_positionDelta.x, -clampVal, clampVal);
-        pDelta.y = Clamp(in_positionDelta.y, -clampVal, clampVal);
-        pDelta.z = Clamp(in_positionDelta.z, -clampVal, clampVal);
-
-        in_positionDelta -= pDelta;
-        collider.m_center.p += pDelta;
-
-        //ZoneScopedN("Collision Update");
-        BlockSampler blockSampler = {};
-
-        GamePos referenceGamePosition = ToGame(collider.m_center);
-        int32 offset = Max(int32(collider.m_length), 1);
-        GamePos blockp = {};
-
-        for (int32 y = -offset; y <= offset; y++)
-        {
-            for (int32 x = -offset; x <= offset; x++)
-            {
-                for (int32 z = -offset; z <= offset; z++)
-                {
-                    BlockType blockCheck;
-                    blockp.p = referenceGamePosition.p + Vec3Int({ x, y, z });
-                    g_chunks->GetBlock(blockCheck, blockp);
-                    if (!g_blocks[+blockCheck].m_collidable)
-                        continue;
-                    blockSampler.RegionGather(blockp);
-                    Vec3 outsideOfBlock = {};
-                    if (CubeVsBlock(collider, blockSampler, outsideOfBlock, debug_trianglesToDraw))
-                    {
-                        out_positionDelta += outsideOfBlock;
-                        collider.m_center.p += outsideOfBlock;
-                        result = true;
-                    }
-                }
-            }
-        }
-#endif
     }
 
 #if RAY_ATTEMPT != 0
