@@ -1510,46 +1510,45 @@ void RegionSampler::IncrimentRefCount()
 bool BlockSampler::RegionGather(GamePos base)
 {
     m_baseBlockP = base;
-    bool result = true;
+    m_baseBlockType = BlockType::Empty;
 
     ChunkPos blockChunkP = {};
     Vec3Int block_blockP = Convert_GameToBlock(blockChunkP, base);
     ChunkIndex blockChunkIndex;
     if (g_chunks->GetChunkFromPosition(blockChunkIndex, blockChunkP))
-    {
         m_baseBlockType = g_chunks->blocks[blockChunkIndex].e[block_blockP.x][block_blockP.y][block_blockP.z];
-        result = !(m_baseBlockType == BlockType::Empty);
-    }
-    else
-        result = false;
 
-    if (result)
+    if (m_baseBlockType == BlockType::Empty)
+        return false;
+
+    for (uint8 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
     {
-        for (uint8 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
+        blocks[faceIndex] = BlockType::Empty;
+        Vec3Int faceNormal = { int32(faceNormals[faceIndex].x), int32(faceNormals[faceIndex].y), int32(faceNormals[faceIndex].z) };
+        GamePos checkingBlock = GamePos(base.p + faceNormal);
+
+        ChunkPos blockChunkP = {};
+        Vec3Int block_blockP = Convert_GameToBlock(blockChunkP, checkingBlock);
+        ChunkIndex blockChunkIndex;
+        if (checkingBlock.p.y >= CHUNK_Y || checkingBlock.p.y < 0)
         {
             blocks[faceIndex] = BlockType::Empty;
-            Vec3Int faceNormal = { int32(faceNormals[faceIndex].x), int32(faceNormals[faceIndex].y), int32(faceNormals[faceIndex].z) };
-            GamePos checkingBlock = GamePos(base.p + faceNormal);
-
-            ChunkPos blockChunkP = {};
-            Vec3Int block_blockP = Convert_GameToBlock(blockChunkP, checkingBlock);
-            ChunkIndex blockChunkIndex;
-            if (g_chunks->GetChunkFromPosition(blockChunkIndex, blockChunkP))
-            {
-                blocks[faceIndex] = g_chunks->blocks[blockChunkIndex].e[block_blockP.x][block_blockP.y][block_blockP.z];
-            }
-            else if (checkingBlock.p.y < 0 || checkingBlock.p.y >= CHUNK_Y)
-            {
-                blocks[faceIndex] = BlockType::Empty;
-            }
-            else
-            {
-                result = false;
-                break;
-            }
+        }
+        else if (g_chunks->GetChunkFromPosition(blockChunkIndex, blockChunkP))
+        {
+            blocks[faceIndex] = g_chunks->blocks[blockChunkIndex].e[block_blockP.x][block_blockP.y][block_blockP.z];
+        }
+        else
+        {
+            blocks[faceIndex] = BlockType::Empty;
         }
     }
-    return result;
+    for (uint8 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
+    {
+        if (blocks[faceIndex] != BlockType::Empty)
+            return true;
+    }
+    return false;
 }
 
 //{
@@ -1956,15 +1955,10 @@ void CreateVertices::DoThing()
     region.DecrimentRefCount();
 }
 
-struct RaycastResult {
-    GamePos p;
-    float distance;
-    Vec3 normal;
-    BlockType block;
-};
-
-bool LineCast(const Ray& ray, float length, RaycastResult& result)
+RaycastResult LineCast(const Ray& ray, float length)
 {
+    RaycastResult result = {};
+
     Vec3 p = Vec3IntToVec3(ToGame((WorldPos(ray.origin))).p);
     Vec3 step = {};
     step.x = ray.direction.x >= 0 ? 1.0f : -1.0f;
@@ -1973,12 +1967,10 @@ bool LineCast(const Ray& ray, float length, RaycastResult& result)
     Vec3 pClose = Vec3IntToVec3(ToGame((WorldPos(Round(ray.origin + (step / 2))))).p);
     Vec3 tMax = Abs((pClose - ray.origin) / ray.direction);
     Vec3 tDelta = Abs(1.0f / ray.direction);
-    result.block = BlockType::Empty;
-    result.p.p = {};
 
     while (result.block == BlockType::Empty) {
         if (Distance(p, ray.origin) > length)
-            return false;
+            break;
 
         result.normal = {};
         if (tMax.x < tMax.y && tMax.x < tMax.z)
@@ -2001,10 +1993,11 @@ bool LineCast(const Ray& ray, float length, RaycastResult& result)
         }
 
         result.p.p = Vec3ToVec3Int(p);
-        bool getBlockResult = g_chunks->GetBlock(result.block, result.p);
+        g_chunks->GetBlock(result.block, result.p);
     }
     result.distance = Distance(ray.origin, p);
-    return result.block != BlockType::Empty;
+    result.success = result.block != BlockType::Empty;
+    return result;
 }
 
 bool ChunkOctreeCheck(const Ray& ray, const ChunkIndex chunkIndex, const ChunkOctree& chunkOctree, int32 octreeIndex, GamePos& block, float& distance, Vec3& normal)
@@ -2094,120 +2087,10 @@ bool ChunkOctreeCheck(const Ray& ray, const ChunkIndex chunkIndex, const ChunkOc
     return false;
 }
 
-bool RayVsChunk(const Ray& ray, const ChunkIndex& chunkIndex, GamePos& block, float& distance, Vec3& normal, float length, bool usingOldRaycastLogic)
+RaycastResult RayVsChunk(const Ray& ray, float length)
 {
-    distance = inf;
-
-    if (usingOldRaycastLogic)
-    {
-        //bool RayVsChunk(const Ray & ray, const ChunkIndex & chunkIndex, GamePos & block, float& distance, Vec3 & normal)
-        if ((+g_chunks->state[chunkIndex] >= +ChunkArray::State::VertexLoaded) &&
-            (g_chunks->flags[chunkIndex] & CHUNK_FLAG_ACTIVE) &&
-            (g_chunks->octree[chunkIndex].m_isInitialized))
-        {
-            {
-                AABB chunkBox;
-                chunkBox.min = ToWorld(g_chunks->p[chunkIndex]).p;
-                chunkBox.max = chunkBox.min + (Vec3({ CHUNK_X, float(g_chunks->height[chunkIndex] + 1), CHUNK_Z }));
-                if (!RayVsAABB(ray, chunkBox))
-                    return false;
-            }
-
-            const ChunkOctree& chunkOctree = g_chunks->octree[chunkIndex];
-            bool result = ChunkOctreeCheck(ray, chunkIndex, chunkOctree, 0, block, distance, normal);
-            return result;
-        }
-        return false;
-    }
-    else
-    {
-        RaycastResult result;
-        bool success = LineCast(ray, length, result);
-        block = result.p;
-        normal = result.normal;
-        distance = result.distance;
-        return success;
-
-    }
-
-#if 0
-    int32 rayCheckCount = 0;
-    int32 maxYHeight = g_chunks->height[chunkIndex];
-
-    {
-        ZoneScopedN("RayVsAABB Chunk");
-        AABB chunkBox;
-        chunkBox.min = ToWorld(g_chunks->p[chunkIndex]).p;
-        chunkBox.max = { chunkBox.min.x + CHUNK_X, chunkBox.min.y + maxYHeight, chunkBox.min.z + CHUNK_Z };
-        {
-            rayCheckCount++;
-            if (!RayVsAABB(ray, chunkBox))
-                return false;
-        }
-    }
-
-    //ZoneScopedN("RayVsChunk/BlockLoop");
-    ZoneScopedN("RayVsAABB Blocks");
-    for (int32 z = 0; z < CHUNK_Z; z++)
-    {
-        GamePos blockPZ = Convert_BlockToGame(chunkIndex, { 0, 0, z });
-        AABB boxZ;
-        boxZ.min = ToWorld(blockPZ).p;
-        boxZ.max = boxZ.min;
-        boxZ.max.x += float(CHUNK_X);
-        boxZ.max.y += float(maxYHeight);
-        boxZ.max.z += 1.0f;
-
-        rayCheckCount++;
-        if (RayVsAABB(ray, boxZ))
-        {
-            //ZoneScopedN("RayVsAABB YLoop");
-            for (int32 y = 0; y < maxYHeight; y++)
-            {
-                GamePos blockPY = Convert_BlockToGame(chunkIndex, { 0, y, z });
-                AABB boxY;
-                boxY.min = ToWorld(blockPY).p;
-                boxY.max = boxY.min;
-                boxY.max.x += float(CHUNK_X);
-                boxY.max.y += 1.0f;
-                boxY.max.z += 1.0f;
-
-                rayCheckCount++;
-                if (RayVsAABB(ray, boxY))
-                {
-                    //ZoneScopedN("RayVsAABB XLoop");
-                    for (int32 x = 0; x < CHUNK_X; x++)
-                    {
-                        if (g_chunks->blocks[chunkIndex].e[x][y][z] != BlockType::Empty)
-                        {
-                            GamePos blockP = Convert_BlockToGame(chunkIndex, { x, y, z });
-
-                            AABB boxX;
-                            boxX.min = ToWorld(blockP).p;
-                            boxX.max = boxX.min + 1.0f;
-
-                            float minDistanceToHit;
-                            Vec3 intersectionPoint = {};
-                            Vec3 normalFace;
-                            uint8 face;
-                            rayCheckCount++;
-                            if (RayVsAABB(ray, boxX, minDistanceToHit, intersectionPoint, normalFace, face))
-                            {
-                                if (minDistanceToHit < distance)
-                                {
-                                    block = blockP;
-                                    distance = minDistanceToHit;
-                                    normal = normalFace;
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return distance != inf;
-#endif
+    RaycastResult result = LineCast(ray, length);
+    return result;
 }
 
 void ChunkUpdateBlocks(ChunkPos p, Vec3Int offset = {})
@@ -2259,7 +2142,7 @@ bool ChunkArray::GetBlock(BlockType& blockType, const GamePos& blockP)
     ChunkIndex chunkIndex = 0;
     blockType = BlockType::Empty;
     ChunkPos chunkP = ToChunk(blockP);
-    if (g_chunks->GetChunkFromPosition(chunkIndex, chunkP))
+    if (chunkP.p.y == 0 && g_chunks->GetChunkFromPosition(chunkIndex, chunkP))
     {
         Vec3Int block_blockP = Convert_GameToBlock(chunkP, blockP);
         blockType = g_chunks->blocks[chunkIndex].e[block_blockP.x][block_blockP.y][block_blockP.z];

@@ -898,51 +898,21 @@ White:  Uploaded,");
 
         {
             ZoneScopedN("Raycast");
-            RegionSampler localRegion;
-            ChunkIndex centerChunkIndex;
             //WorldPos cameraRealWorldPosition = playerCamera->RealWorldPos();
             WorldPos cameraRealWorldPosition = playerCamera->GetWorldPosition();//RealWorldPos();
             Ray ray = {
                 .origin = cameraRealWorldPosition.p,
                 .direction = lookTarget - cameraRealWorldPosition.p,
             };
-            if (g_chunks->GetChunkFromPosition(centerChunkIndex, ToChunk(cameraRealWorldPosition)))
             {
-                //bool RayVsChunk(const Ray & ray, ChunkIndex chunkIndex, GamePos & block, float& distance);
-                GamePos resultPos = {};
-                float distance;
+                ZoneScopedN("RayVsChunk Local");
+                RaycastResult raycast = RayVsChunk(ray, 5.0f);
+                if (raycast.success)
                 {
-                    ZoneScopedN("RayVsChunk Local");
-                    if (RayVsChunk(ray, centerChunkIndex, resultPos, distance, hitNormal, 5.0f, s_debugFlags & +DebugOptions::OldRaycast))
-                    {
-                        assert(distance != inf);
-                        hitBlock = resultPos;
-                        validHit = (distance < 5.0f);
-                    }
-                }
-
-                ZoneScopedN("Ray Neighbor gather and loop");
-                if (s_debugFlags & +DebugOptions::OldRaycast)
-                {
-                    if (!validHit && localRegion.RegionGather(centerChunkIndex))
-                    {
-                        ZoneScopedN("RayVsChunk Neighbors");
-                        for (ChunkIndex neighbor : localRegion.neighbors)
-                        {
-                            float distanceComparison;
-                            Vec3 neighborNormal;
-                            if (RayVsChunk(ray, neighbor, resultPos, distanceComparison, neighborNormal, 5.0f, s_debugFlags & +DebugOptions::OldRaycast))
-                            {
-                                if (distanceComparison < distance)
-                                {
-                                    hitBlock = resultPos;
-                                    distance = distanceComparison;
-                                    hitNormal = neighborNormal;
-                                }
-                            }
-                        }
-                        validHit = (distance < 5.0f);
-                    }
+                    assert(raycast.distance != inf);
+                    hitBlock = raycast.p;
+                    validHit = (raycast.distance < 5.0f);
+                    hitNormal = raycast.normal;
                 }
             }
         }
@@ -995,13 +965,20 @@ White:  Uploaded,");
             {
                 if (validHit)
                 {
-                    InventorySlot& slot = player->m_inventory.HotSlot();
-                    if (slot.m_count)
+                    GamePos addedBlockPosition;
+                    addedBlockPosition.p = { hitBlock.p.x + int32(hitNormal.x), hitBlock.p.y + int32(hitNormal.y), hitBlock.p.z + int32(hitNormal.z) };
+                    BlockType addedBlockType;
+                    if (g_chunks->GetBlock(addedBlockType, addedBlockPosition))
                     {
-                        assert(slot.m_block != BlockType::Empty);
-                        SetBlock({ hitBlock.p.x + int32(hitNormal.x), hitBlock.p.y + int32(hitNormal.y), hitBlock.p.z + int32(hitNormal.z) }, slot.m_block);
-                        //Why must i put this stupid uint8 in here for auto to determine the type -_-
-                        player->m_inventory.Remove(uint8(1));
+                        InventorySlot& slot = player->m_inventory.HotSlot();
+
+                        if (slot.m_count)
+                        {
+                            assert(slot.m_block != BlockType::Empty);
+                            SetBlock(addedBlockPosition, slot.m_block);
+                            //Why must i put this stupid uint8 in here for auto to determine the type -_-
+                            player->m_inventory.Remove(uint8(1));
+                        }
                     }
                 }
             }

@@ -790,6 +790,8 @@ bool CapsuleVsWorldBlocks(Capsule capsuleCollider, Vec3 in_positionDelta, Vec3& 
             {
                 for (int32 z = -horizontalOffset; z <= horizontalOffset; z++)
                 {
+                    if (y + referenceGamePosition.p.y >= CHUNK_Y || y + referenceGamePosition.p.y < 0)
+                        continue;
                     if (!(blockSampler.RegionGather(GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })))))
                         continue;
                     if (blockSampler.m_baseBlockType == BlockType::Water)
@@ -800,7 +802,6 @@ bool CapsuleVsWorldBlocks(Capsule capsuleCollider, Vec3 in_positionDelta, Vec3& 
                         out_positionDelta += outsideOfBlock;
                         capsuleCollider.UpdateLocation(outsideOfBlock);
                         result = true;
-
                     }
                 }
             }
