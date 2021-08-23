@@ -87,6 +87,9 @@
     <ClCompile Include="Contrib\imgui\imgui_widgets.cpp">
       <Filter>Source Files\imGui</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Raycast.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md">
@@ -192,6 +195,9 @@
     </ClInclude>
     <ClInclude Include="Contrib\imgui\imgui_internal.h">
       <Filter>Source Files\imGui</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Raycast.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

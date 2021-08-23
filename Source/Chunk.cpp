@@ -74,8 +74,6 @@ void ChunkArray::ClearChunk(ChunkIndex index)
     std::vector<Vertex_Chunk> swap2;
     translucentFaceVertices[index].swap(swap2);
 
-    octree[index].Clear();
-
     state[index] = {};
     opaqueIndexCount[index] = {};
     translucentIndexCount[index] = {};
@@ -1743,29 +1741,6 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
         }
     }
 
-    {
-        //Build Block Octree
-        g_chunks->octree[region.center].Init(region.centerP);
-        GamePos chunkMinPosition = ToGame(region.centerP);
-        GamePos blockPosition = {};
-        for (int32 x = 0; x < CHUNK_X; x++)
-        {
-            for (int32 y = 0; y < g_chunks->height[region.center]; y++)
-            {
-                for (int32 z = 0; z < CHUNK_Z; z++)
-                {
-                    const BlockType& blockType = g_chunks->blocks[region.center].e[x][y][z];
-                    if (blockType != BlockType::Empty)
-                    {
-                        blockPosition.p = Vec3Int({ x, y, z }) + chunkMinPosition.p;
-                        g_chunks->octree[region.center].Add(blockPosition, blockType);
-                    }
-                }
-            }
-        }
-    }
-    
-
     g_chunks->state[region.center] = ChunkArray::VertexLoaded;
 }
 
@@ -1998,93 +1973,6 @@ RaycastResult LineCast(const Ray& ray, float length)
     result.distance = Distance(ray.origin, p);
     result.success = result.block != BlockType::Empty;
     return result;
-}
-
-bool ChunkOctreeCheck(const Ray& ray, const ChunkIndex chunkIndex, const ChunkOctree& chunkOctree, int32 octreeIndex, GamePos& block, float& distance, Vec3& normal)
-{
-    struct CollisionData {
-        float distance = inf;
-        int32 index = -1;
-        Vec3 normal = {};
-        bool isBlock = false;
-        GamePos position = {};
-    };
-    std::vector<CollisionData> collisions;
-    collisions.reserve(8);
-
-    {
-        //ZoneScopedN("Octree Raycast Loop");
-        for (int32 x = 0; x < 2; x++)
-        {
-            for (int32 y = 0; y < 2; y++)
-            {
-                for (int32 z = 0; z < 2; z++)
-                {
-                    const auto& childIndex = chunkOctree.m_octrees[octreeIndex].branch.m_children[x][y][z];
-                    if (childIndex)
-                    {
-                        const auto& child = chunkOctree.m_octrees[childIndex];
-                        AABB box;
-                        CollisionData cd = {};
-                        cd.distance = inf;
-                        cd.index = childIndex;
-                        if (child.m_isBranch)
-                        {
-                            box.min = ToWorld(GamePos(child.branch.m_range.min)).p;
-                            box.max = ToWorld(GamePos(child.branch.m_range.max)).p + 1.0f;
-                            cd.isBlock = false;
-                        }
-                        else if (child.block.m_block != BlockType::Empty)
-                        {
-                            box.min = ToWorld(child.block.m_position).p;
-                            box.max = box.min + 1.0f;
-                            cd.isBlock = true;
-                            cd.position = child.block.m_position;
-                        }
-
-                        Vec3  unused_intersect;
-                        uint8 unused_face;
-                        if (RayVsAABB(ray, box, cd.distance, unused_intersect, cd.normal, unused_face))
-                        {
-                            bool foundInsertion = false;
-                            for (int32 i = 0; i < collisions.size(); i++)
-                            {
-                                if (cd.distance < collisions[i].distance)
-                                {
-                                    collisions.insert(collisions.begin() + i, cd);
-                                    foundInsertion = true;
-                                    break;
-                                }
-                            }
-                            if (!foundInsertion)
-                            {
-                                collisions.push_back(cd);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    {
-        //ZoneScopedN("Octree Collision Loop");
-        for (const auto& collision : collisions)
-        {
-            if (collision.isBlock)
-            {
-                block = collision.position;
-                distance = collision.distance;
-                normal = collision.normal;
-                return true;
-            }
-            else if (ChunkOctreeCheck(ray, chunkIndex, chunkOctree, collision.index, block, distance, normal))
-            {
-                return true;
-            }
-        }
-    }
-    return false;
 }
 
 RaycastResult RayVsChunk(const Ray& ray, float length)

@@ -124,7 +124,6 @@ struct RegionSampler {
     void IncrimentRefCount();
 };
 
-#define OCTREE 1
 struct ChunkOctreeSet
 {
     bool m_isBranch = false;
@@ -263,7 +262,6 @@ struct ChunkArray
     VertexBuffer                translucentVertexBuffer[MAX_CHUNKS] = {};
     uint32                      opaqueIndexCount[MAX_CHUNKS]        = {};
     uint32                      translucentIndexCount[MAX_CHUNKS]   = {};
-    ChunkOctree                 octree[MAX_CHUNKS]  = {};
     uint16                      height[MAX_CHUNKS]  = {};
     std::atomic<State>          state[MAX_CHUNKS]   = {};
     std::atomic<uint32>         flags[MAX_CHUNKS]   = {};
