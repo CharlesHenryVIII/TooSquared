@@ -1,40 +1,8 @@
 #include "Block.h"
 #include "Entity.h"
+#include "Math.h"
 
 Block g_blocks[+BlockType::Count] = {};
-
-static const Vec3 cubeVertices[] = {
-    // +x
-    gb_vec3(1.0f, 1.0f, 1.0f),
-    gb_vec3(1.0f, 0.0f, 1.0f),
-    gb_vec3(1.0f, 1.0f, 0.0f),
-    gb_vec3(1.0f, 0.0f, 0.0f),
-    // -x
-    gb_vec3(0.0f, 1.0f, 0.0f),
-    gb_vec3(0.0f, 0.0f, 0.0f),
-    gb_vec3(0.0f, 1.0f, 1.0f),
-    gb_vec3(0.0f, 0.0f, 1.0f),
-    // +y
-    gb_vec3(1.0f, 1.0f, 1.0f),
-    gb_vec3(1.0f, 1.0f, 0.0f),
-    gb_vec3(0.0f, 1.0f, 1.0f),
-    gb_vec3(0.0f, 1.0f, 0.0f),
-    // -y
-    gb_vec3(0.0f, 0.0f, 1.0f),
-    gb_vec3(0.0f, 0.0f, 0.0f),
-    gb_vec3(1.0f, 0.0f, 1.0f),
-    gb_vec3(1.0f, 0.0f, 0.0f),
-    // z
-    gb_vec3(0.0f, 1.0f, 1.0f),
-    gb_vec3(0.0f, 0.0f, 1.0f),
-    gb_vec3(1.0f, 1.0f, 1.0f),
-    gb_vec3(1.0f, 0.0f, 1.0f),
-    // -z
-    gb_vec3(1.0f, 1.0f, 0.0f),
-    gb_vec3(1.0f, 0.0f, 0.0f),
-    gb_vec3(0.0f, 1.0f, 0.0f),
-    gb_vec3(0.0f, 0.0f, 0.0f),
-};
 
 static const Vec2 faceUV[4] = {
     Vec2{ 0, 1 },
@@ -145,17 +113,19 @@ void DrawBlock(const Mat4& model, Vec3 scale, Camera* camera, Color color, Textu
 {
     VertexBuffer vb = VertexBuffer();
 
-    Vertex vertices[arrsize(cubeVertices)] = {};
+    Vertex vertices[sizeof(cubeVertices) / sizeof(cubeVertices[0].e[0])] = {};
 
-    for (int32 i = 0; i < arrsize(cubeVertices); i++)
-    {
-        vertices[i].p = cubeVertices[i] - 0.5f;
-        auto spriteIndex = g_blocks[+blockType].m_spriteIndices[i / 4];
-        //TODO: Refactor this garbago:
-        Rect UVSquare = GetUVsFromIndex(spriteIndex);
-        vertices[i].uv.x = Lerp(UVSquare.botLeft.x, UVSquare.topRight.x, faceUV[i % 4].x);
-        vertices[i].uv.y = Lerp(UVSquare.topRight.y, UVSquare.botLeft.y, faceUV[i % 4].y);
-    }
+    for (int32 f = 0; f < +Face::Count; f++)
+        for (int32 i = 0; i < arrsize(VertexFace::e); i++)
+        {
+            int32 index = f * arrsize(VertexFace::e) + i;
+            vertices[index].p = cubeVertices[f].e[i] - 0.5f;
+            auto spriteIndex = g_blocks[+blockType].m_spriteIndices[f];
+            //TODO: Refactor this garbago:
+            Rect UVSquare = GetUVsFromIndex(spriteIndex);
+            vertices[index].uv.x = Lerp(UVSquare.botLeft.x, UVSquare.topRight.x, faceUV[i].x);
+            vertices[index].uv.y = Lerp(UVSquare.topRight.y, UVSquare.botLeft.y, faceUV[i].y);
+        }
 
     vb.Upload(vertices, arrsize(vertices));
     g_renderer.chunkIB->Bind();

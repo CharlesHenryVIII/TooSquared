@@ -116,10 +116,10 @@ ChunkIndex ChunkArray::AddChunk(ChunkPos position)
     return uint32(-1);
 }
 
-struct VertexFace {
-    Vertex_Chunk a,b,c,d;
-};
-
+//struct VertexFace {
+//    Vertex_Chunk a,b,c,d;
+//};
+//
 Vec3 faceNormals[+Face::Count] = {
 
 {  1.0f,  0.0f,  0.0f },

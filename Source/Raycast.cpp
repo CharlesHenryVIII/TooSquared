@@ -1,6 +1,7 @@
 #include "Raycast.h"
 #include "Block.h"
 #include "Chunk.h"
+#include "Collision.h"
 
 RaycastResult LineCast(const Ray& ray, float length)
 {

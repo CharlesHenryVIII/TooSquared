@@ -917,34 +917,6 @@ struct Frustum {
     Plane e[6];
 };
 
-//typedef union gbVec3 {
-//	struct { float x, y, z; };
-//	struct { float r, g, b; };
-//
-//	gbVec2 xy;
-//	float e[3];
-//} gbVec3;
-
-union Triangle {
-    struct { WorldPos p0, p1, p2; };
-    WorldPos e[3];
-        
-    Vec3 Normal() const
-    {
-        Vec3 r = Normalize(CrossProduct(p1.p - p0.p, p2.p - p0.p));
-        return r;
-    }
-    Vec3 Center() const
-    {
-        Vec3 r = (p0.p + p1.p + p2.p) / 3;
-        return r;
-    }
-};
-
-Frustum ComputeFrustum(const Mat4& mvProj);
-bool IsBoxInFrustum(const Frustum& f, float* bmin, float* bmax);
-int32 ManhattanDistance(Vec3Int a, Vec3Int b);
-
 struct AABB {
     Vec3 min = {};
     Vec3 max = {};
@@ -966,102 +938,112 @@ struct AABB {
     }
 };
 
-struct Capsule
-{
-    float m_radius = 0;
-    float m_height = 0;
-    WorldPos m_tip;
-    WorldPos m_tail;
-    std::vector<Triangle> m_collidedTriangles;
 
-    void UpdateMidTipLocation(const WorldPos& newTipLocation)
+struct VertexFace {
+
+    Vec3 e[4];
+};
+
+//static const Vec3 cubeVertices[] = {
+//    // +x
+//    gb_vec3(1.0f, 1.0f, 1.0f),
+//    gb_vec3(1.0f, 0.0f, 1.0f),
+//    gb_vec3(1.0f, 1.0f, 0.0f),
+//    gb_vec3(1.0f, 0.0f, 0.0f),
+//    // -x
+//    gb_vec3(0.0f, 1.0f, 0.0f),
+//    gb_vec3(0.0f, 0.0f, 0.0f),
+//    gb_vec3(0.0f, 1.0f, 1.0f),
+//    gb_vec3(0.0f, 0.0f, 1.0f),
+//    // +y
+//    gb_vec3(1.0f, 1.0f, 1.0f),
+//    gb_vec3(1.0f, 1.0f, 0.0f),
+//    gb_vec3(0.0f, 1.0f, 1.0f),
+//    gb_vec3(0.0f, 1.0f, 0.0f),
+//    // -y
+//    gb_vec3(0.0f, 0.0f, 1.0f),
+//    gb_vec3(0.0f, 0.0f, 0.0f),
+//    gb_vec3(1.0f, 0.0f, 1.0f),
+//    gb_vec3(1.0f, 0.0f, 0.0f),
+//    // z
+//    gb_vec3(0.0f, 1.0f, 1.0f),
+//    gb_vec3(0.0f, 0.0f, 1.0f),
+//    gb_vec3(1.0f, 1.0f, 1.0f),
+//    gb_vec3(1.0f, 0.0f, 1.0f),
+//    // -z
+//    gb_vec3(1.0f, 1.0f, 0.0f),
+//    gb_vec3(1.0f, 0.0f, 0.0f),
+//    gb_vec3(0.0f, 1.0f, 0.0f),
+//    gb_vec3(0.0f, 0.0f, 0.0f),
+//};
+
+const VertexFace cubeVertices[6] = {
+    // +x
+    VertexFace( {
+    Vec3(1.0,  1.0,  1.0),
+    Vec3(1.0,  0.0,  1.0),
+    Vec3(1.0,  1.0,  0.0),
+    Vec3(1.0,  0.0,  0.0)
+    }),
+    // -x
+    VertexFace({
+    Vec3(0.0,  1.0,  0.0),
+    Vec3(0.0,  0.0,  0.0),
+    Vec3(0.0,  1.0,  1.0),
+    Vec3(0.0,  0.0,  1.0)
+    }),
+    // +y
+    VertexFace({
+    Vec3(1.0,  1.0,  1.0 ),
+    Vec3(1.0,  1.0,  0.0 ),
+    Vec3(0.0,  1.0,  1.0 ),
+    Vec3(0.0,  1.0,  0.0 )
+    }),
+    // -y
+    VertexFace({
+    Vec3(0.0,  0.0,  1.0 ),
+    Vec3(0.0,  0.0,  0.0 ),
+    Vec3(1.0,  0.0,  1.0 ),
+    Vec3(1.0,  0.0,  0.0 )
+    }),
+    // z
+    VertexFace({
+    Vec3(0.0,  1.0,  1.0 ),
+    Vec3(0.0,  0.0,  1.0 ),
+    Vec3(1.0,  1.0,  1.0 ),
+    Vec3(1.0,  0.0,  1.0 )
+    }),
+    // -z
+    VertexFace({
+    Vec3(1.0,  1.0,  0.0 ),
+    Vec3(1.0,  0.0,  0.0 ),
+    Vec3(0.0,  1.0,  0.0 ),
+    Vec3(0.0,  0.0,  0.0 )
+    })
+};
+
+
+union Triangle {
+    struct { WorldPos p0, p1, p2; };
+    WorldPos e[3];
+        
+    Vec3 Normal() const
     {
-        m_tip = newTipLocation.p;
-        m_tip.p.y += m_radius;
-        m_tail = m_tip;
-        m_tail.p.y -= m_height;
+        Vec3 r = Normalize(CrossProduct(p1.p - p0.p, p2.p - p0.p));
+        return r;
     }
-    void UpdateTailLocation(const WorldPos& loc)
+    Vec3 Center() const
     {
-        m_tail.p = loc.p;
-        m_tip.p = m_tail.p;
-        m_tip.p.y += m_height;
-    }
-    void UpdateLocation(const WorldPos& positionDelta)
-    {
-        m_tip.p += positionDelta.p;
-        m_tail.p += positionDelta.p;
+        Vec3 r = (p0.p + p1.p + p2.p) / 3;
+        return r;
     }
 };
 
-struct Cube 
-{
-    float m_length = 0;
-    WorldPos m_center;
-    std::vector<Triangle> m_collidedTriangles;
+Frustum ComputeFrustum(const Mat4& mvProj);
+bool IsBoxInFrustum(const Frustum& f, float* bmin, float* bmax);
+int32 ManhattanDistance(Vec3Int a, Vec3Int b);
 
-    void UpdateBottomMiddleLocation(const WorldPos& newLoc)
-    {
-        m_center = newLoc;
-        m_center.p.y += m_length / 2.0f;
-    }
-};
 
-struct RigidBody {
-    Vec3 m_vel = {};
-    Vec3 m_acceleration = {};
-    Vec3 m_terminalVel = {};
-    bool m_isGrounded = false;
-
-    //float mass = {};
-    //Vec3 drag = {};
-    //float angularDrag = {};
-    //bool hasGravity = {};
-    //bool isKinematic = {};
-
-    Vec3 GetDeltaPosition(float deltaTime, Vec3 dragCoefficient, float gravity = -10.0f)
-    {
-        if (m_isGrounded)
-            m_vel.y = Max(m_vel.y, 0.0f);
-
-        m_vel.y += (m_acceleration.y + gravity) * deltaTime;
-        //m_vel.y = Clamp(m_vel.y, -m_terminalVel.y, m_terminalVel.y);
-
-        m_vel.x += m_acceleration.x * deltaTime;
-        m_vel.z += m_acceleration.z * deltaTime;
-
-        //float zeroTolerance = 0.25f;
-        //float mass = 1000.0f; //grams
-        //Vec3 dragForce = m_vel * dragCoefficient;//dragCoefficient * ((1.255f * m_vel/* * m_vel*/) / 2) * area;
-        Vec3 dragVel;// = dragForce / (mass * deltaTime);
-
-        dragVel = m_vel * dragCoefficient * deltaTime;
-
-        m_vel -= dragVel;
-        m_vel.x = Clamp(m_vel.x, -m_terminalVel.x, m_terminalVel.x);
-        m_vel.y = Clamp(m_vel.y, -m_terminalVel.y, m_terminalVel.y);
-        m_vel.z = Clamp(m_vel.z, -m_terminalVel.z, m_terminalVel.z);
-
-        //Velocity and position will be local for Audio and Particle actors
-        return (m_vel * deltaTime);
-    }
-};
-
-struct Transform {
-    WorldPos m_p = {};
-    //Quat m_quat = gb_quat_identity();
-    float m_yaw   = {};
-    float m_pitch = {};
-    Vec3 m_scale = {};
-};
-
-struct BlockSampler;
-bool AABBVsAABB(const AABB& box1, const AABB& box2);
-bool AABBVsAABB(Vec3& out_intersection, const AABB& box1, const AABB& box2);
-bool SphereVsTriangle(const Vec3& center, const float radius, const Triangle& triangle, Vec3& directionToTriangle, float& distance);
 Vec3 ClosestPointOnLineSegment(const Vec3& A, const Vec3& B, const Vec3& Point);
-bool CapsuleVsBlock(Capsule collider, const BlockSampler& region, Vec3& toOutside, std::vector<Triangle>& debug_triangles);
-bool CapsuleVsWorldBlocks(Capsule capsuleCollider, Vec3 in_positionDelta, Vec3& out_positionDelta, std::vector<Triangle>& debug_trianglesToDraw);
-bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionDelta, std::vector<Triangle>& debug_trianglesToDraw);
 
 void QuickSort(uint8* data, const int32 length, const int32 itemSize, int32 (*compare)(const void* a, const void* b));

@@ -90,6 +90,9 @@
     <ClCompile Include="Source\Raycast.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Collision.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md">
@@ -197,6 +200,9 @@
       <Filter>Source Files\imGui</Filter>
     </ClInclude>
     <ClInclude Include="Source\Raycast.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Collision.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

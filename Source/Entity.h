@@ -4,6 +4,7 @@
 #include "Misc.h"
 #include "Input.h"
 #include "Inventory.h"
+#include "Collision.h"
 
 #include <vector>
 #include <mutex>
