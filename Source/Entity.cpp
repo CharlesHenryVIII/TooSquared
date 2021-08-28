@@ -510,7 +510,7 @@ void Items::RenderOpaque(float dt, Camera* camera)
     //for (auto& i : m_items)
     for (int32 i = 0; m_items.size() && i < m_items.size() && !g_blocks[+m_items[i].m_type].m_translucent; i++)
     {
-        ZoneScopedN("Individual Loop");
+        //ZoneScopedN("Individual Loop");
         Item* item = &m_items[i];
         Mat4 result;
         Mat4 translation;
