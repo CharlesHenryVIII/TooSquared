@@ -2,6 +2,7 @@
 #include "Chunk.h"
 #include "tracy-master/Tracy.hpp"
 
+
 Entitys g_entityList;
 Items   g_items;
 
@@ -22,6 +23,24 @@ bool EntityInit()
     success &= CreateFolder(filename);
     return success;
 }
+
+void CameraReleaseAndCouple(Player* player, Camera* camera)
+{
+    assert(player);
+    assert(camera);
+    if (player && camera)
+    {
+        if (player->m_hasCamera)
+        {
+            player->DecoupleCamera();
+        }
+        else
+        {
+            player->ChildCamera(camera);
+        }
+    }
+}
+
 
 Mat4 Entity::GetWorldMatrix()
 {
@@ -333,6 +352,7 @@ bool Player::Load()
 }
 
 
+
 //Camera
 void Camera::Update(float dt)
 {
@@ -432,6 +452,7 @@ void Item::Update(float dt)
 }
 
 
+
 //Items
 Item* Items::Add(std::vector<EntityID>& itemIDs, BlockType blockType, const WorldPos& position, const WorldPos& destination)
 {
@@ -501,6 +522,33 @@ void Items::Update(float dt)
             e.Update(dt);
     }
 }
+void Items::Render(float dt, Camera* camera)
+{
+    assert(OnMainThread());
+    float scale = 0.5f;
+    std::lock_guard<std::mutex> lock(m_listVectorMutex);
+    //for (auto& i : m_items)
+    for (int32 i = 0; m_items.size() && i < m_items.size(); i++)
+    {
+        //ZoneScopedN("Individual Loop");
+        Item* item = &m_items[i];
+        Mat4 result;
+        Mat4 translation;
+        //Mat4 rotation;
+        gb_mat4_identity(&result);
+        //gb_mat4_from_quat(&rotation, gb_quat_euler_angles(DegToRad(i.m_transform.m_pitch), DegToRad(i.m_transform.m_yaw), 0.0f));
+        //gb_mat4_rotate(&rotation, { 0,1,0 }, (totalTime * 3.0f) / (2 * 3.14f));
+        //gb_mat4_translate(&translation, { i.m_transform.m_p.p.x, i.m_transform.m_p.p.y - (scale / 2.0f), i.m_transform.m_p.p.z });
+        gb_mat4_translate(&translation, item->m_transform.m_p.p); // based on m_transform being the center
+        //result = translation * rotation;
+        result = translation;
+
+        {
+            ZoneScopedN("Draw Block");
+            DrawBlockDepthPeeling(result, { scale, scale, scale }, camera, White, Texture::T::Minecraft, item->m_type);
+        }
+    }
+}
 
 void Items::RenderOpaque(float dt, Camera* camera)
 {
@@ -528,7 +576,6 @@ void Items::RenderOpaque(float dt, Camera* camera)
             DrawBlock(result, scale, camera, White, Texture::T::Minecraft, item->m_type);
         }
     }
-
 }
 
 void Items::RenderTransparent(float dt, Camera* camera)

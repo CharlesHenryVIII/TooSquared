@@ -57,10 +57,12 @@ enum class Shader : uint32 {
     Invalid,
     OpaqueChunk,
     TransparentChunk,
+    Chunk,
     Composite,
     Cube,
     TransparentCube,
     BufferCopy,
+    BufferCopyAlpha,
     Sun,
     UI,
     Count,
@@ -140,7 +142,7 @@ class ShaderProgram
 
     ShaderProgram(const ShaderProgram& rhs) = delete;
     ShaderProgram& operator=(const ShaderProgram& rhs) = delete;
-    bool CompileShader(GLuint handle, const char* name, std::string text);
+    bool CompileShader(GLuint handle, std::string text, const std::string& fileName);
 
 public:
     ShaderProgram(const std::string& vertexFileLocation, const std::string& pixelFileLocation);
@@ -152,6 +154,8 @@ public:
     void UpdateUniformVec3(const char* name, GLsizei count, const GLfloat* value);
     void UpdateUniformVec2(const char* name, GLsizei count, const GLfloat* value);
     void UpdateUniformFloat(const char* name, GLfloat value);
+    void UpdateUniformInt2(const char* name, Vec2Int values);
+    void UpdateUniformInt2(const char* name, GLint value1, GLint value2);
     void UpdateUniformUint8(const char* name, GLuint value);
     void UpdateUniformUintStream(const char* name, GLsizei count, GLuint* values);
 };
@@ -214,11 +218,14 @@ public:
     Texture* m_color = nullptr;
     Texture* m_color2 = nullptr;
     Texture* m_depth = nullptr;
+    Texture* m_depthColorForDepthPeeling = nullptr;
+    std::vector<Texture*> m_depths;
+    std::vector<Texture*> m_colors;
     Vec2Int m_size = {};
     uint32  m_samples = 1;
 
     FrameBuffer();
-    void Bind();
+    void Bind() const;
     void CreateTextures(Vec2Int size, uint32 samples, bool transparentFrameBuffer);
     void CreateTexture(Texture::TextureParams tp);
     void ClearTextures(Texture::TextureParams textureParams);
@@ -236,6 +243,7 @@ struct Renderer {
     FrameBuffer* transparentTarget = nullptr;
     FrameBuffer* transparentPostTarget = nullptr;
     FrameBuffer* postTarget  = nullptr;
+    FrameBuffer* depthCopyTarget  = nullptr;
     VertexBuffer* postVertexBuffer;
     VertexBuffer* cubeVertexBuffer;
     uint32 numTrianglesDrawn = 0;
@@ -243,8 +251,10 @@ struct Renderer {
     TextureCube* skyBoxDay;
     Light_Direction sunLight;
     Light_Direction moonLight;
-    bool msaaEnabled = false;
+    bool msaaEnabled = true;
     int32 maxMSAASamples = 1;
+    bool usingDepthPeeling = true;
+    int32 depthPeelingPasses = 2;
 };
 
 const uint32 pixelsPerBlock = 16;
@@ -253,11 +263,14 @@ const uint32 blocksPerRow = 16;
 struct Block;
 
 int32 CreateMessageWindow(SDL_MessageBoxButtonData* buttons, int32 numOfButtons, ts_MessageBox type, const char* title, const char* message);
+void DepthWrite(bool status);
+void DepthRead(bool status);
 Rect GetRectFromSprite(uint32 i);
 void RenderUpdate(Vec2Int windowSize, float deltaTime);
 void InitializeVideo();
+void CheckFrameBufferStatus();
 void UpdateFrameBuffers(Vec2Int size, uint32 samples);
-void ResolveMSAAFramebuffer(FrameBuffer* read, FrameBuffer* write, GLbitfield copyMask = (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT), GLenum mode = (GL_COLOR_ATTACHMENT0));
+void ResolveMSAAFramebuffer(const FrameBuffer* read, FrameBuffer* write, GLbitfield copyMask = (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT), GLenum mode = (GL_COLOR_ATTACHMENT0));
 void ResolveTransparentChunkFrameBuffer();
 void UI_AddDrawCall(RectInt sourceRect, RectInt _destRect, Color colorMod, Texture::T textureType);
 void UI_AddDrawCall(RectInt _sourceRect, Rect destRect, Color colorMod, Texture::T textureType);

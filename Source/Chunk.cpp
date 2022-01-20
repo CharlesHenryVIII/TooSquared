@@ -1757,15 +1757,17 @@ void ChunkArray::UploadChunk(ChunkIndex i)
     g_chunks->state[i] = ChunkArray::Uploaded;
 }
 
-void GenericPreChunkWork(Shader shaderType, const Mat4& perspective, Camera* camera)
+void GenericPreChunkWork(Shader shaderType, const Mat4& perspective, Camera* camera, int32 passCount)
 {
     ShaderProgram* sp = g_renderer.programs[+shaderType];
 
     sp->UseShader();
     g_renderer.spriteTextArray->Bind();
 
+    sp->UpdateUniformInt2("u_screenSize", g_window.size);
     sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
     sp->UpdateUniformMat4("u_view",        1, false, camera->m_view.e);
+    sp->UpdateUniformUint8("u_passCount", passCount);
 
 #if DIRECTIONALLIGHT == 1
     sp->UpdateUniformVec3("u_directionalLight_d",  1,  g_renderer.sunLight.d.e);
@@ -1795,7 +1797,7 @@ void GenericPreChunkWork(Shader shaderType, const Mat4& perspective, Camera* cam
 
 }
 
-void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera)
+void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera, uint32 passCount)
 {
     assert(g_renderer.chunkIB);
     if (g_renderer.chunkIB)
@@ -1803,16 +1805,60 @@ void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera)
     else
         return;
 
-    GenericPreChunkWork(Shader::OpaqueChunk, perspective, camera);
 
-    glEnable(GL_DEPTH_TEST);
-    glDepthMask(GL_TRUE);
-    glDepthFunc(GL_LESS);
-    glDisable(GL_BLEND);
+    if (g_renderer.usingDepthPeeling)
+    {
+        GenericPreChunkWork(Shader::Chunk, perspective, camera, passCount);
+    }
+    else
+    {
+        GenericPreChunkWork(Shader::OpaqueChunk, perspective, camera, passCount);
+        glEnable(GL_DEPTH_TEST);
+        glDepthMask(GL_TRUE);
+        glDepthFunc(GL_LESS);
+        glDisable(GL_BLEND);
+        g_renderer.opaqueTarget->Bind();
+        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    }
+}
 
-    //g_renderer.postTarget->Bind();
-    g_renderer.opaqueTarget->Bind();
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+void ChunkArray::RenderChunk(ChunkIndex i)
+{
+    ShaderProgram* sp = g_renderer.programs[+Shader::Chunk];
+
+    if (opaqueIndexCount[i])
+    {
+        opaqueVertexBuffer[i].Bind();
+
+        glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
+        glEnableVertexArrayAttrib(g_renderer.vao, 0);
+        glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
+        glEnableVertexArrayAttrib(g_renderer.vao, 1);
+        glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, nAndConnectedVertices));
+        glEnableVertexArrayAttrib(g_renderer.vao, 2);
+
+        sp->UpdateUniformVec3("u_chunkP", 1, ToWorld(Convert_ChunkIndexToGame(i)).p.e);
+
+        glDrawElements(GL_TRIANGLES, (GLsizei)opaqueIndexCount[i], GL_UNSIGNED_INT, 0);
+        g_renderer.numTrianglesDrawn += opaqueIndexCount[i] / 3;
+    }
+
+    if (translucentIndexCount[i])
+    {
+        translucentVertexBuffer[i].Bind();
+
+        glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
+        glEnableVertexArrayAttrib(g_renderer.vao, 0);
+        glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
+        glEnableVertexArrayAttrib(g_renderer.vao, 1);
+        glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, nAndConnectedVertices));
+        glEnableVertexArrayAttrib(g_renderer.vao, 2);
+
+        sp->UpdateUniformVec3("u_chunkP", 1, ToWorld(Convert_ChunkIndexToGame(i)).p.e);
+
+        glDrawElements(GL_TRIANGLES, (GLsizei)translucentIndexCount[i], GL_UNSIGNED_INT, 0);
+        g_renderer.numTrianglesDrawn += translucentIndexCount[i] / 3;
+    }
 }
 
 void ChunkArray::RenderOpaqueChunk(ChunkIndex i)
@@ -1863,7 +1909,7 @@ void PreTransparentChunkRender(const Mat4& perspective, Camera* camera)
     else
         return;
 
-    GenericPreChunkWork(Shader::TransparentChunk, perspective, camera);
+    GenericPreChunkWork(Shader::TransparentChunk, perspective, camera, 0);
 
     glEnable(GL_DEPTH_TEST);
     glDepthMask(GL_FALSE);

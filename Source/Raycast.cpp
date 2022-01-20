@@ -3,6 +3,7 @@
 #include "Chunk.h"
 #include "Collision.h"
 
+//http://www.cs.yorku.ca/~amana/research/grid.pdf
 RaycastResult LineCast(const Ray& ray, float length)
 {
     RaycastResult result = {};

@@ -422,17 +422,9 @@ int main(int argc, char* argv[])
                     playerInput.mouse.wheelModifiedLastFrame = true;
                 }
 
-
                 if (playerInput.keyStates[SDLK_0].downThisFrame)
                 {
-                    if (player->m_hasCamera)
-                    {
-                        player->DecoupleCamera();
-                    }
-                    else
-                    {
-                        player->ChildCamera(playerCamera);
-                    }
+                    CameraReleaseAndCouple(player, playerCamera);
                 }
 
 
@@ -660,6 +652,9 @@ White:  Uploaded,");
 
                     if (ImGui::TreeNode("Misc"))
                     {
+                        if (ImGui::Button("Toggle Camera Attachment"))
+                            CameraReleaseAndCouple(player, playerCamera);
+
                         ImGui::Text("Update the chunks based on:");
                         ImGui::RadioButton("Player", (int32*)&chunkUpdateOrigin, +ChunkUpdateOrigin::Player); ImGui::SameLine();
                         ImGui::RadioButton("Camera", (int32*)&chunkUpdateOrigin, +ChunkUpdateOrigin::Camera); //ImGui::SameLine();
@@ -667,6 +662,11 @@ White:  Uploaded,");
                         ImGui::Text("Core Count:");
                         ImGui::RadioButton("Multi", (int32*)&multiThreading.threads, +MultiThreading::Threads::multi_thread); ImGui::SameLine();
                         ImGui::RadioButton("Single", (int32*)&multiThreading.threads, +MultiThreading::Threads::single_thread); //ImGui::SameLine();
+                        ImGui::Spacing();
+                        ImGui::Text("Depth Peeling:");
+                        ImGui::RadioButton("Enabled",  (int32*)&g_renderer.usingDepthPeeling, 1); ImGui::SameLine();
+                        ImGui::RadioButton("Disabled", (int32*)&g_renderer.usingDepthPeeling, 0); //ImGui::SameLine();
+                        ImGui::SliderInt("Layers", &g_renderer.depthPeelingPasses, 1, 6, 0);
                         ImGui::Spacing();
                         {
                             //#define RADIO_BUTTON_MACRO(type) 
@@ -1086,40 +1086,6 @@ White:  Uploaded,");
                 }
             }
 
-            RenderUpdate(g_window.size, deltaTime);
-
-            //SKYBOX
-            {
-                ZoneScopedN("Draw Skybox");
-
-                glDepthMask(GL_FALSE);
-                ShaderProgram* sp = g_renderer.programs[+Shader::Sun];
-                sp->UseShader();
-                sp->UpdateUniformVec3("u_directionalLight_d", 1, g_renderer.sunLight.d.e);
-                sp->UpdateUniformVec3("u_sunColor", 1, g_renderer.sunLight.c.e);
-                sp->UpdateUniformVec3("u_directionalLightMoon_d", 1, g_renderer.moonLight.d.e);
-                sp->UpdateUniformVec3("u_moonColor", 1, g_renderer.moonLight.c.e);
-                Mat4 iViewProj;
-                gb_mat4_inverse(&iViewProj, &playerCamera->m_viewProj);
-                sp->UpdateUniformMat4("u_inverseViewProjection", 1, false, iViewProj.e);
-                sp->UpdateUniformVec3("u_cameraPosition", 1, playerCamera->GetWorldPosition().p.e);
-                sp->UpdateUniformFloat("u_gameTime", g_gameData.m_currentTime);
-                glActiveTexture(GL_TEXTURE1);
-                g_renderer.skyBoxNight->Bind();
-                glActiveTexture(GL_TEXTURE0);
-                g_renderer.skyBoxDay->Bind();
-
-                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
-                glEnableVertexArrayAttrib(g_renderer.vao, 0);
-                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
-                glEnableVertexArrayAttrib(g_renderer.vao, 1);
-                glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
-                glEnableVertexArrayAttrib(g_renderer.vao, 2);
-                glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-                glDepthMask(GL_TRUE);
-            }
-
             {
                 ZoneScopedN("Semaphore Update");
 
@@ -1200,15 +1166,66 @@ White:  Uploaded,");
                 g_items.CleanUp();
             }
 
+
+
+
+            RenderUpdate(g_window.size, deltaTime);
+
+            //SKYBOX
+            {
+                ZoneScopedN("Draw Skybox");
+
+                if (g_renderer.usingDepthPeeling)
+                {
+                    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+                    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+                    //g_renderer.postTarget->Bind();
+                }
+
+                glDepthMask(GL_FALSE);
+                ShaderProgram* sp = g_renderer.programs[+Shader::Sun];
+                sp->UseShader();
+                sp->UpdateUniformVec3("u_directionalLight_d", 1, g_renderer.sunLight.d.e);
+                sp->UpdateUniformVec3("u_sunColor", 1, g_renderer.sunLight.c.e);
+                sp->UpdateUniformVec3("u_directionalLightMoon_d", 1, g_renderer.moonLight.d.e);
+                sp->UpdateUniformVec3("u_moonColor", 1, g_renderer.moonLight.c.e);
+                Mat4 iViewProj;
+                gb_mat4_inverse(&iViewProj, &playerCamera->m_viewProj);
+                sp->UpdateUniformMat4("u_inverseViewProjection", 1, false, iViewProj.e);
+                sp->UpdateUniformVec3("u_cameraPosition", 1, playerCamera->GetWorldPosition().p.e);
+                sp->UpdateUniformFloat("u_gameTime", g_gameData.m_currentTime);
+                glActiveTexture(GL_TEXTURE1);
+                g_renderer.skyBoxNight->Bind();
+                glActiveTexture(GL_TEXTURE0);
+                g_renderer.skyBoxDay->Bind();
+
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+                glEnableVertexArrayAttrib(g_renderer.vao, 0);
+                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+                glEnableVertexArrayAttrib(g_renderer.vao, 1);
+                glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
+                glEnableVertexArrayAttrib(g_renderer.vao, 2);
+                glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+                glDepthMask(GL_TRUE);
+            }
+
             struct Renderable {
                 ChunkIndex index;
                 int32 distance;
             };
             Renderable renderables[MAX_CHUNKS];
             int32 numRenderables = 0;
+            if (g_renderer.usingDepthPeeling)
             {
-                ZoneScopedN("Chunk Opaque Render Pass");
+                ZoneScopedN("Depth Peeling Pass");
+                assert(g_renderer.depthPeelingPasses);
+                const FrameBuffer* renderTarget = g_renderer.opaqueTarget;
+                renderTarget->Bind();
 
+                //Chunk Rendering
 #ifdef _DEBUG
                 const int32 uploadMax = 10;
 #elif NDEBUG
@@ -1216,10 +1233,6 @@ White:  Uploaded,");
 #endif
                 Frustum frustum = ComputeFrustum(playerCamera->m_viewProj);
                 int32 uploadCount = 0;
-                {
-                    ZoneScopedN("Pre Opaque Chunk Render");
-                    PreOpaqueChunkRender(playerCamera->m_perspective, playerCamera);
-                }
                 {
                     ZoneScopedN("Adding Renderables");
                     for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
@@ -1245,199 +1258,600 @@ White:  Uploaded,");
                         return a.distance < b.distance;
                         });
                 }
+
+                //{
+                //    g_renderer.postTarget->Bind();
+                //    Texture* nonMSAADepth = g_renderer.opaqueTarget->m_depthColorForDepthPeeling;
+                //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, nonMSAADepth->m_target, nonMSAADepth->m_handle, 0);
+
+                //    renderTarget->Bind();
+                //    Texture* MSAADepth = g_renderer.opaqueTarget->m_depth;
+                //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, MSAADepth->m_target, MSAADepth->m_handle, 0);
+                //}
+
+                {//Prep reading depth buffer
+                    g_renderer.depthCopyTarget->Bind();
+                    glClearColor(0, 0, 0, 0);
+                    glClear(GL_DEPTH_BUFFER_BIT);
+
+                    //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
+                                            //renderTarget->m_depthColorForDepthPeeling->m_target, 
+                                            //renderTarget->m_depthColorForDepthPeeling->m_handle, 0);
+                    CheckFrameBufferStatus();
+
+                    renderTarget->Bind();
+                    glActiveTexture(GL_TEXTURE1);
+                    g_renderer.depthCopyTarget->m_depth->Bind();
+                    CheckFrameBufferStatus();
+                }
+                {//Prep writing depth buffer
+                    Texture* depthBuffer = renderTarget->m_depth;
+                    //depthBuff->Bind();
+                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthBuffer->m_target, depthBuffer->m_handle, 0);
+                }
+                for (int32 pass = 0; pass < g_renderer.depthPeelingPasses; pass++)
                 {
-                    ZoneScopedN("Upload and Render");
-                    for (int32 i = 0; i < numRenderables; i++)
+
+                    ZoneScopedN("Depth Peeling Pass");
+                    std::string loopInformation = ToString("DepthPass Number: %i", pass);
+                    ZoneText(loopInformation.c_str(), loopInformation.size());
+                    // Pre Render Work:
                     {
-                        ChunkIndex renderChunk = renderables[i].index;
-                        if (g_chunks->state[renderChunk] == ChunkArray::VertexLoaded)
+                        renderTarget->Bind();
+                        glActiveTexture(GL_TEXTURE0);
+                        renderTarget->m_colors[pass]->Bind();
+                        //depth unit 0:
                         {
-                            if (uploadCount > uploadMax || (g_chunks->flags[renderChunk] & CHUNK_FLAG_TODELETE))
-                                continue;
-                            g_chunks->UploadChunk(renderChunk);
-                            uploadCount++;
-                            uploadedLastFrame = true;
+                            //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, depthBuff->m_target, depthBuff->m_handle, 0);
+
+                            //if (pass == 0)
+                            //    glDisable(GL_DEPTH_TEST);
+                            //else
+                            //    glEnable(GL_DEPTH_TEST);
+                            ////bind depth buffer ( i % 2)
+
+
+                            ////glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, depthBuff->m_target, depthBuff->m_handle, 0);
+                            ////glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthBuff->m_target, depthBuff->m_handle, 0);
+
+                            ////disable depth writes, read-only depth test
+                            //glDepthMask(GL_FALSE);
+                            ////set depth func to GREATER
+                            //glDepthFunc(GL_GREATER);
                         }
-                        if (g_chunks->state[renderChunk] == ChunkArray::Uploaded)
+                        //depth unit 1:
                         {
-                            g_chunks->RenderOpaqueChunk(renderChunk);
+                            //bind depth buffer (( i+1) % 2)
+                            //clear depth buffer
+                            glClearDepth(1.0f);
+                            ////const GLfloat clearValue = 0;
+                            ////glClearBufferfv(GL_DEPTH, 0, &clearValue);
+                            //enable depth writes;
+                            DepthWrite(true);
+                            //enable depth test;
+                            //if (pass == 0)
+                                //DepthRead(false);
+                            //else
+                            //DepthRead(true);
+                            DepthRead(true);
+                            //set depth func to LESS
+                            glDepthFunc(GL_LESS);
+                            CheckFrameBufferStatus();
                         }
                     }
-                }
-            }
+                    glClearColor(0, 0, 0, 0);
+                    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            {
-                ZoneScopedN("Items Opaque Render");
-                g_items.RenderOpaque(deltaTime, playerCamera);
-            }
 
-            {
-                ZoneScopedN("Opaque Debug Code");
-                if (s_debugFlags & +DebugOptions::Enabled)
-                {
-                    for (WorldPos p : cubesToDraw)
+
+
+
+
+
+
                     {
-                        g_renderer.opaqueTarget->Bind();
-                        //g_renderer.postTarget->Bind();
-                        DrawCube(p, Red, 2.0f, playerCamera);
+                        ZoneScopedN("Pre Opaque Chunk Render");
+                        PreOpaqueChunkRender(playerCamera->m_perspective, playerCamera, pass);
                     }
-                }
-            }
-
-            {
-                ZoneScopedN("Transparent Chunk Render");
-                PreTransparentChunkRender(playerCamera->m_perspective, playerCamera);
-                {
-                    for (int32 i = numRenderables - 1; i >= 0; --i)
                     {
-                        ChunkIndex renderChunk = renderables[i].index;
-                        if (g_chunks->state[renderChunk] == ChunkArray::Uploaded && g_chunks->translucentIndexCount[renderChunk] > 0)
+                        ZoneScopedN("Upload and Render");
+                        for (int32 i = 0; i < numRenderables; i++)
                         {
-                            ZoneScopedN("Transparent Render Per Chunk");
-                            g_chunks->RenderTransparentChunk(renderChunk);
+                            ChunkIndex renderChunk = renderables[i].index;
+                            if (g_chunks->state[renderChunk] == ChunkArray::VertexLoaded)
+                            {
+                                if (uploadCount > uploadMax || (g_chunks->flags[renderChunk] & CHUNK_FLAG_TODELETE))
+                                    continue;
+                                g_chunks->UploadChunk(renderChunk);
+                                uploadCount++;
+                                uploadedLastFrame = true;
+                            }
+                            if (g_chunks->state[renderChunk] == ChunkArray::Uploaded)
+                            {
+                                g_chunks->RenderChunk(renderChunk);
+                            }
                         }
                     }
-                }
-            }
 
-            {
-                ZoneScopedN("Transparent Debug Code");
-                //DrawCube(testCamera.p.p, { 0, 1, 0, 1 }, 5.0f, perspective);
-                //DrawCube(lookatPosition, { 1, 0, 0, 1 }, 5.0f, perspective);
-                if (s_debugFlags & +DebugOptions::Enabled)
-                {
-                    if (s_debugFlags & +DebugOptions::ChunkStatus)
+                    //Resolve MSAA depth buffer into non-MSAA texture buffer
                     {
-                        g_renderer.transparentTarget->Bind();
-                        for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+                        g_renderer.depthCopyTarget->Bind();
+                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, g_renderer.depthCopyTarget->m_depth->m_target, g_renderer.depthCopyTarget->m_depth->m_handle, 0);
+                        //glClearDepth(0);
+                        //glClear(GL_DEPTH_BUFFER_BIT);
+
+                        renderTarget->Bind();
+                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, renderTarget->m_depth->m_target, renderTarget->m_depth->m_handle, 0);
+                        ResolveMSAAFramebuffer(renderTarget, g_renderer.depthCopyTarget, GL_DEPTH_BUFFER_BIT, GL_DEPTH_ATTACHMENT);
+                        CheckFrameBufferStatus();
+                    }
+
+                    //TODO: Add in once working
+#if 0
+                    {
+                        ZoneScopedN("Render Entity");
+                        g_entityList.Render(deltaTime, playerCamera);
+                    }
+
+                    {
+                        ZoneScopedN("Items Render");
+                        g_items.Render(deltaTime, playerCamera);
+                    }
+
+                    {
+                        ZoneScopedN("Opaque Code");
+                        if (s_debugFlags & +DebugOptions::Enabled)
+                        {
+                            for (WorldPos p : cubesToDraw)
+                            {
+                                DrawCubeDepthPeeling(p, Red, 2.0f, playerCamera);
+                            }
+                        }
+                    }
+
+                    {
+                        ZoneScopedN("Debug Rendering");
+                        //DrawCube(testCamera.p.p, { 0, 1, 0, 1 }, 5.0f, perspective);
+                        //DrawCube(lookatPosition, { 1, 0, 0, 1 }, 5.0f, perspective);
+                        if (s_debugFlags & +DebugOptions::Enabled)
+                        {
+                            if (s_debugFlags & +DebugOptions::ChunkStatus)
+                            {
+                                for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+                                {
+                                    if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
+                                        continue;
+
+                                    Color colors[] = {
+                                        { 1, 0, 0, 0.4f },//Red    //Unloaded,
+                                        { 0, 1, 0, 0.4f },//Green  //BlocksLoading,
+                                        { 0, 0, 1, 0.4f },//Blue   //BlocksLoaded,
+                                        { 1, 1, 0, 0.4f },//Yellow //VertexLoading,
+                                        { 1, 0, 1, 0.4f },//Purple //VertexLoaded,
+                                        { 1, 1, 1, 0.4f },//White  //Uploaded,
+                                    };
+
+                                    WorldPos chunkP = ToWorld(Convert_ChunkIndexToGame(i));
+                                    chunkP.p.x += CHUNK_X / 2.0f;
+                                    chunkP.p.y = float(g_chunks->height[i] + 1);
+                                    //chunkP.p.y = CHUNK_Y;
+                                    chunkP.p.z += CHUNK_Z / 2.0f;
+                                    Vec3 size = { CHUNK_X / 4.0f, 1, CHUNK_Z / 4.0f };
+
+                                    DrawCubeDepthPeeling(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, playerCamera);
+                                }
+                            }
+                            if (s_debugFlags & +DebugOptions::LookatBlock)
+                            {
+                                if (validHit)
+                                {
+                                    WorldPos pos;
+                                    pos = ToWorld(hitBlock);
+                                    pos.p = pos.p + 0.5f;
+                                    Color temp = Mint;
+                                    temp.a = 0.25f;
+                                    DrawCubeDepthPeeling(pos, temp, 1.01f, playerCamera);
+                                }
+                            }
+                            if (s_debugFlags & +DebugOptions::CollisionTriangles)
+                            {
+                                if (player->m_collider.m_collidedTriangles.size())
+                                {
+                                    DrawTriangles(player->m_collider.m_collidedTriangles, Orange, playerCamera->m_view, playerCamera->m_perspective, false);
+                                    player->m_collider.m_collidedTriangles.clear();
+                                }
+                            }
+                        }
+                    }
+#endif
+                }
+
+                //Composite the buffers to texture 0
+                {
+                    renderTarget->Bind();
+                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->m_colors[0]->m_target, renderTarget->m_colors[0]->m_handle, 0);
+
+                    glDisable(GL_DEPTH_TEST);
+                    glDepthMask(GL_FALSE);
+                    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                    glEnable(GL_BLEND);
+                    g_renderer.postTarget->Bind();
+
+                    glViewport(0, 0, g_window.size.x, g_window.size.y);
+
+                    glEnable(GL_FRAMEBUFFER_SRGB);
+                    //for (int32 pass = 1; pass < g_renderer.depthPeelingPasses; pass++)
+                    for (int32 pass = g_renderer.depthPeelingPasses; pass; --pass)
+                    {
+                        //renderTarget->m_colors[pass - 1]->Bind();
+
+                        glActiveTexture(GL_TEXTURE0);
+                        renderTarget->m_colors[pass - 1]->Bind();
+                        //renderTarget->m_colors[pass]->Bind();
+
+                        g_renderer.programs[+Shader::BufferCopyAlpha]->UseShader();
+
+                        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+                        glEnableVertexArrayAttrib(g_renderer.vao, 0);
+                        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+                        glEnableVertexArrayAttrib(g_renderer.vao, 1);
+                        glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
+                        glEnableVertexArrayAttrib(g_renderer.vao, 2);
+                        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+                    }
+                    glDisable(GL_FRAMEBUFFER_SRGB);
+                }
+
+                //Texture 0 (final composite) copy to non-MSAA buffer
+                {
+                    renderTarget->Bind();
+                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->m_colors[1]->m_target, renderTarget->m_colors[1]->m_handle, 0);
+                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  renderTarget->m_depth->m_target,     renderTarget->m_depth->m_handle,     0);
+
+                    g_renderer.postTarget->Bind();
+                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, g_renderer.postTarget->m_color->m_target, g_renderer.postTarget->m_color->m_handle, 0);
+                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  g_renderer.postTarget->m_depth->m_target, g_renderer.postTarget->m_depth->m_handle, 0);
+
+                    ResolveMSAAFramebuffer(renderTarget, g_renderer.postTarget, (GL_COLOR_BUFFER_BIT));
+                }
+
+                //Non-MSAA buffer copy blend to post-buffer
+                if (true)
+                {
+                    ZoneScopedN("Composite RGBA Peels");
+                }
+                else
+                {
+                    ZoneScopedN("Buffer Copy To Backbuffer");
+                    glDisable(GL_DEPTH_TEST);
+                    glDepthMask(GL_TRUE);
+                    glDisable(GL_BLEND);
+                    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+                    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+                    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+                    glViewport(0, 0, g_window.size.x, g_window.size.y);
+                    glActiveTexture(GL_TEXTURE0);
+                    g_renderer.postTarget->m_color->Bind();
+                    g_renderer.programs[+Shader::BufferCopy]->UseShader();
+                    g_renderer.postVertexBuffer->Bind();
+
+                    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+                    glEnableVertexArrayAttrib(g_renderer.vao, 0);
+                    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+                    glEnableVertexArrayAttrib(g_renderer.vao, 1);
+                    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
+                    glEnableVertexArrayAttrib(g_renderer.vao, 2);
+                    glEnable(GL_FRAMEBUFFER_SRGB);
+                    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+                    glDisable(GL_FRAMEBUFFER_SRGB);
+                }
+
+                //TODO: Add in once working
+#if 0
+                //Draw Crosshair on post buffer
+                {
+                    ZoneScopedN("Transparent Crosshair");
+                    Color crosshairColor = { 0.5f, 0.5f, 0.5f, 0.5f };
+                    int32 lineThickness = 7;
+                    int32 lineBounds = 30;
+
+                    Vec2Int screenSizeHalf = g_window.size / 2;
+                    float screenSizeScale = {};
+                    Vec2 screenSizeRatio = { g_window.size.x / 2560.0f , g_window.size.y / 1440.0f };
+                    screenSizeScale = Min(screenSizeRatio.x, screenSizeRatio.y);
+                    RectInt center;
+                    {
+                        int32 halfLineThickness = int32((lineThickness / 2.0f) * screenSizeScale);
+                        center.botLeft = screenSizeHalf - Vec2Int({ halfLineThickness,  halfLineThickness });
+                        center.topRight = screenSizeHalf + Vec2Int({ halfLineThickness,  halfLineThickness });
+                    }
+
+                    int32 halfLineBounds = int32((lineBounds / 2.0f) * screenSizeScale);
+                    RectInt left;
+                    left.botLeft = { screenSizeHalf.x - halfLineBounds,  center.botLeft.y };
+                    left.topRight = { center.botLeft.x, center.topRight.y };
+                    RectInt top;
+                    top.botLeft = left.topRight;
+                    top.topRight = { center.topRight.x, screenSizeHalf.y + halfLineBounds };
+                    RectInt right;
+                    right.botLeft = { center.topRight.x, center.botLeft.y };
+                    right.topRight = { screenSizeHalf.x + halfLineBounds,    center.topRight.y };
+                    RectInt bot;
+                    bot.botLeft = { center.botLeft.x,  screenSizeHalf.y - halfLineBounds };
+                    bot.topRight = right.botLeft;
+
+                    UI_AddDrawCall({}, center, crosshairColor, Texture::T::Plain);
+                    UI_AddDrawCall({}, left, crosshairColor, Texture::T::Plain);
+                    UI_AddDrawCall({}, top, crosshairColor, Texture::T::Plain);
+                    UI_AddDrawCall({}, right, crosshairColor, Texture::T::Plain);
+                    UI_AddDrawCall({}, bot, crosshairColor, Texture::T::Plain);
+
+                    UI_Render();
+                }
+#endif
+            }
+            else
+            {
+                {
+                    ZoneScopedN("Chunk Opaque Render Pass");
+
+#ifdef _DEBUG
+                    const int32 uploadMax = 10;
+#elif NDEBUG
+                    const int32 uploadMax = 300;
+#endif
+                    Frustum frustum = ComputeFrustum(playerCamera->m_viewProj);
+                    int32 uploadCount = 0;
+                    {
+                        ZoneScopedN("Pre Opaque Chunk Render");
+                        PreOpaqueChunkRender(playerCamera->m_perspective, playerCamera, 0);
+                    }
+                    {
+                        ZoneScopedN("Adding Renderables");
+                        for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
                         {
                             if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
                                 continue;
 
-                            Color colors[] = {
-                                { 1, 0, 0, 0.4f },//Red    //Unloaded,
-                                { 0, 1, 0, 0.4f },//Green  //BlocksLoading,
-                                { 0, 0, 1, 0.4f },//Blue   //BlocksLoaded,
-                                { 1, 1, 0, 0.4f },//Yellow //VertexLoading,
-                                { 1, 0, 1, 0.4f },//Purple //VertexLoaded,
-                                { 1, 1, 1, 0.4f },//White  //Uploaded,
-                            };
-
-                            WorldPos chunkP = ToWorld(Convert_ChunkIndexToGame(i));
-                            chunkP.p.x += CHUNK_X / 2.0f;
-                            chunkP.p.y = float(g_chunks->height[i] + 1);
-                            //chunkP.p.y = CHUNK_Y;
-                            chunkP.p.z += CHUNK_Z / 2.0f;
-                            Vec3 size = { CHUNK_X / 4.0f, 1, CHUNK_Z / 4.0f };
-
-                            DrawCube(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, playerCamera);
+                            ChunkPos chunkP = g_chunks->p[i];
+                            GamePos min = ToGame(chunkP);
+                            GamePos max = { min.p.x + (int32)CHUNK_X, min.p.y + (int32)CHUNK_Y, min.p.z + (int32)CHUNK_Z };
+                            if (IsBoxInFrustum(frustum, ToWorld(min).p.e, ToWorld(max).p.e))
+                            {
+                                //renderables[numRenderables].d = ManhattanDistance(ToChunk(playerCamera->RealWorldPos().p).p, chunkP.p);
+                                renderables[numRenderables].distance = ManhattanDistance(ToChunk(WorldPos(playerCamera->GetWorldPosition())).p, chunkP.p);
+                                renderables[numRenderables++].index = i;
+                            }
                         }
                     }
-                    if (s_debugFlags & +DebugOptions::LookatBlock)
+
                     {
-                        if (validHit)
+                        ZoneScopedN("Distance Sorting Renderables");
+                        std::sort(std::begin(renderables), std::begin(renderables) + numRenderables, [](Renderable a, Renderable b) {
+                            return a.distance < b.distance;
+                            });
+                    }
+                    {
+                        ZoneScopedN("Upload and Render");
+                        for (int32 i = 0; i < numRenderables; i++)
                         {
-                            g_renderer.transparentTarget->Bind();
-                            WorldPos pos;
-                            pos = ToWorld(hitBlock);
-                            pos.p = pos.p + 0.5f;
-                            Color temp = Mint;
-                            temp.a = 0.25f;
-                            DrawCube(pos, temp, 1.01f, playerCamera);
+                            ChunkIndex renderChunk = renderables[i].index;
+                            if (g_chunks->state[renderChunk] == ChunkArray::VertexLoaded)
+                            {
+                                if (uploadCount > uploadMax || (g_chunks->flags[renderChunk] & CHUNK_FLAG_TODELETE))
+                                    continue;
+                                g_chunks->UploadChunk(renderChunk);
+                                uploadCount++;
+                                uploadedLastFrame = true;
+                            }
+                            if (g_chunks->state[renderChunk] == ChunkArray::Uploaded)
+                            {
+                                g_chunks->RenderOpaqueChunk(renderChunk);
+                            }
                         }
                     }
-                    if (s_debugFlags & +DebugOptions::CollisionTriangles)
+                }
+
+                {
+                    ZoneScopedN("Items Opaque Render");
+                    g_items.RenderOpaque(deltaTime, playerCamera);
+                }
+
+                {
+                    ZoneScopedN("Opaque Debug Code");
+                    if (s_debugFlags & +DebugOptions::Enabled)
                     {
-                        if (player->m_collider.m_collidedTriangles.size())
+                        for (WorldPos p : cubesToDraw)
                         {
                             g_renderer.opaqueTarget->Bind();
-                            DrawTriangles(player->m_collider.m_collidedTriangles, Orange, playerCamera->m_view, playerCamera->m_perspective, false);
-                            player->m_collider.m_collidedTriangles.clear();
+                            //g_renderer.postTarget->Bind();
+                            DrawCube(p, Red, 2.0f, playerCamera);
                         }
                     }
                 }
-            }
 
-            {
-                ZoneScopedN("Entity Render");
-                g_entityList.Render(deltaTime, playerCamera);
-            }
-
-            {
-                ZoneScopedN("Items Transparent Render");
-                g_items.RenderTransparent(deltaTime, playerCamera);
-            }
-
-            //gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
-
-            //double renderTotalTime = SDL_GetPerformanceCounter() / freq;
-            //std::erase_if(frameTimes, [renderTotalTime](const float& a)
-            //{
-            //    return (static_cast<float>(renderTotalTime) - a> 1.0f);
-            //});
-            //frameTimes.push_back(static_cast<float>(renderTotalTime));
-
-            {
-                ZoneScopedN("Transparent Crosshair");
-                Color crosshairColor = { 0.5f, 0.5f, 0.5f, 0.5f };
-                int32 lineThickness = 7;
-                int32 lineBounds = 30;
-
-                Vec2Int screenSizeHalf = g_window.size / 2;
-
-                float screenSizeScale = {};
-                Vec2 screenSizeRatio = { g_window.size.x / 2560.0f , g_window.size.y / 1440.0f };
-                screenSizeScale = Min(screenSizeRatio.x, screenSizeRatio.y);
-
-                RectInt center;
                 {
-                    int32 halfLineThickness = int32((lineThickness / 2.0f) * screenSizeScale);
-                    center.botLeft = screenSizeHalf - Vec2Int({ halfLineThickness,  halfLineThickness });
-                    center.topRight = screenSizeHalf + Vec2Int({ halfLineThickness,  halfLineThickness });
+                    ZoneScopedN("Transparent Chunk Render");
+                    PreTransparentChunkRender(playerCamera->m_perspective, playerCamera);
+                    {
+                        for (int32 i = numRenderables - 1; i >= 0; --i)
+                        {
+                            ChunkIndex renderChunk = renderables[i].index;
+                            if (g_chunks->state[renderChunk] == ChunkArray::Uploaded && g_chunks->translucentIndexCount[renderChunk] > 0)
+                            {
+                                ZoneScopedN("Transparent Render Per Chunk");
+                                g_chunks->RenderTransparentChunk(renderChunk);
+                            }
+                        }
+                    }
                 }
 
-                int32 halfLineBounds = int32((lineBounds / 2.0f) * screenSizeScale);
-                RectInt left;
-                left.botLeft = { screenSizeHalf.x - halfLineBounds,  center.botLeft.y };
-                left.topRight = { center.botLeft.x, center.topRight.y };
+                {
+                    ZoneScopedN("Transparent Debug Code");
+                    //DrawCube(testCamera.p.p, { 0, 1, 0, 1 }, 5.0f, perspective);
+                    //DrawCube(lookatPosition, { 1, 0, 0, 1 }, 5.0f, perspective);
+                    if (s_debugFlags & +DebugOptions::Enabled)
+                    {
+                        if (s_debugFlags & +DebugOptions::ChunkStatus)
+                        {
+                            g_renderer.transparentTarget->Bind();
+                            for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+                            {
+                                if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
+                                    continue;
 
-                RectInt top;
-                top.botLeft = left.topRight;
-                top.topRight = { center.topRight.x, screenSizeHalf.y + halfLineBounds };
+                                Color colors[] = {
+                                    { 1, 0, 0, 0.4f },//Red    //Unloaded,
+                                    { 0, 1, 0, 0.4f },//Green  //BlocksLoading,
+                                    { 0, 0, 1, 0.4f },//Blue   //BlocksLoaded,
+                                    { 1, 1, 0, 0.4f },//Yellow //VertexLoading,
+                                    { 1, 0, 1, 0.4f },//Purple //VertexLoaded,
+                                    { 1, 1, 1, 0.4f },//White  //Uploaded,
+                                };
 
-                RectInt right;
-                right.botLeft = { center.topRight.x, center.botLeft.y };
-                right.topRight = { screenSizeHalf.x + halfLineBounds,    center.topRight.y };
+                                WorldPos chunkP = ToWorld(Convert_ChunkIndexToGame(i));
+                                chunkP.p.x += CHUNK_X / 2.0f;
+                                chunkP.p.y = float(g_chunks->height[i] + 1);
+                                //chunkP.p.y = CHUNK_Y;
+                                chunkP.p.z += CHUNK_Z / 2.0f;
+                                Vec3 size = { CHUNK_X / 4.0f, 1, CHUNK_Z / 4.0f };
 
-                RectInt bot;
-                bot.botLeft = { center.botLeft.x,  screenSizeHalf.y - halfLineBounds };
-                bot.topRight = right.botLeft;
+                                DrawCube(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, playerCamera);
+                            }
+                        }
+                        if (s_debugFlags & +DebugOptions::LookatBlock)
+                        {
+                            if (validHit)
+                            {
+                                g_renderer.transparentTarget->Bind();
+                                WorldPos pos;
+                                pos = ToWorld(hitBlock);
+                                pos.p = pos.p + 0.5f;
+                                Color temp = Mint;
+                                temp.a = 0.25f;
+                                DrawCube(pos, temp, 1.01f, playerCamera);
+                            }
+                        }
+                        if (s_debugFlags & +DebugOptions::CollisionTriangles)
+                        {
+                            if (player->m_collider.m_collidedTriangles.size())
+                            {
+                                g_renderer.opaqueTarget->Bind();
+                                DrawTriangles(player->m_collider.m_collidedTriangles, Orange, playerCamera->m_view, playerCamera->m_perspective, false);
+                                player->m_collider.m_collidedTriangles.clear();
+                            }
+                        }
+                    }
+                }
 
-                UI_AddDrawCall({}, center, crosshairColor, Texture::T::Plain);
-                UI_AddDrawCall({}, left, crosshairColor, Texture::T::Plain);
-                UI_AddDrawCall({}, top, crosshairColor, Texture::T::Plain);
-                UI_AddDrawCall({}, right, crosshairColor, Texture::T::Plain);
-                UI_AddDrawCall({}, bot, crosshairColor, Texture::T::Plain);
+                {
+                    ZoneScopedN("Entity Render");
+                    g_entityList.Render(deltaTime, playerCamera);
+                }
 
-                UI_Render();
+                {
+                    ZoneScopedN("Items Transparent Render");
+                    g_items.RenderTransparent(deltaTime, playerCamera);
+                }
+
+                //gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });
+
+                //double renderTotalTime = SDL_GetPerformanceCounter() / freq;
+                //std::erase_if(frameTimes, [renderTotalTime](const float& a)
+                //{
+                //    return (static_cast<float>(renderTotalTime) - a> 1.0f);
+                //});
+                //frameTimes.push_back(static_cast<float>(renderTotalTime));
+
+                {
+                    ZoneScopedN("Transparent Crosshair");
+                    Color crosshairColor = { 0.5f, 0.5f, 0.5f, 0.5f };
+                    int32 lineThickness = 7;
+                    int32 lineBounds = 30;
+
+                    Vec2Int screenSizeHalf = g_window.size / 2;
+
+                    float screenSizeScale = {};
+                    Vec2 screenSizeRatio = { g_window.size.x / 2560.0f , g_window.size.y / 1440.0f };
+                    screenSizeScale = Min(screenSizeRatio.x, screenSizeRatio.y);
+
+                    RectInt center;
+                    {
+                        int32 halfLineThickness = int32((lineThickness / 2.0f) * screenSizeScale);
+                        center.botLeft = screenSizeHalf - Vec2Int({ halfLineThickness,  halfLineThickness });
+                        center.topRight = screenSizeHalf + Vec2Int({ halfLineThickness,  halfLineThickness });
+                    }
+
+                    int32 halfLineBounds = int32((lineBounds / 2.0f) * screenSizeScale);
+                    RectInt left;
+                    left.botLeft = { screenSizeHalf.x - halfLineBounds,  center.botLeft.y };
+                    left.topRight = { center.botLeft.x, center.topRight.y };
+
+                    RectInt top;
+                    top.botLeft = left.topRight;
+                    top.topRight = { center.topRight.x, screenSizeHalf.y + halfLineBounds };
+
+                    RectInt right;
+                    right.botLeft = { center.topRight.x, center.botLeft.y };
+                    right.topRight = { screenSizeHalf.x + halfLineBounds,    center.topRight.y };
+
+                    RectInt bot;
+                    bot.botLeft = { center.botLeft.x,  screenSizeHalf.y - halfLineBounds };
+                    bot.topRight = right.botLeft;
+
+                    UI_AddDrawCall({}, center, crosshairColor, Texture::T::Plain);
+                    UI_AddDrawCall({}, left, crosshairColor, Texture::T::Plain);
+                    UI_AddDrawCall({}, top, crosshairColor, Texture::T::Plain);
+                    UI_AddDrawCall({}, right, crosshairColor, Texture::T::Plain);
+                    UI_AddDrawCall({}, bot, crosshairColor, Texture::T::Plain);
+
+                    g_renderer.transparentTarget->Bind();
+                    UI_Render();
+                }
+
+                {
+                    ZoneScopedN("Resolve Framebuffers");
+                    ResolveMSAAFramebuffer(g_renderer.opaqueTarget, g_renderer.postTarget, (GL_COLOR_BUFFER_BIT));
+                    ResolveTransparentChunkFrameBuffer();
+
+                    glDisable(GL_DEPTH_TEST);
+                    glDepthMask(GL_FALSE);
+                    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+                    glEnable(GL_BLEND);
+                    g_renderer.postTarget->Bind();
+                    glActiveTexture(GL_TEXTURE0);
+                    g_renderer.transparentPostTarget->m_color->Bind();
+                    g_renderer.programs[+Shader::BufferCopy]->UseShader();
+                    g_renderer.postVertexBuffer->Bind();
+                }
             }
 
+            if (g_renderer.usingDepthPeeling)
             {
-                ZoneScopedN("Resolve Framebuffers");
-                ResolveMSAAFramebuffer(g_renderer.opaqueTarget, g_renderer.postTarget, (GL_COLOR_BUFFER_BIT));
-                ResolveTransparentChunkFrameBuffer();
-
+                ZoneScopedN("Buffer Copy To Backbuffer");
                 glDisable(GL_DEPTH_TEST);
                 glDepthMask(GL_FALSE);
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                 glEnable(GL_BLEND);
-                g_renderer.postTarget->Bind();
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                glViewport(0, 0, g_window.size.x, g_window.size.y);
                 glActiveTexture(GL_TEXTURE0);
-                g_renderer.transparentPostTarget->m_color->Bind();
-                g_renderer.programs[+Shader::BufferCopy]->UseShader();
+                g_renderer.postTarget->m_color->Bind();
+                g_renderer.programs[+Shader::BufferCopyAlpha]->UseShader();
                 g_renderer.postVertexBuffer->Bind();
-            }
 
+                glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+                glEnableVertexArrayAttrib(g_renderer.vao, 0);
+                glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+                glEnableVertexArrayAttrib(g_renderer.vao, 1);
+                glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
+                glEnableVertexArrayAttrib(g_renderer.vao, 2);
+                glEnable(GL_FRAMEBUFFER_SRGB);
+                glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+                glDisable(GL_FRAMEBUFFER_SRGB);
+            }
+            else
             {
                 ZoneScopedN("Buffer Copy To Backbuffer");
                 glDisable(GL_DEPTH_TEST);

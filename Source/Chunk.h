@@ -276,6 +276,7 @@ struct ChunkArray
     void SetBlocks(ChunkIndex i);
     void BuildChunkVertices(RegionSampler region);
     void UploadChunk(ChunkIndex i);
+    void RenderChunk(ChunkIndex i);
     void RenderOpaqueChunk(ChunkIndex i);
     void RenderTransparentChunk(ChunkIndex i);
     bool GetChunk(ChunkIndex& result, GamePos blockP);
@@ -307,7 +308,8 @@ GamePos Convert_BlockToGame(const ChunkIndex blockParentIndex, const Vec3Int blo
 Vec3Int Convert_GameToBlock(ChunkPos& result, const GamePos& inputP);
 
 struct Camera;
-void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera);
+void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera, uint32 passCount);
+//void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera);
 void PreTransparentChunkRender(const Mat4& perspective, Camera* camera);
 
 int64 PositionHash(ChunkPos p);

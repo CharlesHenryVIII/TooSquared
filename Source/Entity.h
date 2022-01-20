@@ -161,6 +161,7 @@ struct Items
     Item* Add(std::vector<EntityID>& itemIDs, BlockType blockType, const WorldPos& position, const WorldPos& destination);
     Item* Get(EntityID ID);
     void Update(float deltaTime);
+    void Render(float dt, Camera* camera);
     void RenderOpaque(float dt, Camera* camera);
     void RenderTransparent(float dt, Camera* camera);
     //void Render(float deltaTime, Camera* camera);
@@ -177,3 +178,4 @@ extern Entitys g_entityList;
 
 
 bool EntityInit();
+void CameraReleaseAndCouple(Player* player, Camera* camera);

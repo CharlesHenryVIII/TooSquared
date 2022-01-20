@@ -1,11 +1,7 @@
-#version 420 core
+#version 330 core
 #extension GL_EXT_texture_array : enable
 #define DIRECTIONALLIGHT 1
-//Texture Map:
-layout (binding = 0) uniform sampler2DArray sampler;
-//Depth Peel:
-//layout (binding = 1) uniform sampler2DMS depthTexture;
-layout (binding = 1) uniform sampler2D depthTexture;
+uniform sampler2DArray sampler;
 
 in vec2 p_uv;
 flat in float p_depth;
@@ -13,7 +9,6 @@ in vec3 p_normal;
 in vec3 p_pixelP;
 in mat4 p_view;
 in float p_connectedVertices;
-//in vec4 gl_FragCoord;
 
 struct Material {
     vec3  ambient;
@@ -22,8 +17,6 @@ struct Material {
     float shininess;
 };
 
-uniform ivec2 u_screenSize;
-uniform uint u_passCount;
 #if DIRECTIONALLIGHT == 1
 uniform vec3 u_directionalLight_d;
 uniform vec3 u_lightColor;
@@ -42,71 +35,9 @@ out vec4 color;
 
 void main()
 {
-
-
-    //ivec2 depthTextureSize = textureSize(depthTexture);
-#if 1
-    //vec4 depthTexelFetch = texelFetch(depthTexture, ivec2(gl_FragCoord.xy), gl_SampleID);
-    vec4 depthTexelFetch = texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0);
-#else
-    vec4 depthTexelFetch = texture(depthTexture, gl_FragCoord.xy);
-#endif
-
-    //if (gl_FragCoord.z <= texelFetch(depthTexture, vec2(gl_FragCoord.x, gl_FragCoord.y), gl_SampleID).z) 
-    //if (depthTexelFetch.z >= gl_FragCoord.z) 
-
-    //if (gl_FragCoord.z > depthTexelFetch.z)
-        //discard; //Manually performing the GL_GREATER depth test for each pixel
-    //if (gl_FragCoord.x < 500)
-    //{
-    //    color = vec4(1.0);
-    //    color.rgb = vec3(gl_FragCoord.z);
-    //    return;
-    //}
-    //else
-    //{
-    //    color = vec4(1.0);
-    //    color.rgb = vec3(depthTexelFetch.r);
-    //    return;
-    //}
-
-
-#define DEPTH_DISCARD 1
-#if DEPTH_DISCARD == 1
-
-    //if (gl_FragCoord.x < 500)
-        //color.xyzw = vec4(depthTexelFetch.x);
-    //else
-        //color.xyzw = vec4(gl_FragCoord.z);
-    //return;
-    if ((u_passCount != 0) && (gl_FragCoord.z <= depthTexelFetch.r))
-    {
-        discard;
-    }
-    //color.rgb = vec3(depthTexelFetch.r);
-    //color.a = 1.0;
-    //return;
-
-#elif DEPTH_DISCARD == 2
-    if (u_passCount != 0)
-    {
-        for (int i = 0; i < gl_NumSamples; i++)
-        {
-            depthTexelFetch = texelFetch(depthTexture, ivec2(gl_FragCoord.xy), i);
-            if (gl_FragCoord.z <= depthTexelFetch.r)
-            {
-                discard;
-            }
-        }
-    }
-
-#else
-#endif
-
     vec4 pixel = texture2DArray(sampler, vec3(p_uv, p_depth));
-
 #if 1
-    if (pixel.a == 0.0) 
+    if (pixel.a != 1)
         discard;
 #endif
 
@@ -196,38 +127,8 @@ void main()
         result = vec3( 0, 0, adjustedVertexCount);
 #endif
     //result = vec3(p_connectedVertices / 2);
-
-#if 1
     color = vec4(result, pixel.a);
-#else
-    color.a = 1;
-    color.rgb = vec3(0);
-    float tempFloat = 0.95;
-    //color.r = (gl_FragCoord.z - tempFloat) / (1 - tempFloat);
-    color.r = (depthTexelFetch.r - tempFloat) / (1 - tempFloat);
-#endif
-
-    //color.r = float(depthTextureSize.x - 1023);
-    //color.r = float(depthTextureSize.y - 575);
-
-    //color = vec4(pixelPositionOnTexture.x / depthTextureSize.x, pixelPositionOnTexture.y / depthTextureSize.y, 0, 1.0);
-    //color = vec4(float(depthTextureSize.x) * xRatio, float(depthTextureSize.y) * yRatio, 0, 1.0);
-    //color = vec4(xRatio, yRatio, 0, 1.0);
-    //color.xyz = vec3(depthTexelFetch.x);
-
-    //color.r = depthTexelFetch.r - 0.9;
     //color = pixel;
-    //float(depthTextureSize.x) / 1024;
-    //color.r = (depthTexelFetch.r - 0.999) / (1 - 0.999);
-    //color.g = 1 - depthTexelFetch.r;
-    //color.b = 0;
-    //color.a = 1;
-    //float(u_screenSize.x);//gl_FragCoord.x;
-    //if (u_passCount != 0)
-    //{
-    //    color.xyz = vec3(0);
-    //    color.r = depthTexelFetch.z;
-    //}
 
     //color.xyz = p_normal;
     //color.a = 1;

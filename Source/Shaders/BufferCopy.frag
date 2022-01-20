@@ -1,4 +1,4 @@
-#version 330
+#version 420 core
 uniform sampler2D sampler;
 
 in vec2 f_uv;

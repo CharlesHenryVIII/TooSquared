@@ -1,4 +1,4 @@
-#version 330 core
+#version 420 core
 layout(location = 0) in uint v_blockIndex;                  //2Byte
 layout(location = 1) in uint v_spriteIndex;                 //1Byte
 layout(location = 2) in uint v_normalAndConnectedVertices;  //1Byte

@@ -26,24 +26,26 @@ union Color {
 
 
 
-const Color Red = { 1.0f, 0.0f, 0.0f, 1.0f };
-const Color Green = { 0.0f, 1.0f, 0.0f, 1.0f };
-const Color Blue = { 0.0f, 0.0f, 1.0f, 1.0f };
-const Color transRed = { 1.0f, 0.0f, 0.0f, 0.5f };
-const Color transGreen = { 0.0f, 1.0f, 0.0f, 0.5f };
-const Color transBlue = { 0.0f, 0.0f, 1.0f, 0.5f };
-const Color transOrange = { 1.0f, 0.5f, 0.0f, 0.5f };
-const Color lightRed = { 1.0f, 0.0f, 0.0f, 0.25f };
-const Color lightGreen = { 0.0f, 1.0f, 0.0f, 0.25f };
-const Color lightBlue = { 0.0f, 0.0f, 1.0f, 0.25f };
-const Color White = { 1.0f, 1.0f, 1.0f, 1.0f };
-const Color lightWhite = { 0.58f, 0.58f, 0.58f, 0.58f };
-const Color Black = { 0.0f, 0.0f, 0.0f, 1.0f };
-const Color lightBlack = { 0.0f, 0.0f, 0.0f, 0.58f };
-const Color Brown = { 0.5f, 0.4f, 0.25f, 1.0f };  //used for dirt block
-const Color Mint = { 0.0f, 1.0f, 0.5f, 1.0f };   //used for corner block
-const Color Orange = { 1.0f, 0.5f, 0.0f, 1.0f };   //used for edge block
-const Color Grey = { 0.5f, 0.5f, 0.5f, 1.0f }; //used for floating block
+const Color Red         = { 1.00f, 0.00f, 0.00f, 1.00f };
+const Color Green       = { 0.00f, 1.00f, 0.00f, 1.00f };
+const Color Blue        = { 0.00f, 0.00f, 1.00f, 1.00f };
+const Color transRed    = { 1.00f, 0.00f, 0.00f, 0.50f };
+const Color transGreen  = { 0.00f, 1.00f, 0.00f, 0.50f };
+const Color transBlue   = { 0.00f, 0.00f, 1.00f, 0.50f };
+const Color transOrange = { 1.00f, 0.50f, 0.00f, 0.50f };
+const Color lightRed    = { 1.00f, 0.00f, 0.00f, 0.25f };
+const Color lightGreen  = { 0.00f, 1.00f, 0.00f, 0.25f };
+const Color lightBlue   = { 0.00f, 0.00f, 1.00f, 0.25f };
+const Color White       = { 1.00f, 1.00f, 1.00f, 1.00f };
+const Color lightWhite  = { 0.58f, 0.58f, 0.58f, 0.58f };
+const Color Black       = { 0.00f, 0.00f, 0.00f, 1.00f };
+const Color lightBlack  = { 0.00f, 0.00f, 0.00f, 0.58f };
+const Color Brown       = { 0.50f, 0.40f, 0.25f, 1.00f };
+const Color Mint        = { 0.00f, 1.00f, 0.50f, 1.00f };
+const Color Orange      = { 1.00f, 0.50f, 0.00f, 1.00f };
+const Color Grey        = { 0.50f, 0.50f, 0.50f, 1.00f };
+
+const Color backgroundColor = { 0.263f, 0.706f, 0.965f, 0.0f };
 
 const Color HealthBarBackground = { 0.25f, 0.33f, 0.25f, 1.0f};
 constexpr int32 blockSize = 32;

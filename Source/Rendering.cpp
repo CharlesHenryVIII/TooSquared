@@ -70,6 +70,7 @@ int32 CreateMessageWindow(SDL_MessageBoxButtonData* buttons, int32 numOfButtons,
 
 Texture::Texture(TextureParams tp)
 {
+    assert(tp.samples);
     if (tp.samples > 1)
     {
         m_target = GL_TEXTURE_2D_MULTISAMPLE;
@@ -327,7 +328,7 @@ ShaderProgram::~ShaderProgram()
     DebugPrint("Shader Program Deleted\n");
 #endif
 }
-bool ShaderProgram::CompileShader(GLuint handle, const char* name, std::string text)
+bool ShaderProgram::CompileShader(GLuint handle, std::string text, const std::string& fileName)
 {
     const char* strings[] = { text.c_str() };
     glShaderSource(handle, 1, strings, NULL);
@@ -343,7 +344,9 @@ bool ShaderProgram::CompileShader(GLuint handle, const char* name, std::string t
         infoString.resize(log_length, 0);
         //GLchar info[4096] = {};
         glGetShaderInfoLog(handle, log_length, NULL, (GLchar*)infoString.c_str());
-        DebugPrint("Vertex Shader compilation error: %s\n", infoString.c_str());
+        //std::string errorTitle = ToString("%s compilation error: %s\n", fileName.c_str(), infoString.c_str());
+        std::string errorTitle = fileName + " Compilation Error: ";
+        DebugPrint((errorTitle + infoString + "\n").c_str());
 
         SDL_MessageBoxButtonData buttons[] = {
             //{ /* .flags, .buttonid, .text */        0, 0, "Continue" },
@@ -351,7 +354,7 @@ bool ShaderProgram::CompileShader(GLuint handle, const char* name, std::string t
             { SDL_MESSAGEBOX_BUTTON_ESCAPEKEY_DEFAULT, 1, "Stop" },
         };
 
-        int32 buttonID = CreateMessageWindow(buttons, arrsize(buttons), ts_MessageBox::Error, name, infoString.c_str());
+        int32 buttonID = CreateMessageWindow(buttons, arrsize(buttons), ts_MessageBox::Error, errorTitle.c_str(), infoString.c_str());
         if (buttons[buttonID].buttonid == 2)//NOTE: Stop button
         {
             DebugPrint("stop hit");
@@ -428,8 +431,8 @@ void ShaderProgram::CheckForUpdate()
         GLuint vhandle = glCreateShader(GL_VERTEX_SHADER);
         GLuint phandle = glCreateShader(GL_FRAGMENT_SHADER);
 
-        if (!CompileShader(vhandle, "Vertex Shader", vertexText) ||
-            !CompileShader(phandle, "Pixel Shader",  pixelText))
+        if (!CompileShader(vhandle, vertexText, m_vertexFile) ||
+            !CompileShader(phandle, pixelText, m_pixelFile))
             return;
 
 
@@ -535,6 +538,21 @@ void ShaderProgram::UpdateUniformFloat(const char* name, GLfloat value)
 #endif
 }
 
+void ShaderProgram::UpdateUniformInt2(const char* name, Vec2Int values)
+{
+    UpdateUniformInt2(name, GLint(values.x), GLint(values.y));
+}
+
+void ShaderProgram::UpdateUniformInt2(const char* name, GLint value1, GLint value2)
+{
+    GLint loc = glGetUniformLocation(m_handle, name);
+    //glUniform1f(loc, value);
+    glUniform2i(loc, value1, value2);
+#ifdef _DEBUGPRINT
+    DebugPrint("Shader Uniform Updated %s\n", name);
+#endif
+}
+
 void ShaderProgram::UpdateUniformUint8(const char* name, GLuint value)
 {
     GLint loc = glGetUniformLocation(m_handle, name);
@@ -616,12 +634,22 @@ void VertexBuffer::Upload(Vertex_Chunk* vertices, size_t count)
 #endif
 }
 
+void DepthWrite(bool status)
+{
+    glDepthMask(status);
+}
+void DepthRead(bool status)
+{
+    status ? glEnable(GL_DEPTH_TEST) : glDisable(GL_DEPTH_TEST);
+}
+
 double s_lastShaderUpdateTime = 0;
 double s_incrimentalTime = 0;
 void RenderUpdate(Vec2Int windowSize, float deltaTime)
 {
+    CheckFrameBufferStatus();
     ZoneScopedN("Render Update");
-    glClearColor(0.263f, 0.706f, 0.965f, 0.0f);
+    glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     g_renderer.numTrianglesDrawn = 0;
     if (s_lastShaderUpdateTime + 0.1f <= s_incrimentalTime)
@@ -636,23 +664,28 @@ void RenderUpdate(Vec2Int windowSize, float deltaTime)
     s_incrimentalTime += deltaTime;
 
 
+    CheckFrameBufferStatus();
     UpdateFrameBuffers(windowSize, g_renderer.msaaEnabled ? g_renderer.maxMSAASamples : 1);
     g_renderer.opaqueTarget->Bind();
     //g_renderer.postTarget->Bind();
     glViewport(0, 0, windowSize.x, windowSize.y);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    if (!g_renderer.usingDepthPeeling)
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
-    g_renderer.transparentTarget->Bind();
-    //g_renderer.postTarget->m_depth->Bind();
+    if (!g_renderer.usingDepthPeeling)
+    {
+        g_renderer.transparentTarget->Bind();
+        //g_renderer.postTarget->m_depth->Bind();
 
-    Vec4 clearVec0 = Vec4{ 0.0f, 0.0f, 0.0f, 0.0f };
-    glClearBufferfv(GL_COLOR, 0, clearVec0.e);
-    //Vec4 clearVec1 = Vec4{ 1.0f, 1.0f, 1.0f, 1.0f }; //is this right or is only the first value 1.0f and the rest 0.0f?
-    Vec4 clearVec1 = Vec4{ 1.0f, 0.0f, 0.0f, 0.0f };
-    glClearBufferfv(GL_COLOR, 1, clearVec1.e);
+        Vec4 clearVec0 = Vec4{ 0.0f, 0.0f, 0.0f, 0.0f };
+        glClearBufferfv(GL_COLOR, 0, clearVec0.e);
+        //Vec4 clearVec1 = Vec4{ 1.0f, 1.0f, 1.0f, 1.0f }; //is this right or is only the first value 1.0f and the rest 0.0f?
+        Vec4 clearVec1 = Vec4{ 1.0f, 0.0f, 0.0f, 0.0f };
+        glClearBufferfv(GL_COLOR, 1, clearVec1.e);
 
-    g_renderer.opaqueTarget->Bind();
+        g_renderer.opaqueTarget->Bind();
+    }
 }
 
 Rect GetRectFromSprite(uint32 i)
@@ -726,7 +759,7 @@ void FillIndexBuffer(IndexBuffer* ib)
 }
 
 
-void FrameBuffer::Bind()
+void FrameBuffer::Bind() const
 {
     glBindFramebuffer(GL_FRAMEBUFFER, m_handle);
 }
@@ -770,6 +803,16 @@ void FrameBuffer::CreateTexture(Texture::TextureParams tp)
     }
 }
 
+void CheckFrameBufferStatus()
+{
+    GLint err = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (err != GL_FRAMEBUFFER_COMPLETE)
+    {
+        DebugPrint("Error: Frame buffer error: %d", err);
+        assert(false);
+    }
+}
+
 void FrameBuffer::CreateTextures(Vec2Int size, uint32 samples, bool transparentFrameBuffer)
 {
     m_size = size;
@@ -801,7 +844,7 @@ void FrameBuffer::CreateTextures(Vec2Int size, uint32 samples, bool transparentF
     }
     else
     {
-        tp.internalFormat = GL_RGB;
+        tp.internalFormat = GL_RGBA;
         m_color = new Texture(tp);
 
         tp.internalFormat = GL_DEPTH_COMPONENT;
@@ -813,56 +856,157 @@ void FrameBuffer::CreateTextures(Vec2Int size, uint32 samples, bool transparentF
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_depth->m_target, m_depth->m_handle, 0);
     }
 
-    GLint err = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    if (err != GL_FRAMEBUFFER_COMPLETE)
-    {
-        DebugPrint("Error: Frame buffer error: %d", err);
-        assert(false);
-    }
+    CheckFrameBufferStatus();
 }
 
 void UpdateFrameBuffers(Vec2Int size, uint32 samples)
 {
+    CheckFrameBufferStatus();
     if (g_renderer.postTarget == nullptr)
     {
         g_renderer.opaqueTarget = new FrameBuffer();
         g_renderer.postTarget = new FrameBuffer();
         g_renderer.transparentTarget = new FrameBuffer();
         g_renderer.transparentPostTarget = new FrameBuffer();
+        g_renderer.depthCopyTarget = new FrameBuffer();
     }
 
     FrameBuffer* opaqueScene = g_renderer.opaqueTarget;
     FrameBuffer* post = g_renderer.postTarget;
     FrameBuffer* transparentScene = g_renderer.transparentTarget;
     FrameBuffer* transparentPost = g_renderer.transparentPostTarget;
+    FrameBuffer* depthCopyTarget = g_renderer.depthCopyTarget;
+
+
+    if (g_renderer.usingDepthPeeling)
+    {
+        FrameBuffer* depthPeelingScene = opaqueScene;
+        bool changed = false;
+        depthPeelingScene->Bind();
+
+        if (depthPeelingScene->m_colors.size() != g_renderer.depthPeelingPasses)
+        {
+            depthPeelingScene->m_colors.clear();
+            for (int32 i = 0; i < g_renderer.depthPeelingPasses; i++)
+            {
+                Texture::TextureParams tp = {};
+                tp.samples = samples;
+                tp.size = size;
+                tp.internalFormat = GL_RGBA;
+                Texture* colorTexture = new Texture(tp);
+                depthPeelingScene->m_colors.push_back(colorTexture);
+                changed = true;
+            }
+            //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, depthPeelingScene->m_colors[0]->m_target, depthPeelingScene->m_colors[0]->m_handle, 0);
+        }
+        if (!depthPeelingScene->m_depth)
+        {
+            Texture::TextureParams tp = {};
+            tp.samples = samples;
+            tp.size = size;
+            tp.internalFormat = GL_DEPTH_COMPONENT;
+            tp.format = GL_DEPTH_COMPONENT;
+            depthPeelingScene->m_depth = new Texture(tp);
+
+            //CheckFrameBufferStatus();
+            //depthPeelingScene->Bind();
+            //Texture* MSAADepth = depthPeelingScene->m_depth;
+            //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, MSAADepth->m_target, MSAADepth->m_handle, 0);
+            //CheckFrameBufferStatus();
+
+            changed = true;
+        }
+        if (!depthPeelingScene->m_depthColorForDepthPeeling)
+        {
+            Texture::TextureParams tp = {};
+            tp.samples = 1;
+            tp.size = size;
+            tp.internalFormat = GL_DEPTH_COMPONENT;
+            tp.format = GL_DEPTH_COMPONENT;
+            depthPeelingScene->m_depthColorForDepthPeeling = new Texture(tp);
+            depthCopyTarget->m_depth = depthPeelingScene->m_depthColorForDepthPeeling;
+
+            //CheckFrameBufferStatus();
+            //Texture* nonMSAADepth = depthPeelingScene->m_depthColorForDepthPeeling;
+            //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, nonMSAADepth->m_target, nonMSAADepth->m_handle, 0);
+            changed = true;
+        }
+        if (!depthCopyTarget->m_color)
+        {
+            Texture::TextureParams tp = {};
+            tp.samples = 1;
+            tp.size = size;
+            tp.internalFormat = GL_RGBA16F;
+            tp.format = GL_RGBA;
+            depthCopyTarget->m_color = new Texture(tp);
+
+            changed = true;
+        }
+
+        depthPeelingScene->m_size = depthCopyTarget->m_size = size;
+        depthPeelingScene->m_samples = samples;
+        depthCopyTarget->m_samples = 1;
+
+        if (changed)
+        {
+            depthPeelingScene->Bind();
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, depthPeelingScene->m_colors[0]->m_target, depthPeelingScene->m_colors[0]->m_handle, 0);
+            CheckFrameBufferStatus();
+            //Cant attach depth texture as a color attachment
+            //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, depthPeelingScene->m_depthColorForDepthPeeling->m_target, depthPeelingScene->m_depthColorForDepthPeeling->m_handle, 0);
+            //CheckFrameBufferStatus();
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthPeelingScene->m_depth->m_target, depthPeelingScene->m_depth->m_handle, 0);
+            CheckFrameBufferStatus();
+
+            depthCopyTarget->Bind();
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, depthCopyTarget->m_color->m_target, depthCopyTarget->m_color->m_handle, 0);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthCopyTarget->m_depth->m_target, depthCopyTarget->m_depth->m_handle, 0);
+            CheckFrameBufferStatus();
+        }
+
+        CheckFrameBufferStatus();
+    }
+
     if (post->m_size.x == size.x && post->m_size.y == size.y && opaqueScene->m_samples == samples)
         return;
 
-    opaqueScene->CreateTextures(size, samples, false);
+    if (!g_renderer.usingDepthPeeling)
+    {
+        opaqueScene->CreateTextures(size, samples, false);
+        transparentScene->CreateTextures(size, samples, true);
+        transparentScene->m_depth = opaqueScene->m_depth;
+        transparentScene->Bind();
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, transparentScene->m_depth->m_target, transparentScene->m_depth->m_handle, 0);
+    }
     post->CreateTextures(size, 1, false);
-    transparentScene->CreateTextures(size, samples, true);
-    transparentPost->CreateTextures(size, 1, true);
+    if (!g_renderer.usingDepthPeeling)
+    {
+        transparentPost->CreateTextures(size, 1, true);
 
-    transparentScene->m_depth = opaqueScene->m_depth;
-    transparentScene->Bind();
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, transparentScene->m_depth->m_target, transparentScene->m_depth->m_handle, 0);
-    transparentPost->m_depth = post->m_depth;
-    transparentPost->Bind();
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, transparentPost->m_depth->m_target, transparentPost->m_depth->m_handle, 0);
-    opaqueScene->Bind();
+        transparentPost->m_depth = post->m_depth;
+        transparentPost->Bind();
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, transparentPost->m_depth->m_target, transparentPost->m_depth->m_handle, 0);
+        opaqueScene->Bind();
+    }
+    depthCopyTarget->Bind();
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, post->m_color->m_target, post->m_color->m_handle, 0);
+    CheckFrameBufferStatus();
 }
 
 // Copying the multisampled framebuffer to a standard texture resolves the multiple samples per pixel. This must be done before using the
 // framebuffer for any read operations.
-void ResolveMSAAFramebuffer(FrameBuffer* read, FrameBuffer* write, GLbitfield copyMask, GLenum mode)
+void ResolveMSAAFramebuffer(const FrameBuffer* read, FrameBuffer* write, GLbitfield copyMask, GLenum mode)
 {
     assert(read && write);
     if (read && write)
     {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, read->m_handle);
-        glReadBuffer(mode);
         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, write->m_handle);
-        glDrawBuffer(mode);
+        if (mode != GL_DEPTH_ATTACHMENT)
+        {
+            glReadBuffer(mode);
+            glDrawBuffer(mode);
+        }
         glBlitFramebuffer(0, 0, read->m_size.x, read->m_size.y, 0, 0, write->m_size.x, write->m_size.y, copyMask, GL_NEAREST);
     }
 }
@@ -993,8 +1137,6 @@ void UI_Render()
     glBlendFunci(1, GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
     glBlendEquation(GL_FUNC_ADD);
 
-    g_renderer.transparentTarget->Bind();
-
     UI_VertexBuffer->Bind();
     UI_VertexBuffer->Upload(UI_Vertices.data(), UI_Vertices.size());
 
@@ -1094,9 +1236,6 @@ void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Ma
 
     glDrawElements(GL_TRIANGLES, (GLuint)vertices.size(), GL_UNSIGNED_INT, 0);
     g_renderer.numTrianglesDrawn += (uint32)vertices.size();
-    glEnable(GL_DEPTH_TEST);
-    glDepthMask(GL_TRUE);
-    //glEnable(GL_CULL_FACE);
 }
 
 
@@ -1184,14 +1323,16 @@ void InitializeVideo()
     g_renderer.skyBoxDay   = new TextureCube("Assets/sky.dds");//DayMinecraftSkybox2.dds");
     g_renderer.textures[Texture::T::Plain] = new Texture(s_pixelTextureData, { 1, 1 }, GL_RGBA);
 
-    g_renderer.programs[+Shader::OpaqueChunk]      = new ShaderProgram("Source/Shaders/Chunk.vert",      "Source/Shaders/Chunk.frag");
-    g_renderer.programs[+Shader::TransparentChunk] = new ShaderProgram("Source/Shaders/Chunk.vert",      "Source/Shaders/ChunkTransparent.frag");
-    g_renderer.programs[+Shader::Cube]             = new ShaderProgram("Source/Shaders/Cube.vert",       "Source/Shaders/Cube.frag");
-    g_renderer.programs[+Shader::TransparentCube]  = new ShaderProgram("Source/Shaders/Cube.vert",       "Source/Shaders/CubeTransparent.frag");
-    g_renderer.programs[+Shader::BufferCopy]       = new ShaderProgram("Source/Shaders/BufferCopy.vert", "Source/Shaders/BufferCopy.frag");
-    g_renderer.programs[+Shader::Sun]              = new ShaderProgram("Source/Shaders/Sun.vert",        "Source/Shaders/Sun.frag");
-    g_renderer.programs[+Shader::UI]               = new ShaderProgram("Source/Shaders/UI.vert",         "Source/Shaders/UI.frag");
-    g_renderer.programs[+Shader::Composite]        = new ShaderProgram("Source/Shaders/BufferCopy.vert", "Source/Shaders/Composite.frag");
+    g_renderer.programs[+Shader::Chunk]             = new ShaderProgram("Source/Shaders/Chunk.vert",        "Source/Shaders/Chunk.frag");
+    g_renderer.programs[+Shader::OpaqueChunk]       = new ShaderProgram("Source/Shaders/Chunk.vert",        "Source/Shaders/ChunkOpaque.frag");
+    g_renderer.programs[+Shader::TransparentChunk]  = new ShaderProgram("Source/Shaders/Chunk.vert",        "Source/Shaders/ChunkTransparent.frag");
+    g_renderer.programs[+Shader::Cube]              = new ShaderProgram("Source/Shaders/Cube.vert",         "Source/Shaders/Cube.frag");
+    g_renderer.programs[+Shader::TransparentCube]   = new ShaderProgram("Source/Shaders/Cube.vert",         "Source/Shaders/CubeTransparent.frag");
+    g_renderer.programs[+Shader::BufferCopy]        = new ShaderProgram("Source/Shaders/BufferCopy.vert",   "Source/Shaders/BufferCopy.frag");
+    g_renderer.programs[+Shader::BufferCopyAlpha]   = new ShaderProgram("Source/Shaders/BufferCopy.vert",   "Source/Shaders/BufferCopyAlpha.frag");
+    g_renderer.programs[+Shader::Sun]               = new ShaderProgram("Source/Shaders/Sun.vert",          "Source/Shaders/Sun.frag");
+    g_renderer.programs[+Shader::UI]                = new ShaderProgram("Source/Shaders/UI.vert",           "Source/Shaders/UI.frag");
+    g_renderer.programs[+Shader::Composite]         = new ShaderProgram("Source/Shaders/BufferCopy.vert",   "Source/Shaders/Composite.frag");
 
 #if DIRECTIONALLIGHT == 1
     g_renderer.sunLight.d = Normalize(Vec3({  0.0f, -1.0f,  0.0f }));

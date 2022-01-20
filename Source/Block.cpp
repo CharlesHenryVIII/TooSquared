@@ -179,6 +179,66 @@ void DrawBlock(const Mat4& model, Vec3 scale, Camera* camera, Color color, Textu
     g_renderer.numTrianglesDrawn += 36 / 3;
 }
 
+void DrawBlockDepthPeeling(const Mat4& model, Vec3 scale, Camera* camera, Color color, Texture::T textureType, BlockType blockType)
+{
+    VertexBuffer vb = VertexBuffer();
+
+    Vertex vertices[sizeof(cubeVertices) / sizeof(cubeVertices[0].e[0])] = {};
+
+    for (int32 f = 0; f < +Face::Count; f++)
+        for (int32 i = 0; i < arrsize(VertexFace::e); i++)
+        {
+            int32 index = f * arrsize(VertexFace::e) + i;
+            vertices[index].p = cubeVertices[f].e[i] - 0.5f;
+            auto spriteIndex = g_blocks[+blockType].m_spriteIndices[f];
+            //TODO: Refactor this garbago:
+            Rect UVSquare = GetUVsFromIndex(spriteIndex);
+            vertices[index].uv.x = Lerp(UVSquare.botLeft.x, UVSquare.topRight.x, faceUV[i].x);
+            vertices[index].uv.y = Lerp(UVSquare.topRight.y, UVSquare.botLeft.y, faceUV[i].y);
+        }
+
+    vb.Upload(vertices, arrsize(vertices));
+    g_renderer.chunkIB->Bind();
+
+    //const GLenum transparentDrawBuffers[] = { GL_COLOR_ATTACHMENT0 };
+    //glDrawBuffers(1, transparentDrawBuffers);
+    //glReadBuffer();
+
+    ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
+    sp->UseShader();
+    //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, g_renderer.textures[textureType]->m_target, g_renderer.textures[textureType]->m_handle, 0);
+    //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, depthBuff->m_target, depthBuff->m_handle, 0);
+    g_renderer.textures[textureType]->Bind();
+    sp->UpdateUniformMat4("u_perspective", 1, false, camera->m_perspective.e);
+    sp->UpdateUniformMat4("u_view",        1, false, camera->m_view.e);
+    sp->UpdateUniformMat4("u_model",       1, false, model.e);
+    sp->UpdateUniformVec3("u_scale",       1,        scale.e);
+    sp->UpdateUniformVec4("u_color",       1,        color.e);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+    glEnableVertexArrayAttrib(g_renderer.vao, 0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+    glEnableVertexArrayAttrib(g_renderer.vao, 1);
+    glDisableVertexArrayAttrib(g_renderer.vao, 2);
+    glDisableVertexArrayAttrib(g_renderer.vao, 3);
+
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+    g_renderer.numTrianglesDrawn += 36 / 3;
+}
+
+void DrawCubeDepthPeeling(WorldPos p, Color color, float scale, Camera* camera)
+{
+    Mat4 modelMatrix;
+    gb_mat4_translate(&modelMatrix, p.p);
+    DrawBlockDepthPeeling(modelMatrix, { scale, scale, scale }, camera, color, Texture::T::Plain, BlockType::Empty);
+}
+void DrawCubeDepthPeeling(WorldPos p, Color color, Vec3 scale, Camera* camera)
+{
+    Mat4 modelMatrix;
+    gb_mat4_translate(&modelMatrix, p.p);
+    DrawBlockDepthPeeling(modelMatrix, scale, camera, color, Texture::T::Plain, BlockType::Empty);
+}
+
 void DrawCube(WorldPos p, Color color, float scale, Camera* camera)
 {
     Mat4 modelMatrix;
