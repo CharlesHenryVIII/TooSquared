@@ -1263,57 +1263,73 @@ White:  Uploaded,");
                 //    g_renderer.postTarget->Bind();
                 //    Texture* nonMSAADepth = g_renderer.opaqueTarget->m_depthColorForDepthPeeling;
                 //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, nonMSAADepth->m_target, nonMSAADepth->m_handle, 0);
-
+                //
                 //    renderTarget->Bind();
                 //    Texture* MSAADepth = g_renderer.opaqueTarget->m_depth;
                 //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, MSAADepth->m_target, MSAADepth->m_handle, 0);
                 //}
 
-                {//Prep reading depth buffer
-                    g_renderer.depthCopyTarget->Bind();
-                    glClearColor(0, 0, 0, 0);
-                    glClear(GL_DEPTH_BUFFER_BIT);
 
-                    //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
-                                            //renderTarget->m_depthColorForDepthPeeling->m_target, 
-                                            //renderTarget->m_depthColorForDepthPeeling->m_handle, 0);
-                    CheckFrameBufferStatus();
 
-                    renderTarget->Bind();
-                    glActiveTexture(GL_TEXTURE1);
-                    g_renderer.depthCopyTarget->m_depth->Bind();
-                    CheckFrameBufferStatus();
+
+                //
+                //    Prep buffers for rendering (Possibly un-needed)
+                //
+                {
+                    //Clear color buffers before first pass
+                    {
+                        g_renderer.resolveDepthPeelingTarget->Bind();
+                        glClearColor(0, 0, 0, 0);
+                        for (int32 pass = 0; pass < g_renderer.depthPeelingPasses; pass++)
+                        {
+                            glActiveTexture(GL_TEXTURE0);
+                            g_renderer.resolveDepthPeelingTarget->m_colors[pass]->Bind();
+                            glClear(GL_COLOR_BUFFER_BIT);
+                        }
+                        CheckFrameBufferStatus();
+                    }
+                    //Clear the copy/read depth buffer before first pass
+                    {
+                        //Dont need to bind anything since the depth buffer is already bound above in the resolveDepthPeelingTarget
+                        glClearDepth(1.0f);
+                        glClear(GL_DEPTH_BUFFER_BIT);
+                        CheckFrameBufferStatus();
+                    }
+                    //Set the second texture in the depth peeling scene to be the previous scene's depth
+                    {
+                        renderTarget->Bind();
+                        glActiveTexture(GL_TEXTURE1);
+                        g_renderer.resolveDepthPeelingTarget->m_depth->Bind();
+                    }
                 }
-                {//Prep writing depth buffer
-                    Texture* depthBuffer = renderTarget->m_depth;
-                    //depthBuff->Bind();
-                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthBuffer->m_target, depthBuffer->m_handle, 0);
-                }
+
+
+
+                //
+                // Depth peeling loop
+                //
                 for (int32 pass = 0; pass < g_renderer.depthPeelingPasses; pass++)
                 {
-
                     ZoneScopedN("Depth Peeling Pass");
                     std::string loopInformation = ToString("DepthPass Number: %i", pass);
                     ZoneText(loopInformation.c_str(), loopInformation.size());
+
                     // Pre Render Work:
                     {
-                        renderTarget->Bind();
-                        glActiveTexture(GL_TEXTURE0);
-                        renderTarget->m_colors[pass]->Bind();
                         //depth unit 0:
                         {
                             //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, depthBuff->m_target, depthBuff->m_handle, 0);
-
+                            //
                             //if (pass == 0)
                             //    glDisable(GL_DEPTH_TEST);
                             //else
                             //    glEnable(GL_DEPTH_TEST);
                             ////bind depth buffer ( i % 2)
-
-
+                            //
+                            //
                             ////glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, depthBuff->m_target, depthBuff->m_handle, 0);
                             ////glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthBuff->m_target, depthBuff->m_handle, 0);
-
+                            //
                             ////disable depth writes, read-only depth test
                             //glDepthMask(GL_FALSE);
                             ////set depth func to GREATER
@@ -1323,7 +1339,7 @@ White:  Uploaded,");
                         {
                             //bind depth buffer (( i+1) % 2)
                             //clear depth buffer
-                            glClearDepth(1.0f);
+                            //glClearDepth(1.0f); //set above
                             ////const GLfloat clearValue = 0;
                             ////glClearBufferfv(GL_DEPTH, 0, &clearValue);
                             //enable depth writes;
@@ -1339,16 +1355,14 @@ White:  Uploaded,");
                             CheckFrameBufferStatus();
                         }
                     }
-                    glClearColor(0, 0, 0, 0);
+                    //Clear the render target/depth peeling scene
+                    //glClearColor(0, 0, 0, 0); //set above as well
                     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 
 
 
-
-
-
-
+                    //Render the blocks
                     {
                         ZoneScopedN("Pre Opaque Chunk Render");
                         PreOpaqueChunkRender(playerCamera->m_perspective, playerCamera, pass);
@@ -1372,17 +1386,73 @@ White:  Uploaded,");
                             }
                         }
                     }
+                    
+
 
                     //Resolve MSAA depth buffer into non-MSAA texture buffer
                     {
-                        g_renderer.depthCopyTarget->Bind();
-                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, g_renderer.depthCopyTarget->m_depth->m_target, g_renderer.depthCopyTarget->m_depth->m_handle, 0);
-                        //glClearDepth(0);
-                        //glClear(GL_DEPTH_BUFFER_BIT);
+#if 1
+                        g_renderer.resolveDepthPeelingTarget->Bind();
+                        Texture* colorBuffer = g_renderer.resolveDepthPeelingTarget->m_colors[pass];
+                        Texture* depthBuffer = g_renderer.resolveDepthPeelingTarget->m_depth;
+                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, colorBuffer->m_target, colorBuffer->m_handle, 0);
+                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  depthBuffer->m_target, depthBuffer->m_handle, 0);// this doesnt change
 
                         renderTarget->Bind();
-                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, renderTarget->m_depth->m_target, renderTarget->m_depth->m_handle, 0);
-                        ResolveMSAAFramebuffer(renderTarget, g_renderer.depthCopyTarget, GL_DEPTH_BUFFER_BIT, GL_DEPTH_ATTACHMENT);
+                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->m_color->m_target, renderTarget->m_color->m_handle, 0);
+                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  renderTarget->m_depth->m_target, renderTarget->m_depth->m_handle, 0);// this doesnt change
+
+                        //ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_COLOR_BUFFER_BIT/*, GL_COLOR_ATTACHMENT0*/);
+                        //ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_DEPTH_BUFFER_BIT/*, GL_COLOR_ATTACHMENT0*/);
+
+                        //ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+                        glBindFramebuffer(GL_READ_FRAMEBUFFER, renderTarget->m_handle);
+                        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, g_renderer.resolveDepthPeelingTarget->m_handle);
+                        glBlitFramebuffer(  0, 0, renderTarget->m_size.x, renderTarget->m_size.y, 
+                                            0, 0, g_renderer.resolveDepthPeelingTarget->m_size.x, g_renderer.resolveDepthPeelingTarget->m_size.y, 
+                                            GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT, GL_NEAREST);
+#else
+                        g_renderer.resolveDepthPeelingTarget->Bind();
+                        Texture* depthBuffer = g_renderer.resolveDepthPeelingTarget->m_depth;
+                        CheckFrameBufferStatus();
+                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,  depthBuffer->m_target, depthBuffer->m_handle, 0);// this doesnt change
+                        CheckFrameBufferStatus();
+
+                        renderTarget->Bind();
+                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,  renderTarget->m_depth->m_target, renderTarget->m_depth->m_handle, 0);// this doesnt change
+                        CheckFrameBufferStatus();
+
+                        ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_COLOR_BUFFER_BIT/*, GL_COLOR_ATTACHMENT0*/);
+
+
+
+                        g_renderer.resolveDepthPeelingTarget->Bind();
+                        Texture* colorBuffer = g_renderer.resolveDepthPeelingTarget->m_colors[pass];
+                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,  colorBuffer->m_target, colorBuffer->m_handle, 0);// this doesnt change
+                        CheckFrameBufferStatus();
+
+                        renderTarget->Bind();
+                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->m_color->m_target, renderTarget->m_color->m_handle, 0);
+                        CheckFrameBufferStatus();
+
+                        ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_COLOR_BUFFER_BIT/*, GL_COLOR_ATTACHMENT0*/);
+                        CheckFrameBufferStatus();
+
+                        //Reset framebuffers and textures to where they are supposed to go
+                        if (true)
+                        {
+                            g_renderer.resolveDepthPeelingTarget->Bind();
+                            Texture* colorBuffer = g_renderer.resolveDepthPeelingTarget->m_colors[pass];
+                            Texture* depthBuffer = g_renderer.resolveDepthPeelingTarget->m_depth;
+                            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, colorBuffer->m_target, colorBuffer->m_handle, 0);
+                            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthBuffer->m_target, depthBuffer->m_handle, 0);// this doesnt change
+
+                            renderTarget->Bind();
+                            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->m_color->m_target, renderTarget->m_color->m_handle, 0);
+                            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, renderTarget->m_depth->m_target, renderTarget->m_depth->m_handle, 0);// this doesnt change
+                        }
+#endif
+
                         CheckFrameBufferStatus();
                     }
 
@@ -1466,29 +1536,31 @@ White:  Uploaded,");
 #endif
                 }
 
-                //Composite the buffers to texture 0
+                //Composite the ResolveDepthPeelingTarget m_colors into a single color buffer on postTarget
                 {
-                    renderTarget->Bind();
-                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->m_colors[0]->m_target, renderTarget->m_colors[0]->m_handle, 0);
+                    FrameBuffer* depthPeels = g_renderer.resolveDepthPeelingTarget;
+                    g_renderer.postTarget->Bind();
 
-                    glDisable(GL_DEPTH_TEST);
-                    glDepthMask(GL_FALSE);
+                    DepthRead(false);
+                    DepthWrite(false);
                     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                     glEnable(GL_BLEND);
-                    g_renderer.postTarget->Bind();
 
                     glViewport(0, 0, g_window.size.x, g_window.size.y);
 
                     glEnable(GL_FRAMEBUFFER_SRGB);
                     //for (int32 pass = 1; pass < g_renderer.depthPeelingPasses; pass++)
+#if 1
+                    {
+                        glActiveTexture(GL_TEXTURE0);
+                        depthPeels->m_colors[0]->Bind();
+#else
                     for (int32 pass = g_renderer.depthPeelingPasses; pass; --pass)
                     {
-                        //renderTarget->m_colors[pass - 1]->Bind();
-
                         glActiveTexture(GL_TEXTURE0);
-                        renderTarget->m_colors[pass - 1]->Bind();
-                        //renderTarget->m_colors[pass]->Bind();
+                        depthPeels->m_colors[pass - 1]->Bind();
 
+#endif
                         g_renderer.programs[+Shader::BufferCopyAlpha]->UseShader();
 
                         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
@@ -1502,18 +1574,18 @@ White:  Uploaded,");
                     glDisable(GL_FRAMEBUFFER_SRGB);
                 }
 
-                //Texture 0 (final composite) copy to non-MSAA buffer
-                {
-                    renderTarget->Bind();
-                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->m_colors[1]->m_target, renderTarget->m_colors[1]->m_handle, 0);
-                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  renderTarget->m_depth->m_target,     renderTarget->m_depth->m_handle,     0);
-
-                    g_renderer.postTarget->Bind();
-                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, g_renderer.postTarget->m_color->m_target, g_renderer.postTarget->m_color->m_handle, 0);
-                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  g_renderer.postTarget->m_depth->m_target, g_renderer.postTarget->m_depth->m_handle, 0);
-
-                    ResolveMSAAFramebuffer(renderTarget, g_renderer.postTarget, (GL_COLOR_BUFFER_BIT));
-                }
+                ////Texture 0 (final composite) copy to non-MSAA buffer
+                //{
+                //    renderTarget->Bind();
+                //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->m_colors[1]->m_target, renderTarget->m_colors[1]->m_handle, 0);
+                //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  renderTarget->m_depth->m_target,     renderTarget->m_depth->m_handle,     0);
+                //
+                //    g_renderer.postTarget->Bind();
+                //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, g_renderer.postTarget->m_color->m_target, g_renderer.postTarget->m_color->m_handle, 0);
+                //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  g_renderer.postTarget->m_depth->m_target, g_renderer.postTarget->m_depth->m_handle, 0);
+                //
+                //    ResolveMSAAFramebuffer(renderTarget, g_renderer.postTarget, (GL_COLOR_BUFFER_BIT));
+                //}
 
                 //Non-MSAA buffer copy blend to post-buffer
                 if (true)
@@ -1830,11 +1902,11 @@ White:  Uploaded,");
             if (g_renderer.usingDepthPeeling)
             {
                 ZoneScopedN("Buffer Copy To Backbuffer");
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
                 glDisable(GL_DEPTH_TEST);
                 glDepthMask(GL_FALSE);
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                 glEnable(GL_BLEND);
-                glBindFramebuffer(GL_FRAMEBUFFER, 0);
                 glViewport(0, 0, g_window.size.x, g_window.size.y);
                 glActiveTexture(GL_TEXTURE0);
                 g_renderer.postTarget->m_color->Bind();

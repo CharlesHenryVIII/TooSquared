@@ -808,7 +808,7 @@ void CheckFrameBufferStatus()
     GLint err = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (err != GL_FRAMEBUFFER_COMPLETE)
     {
-        DebugPrint("Error: Frame buffer error: %d", err);
+        DebugPrint("Error: Frame buffer error: %d \n", err);
         assert(false);
     }
 }
@@ -865,39 +865,33 @@ void UpdateFrameBuffers(Vec2Int size, uint32 samples)
     if (g_renderer.postTarget == nullptr)
     {
         g_renderer.opaqueTarget = new FrameBuffer();
+        g_renderer.resolveDepthPeelingTarget = new FrameBuffer();
         g_renderer.postTarget = new FrameBuffer();
         g_renderer.transparentTarget = new FrameBuffer();
         g_renderer.transparentPostTarget = new FrameBuffer();
-        g_renderer.depthCopyTarget = new FrameBuffer();
     }
 
     FrameBuffer* opaqueScene = g_renderer.opaqueTarget;
+    FrameBuffer* resolveDepthPeeling = g_renderer.resolveDepthPeelingTarget;
     FrameBuffer* post = g_renderer.postTarget;
     FrameBuffer* transparentScene = g_renderer.transparentTarget;
     FrameBuffer* transparentPost = g_renderer.transparentPostTarget;
-    FrameBuffer* depthCopyTarget = g_renderer.depthCopyTarget;
 
 
     if (g_renderer.usingDepthPeeling)
     {
+        //Depth Peeling Scene
         FrameBuffer* depthPeelingScene = opaqueScene;
-        bool changed = false;
-        depthPeelingScene->Bind();
-
-        if (depthPeelingScene->m_colors.size() != g_renderer.depthPeelingPasses)
+        if (!depthPeelingScene->m_color)
         {
-            depthPeelingScene->m_colors.clear();
-            for (int32 i = 0; i < g_renderer.depthPeelingPasses; i++)
-            {
-                Texture::TextureParams tp = {};
-                tp.samples = samples;
-                tp.size = size;
-                tp.internalFormat = GL_RGBA;
-                Texture* colorTexture = new Texture(tp);
-                depthPeelingScene->m_colors.push_back(colorTexture);
-                changed = true;
-            }
-            //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, depthPeelingScene->m_colors[0]->m_target, depthPeelingScene->m_colors[0]->m_handle, 0);
+            Texture::TextureParams tp = {};
+            tp.samples = samples;
+            tp.size = size;
+            tp.internalFormat = GL_RGBA;
+            depthPeelingScene->m_color = new Texture(tp);
+            depthPeelingScene->Bind();
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, depthPeelingScene->m_color->m_target, depthPeelingScene->m_color->m_handle, 0);
+            CheckFrameBufferStatus();
         }
         if (!depthPeelingScene->m_depth)
         {
@@ -907,63 +901,44 @@ void UpdateFrameBuffers(Vec2Int size, uint32 samples)
             tp.internalFormat = GL_DEPTH_COMPONENT;
             tp.format = GL_DEPTH_COMPONENT;
             depthPeelingScene->m_depth = new Texture(tp);
-
-            //CheckFrameBufferStatus();
-            //depthPeelingScene->Bind();
-            //Texture* MSAADepth = depthPeelingScene->m_depth;
-            //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, MSAADepth->m_target, MSAADepth->m_handle, 0);
-            //CheckFrameBufferStatus();
-
-            changed = true;
+            depthPeelingScene->Bind();
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthPeelingScene->m_depth->m_target, depthPeelingScene->m_depth->m_handle, 0);
+            CheckFrameBufferStatus();
         }
-        if (!depthPeelingScene->m_depthColorForDepthPeeling)
+
+        //Resolve Depth Peeling Target
+        if (resolveDepthPeeling->m_colors.size() != g_renderer.depthPeelingPasses)
+        {
+            resolveDepthPeeling->m_colors.clear();
+            Texture::TextureParams tp = {};
+            tp.samples = 1;
+            tp.size = size;
+            tp.internalFormat = GL_RGBA;
+            for (int32 i = 0; i < g_renderer.depthPeelingPasses; i++)
+            {
+                Texture* colorTexture = new Texture(tp);
+                resolveDepthPeeling->m_colors.push_back(colorTexture);
+            }
+            //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, depthPeelingScene->m_colors[0]->m_target, depthPeelingScene->m_colors[0]->m_handle, 0);
+            CheckFrameBufferStatus();
+        }
+        if (!resolveDepthPeeling->m_depth)
         {
             Texture::TextureParams tp = {};
             tp.samples = 1;
             tp.size = size;
             tp.internalFormat = GL_DEPTH_COMPONENT;
             tp.format = GL_DEPTH_COMPONENT;
-            depthPeelingScene->m_depthColorForDepthPeeling = new Texture(tp);
-            depthCopyTarget->m_depth = depthPeelingScene->m_depthColorForDepthPeeling;
-
-            //CheckFrameBufferStatus();
-            //Texture* nonMSAADepth = depthPeelingScene->m_depthColorForDepthPeeling;
-            //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, nonMSAADepth->m_target, nonMSAADepth->m_handle, 0);
-            changed = true;
-        }
-        if (!depthCopyTarget->m_color)
-        {
-            Texture::TextureParams tp = {};
-            tp.samples = 1;
-            tp.size = size;
-            tp.internalFormat = GL_RGBA16F;
-            tp.format = GL_RGBA;
-            depthCopyTarget->m_color = new Texture(tp);
-
-            changed = true;
+            resolveDepthPeeling->m_depth = new Texture(tp);
+            //depthPeelingScene->m_depthColorForDepthPeeling = resolveDepthPeeling->m_depth;
+            resolveDepthPeeling->Bind();
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, resolveDepthPeeling->m_depth->m_target, resolveDepthPeeling->m_depth->m_handle, 0);
+            CheckFrameBufferStatus();
         }
 
-        depthPeelingScene->m_size = depthCopyTarget->m_size = size;
+        depthPeelingScene->m_size = resolveDepthPeeling->m_size = size;
         depthPeelingScene->m_samples = samples;
-        depthCopyTarget->m_samples = 1;
-
-        if (changed)
-        {
-            depthPeelingScene->Bind();
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, depthPeelingScene->m_colors[0]->m_target, depthPeelingScene->m_colors[0]->m_handle, 0);
-            CheckFrameBufferStatus();
-            //Cant attach depth texture as a color attachment
-            //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, depthPeelingScene->m_depthColorForDepthPeeling->m_target, depthPeelingScene->m_depthColorForDepthPeeling->m_handle, 0);
-            //CheckFrameBufferStatus();
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthPeelingScene->m_depth->m_target, depthPeelingScene->m_depth->m_handle, 0);
-            CheckFrameBufferStatus();
-
-            depthCopyTarget->Bind();
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, depthCopyTarget->m_color->m_target, depthCopyTarget->m_color->m_handle, 0);
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthCopyTarget->m_depth->m_target, depthCopyTarget->m_depth->m_handle, 0);
-            CheckFrameBufferStatus();
-        }
-
+        resolveDepthPeeling->m_samples = 1;
         CheckFrameBufferStatus();
     }
 
@@ -988,8 +963,6 @@ void UpdateFrameBuffers(Vec2Int size, uint32 samples)
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, transparentPost->m_depth->m_target, transparentPost->m_depth->m_handle, 0);
         opaqueScene->Bind();
     }
-    depthCopyTarget->Bind();
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, post->m_color->m_target, post->m_color->m_handle, 0);
     CheckFrameBufferStatus();
 }
 
@@ -1001,12 +974,11 @@ void ResolveMSAAFramebuffer(const FrameBuffer* read, FrameBuffer* write, GLbitfi
     if (read && write)
     {
         glBindFramebuffer(GL_READ_FRAMEBUFFER, read->m_handle);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, write->m_handle);
-        if (mode != GL_DEPTH_ATTACHMENT)
-        {
+        if (mode)
             glReadBuffer(mode);
+        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, write->m_handle);
+        if (mode)
             glDrawBuffer(mode);
-        }
         glBlitFramebuffer(0, 0, read->m_size.x, read->m_size.y, 0, 0, write->m_size.x, write->m_size.y, copyMask, GL_NEAREST);
     }
 }

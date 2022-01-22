@@ -243,7 +243,7 @@ struct Renderer {
     FrameBuffer* transparentTarget = nullptr;
     FrameBuffer* transparentPostTarget = nullptr;
     FrameBuffer* postTarget  = nullptr;
-    FrameBuffer* depthCopyTarget  = nullptr;
+    FrameBuffer* resolveDepthPeelingTarget = nullptr;
     VertexBuffer* postVertexBuffer;
     VertexBuffer* cubeVertexBuffer;
     uint32 numTrianglesDrawn = 0;
@@ -270,7 +270,7 @@ void RenderUpdate(Vec2Int windowSize, float deltaTime);
 void InitializeVideo();
 void CheckFrameBufferStatus();
 void UpdateFrameBuffers(Vec2Int size, uint32 samples);
-void ResolveMSAAFramebuffer(const FrameBuffer* read, FrameBuffer* write, GLbitfield copyMask = (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT), GLenum mode = (GL_COLOR_ATTACHMENT0));
+void ResolveMSAAFramebuffer(const FrameBuffer* read, FrameBuffer* write, GLbitfield copyMask = (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT), GLenum mode = 0);
 void ResolveTransparentChunkFrameBuffer();
 void UI_AddDrawCall(RectInt sourceRect, RectInt _destRect, Color colorMod, Texture::T textureType);
 void UI_AddDrawCall(RectInt _sourceRect, Rect destRect, Color colorMod, Texture::T textureType);

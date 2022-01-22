@@ -9,6 +9,10 @@ void main()
 {
     vec4 texColor = texture(sampler, f_uv);
     color = texColor;
+    //color.xyz = vec3(texColor.z);
+    //color.r = 1;
+    //color.a = 0.5;
+    //color.xyzw = vec4(texColor.a);
     //color.xyz = vec3(texColor.a);
     //color = vec4(texColor.rgb, 0.8);
 }

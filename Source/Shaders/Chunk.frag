@@ -83,7 +83,13 @@ void main()
     {
         discard;
     }
+    if (u_passCount != 0)
+    {
+        color.xyz = vec3(depthTexelFetch.r);
+        color.a = 1;
+    }
     //color.rgb = vec3(depthTexelFetch.r);
+    //color.rgb = vec3(1, 0, 0);
     //color.a = 1.0;
     //return;
 
