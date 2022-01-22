@@ -79,10 +79,13 @@ void main()
     //else
         //color.xyzw = vec4(gl_FragCoord.z);
     //return;
-    if ((u_passCount != 0) && (gl_FragCoord.z <= depthTexelFetch.r))
+    //if (gl_FragCoord.z > depthTexelFetch.r)
+
+    if ((u_passCount != 0) && (gl_FragCoord.z < depthTexelFetch.r))
     {
         discard;
     }
+
     //if (u_passCount != 0)
     //{
     //    color.xyz = vec3(depthTexelFetch.r);

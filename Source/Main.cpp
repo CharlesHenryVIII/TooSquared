@@ -613,6 +613,9 @@ White:  Uploaded,");
                         ImGui::CheckboxFlags("Old Raycast Logic", &s_debugFlags, +DebugOptions::OldRaycast);
                         ImGui::Unindent();
                         ImGui::Unindent();
+
+                        ImGui::Text("depthPeelingPassToDisplay:");
+                        ImGui::SliderInt(" ", &g_renderer.debug_DepthPeelingPassToDisplay, 0, g_renderer.depthPeelingPasses, 0);
                         ImGui::TreePop();
                     }
 
@@ -1479,18 +1482,42 @@ White:  Uploaded,");
                     glViewport(0, 0, g_window.size.x, g_window.size.y);
 
                     glEnable(GL_FRAMEBUFFER_SRGB);
-                    //for (int32 pass = 1; pass < g_renderer.depthPeelingPasses; pass++)
 #if 0
                     {
                         glActiveTexture(GL_TEXTURE0);
-                        depthPeels->m_colors[0]->Bind();
+                        depthPeels->m_depth->Bind();
 #else
-                    for (int32 pass = g_renderer.depthPeelingPasses; pass; --pass)
-                    {
-                        glActiveTexture(GL_TEXTURE0);
-                        depthPeels->m_colors[pass - 1]->Bind();
+#if 1
+#else
 
 #endif
+#endif
+                    if (g_renderer.debug_DepthPeelingPassToDisplay == 0)
+                    {
+                        for (int32 pass = g_renderer.depthPeelingPasses; pass; --pass)
+                        {
+                            glActiveTexture(GL_TEXTURE0);
+                            depthPeels->m_colors[pass - 1]->Bind();
+
+                            g_renderer.programs[+Shader::BufferCopyAlpha]->UseShader();
+
+                            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+                            glEnableVertexArrayAttrib(g_renderer.vao, 0);
+                            glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+                            glEnableVertexArrayAttrib(g_renderer.vao, 1);
+                            glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
+                            glEnableVertexArrayAttrib(g_renderer.vao, 2);
+                            glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+                        }
+                    }
+                    else
+                    {
+                        assert(g_renderer.debug_DepthPeelingPassToDisplay > 0);
+                        assert(g_renderer.debug_DepthPeelingPassToDisplay <= g_renderer.depthPeelingPasses);
+
+                        glActiveTexture(GL_TEXTURE0);
+                        depthPeels->m_colors[g_renderer.debug_DepthPeelingPassToDisplay - 1]->Bind();
+
                         g_renderer.programs[+Shader::BufferCopyAlpha]->UseShader();
 
                         glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
@@ -1502,52 +1529,7 @@ White:  Uploaded,");
                         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
                     }
                     glDisable(GL_FRAMEBUFFER_SRGB);
-                }
-
-                ////Texture 0 (final composite) copy to non-MSAA buffer
-                //{
-                //    renderTarget->Bind();
-                //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->m_colors[1]->m_target, renderTarget->m_colors[1]->m_handle, 0);
-                //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  renderTarget->m_depth->m_target,     renderTarget->m_depth->m_handle,     0);
-                //
-                //    g_renderer.postTarget->Bind();
-                //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, g_renderer.postTarget->m_color->m_target, g_renderer.postTarget->m_color->m_handle, 0);
-                //    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  g_renderer.postTarget->m_depth->m_target, g_renderer.postTarget->m_depth->m_handle, 0);
-                //
-                //    ResolveMSAAFramebuffer(renderTarget, g_renderer.postTarget, (GL_COLOR_BUFFER_BIT));
-                //}
-
-                //Non-MSAA buffer copy blend to post-buffer
-                if (true)
-                {
-                    ZoneScopedN("Composite RGBA Peels");
-                }
-                else
-                {
-                    ZoneScopedN("Buffer Copy To Backbuffer");
-                    glDisable(GL_DEPTH_TEST);
-                    glDepthMask(GL_TRUE);
-                    glDisable(GL_BLEND);
-                    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-                    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-                    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-                    glViewport(0, 0, g_window.size.x, g_window.size.y);
-                    glActiveTexture(GL_TEXTURE0);
-                    g_renderer.postTarget->m_color->Bind();
-                    g_renderer.programs[+Shader::BufferCopy]->UseShader();
-                    g_renderer.postVertexBuffer->Bind();
-
-                    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
-                    glEnableVertexArrayAttrib(g_renderer.vao, 0);
-                    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
-                    glEnableVertexArrayAttrib(g_renderer.vao, 1);
-                    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
-                    glEnableVertexArrayAttrib(g_renderer.vao, 2);
-                    glEnable(GL_FRAMEBUFFER_SRGB);
-                    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-                    glDisable(GL_FRAMEBUFFER_SRGB);
-                }
+                    }
 
                 //TODO: Add in once working
 #if 0
