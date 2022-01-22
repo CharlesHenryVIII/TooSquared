@@ -1402,15 +1402,18 @@ White:  Uploaded,");
                         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->m_color->m_target, renderTarget->m_color->m_handle, 0);
                         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  renderTarget->m_depth->m_target, renderTarget->m_depth->m_handle, 0);// this doesnt change
 
-                        //ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_COLOR_BUFFER_BIT/*, GL_COLOR_ATTACHMENT0*/);
-                        //ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_DEPTH_BUFFER_BIT/*, GL_COLOR_ATTACHMENT0*/);
+#if 1
+                        ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_COLOR_BUFFER_BIT/*, GL_COLOR_ATTACHMENT0*/);
+                        ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_DEPTH_BUFFER_BIT/*, GL_COLOR_ATTACHMENT0*/);
 
+#else
                         //ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
                         glBindFramebuffer(GL_READ_FRAMEBUFFER, renderTarget->m_handle);
                         glBindFramebuffer(GL_DRAW_FRAMEBUFFER, g_renderer.resolveDepthPeelingTarget->m_handle);
                         glBlitFramebuffer(  0, 0, renderTarget->m_size.x, renderTarget->m_size.y, 
                                             0, 0, g_renderer.resolveDepthPeelingTarget->m_size.x, g_renderer.resolveDepthPeelingTarget->m_size.y, 
                                             GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT, GL_NEAREST);
+#endif
 #else
                         g_renderer.resolveDepthPeelingTarget->Bind();
                         Texture* depthBuffer = g_renderer.resolveDepthPeelingTarget->m_depth;
@@ -1540,6 +1543,8 @@ White:  Uploaded,");
                 {
                     FrameBuffer* depthPeels = g_renderer.resolveDepthPeelingTarget;
                     g_renderer.postTarget->Bind();
+                    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+                    g_renderer.postVertexBuffer->Bind();
 
                     DepthRead(false);
                     DepthWrite(false);
@@ -1550,7 +1555,7 @@ White:  Uploaded,");
 
                     glEnable(GL_FRAMEBUFFER_SRGB);
                     //for (int32 pass = 1; pass < g_renderer.depthPeelingPasses; pass++)
-#if 1
+#if 0
                     {
                         glActiveTexture(GL_TEXTURE0);
                         depthPeels->m_colors[0]->Bind();
@@ -1815,6 +1820,7 @@ White:  Uploaded,");
                             }
                         }
                     }
+                        g_renderer.postVertexBuffer->Bind();
                 }
 
                 {
@@ -1908,6 +1914,7 @@ White:  Uploaded,");
                 glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                 glEnable(GL_BLEND);
                 glViewport(0, 0, g_window.size.x, g_window.size.y);
+                //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
                 glActiveTexture(GL_TEXTURE0);
                 g_renderer.postTarget->m_color->Bind();
                 g_renderer.programs[+Shader::BufferCopyAlpha]->UseShader();
