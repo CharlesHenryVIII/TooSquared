@@ -1316,44 +1316,11 @@ White:  Uploaded,");
 
                     // Pre Render Work:
                     {
-                        //depth unit 0:
-                        {
-                            //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, depthBuff->m_target, depthBuff->m_handle, 0);
-                            //
-                            //if (pass == 0)
-                            //    glDisable(GL_DEPTH_TEST);
-                            //else
-                            //    glEnable(GL_DEPTH_TEST);
-                            ////bind depth buffer ( i % 2)
-                            //
-                            //
-                            ////glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, depthBuff->m_target, depthBuff->m_handle, 0);
-                            ////glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthBuff->m_target, depthBuff->m_handle, 0);
-                            //
-                            ////disable depth writes, read-only depth test
-                            //glDepthMask(GL_FALSE);
-                            ////set depth func to GREATER
-                            //glDepthFunc(GL_GREATER);
-                        }
-                        //depth unit 1:
-                        {
-                            //bind depth buffer (( i+1) % 2)
-                            //clear depth buffer
-                            //glClearDepth(1.0f); //set above
-                            ////const GLfloat clearValue = 0;
-                            ////glClearBufferfv(GL_DEPTH, 0, &clearValue);
-                            //enable depth writes;
-                            DepthWrite(true);
-                            //enable depth test;
-                            //if (pass == 0)
-                                //DepthRead(false);
-                            //else
-                            //DepthRead(true);
-                            DepthRead(true);
-                            //set depth func to LESS
-                            glDepthFunc(GL_LESS);
-                            CheckFrameBufferStatus();
-                        }
+                        renderTarget->Bind();
+                        DepthWrite(true);
+                        DepthRead(true);
+                        glDepthFunc(GL_LESS);
+                        CheckFrameBufferStatus();
                     }
                     //Clear the render target/depth peeling scene
                     //glClearColor(0, 0, 0, 0); //set above as well
@@ -1391,7 +1358,6 @@ White:  Uploaded,");
 
                     //Resolve MSAA depth buffer into non-MSAA texture buffer
                     {
-#if 1
                         g_renderer.resolveDepthPeelingTarget->Bind();
                         Texture* colorBuffer = g_renderer.resolveDepthPeelingTarget->m_colors[pass];
                         Texture* depthBuffer = g_renderer.resolveDepthPeelingTarget->m_depth;
@@ -1403,8 +1369,8 @@ White:  Uploaded,");
                         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  renderTarget->m_depth->m_target, renderTarget->m_depth->m_handle, 0);// this doesnt change
 
 #if 1
-                        ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_COLOR_BUFFER_BIT/*, GL_COLOR_ATTACHMENT0*/);
-                        ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_DEPTH_BUFFER_BIT/*, GL_COLOR_ATTACHMENT0*/);
+                        ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_COLOR_BUFFER_BIT);
+                        ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_DEPTH_BUFFER_BIT);
 
 #else
                         //ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
@@ -1413,47 +1379,6 @@ White:  Uploaded,");
                         glBlitFramebuffer(  0, 0, renderTarget->m_size.x, renderTarget->m_size.y, 
                                             0, 0, g_renderer.resolveDepthPeelingTarget->m_size.x, g_renderer.resolveDepthPeelingTarget->m_size.y, 
                                             GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT, GL_NEAREST);
-#endif
-#else
-                        g_renderer.resolveDepthPeelingTarget->Bind();
-                        Texture* depthBuffer = g_renderer.resolveDepthPeelingTarget->m_depth;
-                        CheckFrameBufferStatus();
-                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,  depthBuffer->m_target, depthBuffer->m_handle, 0);// this doesnt change
-                        CheckFrameBufferStatus();
-
-                        renderTarget->Bind();
-                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,  renderTarget->m_depth->m_target, renderTarget->m_depth->m_handle, 0);// this doesnt change
-                        CheckFrameBufferStatus();
-
-                        ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_COLOR_BUFFER_BIT/*, GL_COLOR_ATTACHMENT0*/);
-
-
-
-                        g_renderer.resolveDepthPeelingTarget->Bind();
-                        Texture* colorBuffer = g_renderer.resolveDepthPeelingTarget->m_colors[pass];
-                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,  colorBuffer->m_target, colorBuffer->m_handle, 0);// this doesnt change
-                        CheckFrameBufferStatus();
-
-                        renderTarget->Bind();
-                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->m_color->m_target, renderTarget->m_color->m_handle, 0);
-                        CheckFrameBufferStatus();
-
-                        ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_COLOR_BUFFER_BIT/*, GL_COLOR_ATTACHMENT0*/);
-                        CheckFrameBufferStatus();
-
-                        //Reset framebuffers and textures to where they are supposed to go
-                        if (true)
-                        {
-                            g_renderer.resolveDepthPeelingTarget->Bind();
-                            Texture* colorBuffer = g_renderer.resolveDepthPeelingTarget->m_colors[pass];
-                            Texture* depthBuffer = g_renderer.resolveDepthPeelingTarget->m_depth;
-                            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, colorBuffer->m_target, colorBuffer->m_handle, 0);
-                            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthBuffer->m_target, depthBuffer->m_handle, 0);// this doesnt change
-
-                            renderTarget->Bind();
-                            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->m_color->m_target, renderTarget->m_color->m_handle, 0);
-                            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, renderTarget->m_depth->m_target, renderTarget->m_depth->m_handle, 0);// this doesnt change
-                        }
 #endif
 
                         CheckFrameBufferStatus();
