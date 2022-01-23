@@ -55,7 +55,7 @@ void SetBlockSprites()
     g_blocks[+BlockType::TNT].m_spriteIndices[+Face::Bot] = 10;
     SetMultipleBlockSprites(BlockType::Water, 255);
     g_blocks[+BlockType::Water].m_seeThrough  = true;
-    g_blocks[+BlockType::Water].m_translucent = false;
+    g_blocks[+BlockType::Water].m_translucent = true;
     g_blocks[+BlockType::Water].m_collidable  = false;
     SetMultipleBlockSprites(BlockType::Bedrock, 17);
 

@@ -1286,9 +1286,12 @@ void InitializeVideo()
     g_renderer.textures[Texture::Minecraft] = new Texture("Assets/TestSpriteSheet.png");
     g_renderer.spriteTextArray = new TextureArray("Assets/TestSpriteSheet.png");
 #else
-    g_renderer.textures[Texture::MinecraftRGB] = new Texture("Assets/MinecraftSpriteSheet20120215.png", GL_RGBA);
-    g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png", GL_SRGB8_ALPHA8);
-    g_renderer.spriteTextArray = new TextureArray("Assets/MinecraftSpriteSheet20120215.png");
+    g_renderer.textures[Texture::MinecraftRGB] = new Texture("Assets/MinecraftSpriteSheet20120215Modified.png", GL_RGBA);
+    g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215Modified.png", GL_SRGB8_ALPHA8);
+    g_renderer.spriteTextArray = new TextureArray("Assets/MinecraftSpriteSheet20120215Modified.png");
+    //g_renderer.textures[Texture::MinecraftRGB] = new Texture("Assets/MinecraftSpriteSheet20120215.png", GL_RGBA);
+    //g_renderer.textures[Texture::Minecraft] = new Texture("Assets/MinecraftSpriteSheet20120215.png", GL_SRGB8_ALPHA8);
+    //g_renderer.spriteTextArray = new TextureArray("Assets/MinecraftSpriteSheet20120215.png");
 #endif
     //g_renderer.skyBox = new TextureCube("Assets/skybox.dds");
     g_renderer.skyBoxNight = new TextureCube("Assets/skyboxNight.dds");

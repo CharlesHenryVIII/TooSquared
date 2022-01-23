@@ -1371,7 +1371,7 @@ White:  Uploaded,");
                         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->m_color->m_target, renderTarget->m_color->m_handle, 0);
                         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  renderTarget->m_depth->m_target, renderTarget->m_depth->m_handle, 0);// this doesnt change
 
-#if 1
+#if 0
                         ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_COLOR_BUFFER_BIT);
                         ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_DEPTH_BUFFER_BIT);
 
@@ -1383,6 +1383,7 @@ White:  Uploaded,");
                                             0, 0, g_renderer.resolveDepthPeelingTarget->m_size.x, g_renderer.resolveDepthPeelingTarget->m_size.y, 
                                             GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT, GL_NEAREST);
 #endif
+                        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, renderTarget->m_handle);
 
                         CheckFrameBufferStatus();
                     }
