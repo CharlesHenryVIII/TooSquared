@@ -218,6 +218,8 @@ public:
     Texture* m_color = nullptr;
     Texture* m_color2 = nullptr;
     Texture* m_depth = nullptr;
+    Texture* m_peelingDepth = nullptr;
+    Texture* m_opaqueDepth = nullptr;
     Texture* m_depthColorForDepthPeeling = nullptr;
     std::vector<Texture*> m_depths;
     std::vector<Texture*> m_colors;
@@ -255,7 +257,7 @@ struct Renderer {
     int32 maxMSAASamples = 1;
     bool usingDepthPeeling = true;
     int32 depthPeelingPasses = 2;
-    int32 debug_DepthPeelingPassToDisplay = 0;
+    int32 debug_DepthPeelingPassToDisplay = -1;
 };
 
 const uint32 pixelsPerBlock = 16;

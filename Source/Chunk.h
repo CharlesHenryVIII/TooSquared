@@ -277,6 +277,8 @@ struct ChunkArray
     void BuildChunkVertices(RegionSampler region);
     void UploadChunk(ChunkIndex i);
     void RenderChunk(ChunkIndex i);
+    void RenderChunkOpaquePeel(ChunkIndex i);
+    void RenderChunkTransparentPeel(ChunkIndex i);
     void RenderOpaqueChunk(ChunkIndex i);
     void RenderTransparentChunk(ChunkIndex i);
     bool GetChunk(ChunkIndex& result, GamePos blockP);

@@ -4,8 +4,9 @@
 //Texture Map:
 layout (binding = 0) uniform sampler2DArray sampler;
 //Depth Peel:
-//layout (binding = 1) uniform sampler2DMS depthTexture;
 layout (binding = 1) uniform sampler2D depthTexture;
+//Opaque Depth Pass:
+layout (binding = 2) uniform sampler2D opaqueDepthTexture;
 
 in vec2 p_uv;
 flat in float p_depth;
@@ -45,15 +46,36 @@ void main()
 
 
 #if 1
-    vec4 depthTexelFetch = texelFetch(depthTexture, ivec2(gl_FragCoord.xy), 0);
+    vec4 depthTexelFetch        = texelFetch(depthTexture,         ivec2(gl_FragCoord.xy), 0);
+    vec4 opaqueDepthTexelFetch  = texelFetch(opaqueDepthTexture,   ivec2(gl_FragCoord.xy), 0);
 #else
     vec4 depthTexelFetch = texture(depthTexture, gl_FragCoord.xy);
 #endif
 
-    if ((u_passCount != 0) && (gl_FragCoord.z < depthTexelFetch.r))
+//Discard fragment if it is not going to peel the current layer 
+//or if it would be occluded by opaque geometry
+#if 1
+    //if (u_passCount == 1)
+    //{
+        //color.rbga = vec4(0);
+        //color.r = opaqueDepthTexelFetch.r;
+        //color.a = 1;
+    //}
+    if (u_passCount == 1)
     {
-        discard;
+        if ((gl_FragCoord.z > opaqueDepthTexelFetch.r))
+        {
+            discard;
+        }
     }
+    else if (u_passCount >= 2) //I think I can get away with removing this if statement
+    {
+        if ((gl_FragCoord.z < depthTexelFetch.r) || (gl_FragCoord.z > opaqueDepthTexelFetch.r))
+        {
+            discard;
+        }
+    }
+#endif
 
     vec4 pixel = texture2DArray(sampler, vec3(p_uv, p_depth));
 

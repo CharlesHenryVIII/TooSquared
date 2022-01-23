@@ -919,20 +919,38 @@ void UpdateFrameBuffers(Vec2Int size, uint32 samples)
                 Texture* colorTexture = new Texture(tp);
                 resolveDepthPeeling->m_colors.push_back(colorTexture);
             }
-            //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, depthPeelingScene->m_colors[0]->m_target, depthPeelingScene->m_colors[0]->m_handle, 0);
             CheckFrameBufferStatus();
         }
-        if (!resolveDepthPeeling->m_depth)
+        if (!resolveDepthPeeling->m_color)
+        {
+            Texture::TextureParams tp = {};
+            tp.samples = 1;
+            tp.size = size;
+            tp.internalFormat = GL_RGBA;
+            resolveDepthPeeling->m_color = new Texture(tp);
+            //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, resolveDepthPeeling->m_color->m_target, resolveDepthPeeling->m_color->m_handle, 0);
+            CheckFrameBufferStatus();
+        }
+        if (!resolveDepthPeeling->m_peelingDepth)
         {
             Texture::TextureParams tp = {};
             tp.samples = 1;
             tp.size = size;
             tp.internalFormat = GL_DEPTH_COMPONENT;
             tp.format = GL_DEPTH_COMPONENT;
-            resolveDepthPeeling->m_depth = new Texture(tp);
-            //depthPeelingScene->m_depthColorForDepthPeeling = resolveDepthPeeling->m_depth;
+            resolveDepthPeeling->m_peelingDepth = new Texture(tp);
+            CheckFrameBufferStatus();
+        }
+        if (!resolveDepthPeeling->m_opaqueDepth)
+        {
+            Texture::TextureParams tp = {};
+            tp.samples = 1;
+            tp.size = size;
+            tp.internalFormat = GL_DEPTH_COMPONENT;
+            tp.format = GL_DEPTH_COMPONENT;
+            resolveDepthPeeling->m_opaqueDepth = new Texture(tp);
             resolveDepthPeeling->Bind();
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, resolveDepthPeeling->m_depth->m_target, resolveDepthPeeling->m_depth->m_handle, 0);
+            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, resolveDepthPeeling->m_opaqueDepth->m_target, resolveDepthPeeling->m_opaqueDepth->m_handle, 0);
             CheckFrameBufferStatus();
         }
 

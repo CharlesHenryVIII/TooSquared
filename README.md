@@ -4,6 +4,7 @@
  * Optimize block creation and deletion
  * Half height blocks
  * Gameplay??? (Conveyers, mining, etc?)
+ * Modify see through opaque mip maps to not alpha blend
 
  * Directional and point lighting
  * Block wireframe on target

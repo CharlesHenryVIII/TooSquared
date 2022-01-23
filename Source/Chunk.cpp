@@ -1799,6 +1799,7 @@ void GenericPreChunkWork(Shader shaderType, const Mat4& perspective, Camera* cam
 
 void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera, uint32 passCount)
 {
+    ZoneScopedN("Pre Opaque Chunk Render");
     assert(g_renderer.chunkIB);
     if (g_renderer.chunkIB)
         g_renderer.chunkIB->Bind();
@@ -1822,7 +1823,7 @@ void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera, uint32 passCo
     }
 }
 
-void ChunkArray::RenderChunk(ChunkIndex i)
+void ChunkArray::RenderChunkOpaquePeel(ChunkIndex i)
 {
     ShaderProgram* sp = g_renderer.programs[+Shader::Chunk];
 
@@ -1842,6 +1843,10 @@ void ChunkArray::RenderChunk(ChunkIndex i)
         glDrawElements(GL_TRIANGLES, (GLsizei)opaqueIndexCount[i], GL_UNSIGNED_INT, 0);
         g_renderer.numTrianglesDrawn += opaqueIndexCount[i] / 3;
     }
+}
+void ChunkArray::RenderChunkTransparentPeel(ChunkIndex i)
+{
+    ShaderProgram* sp = g_renderer.programs[+Shader::Chunk];
 
     if (translucentIndexCount[i])
     {
@@ -1859,6 +1864,12 @@ void ChunkArray::RenderChunk(ChunkIndex i)
         glDrawElements(GL_TRIANGLES, (GLsizei)translucentIndexCount[i], GL_UNSIGNED_INT, 0);
         g_renderer.numTrianglesDrawn += translucentIndexCount[i] / 3;
     }
+}
+
+void ChunkArray::RenderChunk(ChunkIndex i)
+{
+    RenderChunkOpaquePeel(i);
+    RenderChunkTransparentPeel(i);
 }
 
 void ChunkArray::RenderOpaqueChunk(ChunkIndex i)
