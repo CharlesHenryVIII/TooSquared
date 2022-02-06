@@ -3,6 +3,8 @@
 #include "glew.h"
 #include "Math.h"
 #include "Misc.h"
+#include "Rendering_Framebuffer.h"
+#include "Rendering_Texture.h"
 
 #include <string>
 
@@ -68,69 +70,6 @@ enum class Shader : uint32 {
     Count,
 };
 ENUMOPS(Shader);
-
-class Texture {
-public:
-    enum T : uint32 {
-        Invalid,
-        Minecraft,
-        MinecraftRGB,
-        Test,
-        Plain,
-        Count,
-    };
-    ENUMOPS(T);
-
-    struct TextureParams {
-        Vec2Int size = g_window.size;
-        uint32 minFilter = GL_LINEAR;
-        uint32 magFilter = GL_LINEAR;
-        uint32 wrapS = GL_REPEAT;
-        uint32 wrapT = GL_REPEAT;
-        GLint  internalFormat = GL_RGBA;
-        GLenum format = GL_RGBA;
-        GLenum type = GL_UNSIGNED_BYTE;
-        uint32 samples = 1;
-
-        void* data = nullptr;
-    };
-
-
-    Vec2Int m_size = {};
-    int32 m_bytesPerPixel = 0;//bytes per pixel
-    uint8* m_data = {};
-    GLuint m_handle = {};
-    GLenum m_target = GL_TEXTURE_2D;
-
-
-    Texture(Texture::TextureParams tp);
-    Texture(const char* fileLocation, GLint colorFormat);
-    Texture(uint8* data, Vec2Int size, GLint colorFormat);//, int32 m_bytesPerPixel = 2);
-    ~Texture();
-    void Bind();
-};
-
-class TextureArray {
-public:
-
-    Vec2Int m_size = {};
-    GLuint m_handle = {};
-    Vec2Int m_spritesPerSide;
-
-
-    TextureArray(const char* fileLocation);
-    void Bind();
-};
-
-class TextureCube {
-public:
-    Vec2Int m_size = {};
-    GLuint m_handle = {};
-
-
-    TextureCube(const char* fileLocation);
-    void Bind();
-};
 
 class ShaderProgram
 {
@@ -209,30 +148,7 @@ public:
 };
 
 
-class FrameBuffer {
-    FrameBuffer(const FrameBuffer& rhs) = delete;
-    FrameBuffer& operator=(const FrameBuffer& rhs) = delete;
-
-public:
-    GLuint m_handle = 0;
-    Texture* m_color = nullptr;
-    Texture* m_color2 = nullptr;
-    Texture* m_depth = nullptr;
-    Texture* m_peelingDepth = nullptr;
-    Texture* m_opaqueDepth = nullptr;
-    Texture* m_depthColorForDepthPeeling = nullptr;
-    std::vector<Texture*> m_depths;
-    std::vector<Texture*> m_colors;
-    Vec2Int m_size = {};
-    uint32  m_samples = 1;
-
-    FrameBuffer();
-    void Bind() const;
-    void CreateTextures(Vec2Int size, uint32 samples, bool transparentFrameBuffer);
-    void CreateTexture(Texture::TextureParams tp);
-    void ClearTextures(Texture::TextureParams textureParams);
-};
-
+#include "Rendering_Framebuffer.h"
 struct Renderer {
     SDL_GLContext GL_Context = {};
     ShaderProgram* programs[+Shader::Count] = {};
@@ -241,11 +157,6 @@ struct Renderer {
     GLuint vao;
     IndexBuffer* chunkIB;
     TextureArray* spriteTextArray;
-    FrameBuffer* opaqueTarget = nullptr;
-    FrameBuffer* transparentTarget = nullptr;
-    FrameBuffer* transparentPostTarget = nullptr;
-    FrameBuffer* postTarget  = nullptr;
-    FrameBuffer* resolveDepthPeelingTarget = nullptr;
     VertexBuffer* postVertexBuffer;
     VertexBuffer* cubeVertexBuffer;
     uint32 numTrianglesDrawn = 0;
@@ -265,6 +176,8 @@ const uint32 blocksPerRow = 16;
 
 struct Block;
 
+void ResolveTransparentChunkFrameBuffer();
+
 int32 CreateMessageWindow(SDL_MessageBoxButtonData* buttons, int32 numOfButtons, ts_MessageBox type, const char* title, const char* message);
 void DepthWrite(bool status);
 void DepthRead(bool status);
@@ -272,9 +185,6 @@ Rect GetRectFromSprite(uint32 i);
 void RenderUpdate(Vec2Int windowSize, float deltaTime);
 void InitializeVideo();
 void CheckFrameBufferStatus();
-void UpdateFrameBuffers(Vec2Int size, uint32 samples);
-void ResolveMSAAFramebuffer(const FrameBuffer* read, FrameBuffer* write, GLbitfield copyMask = (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT), GLenum mode = 0);
-void ResolveTransparentChunkFrameBuffer();
 void UI_AddDrawCall(RectInt sourceRect, RectInt _destRect, Color colorMod, Texture::T textureType);
 void UI_AddDrawCall(RectInt _sourceRect, Rect destRect, Color colorMod, Texture::T textureType);
 void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& view, const Mat4& perspective, bool depthWrite);

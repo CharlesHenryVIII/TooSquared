@@ -1187,7 +1187,7 @@ White:  Uploaded,");
                     //g_renderer.postTarget->Bind();
                 }
 
-                glDepthMask(GL_FALSE);
+                DepthWrite(false);
                 ShaderProgram* sp = g_renderer.programs[+Shader::Sun];
                 sp->UseShader();
                 sp->UpdateUniformVec3("u_directionalLight_d", 1, g_renderer.sunLight.d.e);
@@ -1211,8 +1211,6 @@ White:  Uploaded,");
                 glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
                 glEnableVertexArrayAttrib(g_renderer.vao, 2);
                 glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-                glDepthMask(GL_TRUE);
             }
 
             struct Renderable {
@@ -1225,8 +1223,7 @@ White:  Uploaded,");
             {
                 ZoneScopedN("Depth Peeling Pass");
                 assert(g_renderer.depthPeelingPasses);
-                const FrameBuffer* renderTarget = g_renderer.opaqueTarget;
-                renderTarget->Bind();
+                const auto& renderTarget = g_framebuffers->m_opaque;
 
                 //Chunk Rendering
 #ifdef _DEBUG
@@ -1268,7 +1265,7 @@ White:  Uploaded,");
                 //
                 {
                     ZoneScopedN("Opaque Pass");
-                    renderTarget->Bind();
+                    renderTarget.Bind();
 
                     DepthWrite(true);
                     DepthRead(true);
@@ -1293,31 +1290,17 @@ White:  Uploaded,");
                             g_chunks->RenderChunkOpaquePeel(renderChunk);
                         }
                     }
-                    g_renderer.resolveDepthPeelingTarget->Bind();
-                    Texture* colorBuffer = g_renderer.resolveDepthPeelingTarget->m_color;
-                    Texture* depthBuffer = g_renderer.resolveDepthPeelingTarget->m_opaqueDepth;
+
+                    g_framebuffers->m_resolveDepthPeeling.Bind();
+                    Texture* colorBuffer = g_framebuffers->m_resolveDepthPeeling.m_opaqueColor;
+                    Texture* depthBuffer = g_framebuffers->m_resolveDepthPeeling.m_opaqueDepth;
                     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, colorBuffer->m_target, colorBuffer->m_handle, 0);
                     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthBuffer->m_target, depthBuffer->m_handle, 0);// this doesnt change
                     glClearColor(0, 0, 0, 0);
                     glClearDepth(1.0f);
                     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-                    renderTarget->Bind();
-                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->m_color->m_target, renderTarget->m_color->m_handle, 0);
-                    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, renderTarget->m_depth->m_target, renderTarget->m_depth->m_handle, 0);// this doesnt change
-
-#if 0
-                    ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_COLOR_BUFFER_BIT);
-                    ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_DEPTH_BUFFER_BIT);
-#else
-                        //ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-                    glBindFramebuffer(GL_READ_FRAMEBUFFER, renderTarget->m_handle);
-                    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, g_renderer.resolveDepthPeelingTarget->m_handle);
-                    glBlitFramebuffer(  0, 0, renderTarget->m_size.x, renderTarget->m_size.y,
-                                        0, 0, g_renderer.resolveDepthPeelingTarget->m_size.x, g_renderer.resolveDepthPeelingTarget->m_size.y,
-                                        GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT, GL_NEAREST);
-#endif
-                    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, renderTarget->m_handle);
+                    ResolveMSAAFramebuffer(&renderTarget, &g_framebuffers->m_resolveDepthPeeling, GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
                 }
 
 
@@ -1328,21 +1311,22 @@ White:  Uploaded,");
                 {
                     //Clear color buffers before first pass
                     {
-                        g_renderer.resolveDepthPeelingTarget->Bind();
+                        g_framebuffers->m_resolveDepthPeeling.Bind();
                         for (int32 pass = 0; pass < g_renderer.depthPeelingPasses; pass++)
                         {
-                            Texture* color = g_renderer.resolveDepthPeelingTarget->m_colors[pass];
+                            Texture* color = g_framebuffers->m_resolveDepthPeeling.m_peelingColors[pass];
                             glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, color->m_target, color->m_handle, 0);
                             glClear(GL_COLOR_BUFFER_BIT);
                         }
                     }
-                    //Set the second texture in the depth peeling scene to be the previous scene's depth
+                    //Set the second texture in the depth peeling scene to the previous scene's depth
+                    //Set the third  texture in the depth peeling scene to the opaque scene's depth
                     {
-                        renderTarget->Bind();
+                        renderTarget.Bind();
                         glActiveTexture(GL_TEXTURE1);
-                        g_renderer.resolveDepthPeelingTarget->m_peelingDepth->Bind();
+                        g_framebuffers->m_resolveDepthPeeling.m_peelingDepth->Bind();
                         glActiveTexture(GL_TEXTURE2);
-                        g_renderer.resolveDepthPeelingTarget->m_opaqueDepth->Bind();
+                        g_framebuffers->m_resolveDepthPeeling.m_opaqueDepth->Bind();
                     }
                 }
 
@@ -1357,7 +1341,7 @@ White:  Uploaded,");
                     std::string loopInformation = ToString("DepthPass Number: %i", pass);
                     ZoneText(loopInformation.c_str(), loopInformation.size());
 
-                    renderTarget->Bind();
+                    renderTarget.Bind();
                     DepthWrite(true);
                     DepthRead(true);
                     glDepthFunc(GL_LESS);
@@ -1390,29 +1374,13 @@ White:  Uploaded,");
 
                     //Resolve MSAA depth buffer into non-MSAA texture buffer
                     {
-                        g_renderer.resolveDepthPeelingTarget->Bind();
-                        Texture* colorBuffer = g_renderer.resolveDepthPeelingTarget->m_colors[pass];
-                        Texture* depthBuffer = g_renderer.resolveDepthPeelingTarget->m_peelingDepth;
+                        g_framebuffers->m_resolveDepthPeeling.Bind();
+                        Texture* colorBuffer = g_framebuffers->m_resolveDepthPeeling.m_peelingColors[pass];
+                        Texture* depthBuffer = g_framebuffers->m_resolveDepthPeeling.m_peelingDepth;
                         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, colorBuffer->m_target, colorBuffer->m_handle, 0);
                         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  depthBuffer->m_target, depthBuffer->m_handle, 0);// this doesnt change
 
-                        renderTarget->Bind();
-                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, renderTarget->m_color->m_target, renderTarget->m_color->m_handle, 0);
-                        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  renderTarget->m_depth->m_target, renderTarget->m_depth->m_handle, 0);// this doesnt change
-
-#if 0
-                        ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_COLOR_BUFFER_BIT);
-                        ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_DEPTH_BUFFER_BIT);
-
-#else
-                        //ResolveMSAAFramebuffer(renderTarget, g_renderer.resolveDepthPeelingTarget, GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-                        glBindFramebuffer(GL_READ_FRAMEBUFFER, renderTarget->m_handle);
-                        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, g_renderer.resolveDepthPeelingTarget->m_handle);
-                        glBlitFramebuffer(  0, 0, renderTarget->m_size.x, renderTarget->m_size.y, 
-                                            0, 0, g_renderer.resolveDepthPeelingTarget->m_size.x, g_renderer.resolveDepthPeelingTarget->m_size.y, 
-                                            GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT, GL_NEAREST);
-#endif
-                        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, renderTarget->m_handle);
+                        ResolveMSAAFramebuffer(&renderTarget, &g_framebuffers->m_resolveDepthPeeling, GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
                         CheckFrameBufferStatus();
                     }
@@ -1499,8 +1467,9 @@ White:  Uploaded,");
 
                 //Composite the ResolveDepthPeelingTarget m_colors into a single color buffer on postTarget
                 {
-                    FrameBuffer* depthPeels = g_renderer.resolveDepthPeelingTarget;
-                    g_renderer.postTarget->Bind();
+                    auto& depthPeels = g_framebuffers->m_resolveDepthPeeling;
+                    g_framebuffers->m_post.Bind();
+                    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, g_framebuffers->m_post.m_handle);
                     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
                     g_renderer.postVertexBuffer->Bind();
 
@@ -1511,10 +1480,13 @@ White:  Uploaded,");
                     glViewport(0, 0, g_window.size.x, g_window.size.y);
                     glEnable(GL_FRAMEBUFFER_SRGB);
 
+                    //glActiveTexture(GL_TEXTURE1);
+                    //g_renderer.postTarget->m_color->Bind();
+
                     if (g_renderer.debug_DepthPeelingPassToDisplay == -1)
                     {
                         glActiveTexture(GL_TEXTURE0);
-                        depthPeels->m_color->Bind();
+                        depthPeels.m_opaqueColor->Bind();
 
                         g_renderer.programs[+Shader::BufferCopyAlpha]->UseShader();
 
@@ -1529,7 +1501,7 @@ White:  Uploaded,");
                         for (int32 pass = g_renderer.depthPeelingPasses; pass; --pass)
                         {
                             glActiveTexture(GL_TEXTURE0);
-                            depthPeels->m_colors[pass - 1]->Bind();
+                            depthPeels.m_peelingColors[pass - 1]->Bind();
 
                             g_renderer.programs[+Shader::BufferCopyAlpha]->UseShader();
 
@@ -1545,7 +1517,7 @@ White:  Uploaded,");
                     else if (g_renderer.debug_DepthPeelingPassToDisplay == 0)
                     {
                         glActiveTexture(GL_TEXTURE0);
-                        depthPeels->m_color->Bind();
+                        depthPeels.m_opaqueColor->Bind();
 
                         g_renderer.programs[+Shader::BufferCopyAlpha]->UseShader();
 
@@ -1563,7 +1535,7 @@ White:  Uploaded,");
                         assert(g_renderer.debug_DepthPeelingPassToDisplay <= g_renderer.depthPeelingPasses);
 
                         glActiveTexture(GL_TEXTURE0);
-                        depthPeels->m_colors[g_renderer.debug_DepthPeelingPassToDisplay - 1]->Bind();
+                        depthPeels.m_peelingColors[g_renderer.debug_DepthPeelingPassToDisplay - 1]->Bind();
 
                         g_renderer.programs[+Shader::BufferCopyAlpha]->UseShader();
 
@@ -1695,8 +1667,8 @@ White:  Uploaded,");
                     {
                         for (WorldPos p : cubesToDraw)
                         {
-                            g_renderer.opaqueTarget->Bind();
-                            //g_renderer.postTarget->Bind();
+                            g_framebuffers->m_opaque.Bind();
+                            //g_renderer.postTarget.Bind();
                             DrawCube(p, Red, 2.0f, playerCamera);
                         }
                     }
@@ -1726,7 +1698,7 @@ White:  Uploaded,");
                     {
                         if (s_debugFlags & +DebugOptions::ChunkStatus)
                         {
-                            g_renderer.transparentTarget->Bind();
+                            g_framebuffers->m_transparent.Bind();
                             for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
                             {
                                 if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
@@ -1755,7 +1727,7 @@ White:  Uploaded,");
                         {
                             if (validHit)
                             {
-                                g_renderer.transparentTarget->Bind();
+                                g_framebuffers->m_transparent.Bind();
                                 WorldPos pos;
                                 pos = ToWorld(hitBlock);
                                 pos.p = pos.p + 0.5f;
@@ -1768,7 +1740,7 @@ White:  Uploaded,");
                         {
                             if (player->m_collider.m_collidedTriangles.size())
                             {
-                                g_renderer.opaqueTarget->Bind();
+                                g_framebuffers->m_opaque.Bind();
                                 DrawTriangles(player->m_collider.m_collidedTriangles, Orange, playerCamera->m_view, playerCamera->m_perspective, false);
                                 player->m_collider.m_collidedTriangles.clear();
                             }
@@ -1838,22 +1810,22 @@ White:  Uploaded,");
                     UI_AddDrawCall({}, right, crosshairColor, Texture::T::Plain);
                     UI_AddDrawCall({}, bot, crosshairColor, Texture::T::Plain);
 
-                    g_renderer.transparentTarget->Bind();
+                    g_framebuffers->m_transparent.Bind();
                     UI_Render();
                 }
 
                 {
                     ZoneScopedN("Resolve Framebuffers");
-                    ResolveMSAAFramebuffer(g_renderer.opaqueTarget, g_renderer.postTarget, (GL_COLOR_BUFFER_BIT));
+                    ResolveMSAAFramebuffer(&g_framebuffers->m_opaque, &g_framebuffers->m_post, (GL_COLOR_BUFFER_BIT));
                     ResolveTransparentChunkFrameBuffer();
 
                     glDisable(GL_DEPTH_TEST);
                     glDepthMask(GL_FALSE);
                     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
                     glEnable(GL_BLEND);
-                    g_renderer.postTarget->Bind();
+                    g_framebuffers->m_post.Bind();
                     glActiveTexture(GL_TEXTURE0);
-                    g_renderer.transparentPostTarget->m_color->Bind();
+                    g_framebuffers->m_transparentPost.m_color->Bind();
                     g_renderer.programs[+Shader::BufferCopy]->UseShader();
                     g_renderer.postVertexBuffer->Bind();
                 }
@@ -1870,7 +1842,7 @@ White:  Uploaded,");
                 glViewport(0, 0, g_window.size.x, g_window.size.y);
                 //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
                 glActiveTexture(GL_TEXTURE0);
-                g_renderer.postTarget->m_color->Bind();
+                g_framebuffers->m_post.m_color->Bind();
                 g_renderer.programs[+Shader::BufferCopyAlpha]->UseShader();
                 g_renderer.postVertexBuffer->Bind();
 
@@ -1895,7 +1867,7 @@ White:  Uploaded,");
                 glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
                 glViewport(0, 0, g_window.size.x, g_window.size.y);
                 glActiveTexture(GL_TEXTURE0);
-                g_renderer.postTarget->m_color->Bind();
+                g_framebuffers->m_post.m_color->Bind();
                 g_renderer.programs[+Shader::BufferCopy]->UseShader();
                 g_renderer.postVertexBuffer->Bind();
 

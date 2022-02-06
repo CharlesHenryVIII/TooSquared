@@ -1,5 +1,4 @@
 #include "Rendering.h"
-#include "Misc.h"
 #include "Chunk.h"
 #include "WinInterop.h"
 #include "Input.h"
@@ -66,258 +65,6 @@ int32 CreateMessageWindow(SDL_MessageBoxButtonData* buttons, int32 numOfButtons,
         FAIL;
     }
     return buttonID;
-}
-
-Texture::Texture(TextureParams tp)
-{
-    assert(tp.samples);
-    if (tp.samples > 1)
-    {
-        m_target = GL_TEXTURE_2D_MULTISAMPLE;
-    }
-
-    glGenTextures(1, &m_handle);
-    Bind();
-
-    if (m_target != GL_TEXTURE_2D_MULTISAMPLE)
-    {
-        glTexParameteri(m_target, GL_TEXTURE_MIN_FILTER, tp.minFilter);
-        glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, tp.magFilter);
-        glTexParameteri(m_target, GL_TEXTURE_WRAP_S, tp.wrapS);
-        glTexParameteri(m_target, GL_TEXTURE_WRAP_T, tp.wrapT);
-    }
-
-    if (tp.samples == 1)
-        glTexImage2D(GL_TEXTURE_2D, 0, tp.internalFormat, tp.size.x, tp.size.y, 0, tp.format, tp.type, tp.data);
-    else
-        glTexImage2DMultisample(GL_TEXTURE_2D_MULTISAMPLE, tp.samples, tp.internalFormat, tp.size.x, tp.size.y, GL_TRUE); // NOTE: Could change to GL_FALSE to use custom sample locations
-
-    m_size = tp.size;
-#ifdef _DEBUGPRINT
-    DebugPrint("Texture Created\n");
-#endif
-}
-
-Texture::Texture(const char* fileLocation, GLint colorFormat)
-{
-    m_data = stbi_load(fileLocation, &m_size.x, &m_size.y, &m_bytesPerPixel, STBI_rgb_alpha);
-
-    glGenTextures(1, &m_handle);
-    Bind();
-    glTexParameteri(m_target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(m_target, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(m_target, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexImage2D(m_target, 0, colorFormat, m_size.x, m_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_data);
-    //glTexImage2D(m_target, 0, GL_RGBA, m_size.x, m_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_data);
-#ifdef _DEBUGPRINT
-    DebugPrint("Texture Created\n");
-#endif
-}
-
-Texture::Texture(uint8* data, Vec2Int size, GLint colorFormat)//, int32 m_bytesPerPixel)
-{
-    m_data = data;
-    m_size = size;
-    m_bytesPerPixel = 4;
-
-    glGenTextures(1, &m_handle);
-    Bind();
-    glTexParameteri(m_target, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(m_target, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(m_target, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(m_target, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexImage2D(m_target, 0, colorFormat, m_size.x, m_size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, m_data);
-#ifdef _DEBUGPRINT
-    DebugPrint("Texture Created\n");
-#endif
-}
-
-Texture::~Texture()
-{
-    glDeleteTextures(1, &m_handle);
-    stbi_image_free(m_data);
-}
-
-void Texture::Bind()
-{
-    glBindTexture(m_target, m_handle);
-#ifdef _DEBUGPRINT
-    DebugPrint("Texture Bound\n");
-#endif
-}
-
-
-TextureArray::TextureArray(const char* fileLocation)
-{
-    uint8* data = stbi_load(fileLocation, &m_size.x, &m_size.y, NULL, STBI_rgb_alpha);
-    Defer{
-        stbi_image_free(data);
-    };
-    assert(data);
-
-    glGenTextures(1, &m_handle);
-    Bind();
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    //glTexImage2D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, size.x, size.y, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-
-    uint32 mipMapLevels = 5;
-    m_spritesPerSide = { 16, 16 };
-    uint32 height = m_spritesPerSide.y;
-    uint32 width = m_spritesPerSide.x;
-    uint32 depth = 256;
-
-    //glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipMapLevels, GL_RGBA8, width, height, depth);
-    glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipMapLevels, GL_SRGB8_ALPHA8, width, height, depth);
-
-    //TODO: Fix
-    uint32 colors[16 * 16] = {};
-    uint32 arrayIndex = 0;
-    for (uint32 y = height; y--;)
-    {
-        for (uint32 x = 0; x < width; x++)
-        {
-            for (uint32 xp= 0; xp < 16; xp++)  //Total
-            {
-                for (uint32 yp = 0; yp < 16; yp++)  //Total
-                {
-                    uint32 sourceIndex = (y * 16 + yp) * 256 + x * 16 + xp;
-                    uint32 destIndex = yp * 16 + xp;
-                    colors[destIndex] = reinterpret_cast<uint32*>(data)[sourceIndex];
-                }
-            }
-            glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, arrayIndex, 16, 16, 1, GL_RGBA, GL_UNSIGNED_BYTE, colors);
-            arrayIndex++;
-        }
-    }
-    glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
-#ifdef _DEBUGPRINT
-    DebugPrint("Texture Created\n");
-#endif
-}
-
-void TextureArray::Bind()
-{
-    glBindTexture(GL_TEXTURE_2D_ARRAY, m_handle);
-#ifdef _DEBUGPRINT
-    DebugPrint("Texture Bound\n");
-#endif
-}
-
-
-struct DDS_PIXELFORMAT
-{
-    uint32 dwSize;
-    uint32 dwFlags;
-    uint32 dwFourCC;
-    uint32 dwRGBBitCount;
-    uint32 dwRBitMask;
-    uint32 dwGBitMask;
-    uint32 dwBBitMask;
-    uint32 dwABitMask;
-};
-static_assert(sizeof(DDS_PIXELFORMAT) == 32, "Incorrect structure size!");
-
-typedef struct
-{
-    uint32           dwSize;
-    uint32           dwFlags;
-    uint32           dwHeight;
-    uint32           dwWidth;
-    uint32           dwPitchOrLinearSize;
-    uint32           dwDepth;
-    uint32           dwMipMapCount;
-    uint32           dwReserved1[11];
-    DDS_PIXELFORMAT ddspf;
-    uint32           dwCaps;
-    uint32           dwCaps2;
-    uint32           dwCaps3;
-    uint32           dwCaps4;
-    uint32           dwReserved2;
-} DDS_HEADER;
-static_assert(sizeof(DDS_HEADER) == 124, "Incorrect structure size!");
-
-TextureCube::TextureCube(const char* fileLocation)
-{
-    glGenTextures(1, &m_handle);
-    Bind();
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-
-    FILE* file;
-    if (fopen_s(&file, fileLocation, "rb") != 0)
-    {
-        assert(false);
-        return;
-    }
-
-    Defer{ fclose(file); };
-
-    fseek(file, 0, SEEK_END);
-    auto size = ftell(file);
-    fseek(file, 0, SEEK_SET);
-    uint8_t* buffer = new uint8_t[size];
-    fread(buffer, size, 1, file);
-    DDS_HEADER* header = (DDS_HEADER*)((uint32*)buffer + 1);
-    uint8_t* data = (uint8_t*)(header + 1);
-
-    int32 levels = header->dwMipMapCount;
-
-#if 0
-    void glTexStorage3D(GL_PROXY_TEXTURE_CUBE_MAP_ARRAY,
-                        levels,
-                        GLenum internalformat,
-                        GLsizei width,
-                        GLsizei height,
-                        GLsizei depth);
-#endif
-
-    GLenum targets[] = {
-        GL_TEXTURE_CUBE_MAP_POSITIVE_X,
-        GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
-        GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
-        GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
-        GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
-        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z
-    };
-
-    for (int i = 0; i < arrsize(targets); ++i)
-    {
-        GLsizei width = header->dwWidth;
-        GLsizei height = header->dwHeight;
-
-        auto Align = [](GLsizei i) { return i + 3 & ~(3); };
-
-        for (int level = 0; level < levels; ++level)
-        {
-            GLsizei bw = Align(width);
-            GLsizei bh = Align(height);
-            GLsizei byte_size = bw * bh;
-
-            glCompressedTexImage2D(targets[i],
-                                    level,
-                                    GL_COMPRESSED_RGBA_S3TC_DXT5_EXT,
-                                    width,
-                                    height,
-                                    0,
-                                    byte_size,
-                                    data);
-
-            data += byte_size;
-            width = Max(width >> 1, 1);
-            height = Max(height >> 1, 1);
-        }
-    }
-}
-
-void TextureCube::Bind()
-{
-    glBindTexture(GL_TEXTURE_CUBE_MAP, m_handle);
 }
 
 ShaderProgram::~ShaderProgram()
@@ -647,8 +394,8 @@ double s_lastShaderUpdateTime = 0;
 double s_incrimentalTime = 0;
 void RenderUpdate(Vec2Int windowSize, float deltaTime)
 {
-    CheckFrameBufferStatus();
     ZoneScopedN("Render Update");
+    CheckFrameBufferStatus();
     glClearColor(backgroundColor.r, backgroundColor.g, backgroundColor.b, backgroundColor.a);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     g_renderer.numTrianglesDrawn = 0;
@@ -665,18 +412,16 @@ void RenderUpdate(Vec2Int windowSize, float deltaTime)
 
 
     CheckFrameBufferStatus();
-    UpdateFrameBuffers(windowSize, g_renderer.msaaEnabled ? g_renderer.maxMSAASamples : 1);
-    g_renderer.opaqueTarget->Bind();
-    //g_renderer.postTarget->Bind();
+    g_framebuffers->Update(windowSize, g_renderer.maxMSAASamples, g_renderer.depthPeelingPasses);
+    //UpdateFrameBuffers(windowSize, g_renderer.msaaEnabled ? g_renderer.maxMSAASamples : 1);
+    g_framebuffers->m_opaque.Bind();
+    //g_renderer.opaqueTarget->Bind();
     glViewport(0, 0, windowSize.x, windowSize.y);
-    if (!g_renderer.usingDepthPeeling)
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 
     if (!g_renderer.usingDepthPeeling)
     {
-        g_renderer.transparentTarget->Bind();
-        //g_renderer.postTarget->m_depth->Bind();
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        g_framebuffers->m_transparent.Bind();
 
         Vec4 clearVec0 = Vec4{ 0.0f, 0.0f, 0.0f, 0.0f };
         glClearBufferfv(GL_COLOR, 0, clearVec0.e);
@@ -684,7 +429,7 @@ void RenderUpdate(Vec2Int windowSize, float deltaTime)
         Vec4 clearVec1 = Vec4{ 1.0f, 0.0f, 0.0f, 0.0f };
         glClearBufferfv(GL_COLOR, 1, clearVec1.e);
 
-        g_renderer.opaqueTarget->Bind();
+        g_framebuffers->m_opaque.Bind();
     }
 }
 
@@ -758,288 +503,6 @@ void FillIndexBuffer(IndexBuffer* ib)
     ib->Upload(arr.data(), amount);
 }
 
-
-void FrameBuffer::Bind() const
-{
-    glBindFramebuffer(GL_FRAMEBUFFER, m_handle);
-}
-
-FrameBuffer::FrameBuffer()
-{
-    glGenFramebuffers(1, &m_handle);
-    Bind();
-}
-
-void FrameBuffer::ClearTextures(Texture::TextureParams textureParams)
-{
-    if (m_color && m_color->m_handle)
-        delete m_color;
-    if (m_color2 && m_color2->m_handle)
-        delete m_color2;
-    if (m_depth && m_depth->m_handle)
-        delete m_depth;
-}
-
-void FrameBuffer::CreateTexture(Texture::TextureParams tp)
-{
-    tp.size = m_size;
-    tp.samples = m_samples;
-    Bind();
-
-    if (tp.internalFormat == GL_DEPTH_COMPONENT)
-    {
-        m_depth = new Texture(tp);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  m_depth->m_target, m_depth->m_handle, 0);
-    }
-    else if (m_color && m_color->m_handle)
-    {
-        m_color2 = new Texture(tp);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_color->m_target,  m_color->m_handle, 0);
-    }
-    else
-    {
-        m_color = new Texture(tp);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_color->m_target,  m_color->m_handle, 0);
-    }
-}
-
-void CheckFrameBufferStatus()
-{
-    GLint err = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    if (err != GL_FRAMEBUFFER_COMPLETE)
-    {
-        DebugPrint("Error: Frame buffer error: %d \n", err);
-        assert(false);
-    }
-}
-
-void FrameBuffer::CreateTextures(Vec2Int size, uint32 samples, bool transparentFrameBuffer)
-{
-    m_size = size;
-    m_samples = samples;
-
-    Texture::TextureParams tp = {};
-    tp.samples = samples;
-    tp.size = size;
-    if (transparentFrameBuffer)
-    {
-        tp.internalFormat = GL_RGBA16F;
-        tp.format = GL_RGBA;
-        tp.minFilter = tp.magFilter = GL_LINEAR;
-        tp.type = GL_HALF_FLOAT;
-        m_color = new Texture(tp);
-
-        tp.internalFormat = GL_R8;
-        tp.format = GL_RED;
-        tp.type = GL_FLOAT;
-        m_color2 = new Texture(tp);
-
-        Bind();
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_color->m_target,  m_color->m_handle, 0);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, m_color2->m_target, m_color2->m_handle, 0);
-        //this is bad dont do this.  Just want to get it working first
-        //if (transparentFrameBuffer)
-            //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_depth->m_target, m_depth->m_handle, 0);
-        //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  g_renderer.opaqueTarget->m_depth->m_target, g_renderer.opaqueTarget->m_depth->m_handle, 0);
-    }
-    else
-    {
-        tp.internalFormat = GL_RGBA;
-        m_color = new Texture(tp);
-
-        tp.internalFormat = GL_DEPTH_COMPONENT;
-        tp.format = GL_DEPTH_COMPONENT;
-        m_depth = new Texture(tp);
-
-        Bind();
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, m_color->m_target, m_color->m_handle, 0);
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, m_depth->m_target, m_depth->m_handle, 0);
-    }
-
-    CheckFrameBufferStatus();
-}
-
-void UpdateFrameBuffers(Vec2Int size, uint32 samples)
-{
-    CheckFrameBufferStatus();
-    if (g_renderer.postTarget == nullptr)
-    {
-        g_renderer.opaqueTarget = new FrameBuffer();
-        g_renderer.resolveDepthPeelingTarget = new FrameBuffer();
-        g_renderer.postTarget = new FrameBuffer();
-        g_renderer.transparentTarget = new FrameBuffer();
-        g_renderer.transparentPostTarget = new FrameBuffer();
-    }
-
-    FrameBuffer* opaqueScene = g_renderer.opaqueTarget;
-    FrameBuffer* resolveDepthPeeling = g_renderer.resolveDepthPeelingTarget;
-    FrameBuffer* post = g_renderer.postTarget;
-    FrameBuffer* transparentScene = g_renderer.transparentTarget;
-    FrameBuffer* transparentPost = g_renderer.transparentPostTarget;
-
-
-    if (g_renderer.usingDepthPeeling)
-    {
-        //Depth Peeling Scene
-        FrameBuffer* depthPeelingScene = opaqueScene;
-        if (!depthPeelingScene->m_color)
-        {
-            Texture::TextureParams tp = {};
-            tp.samples = samples;
-            tp.size = size;
-            tp.internalFormat = GL_RGBA;
-            depthPeelingScene->m_color = new Texture(tp);
-            depthPeelingScene->Bind();
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, depthPeelingScene->m_color->m_target, depthPeelingScene->m_color->m_handle, 0);
-            CheckFrameBufferStatus();
-        }
-        if (!depthPeelingScene->m_depth)
-        {
-            Texture::TextureParams tp = {};
-            tp.samples = samples;
-            tp.size = size;
-            tp.internalFormat = GL_DEPTH_COMPONENT;
-            tp.format = GL_DEPTH_COMPONENT;
-            depthPeelingScene->m_depth = new Texture(tp);
-            depthPeelingScene->Bind();
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, depthPeelingScene->m_depth->m_target, depthPeelingScene->m_depth->m_handle, 0);
-            CheckFrameBufferStatus();
-        }
-
-        //Resolve Depth Peeling Target
-        if (resolveDepthPeeling->m_colors.size() != g_renderer.depthPeelingPasses)
-        {
-            resolveDepthPeeling->m_colors.clear();
-            Texture::TextureParams tp = {};
-            tp.samples = 1;
-            tp.size = size;
-            tp.internalFormat = GL_RGBA;
-            for (int32 i = 0; i < g_renderer.depthPeelingPasses; i++)
-            {
-                Texture* colorTexture = new Texture(tp);
-                resolveDepthPeeling->m_colors.push_back(colorTexture);
-            }
-            CheckFrameBufferStatus();
-        }
-        if (!resolveDepthPeeling->m_color)
-        {
-            Texture::TextureParams tp = {};
-            tp.samples = 1;
-            tp.size = size;
-            tp.internalFormat = GL_RGBA;
-            resolveDepthPeeling->m_color = new Texture(tp);
-            //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, resolveDepthPeeling->m_color->m_target, resolveDepthPeeling->m_color->m_handle, 0);
-            CheckFrameBufferStatus();
-        }
-        if (!resolveDepthPeeling->m_peelingDepth)
-        {
-            Texture::TextureParams tp = {};
-            tp.samples = 1;
-            tp.size = size;
-            tp.internalFormat = GL_DEPTH_COMPONENT;
-            tp.format = GL_DEPTH_COMPONENT;
-            resolveDepthPeeling->m_peelingDepth = new Texture(tp);
-            CheckFrameBufferStatus();
-        }
-        if (!resolveDepthPeeling->m_opaqueDepth)
-        {
-            Texture::TextureParams tp = {};
-            tp.samples = 1;
-            tp.size = size;
-            tp.internalFormat = GL_DEPTH_COMPONENT;
-            tp.format = GL_DEPTH_COMPONENT;
-            resolveDepthPeeling->m_opaqueDepth = new Texture(tp);
-            resolveDepthPeeling->Bind();
-            glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, resolveDepthPeeling->m_opaqueDepth->m_target, resolveDepthPeeling->m_opaqueDepth->m_handle, 0);
-            CheckFrameBufferStatus();
-        }
-
-        depthPeelingScene->m_size = resolveDepthPeeling->m_size = size;
-        depthPeelingScene->m_samples = samples;
-        resolveDepthPeeling->m_samples = 1;
-        CheckFrameBufferStatus();
-    }
-
-    if (post->m_size.x == size.x && post->m_size.y == size.y && opaqueScene->m_samples == samples)
-        return;
-
-    if (!g_renderer.usingDepthPeeling)
-    {
-        opaqueScene->CreateTextures(size, samples, false);
-        transparentScene->CreateTextures(size, samples, true);
-        transparentScene->m_depth = opaqueScene->m_depth;
-        transparentScene->Bind();
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, transparentScene->m_depth->m_target, transparentScene->m_depth->m_handle, 0);
-    }
-    post->CreateTextures(size, 1, false);
-    if (!g_renderer.usingDepthPeeling)
-    {
-        transparentPost->CreateTextures(size, 1, true);
-
-        transparentPost->m_depth = post->m_depth;
-        transparentPost->Bind();
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, transparentPost->m_depth->m_target, transparentPost->m_depth->m_handle, 0);
-        opaqueScene->Bind();
-    }
-    CheckFrameBufferStatus();
-}
-
-// Copying the multisampled framebuffer to a standard texture resolves the multiple samples per pixel. This must be done before using the
-// framebuffer for any read operations.
-void ResolveMSAAFramebuffer(const FrameBuffer* read, FrameBuffer* write, GLbitfield copyMask, GLenum mode)
-{
-    assert(read && write);
-    if (read && write)
-    {
-        glBindFramebuffer(GL_READ_FRAMEBUFFER, read->m_handle);
-        if (mode)
-            glReadBuffer(mode);
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, write->m_handle);
-        if (mode)
-            glDrawBuffer(mode);
-        glBlitFramebuffer(0, 0, read->m_size.x, read->m_size.y, 0, 0, write->m_size.x, write->m_size.y, copyMask, GL_NEAREST);
-    }
-}
-
-void ResolveTransparentChunkFrameBuffer()
-{
-    ResolveMSAAFramebuffer(g_renderer.transparentTarget, g_renderer.transparentPostTarget, GL_COLOR_BUFFER_BIT);
-    ResolveMSAAFramebuffer(g_renderer.transparentTarget, g_renderer.transparentPostTarget, GL_COLOR_BUFFER_BIT, GL_COLOR_ATTACHMENT1);
-
-    // set render states
-    glDepthFunc(GL_ALWAYS);
-    glDisable(GL_DEPTH_TEST);
-    glDepthMask(GL_FALSE);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    //bind opaque framebuffer
-    g_renderer.postTarget->Bind();
-    //g_renderer.transparentPostTarget->Bind();
-    //g_renderer.opaqueTarget->Bind();
-    //glBindFramebuffer(GL_FRAMEBUFFER, opaqueFBO);
-
-    //use composite shader
-    //compositeShader.use();
-    g_renderer.programs[+Shader::Composite]->UseShader();
-
-    // draw screen quad
-    glActiveTexture(GL_TEXTURE0);
-    g_renderer.transparentPostTarget->m_color->Bind();
-    //g_renderer.transparentTarget->m_color->Bind();
-    glActiveTexture(GL_TEXTURE1);
-    g_renderer.transparentPostTarget->m_color2->Bind();
-    //g_renderer.transparentTarget->m_color2->Bind();
-
-    g_renderer.postVertexBuffer->Bind();
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
-    glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
-    glEnableVertexArrayAttrib(g_renderer.vao, 1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
-    glEnableVertexArrayAttrib(g_renderer.vao, 2);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-}
 
 
 
@@ -1353,4 +816,46 @@ void InitializeVideo()
     g_renderer.postVertexBuffer->Upload(verticees, arrsize(verticees));
 
     UI_VertexBuffer = new VertexBuffer();
+
+    FrameBufferInit();
 }
+
+void ResolveTransparentChunkFrameBuffer()
+{
+    ResolveMSAAFramebuffer(&g_framebuffers->m_transparent, &g_framebuffers->m_transparentPost, GL_COLOR_BUFFER_BIT);
+    ResolveMSAAFramebuffer(&g_framebuffers->m_transparent, &g_framebuffers->m_transparentPost, GL_COLOR_BUFFER_BIT, GL_COLOR_ATTACHMENT1);
+
+    // set render states
+    glDepthFunc(GL_ALWAYS);
+    glDisable(GL_DEPTH_TEST);
+    glDepthMask(GL_FALSE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    //bind opaque framebuffer
+    g_framebuffers->m_post.Bind();
+    //globalRenderer.transparentPostTarget.Bind();
+    //globalRenderer.opaqueTarget.Bind();
+    //glBindFramebuffer(GL_FRAMEBUFFER, opaqueFBO);
+
+    //use composite shader
+    //compositeShader.use();
+    ////////globalRenderer.programs[+Shader::Composite]->UseShader();
+    g_renderer.programs[+Shader::Composite]->UseShader();
+
+    // draw screen quad
+    glActiveTexture(GL_TEXTURE0);
+    g_framebuffers->m_transparentPost.m_color->Bind();
+    glActiveTexture(GL_TEXTURE1);
+    g_framebuffers->m_transparentPost.m_color2->Bind();
+
+    g_renderer.postVertexBuffer->Bind();
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+    glEnableVertexArrayAttrib(g_renderer.vao, 0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+    glEnableVertexArrayAttrib(g_renderer.vao, 1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
+    glEnableVertexArrayAttrib(g_renderer.vao, 2);
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+}
+

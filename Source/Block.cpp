@@ -141,7 +141,7 @@ void DrawBlock(const Mat4& model, Vec3 scale, Camera* camera, Color color, Textu
         glBlendFunci(0, GL_ONE, GL_ONE);
         glBlendFunci(1, GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
         glBlendEquation(GL_FUNC_ADD);
-        g_renderer.transparentTarget->Bind();
+        g_framebuffers->m_transparent.Bind();
 
         const GLenum transparentDrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
         glDrawBuffers(2, transparentDrawBuffers);
@@ -153,7 +153,7 @@ void DrawBlock(const Mat4& model, Vec3 scale, Camera* camera, Color color, Textu
         glEnable(GL_DEPTH_TEST);
         glDepthMask(GL_TRUE);
         glDisable(GL_BLEND);
-        g_renderer.opaqueTarget->Bind();
+        g_framebuffers->m_opaque.Bind();
 
         const GLenum transparentDrawBuffers[] = { GL_COLOR_ATTACHMENT0 };
         glDrawBuffers(1, transparentDrawBuffers);

@@ -177,6 +177,8 @@
     <ClCompile Include="Source\Noise.cpp" />
     <ClCompile Include="Source\Raycast.cpp" />
     <ClCompile Include="Source\Rendering.cpp" />
+    <ClCompile Include="Source\Rendering_Framebuffer.cpp" />
+    <ClCompile Include="Source\Rendering_Texture.cpp" />
     <ClCompile Include="Source\WinInterop.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -217,6 +219,8 @@
     <ClInclude Include="Source\Noise.h" />
     <ClInclude Include="Source\Raycast.h" />
     <ClInclude Include="Source\Rendering.h" />
+    <ClInclude Include="Source\Rendering_Framebuffer.h" />
+    <ClInclude Include="Source\Rendering_Texture.h" />
     <ClInclude Include="Source\WinInterop.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

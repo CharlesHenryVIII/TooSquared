@@ -1818,7 +1818,7 @@ void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera, uint32 passCo
         glDepthMask(GL_TRUE);
         glDepthFunc(GL_LESS);
         glDisable(GL_BLEND);
-        g_renderer.opaqueTarget->Bind();
+        g_framebuffers->m_opaque.Bind();
         glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     }
 }
@@ -1930,7 +1930,7 @@ void PreTransparentChunkRender(const Mat4& perspective, Camera* camera)
     glBlendFunci(1, GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
     glBlendEquation(GL_FUNC_ADD);
 
-    g_renderer.transparentTarget->Bind();
+    g_framebuffers->m_transparent.Bind();
     ////g_renderer.postTarget->m_depth->Bind();
 
     //Vec4 clearVec0 = Vec4{ 0.0f, 0.0f, 0.0f, 0.0f };
