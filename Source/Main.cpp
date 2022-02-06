@@ -615,9 +615,9 @@ White:  Uploaded,");
                         ImGui::Unindent();
 
                         ImGui::Text("depthPeelingPasses:");
-                        ImGui::SliderInt(" ", &g_renderer.depthPeelingPasses, 2, 32, 0);
+                        ImGui::SliderInt("depthPeelingPasses:", &g_renderer.depthPeelingPasses, 2, 32);
                         ImGui::Text("depthPeelingPassToDisplay:");
-                        ImGui::SliderInt(" ", &g_renderer.debug_DepthPeelingPassToDisplay, -1, g_renderer.depthPeelingPasses, 0);
+                        ImGui::SliderInt("depthPeelingPassToDisplay:", &g_renderer.debug_DepthPeelingPassToDisplay, -1, g_renderer.depthPeelingPasses);
                         ImGui::TreePop();
                     }
 
