@@ -1,26 +1,20 @@
 #version 420 core
 //uniform sampler2D sampler;
-layout (binding = 0) uniform sampler2D sampler;
+layout (binding = 0) uniform sampler2D sourceSampler;
 
-//layout (binding = 1) uniform sampler2D outputBuffer;
+layout (binding = 1) uniform sampler2D destSampler;
 
 in vec2 f_uv;
 out vec4 color;
 
 void main()
 {
-    vec4 texColor = texture(sampler, f_uv);
-    //vec4 outColor = texture(outputBuffer, f_uv);
-    color = texColor;
-    //color.xyz = vec3(1);
-    color.a;
-    //color.a = max(outColor.a, texColor.a);
-    //color.r = 1;
-    //color.a = 0.5;
-    //color.xyz = vec3(texColor.z);
-    //color.r = 1;
-    //color.a = 0.5;
-    //color.xyzw = vec4(texColor.a);
-    //color.xyz = vec3(texColor.a);
-    //color = vec4(texColor.rgb, 0.8);
+    vec4 s = texture(sourceSampler, f_uv);
+    vec4 d = texture(destSampler,   f_uv);
+    vec4 sf = s * s.a;
+    vec4 df = d * (1 - s.a);
+    color = sf + df;
+
+    if (s.a == 1 || d.a == 1)
+        color.a = 1;
 }

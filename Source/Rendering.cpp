@@ -859,3 +859,44 @@ void ResolveTransparentChunkFrameBuffer()
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
+void RenderAlphaCopy(Texture* s, Texture* d)
+{
+    assert(s);
+    assert(d);
+    auto& alphaBuffer = g_framebuffers->m_bufferAlphaCopy;
+
+    alphaBuffer.Bind();
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, alphaBuffer.m_handle);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glActiveTexture(GL_TEXTURE0);
+    s->Bind();
+    glActiveTexture(GL_TEXTURE1);
+    d->Bind();
+
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glEnable(GL_BLEND);
+    glViewport(0, 0, g_window.size.x, g_window.size.y);
+
+    g_renderer.programs[+Shader::BufferCopyAlpha]->UseShader();
+
+    g_renderer.postVertexBuffer->Bind();
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+    glEnableVertexArrayAttrib(g_renderer.vao, 0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+    glEnableVertexArrayAttrib(g_renderer.vao, 1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
+    glEnableVertexArrayAttrib(g_renderer.vao, 2);
+
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, d->m_target, d->m_handle, 0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    glActiveTexture(GL_TEXTURE0);
+    alphaBuffer.m_color->Bind();
+
+    g_renderer.programs[+Shader::BufferCopy]->UseShader();
+    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, alphaBuffer.m_color->m_target, alphaBuffer.m_color->m_handle, 0);
+}

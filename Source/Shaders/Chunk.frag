@@ -55,12 +55,6 @@ void main()
 //Discard fragment if it is not going to peel the current layer 
 //or if it would be occluded by opaque geometry
 #if 1
-    //if (u_passCount == 1)
-    //{
-        //color.rbga = vec4(0);
-        //color.r = opaqueDepthTexelFetch.r;
-        //color.a = 1;
-    //}
     if (u_passCount == 1)
     {
         if ((gl_FragCoord.z > opaqueDepthTexelFetch.r))

@@ -30,12 +30,13 @@ void CheckFrameBufferStatus()
 
 void FrameBufferManager::Update(const Vec2Int& size, const uint32 samples, const int32 depthPeelingPasses)
 {
-    if (size == m_size && samples == m_multisampleCount)
+    if (size == m_size && samples == m_multisampleCount && depthPeelingPasses == m_depthPeelingPasses)
     {
         return;
     }
     m_size = size;
     m_multisampleCount = samples;
+    m_depthPeelingPasses = depthPeelingPasses;
 
     {//Opaque:
         //FrameBuffer_Basic* opaque = g_FBM.m_opaque;
@@ -81,6 +82,11 @@ void FrameBufferManager::Update(const Vec2Int& size, const uint32 samples, const
             m_resolveDepthPeeling.m_peelingColors.push_back(nullptr);
             m_resolveDepthPeeling.CreateTexture(&m_resolveDepthPeeling.m_peelingColors[i], 0, GL_RGBA, GL_RGBA);
         }
+    }
+    {//Buffer Copy Alpha
+        m_bufferAlphaCopy.m_multisample = false;
+        m_bufferAlphaCopy.m_size = m_size;
+        m_bufferAlphaCopy.CreateTexture(&m_bufferAlphaCopy.m_color, GL_COLOR_ATTACHMENT0, GL_RGBA, GL_RGBA);
     }
 
     CheckFrameBufferStatus();

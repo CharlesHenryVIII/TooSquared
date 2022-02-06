@@ -189,3 +189,4 @@ void UI_AddDrawCall(RectInt sourceRect, RectInt _destRect, Color colorMod, Textu
 void UI_AddDrawCall(RectInt _sourceRect, Rect destRect, Color colorMod, Texture::T textureType);
 void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& view, const Mat4& perspective, bool depthWrite);
 void UI_Render();
+void RenderAlphaCopy(Texture* source, Texture* destination);
