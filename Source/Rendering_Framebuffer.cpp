@@ -28,15 +28,16 @@ void CheckFrameBufferStatus()
     }
 }
 
-void FrameBufferManager::Update(const Vec2Int& size, const uint32 samples, const int32 depthPeelingPasses)
+void FrameBufferManager::Update(const Vec2Int& size, const uint32 samples, const int32 depthPeelingPasses, const bool multisampleEnabled)
 {
-    if (size == m_size && samples == m_multisampleCount && depthPeelingPasses == m_depthPeelingPasses)
+    if (size == m_size && samples == m_multisampleCount && depthPeelingPasses == m_depthPeelingPasses && multisampleEnabled == m_multisampleEnabled)
     {
         return;
     }
     m_size = size;
     m_multisampleCount = samples;
     m_depthPeelingPasses = depthPeelingPasses;
+    m_multisampleEnabled = multisampleEnabled;
 
     {//Opaque:
         //FrameBuffer_Basic* opaque = g_FBM.m_opaque;
@@ -107,7 +108,7 @@ void FrameBuffer::CreateTexture(Texture** textureMember, GLenum attachment, GLin
         .internalFormat = internalFormat,
         .format = format,
         .type = type,
-        .samples = m_multisample ? g_framebuffers->m_multisampleCount : 1,
+        .samples = m_multisample && g_framebuffers->m_multisampleEnabled ? g_framebuffers->m_multisampleCount : 1,
     };
     //m_texInfo.push_back(tp);
     

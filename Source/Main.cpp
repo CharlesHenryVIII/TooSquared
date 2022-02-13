@@ -614,6 +614,8 @@ White:  Uploaded,");
                         ImGui::Unindent();
                         ImGui::Unindent();
 
+                        ImGui::Checkbox("MSAA Enabled", &g_renderer.msaaEnabled);
+                        ImGui::SameLine(); HelpMarker("'v' will also toggle this");
                         ImGui::Text("depthPeelingPasses:");
                         ImGui::SliderInt("depthPeelingPasses:", &g_renderer.depthPeelingPasses, 2, 32);
                         ImGui::Text("depthPeelingPassToDisplay:");
@@ -1022,6 +1024,7 @@ White:  Uploaded,");
             //Vec3 lookatPosition = { (float)sin(totalTime / 10) * 100, 100, (float)cos(totalTime / 10) * 100};
             //gb_mat4_look_at(&testCamera.view, testCamera.p.p, lookatPosition, { 0, 1, 0 });
 
+            //Near Clip and Far Clip
             gb_mat4_perspective(&playerCamera->m_perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.1f, 2000.0f);
             playerCamera->m_viewProj = playerCamera->m_perspective * playerCamera->m_view;
 

@@ -412,7 +412,7 @@ void RenderUpdate(Vec2Int windowSize, float deltaTime)
 
 
     CheckFrameBufferStatus();
-    g_framebuffers->Update(windowSize, g_renderer.maxMSAASamples, g_renderer.depthPeelingPasses);
+    g_framebuffers->Update(windowSize, g_renderer.maxMSAASamples, g_renderer.depthPeelingPasses, g_renderer.msaaEnabled);
     //UpdateFrameBuffers(windowSize, g_renderer.msaaEnabled ? g_renderer.maxMSAASamples : 1);
     g_framebuffers->m_opaque.Bind();
     //g_renderer.opaqueTarget->Bind();

@@ -50,6 +50,7 @@ public:
     uint32 m_multisampleCount = 0;
     Vec2Int m_size = {};
     int32 m_depthPeelingPasses = 0;
+    bool m_multisampleEnabled;
 
     FrameBuffer_Basic               m_opaque;
     FrameBuffer_Transparent         m_transparent;
@@ -59,7 +60,7 @@ public:
     FrameBuffer_ResolveDepthPeeling m_resolveDepthPeeling;
     FrameBuffer_Copy                m_bufferAlphaCopy;
 
-    void Update(const Vec2Int& size, const uint32 samples, const int32 depthPeelingPasses);
+    void Update(const Vec2Int& size, const uint32 samples, const int32 depthPeelingPasses, const bool multisampleEnabled);
 };
 extern FrameBufferManager* g_framebuffers;
 

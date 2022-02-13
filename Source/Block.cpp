@@ -44,7 +44,7 @@ void SetBlockSprites()
 #if 1
     SetMultipleBlockSprites(BlockType::Leaves, 52);
     g_blocks[+BlockType::Leaves].m_seeThrough = true;
-    g_blocks[+BlockType::Leaves].m_translucent = true;
+    g_blocks[+BlockType::Leaves].m_translucent = true; //This is because the mipmaps contain alpha transparency
     g_blocks[+BlockType::Leaves].m_sidesShouldBeRendered = true;
 #else
     SetMultipleBlockSprites(BlockType::Leaves, 53);
@@ -71,7 +71,7 @@ void SetBlockSprites()
 
     SetMultipleBlockSprites(BlockType::Glass, 49);
     g_blocks[+BlockType::Glass].m_seeThrough            = true;
-    g_blocks[+BlockType::Glass].m_translucent           = false;
+    g_blocks[+BlockType::Glass].m_translucent           = true;//This is because the mipmaps contain alpha transparency
     g_blocks[+BlockType::Glass].m_sidesShouldBeRendered = false;
     g_blocks[+BlockType::Glass].m_hasShading            = false;
 }

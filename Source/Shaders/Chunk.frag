@@ -57,15 +57,18 @@ void main()
 #if 1
     if (u_passCount == 1)
     {
-        if ((gl_FragCoord.z > opaqueDepthTexelFetch.r))
+        if ((gl_FragCoord.z >= opaqueDepthTexelFetch.r))
         {
             discard;
         }
     }
-    else if (u_passCount >= 2) //I think I can get away with removing this if statement
+    else if (u_passCount > 1) //I think I can get away with removing this if statement
     {
-        if ((gl_FragCoord.z < depthTexelFetch.r) || (gl_FragCoord.z > opaqueDepthTexelFetch.r))
+        if ((gl_FragCoord.z >= opaqueDepthTexelFetch.r) || (gl_FragCoord.z <= (depthTexelFetch.r)))
         {
+            //color.xyz = vec3(depthTexelFetch.r);
+            //color.xyz = vec3(gl_FragCoord.z);
+            //return;
             discard;
         }
     }
