@@ -55,6 +55,7 @@ void main()
 //Discard fragment if it is not going to peel the current layer 
 //or if it would be occluded by opaque geometry
 #if 1
+
     if (u_passCount == 1)
     {
         if ((gl_FragCoord.z >= opaqueDepthTexelFetch.r))
@@ -66,9 +67,6 @@ void main()
     {
         if ((gl_FragCoord.z >= opaqueDepthTexelFetch.r) || (gl_FragCoord.z <= (depthTexelFetch.r)))
         {
-            //color.xyz = vec3(depthTexelFetch.r);
-            //color.xyz = vec3(gl_FragCoord.z);
-            //return;
             discard;
         }
     }

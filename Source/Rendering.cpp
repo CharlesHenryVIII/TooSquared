@@ -783,6 +783,7 @@ void InitializeVideo()
     g_renderer.programs[+Shader::OpaqueChunk]       = new ShaderProgram("Source/Shaders/Chunk.vert",        "Source/Shaders/ChunkOpaque.frag");
     g_renderer.programs[+Shader::TransparentChunk]  = new ShaderProgram("Source/Shaders/Chunk.vert",        "Source/Shaders/ChunkTransparent.frag");
     g_renderer.programs[+Shader::Cube]              = new ShaderProgram("Source/Shaders/Cube.vert",         "Source/Shaders/Cube.frag");
+    g_renderer.programs[+Shader::CubeDepthPeeling]  = new ShaderProgram("Source/Shaders/Cube.vert",         "Source/Shaders/CubeDepthPeeling.frag");
     g_renderer.programs[+Shader::TransparentCube]   = new ShaderProgram("Source/Shaders/Cube.vert",         "Source/Shaders/CubeTransparent.frag");
     g_renderer.programs[+Shader::BufferCopy]        = new ShaderProgram("Source/Shaders/BufferCopy.vert",   "Source/Shaders/BufferCopy.frag");
     g_renderer.programs[+Shader::BufferCopyAlpha]   = new ShaderProgram("Source/Shaders/BufferCopy.vert",   "Source/Shaders/BufferCopyAlpha.frag");

@@ -104,7 +104,7 @@ TextureArray::TextureArray(const char* fileLocation)
     uint32 width = m_spritesPerSide.x;
     uint32 depth = 256;
 
-    //glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipMapLevels, GL_RGBA8, width, height, depth);
+    //SRGB8_ALPHA8 is used since the texture is encoded in sRGB color space
     glTexStorage3D(GL_TEXTURE_2D_ARRAY, mipMapLevels, GL_SRGB8_ALPHA8, width, height, depth);
 
     //TODO: Fix

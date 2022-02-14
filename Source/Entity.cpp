@@ -414,6 +414,19 @@ void Item::Update(float dt)
     {
         EntityOnCollisionGeneral(m_rigidBody, collisionPositionDelta);
     }
+
+    //Mat4 result;
+    //Mat4 translation;
+    //Mat4 rotation;
+    //gb_mat4_identity(&result);
+    //gb_mat4_from_quat(&rotation, gb_quat_euler_angles(DegToRad(i.m_transform.m_pitch), DegToRad(i.m_transform.m_yaw), 0.0f));
+    //gb_mat4_rotate(&rotation, { 0,1,0 }, (totalTime * 3.0f) / (2 * 3.14f));
+    //gb_mat4_translate(&translation, { i.m_transform.m_p.p.x, i.m_transform.m_p.p.y - (scale / 2.0f), i.m_transform.m_p.p.z });
+    //gb_mat4_translate(&translation, m_transform.m_p.p); // based on m_transform being the center
+    //result = translation * rotation;
+    //result = translation;
+    const float scale = 0.5f;
+    AddCubeToRender(m_transform.m_p, White, scale, Texture::T::Minecraft, m_type);
 #else
 
     //Old Simple Movement Code
@@ -525,79 +538,79 @@ void Items::Update(float dt)
 void Items::Render(float dt, Camera* camera)
 {
     assert(OnMainThread());
-    float scale = 0.5f;
-    std::lock_guard<std::mutex> lock(m_listVectorMutex);
-    //for (auto& i : m_items)
-    for (int32 i = 0; m_items.size() && i < m_items.size(); i++)
-    {
-        //ZoneScopedN("Individual Loop");
-        Item* item = &m_items[i];
-        Mat4 result;
-        Mat4 translation;
-        //Mat4 rotation;
-        gb_mat4_identity(&result);
-        //gb_mat4_from_quat(&rotation, gb_quat_euler_angles(DegToRad(i.m_transform.m_pitch), DegToRad(i.m_transform.m_yaw), 0.0f));
-        //gb_mat4_rotate(&rotation, { 0,1,0 }, (totalTime * 3.0f) / (2 * 3.14f));
-        //gb_mat4_translate(&translation, { i.m_transform.m_p.p.x, i.m_transform.m_p.p.y - (scale / 2.0f), i.m_transform.m_p.p.z });
-        gb_mat4_translate(&translation, item->m_transform.m_p.p); // based on m_transform being the center
-        //result = translation * rotation;
-        result = translation;
+    //float scale = 0.5f;
+    //std::lock_guard<std::mutex> lock(m_listVectorMutex);
+    ////for (auto& i : m_items)
+    //for (int32 i = 0; m_items.size() && i < m_items.size(); i++)
+    //{
+    //    //ZoneScopedN("Individual Loop");
+    //    Item* item = &m_items[i];
+    //    Mat4 result;
+    //    Mat4 translation;
+    //    //Mat4 rotation;
+    //    gb_mat4_identity(&result);
+    //    //gb_mat4_from_quat(&rotation, gb_quat_euler_angles(DegToRad(i.m_transform.m_pitch), DegToRad(i.m_transform.m_yaw), 0.0f));
+    //    //gb_mat4_rotate(&rotation, { 0,1,0 }, (totalTime * 3.0f) / (2 * 3.14f));
+    //    //gb_mat4_translate(&translation, { i.m_transform.m_p.p.x, i.m_transform.m_p.p.y - (scale / 2.0f), i.m_transform.m_p.p.z });
+    //    gb_mat4_translate(&translation, item->m_transform.m_p.p); // based on m_transform being the center
+    //    //result = translation * rotation;
+    //    result = translation;
 
-        {
-            ZoneScopedN("Draw Block");
-            DrawBlockDepthPeeling(result, { scale, scale, scale }, camera, White, Texture::T::Minecraft, item->m_type);
-        }
-    }
+    //    {
+    //        ZoneScopedN("Draw Block");
+    //        DrawBlockDepthPeeling(result, { scale, scale, scale }, camera, White, Texture::T::Minecraft, item->m_type, 0); //TODO: Remove passCount in these
+    //    }
+    //}
 }
 
 void Items::RenderOpaque(float dt, Camera* camera)
 {
-    assert(OnMainThread());
-    float scale = 0.5f;
-    std::lock_guard<std::mutex> lock(m_listVectorMutex);
-    //for (auto& i : m_items)
-    for (int32 i = 0; m_items.size() && i < m_items.size() && !g_blocks[+m_items[i].m_type].m_translucent; i++)
-    {
-        //ZoneScopedN("Individual Loop");
-        Item* item = &m_items[i];
-        Mat4 result;
-        Mat4 translation;
-        //Mat4 rotation;
-        gb_mat4_identity(&result);
-        //gb_mat4_from_quat(&rotation, gb_quat_euler_angles(DegToRad(i.m_transform.m_pitch), DegToRad(i.m_transform.m_yaw), 0.0f));
-        //gb_mat4_rotate(&rotation, { 0,1,0 }, (totalTime * 3.0f) / (2 * 3.14f));
-        //gb_mat4_translate(&translation, { i.m_transform.m_p.p.x, i.m_transform.m_p.p.y - (scale / 2.0f), i.m_transform.m_p.p.z });
-        gb_mat4_translate(&translation, item->m_transform.m_p.p); // based on m_transform being the center
-        //result = translation * rotation;
-        result = translation;
+    //assert(OnMainThread());
+    //float scale = 0.5f;
+    //std::lock_guard<std::mutex> lock(m_listVectorMutex);
+    ////for (auto& i : m_items)
+    //for (int32 i = 0; m_items.size() && i < m_items.size() && !g_blocks[+m_items[i].m_type].m_translucent; i++)
+    //{
+    //    //ZoneScopedN("Individual Loop");
+    //    Item* item = &m_items[i];
+    //    Mat4 result;
+    //    Mat4 translation;
+    //    //Mat4 rotation;
+    //    gb_mat4_identity(&result);
+    //    //gb_mat4_from_quat(&rotation, gb_quat_euler_angles(DegToRad(i.m_transform.m_pitch), DegToRad(i.m_transform.m_yaw), 0.0f));
+    //    //gb_mat4_rotate(&rotation, { 0,1,0 }, (totalTime * 3.0f) / (2 * 3.14f));
+    //    //gb_mat4_translate(&translation, { i.m_transform.m_p.p.x, i.m_transform.m_p.p.y - (scale / 2.0f), i.m_transform.m_p.p.z });
+    //    gb_mat4_translate(&translation, item->m_transform.m_p.p); // based on m_transform being the center
+    //    //result = translation * rotation;
+    //    result = translation;
 
-        {
-            ZoneScopedN("Draw Block");
-            DrawBlock(result, scale, camera, White, Texture::T::Minecraft, item->m_type);
-        }
-    }
+    //    {
+    //        ZoneScopedN("Draw Block");
+    //        DrawBlock(result, scale, camera, White, Texture::T::Minecraft, item->m_type);
+    //    }
+    //}
 }
 
 void Items::RenderTransparent(float dt, Camera* camera)
 {
     assert(OnMainThread());
-    float scale = 0.5f;
-    std::lock_guard<std::mutex> lock(m_listVectorMutex);
-    for (int32 i = ((int32)m_items.size() - 1); m_items.size() && i && g_blocks[+m_items[i].m_type].m_translucent; i--)
-    {
-        Item* item = &m_items[i];
-        Mat4 result;
-        Mat4 translation;
-        //Mat4 rotation;
-        gb_mat4_identity(&result);
-        //gb_mat4_from_quat(&rotation, gb_quat_euler_angles(DegToRad(i.m_transform.m_pitch), DegToRad(i.m_transform.m_yaw), 0.0f));
-        //gb_mat4_rotate(&rotation, { 0,1,0 }, (totalTime * 3.0f) / (2 * 3.14f));
-        //gb_mat4_translate(&translation, { i.m_transform.m_p.p.x, i.m_transform.m_p.p.y - (scale / 2.0f), i.m_transform.m_p.p.z });
-        gb_mat4_translate(&translation, item->m_transform.m_p.p); // based on m_transform being the center
-        //result = translation * rotation;
-        result = translation;
-        DrawBlock(result, scale, camera, White, Texture::T::Minecraft, item->m_type);
-    }
+    //float scale = 0.5f;
+    //std::lock_guard<std::mutex> lock(m_listVectorMutex);
+    //for (int32 i = ((int32)m_items.size() - 1); m_items.size() && i && g_blocks[+m_items[i].m_type].m_translucent; i--)
+    //{
+    //    Item* item = &m_items[i];
+    //    Mat4 result;
+    //    Mat4 translation;
+    //    //Mat4 rotation;
+    //    gb_mat4_identity(&result);
+    //    //gb_mat4_from_quat(&rotation, gb_quat_euler_angles(DegToRad(i.m_transform.m_pitch), DegToRad(i.m_transform.m_yaw), 0.0f));
+    //    //gb_mat4_rotate(&rotation, { 0,1,0 }, (totalTime * 3.0f) / (2 * 3.14f));
+    //    //gb_mat4_translate(&translation, { i.m_transform.m_p.p.x, i.m_transform.m_p.p.y - (scale / 2.0f), i.m_transform.m_p.p.z });
+    //    gb_mat4_translate(&translation, item->m_transform.m_p.p); // based on m_transform being the center
+    //    //result = translation * rotation;
+    //    result = translation;
+    //    DrawBlock(result, scale, camera, White, Texture::T::Minecraft, item->m_type);
+    //}
 }
 
 

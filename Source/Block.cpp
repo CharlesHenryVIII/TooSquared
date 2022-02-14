@@ -104,153 +104,145 @@ Rect GetUVsFromIndex(uint8 index)
     return result;
 }
 
-void DrawBlock(const Mat4& model, float scale, Camera* camera, Color color, Texture::T textureType, BlockType blockType)
+
+
+
+///
+/// Add Cubes To Render
+///
+bool cubesNeedToBeCleared = true;
+std::vector<RenderCube> s_cubesToDraw_transparent;
+std::vector<RenderCube> s_cubesToDraw_opaque;
+
+void AddCubeToRender(WorldPos p, Color color, float scale)
 {
-    DrawBlock(model, { scale, scale, scale }, camera, color, textureType, blockType);
+    AddCubeToRender(p, color, {scale, scale, scale}, Texture::T::Plain, BlockType::Empty);
 }
-
-void DrawBlock(const Mat4& model, Vec3 scale, Camera* camera, Color color, Texture::T textureType, BlockType blockType)
+void AddCubeToRender(WorldPos p, Color color, Vec3  scale)
 {
-    VertexBuffer vb = VertexBuffer();
-
-    Vertex vertices[sizeof(cubeVertices) / sizeof(cubeVertices[0].e[0])] = {};
-
-    for (int32 f = 0; f < +Face::Count; f++)
-        for (int32 i = 0; i < arrsize(VertexFace::e); i++)
-        {
-            int32 index = f * arrsize(VertexFace::e) + i;
-            vertices[index].p = cubeVertices[f].e[i] - 0.5f;
-            auto spriteIndex = g_blocks[+blockType].m_spriteIndices[f];
-            //TODO: Refactor this garbago:
-            Rect UVSquare = GetUVsFromIndex(spriteIndex);
-            vertices[index].uv.x = Lerp(UVSquare.botLeft.x, UVSquare.topRight.x, faceUV[i].x);
-            vertices[index].uv.y = Lerp(UVSquare.topRight.y, UVSquare.botLeft.y, faceUV[i].y);
-        }
-
-    vb.Upload(vertices, arrsize(vertices));
-    g_renderer.chunkIB->Bind();
-
-    ShaderProgram* sp = nullptr;
-    if (color.a < 1.0f || (g_blocks[+blockType].m_translucent && Texture::T::Minecraft))
+    AddCubeToRender(p, color, scale, Texture::T::Plain, BlockType::Empty);
+}
+void AddCubeToRender(WorldPos p, Color color, float scale, Texture::T textureType, BlockType blockType)
+{
+    AddCubeToRender(p, color, { scale, scale, scale }, textureType, blockType);
+}
+void AddCubeToRender(WorldPos p, Color color, Vec3  scale, Texture::T textureType, BlockType blockType)
+{
+    RenderCube c {
+        .p = p,
+        .color = color,
+        .scale = scale,
+        .texture = textureType,
+        .block = blockType,
+    };
+    if (cubesNeedToBeCleared)
     {
-        sp = g_renderer.programs[+Shader::TransparentCube];
-
-        glEnable(GL_DEPTH_TEST);
-        glDepthMask(GL_FALSE);
-        glEnable(GL_BLEND);
-        glBlendFunci(0, GL_ONE, GL_ONE);
-        glBlendFunci(1, GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
-        glBlendEquation(GL_FUNC_ADD);
-        g_framebuffers->m_transparent.Bind();
-
-        const GLenum transparentDrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-        glDrawBuffers(2, transparentDrawBuffers);
+        s_cubesToDraw_transparent.clear();
+        s_cubesToDraw_opaque.clear();
+        cubesNeedToBeCleared = false;
     }
+
+    if (color.a != 1.0f || g_blocks[+blockType].m_translucent || g_blocks[+blockType].m_seeThrough)
+        s_cubesToDraw_transparent.push_back(c);
     else
+        s_cubesToDraw_opaque.push_back(c);
+}
+
+void RenderTransparentCubes(Camera* playerCamera, const int32 passCount)
+{
+    for (int32 i = 0; i < s_cubesToDraw_transparent.size(); i++)
     {
-        sp = g_renderer.programs[+Shader::Cube];
+        RenderCube& currentCube = s_cubesToDraw_transparent[i];
+        VertexBuffer vb = VertexBuffer();
+        Vertex vertices[sizeof(cubeVertices) / sizeof(cubeVertices[0].e[0])] = {};
+        for (int32 f = 0; f < +Face::Count; f++)
+            for (int32 i = 0; i < arrsize(VertexFace::e); i++)
+            {
+                int32 index = f * arrsize(VertexFace::e) + i;
+                vertices[index].p = cubeVertices[f].e[i] - 0.5f;
+                auto spriteIndex = g_blocks[+currentCube.block].m_spriteIndices[f];
+                //TODO: Refactor this garbago:
+                Rect UVSquare = GetUVsFromIndex(spriteIndex);
+                vertices[index].uv.x = Lerp(UVSquare.botLeft.x, UVSquare.topRight.x, faceUV[i].x);
+                vertices[index].uv.y = Lerp(UVSquare.topRight.y, UVSquare.botLeft.y, faceUV[i].y);
+            }
 
-        glEnable(GL_DEPTH_TEST);
-        glDepthMask(GL_TRUE);
-        glDisable(GL_BLEND);
-        g_framebuffers->m_opaque.Bind();
+        vb.Upload(vertices, arrsize(vertices));
+        g_renderer.chunkIB->Bind();
+        ShaderProgram* sp = g_renderer.programs[+Shader::CubeDepthPeeling];
+        sp->UseShader();
+        glActiveTexture(GL_TEXTURE0);
+        g_renderer.textures[currentCube.texture]->Bind();
+        sp->UpdateUniformMat4("u_perspective", 1, false, playerCamera->m_perspective.e);
+        sp->UpdateUniformMat4("u_view", 1, false, playerCamera->m_view.e);
+        Mat4 modelMatrix;
+        gb_mat4_translate(&modelMatrix, currentCube.p.p);
+        sp->UpdateUniformMat4("u_model", 1, false, modelMatrix.e);
+        sp->UpdateUniformVec3("u_scale", 1, currentCube.scale.e);
+        sp->UpdateUniformVec4("u_color", 1, currentCube.color.e);
+        sp->UpdateUniformUint8("u_passCount", passCount);
 
-        const GLenum transparentDrawBuffers[] = { GL_COLOR_ATTACHMENT0 };
-        glDrawBuffers(1, transparentDrawBuffers);
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+        glEnableVertexArrayAttrib(g_renderer.vao, 0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+        glEnableVertexArrayAttrib(g_renderer.vao, 1);
+        glDisableVertexArrayAttrib(g_renderer.vao, 2);
+        glDisableVertexArrayAttrib(g_renderer.vao, 3);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        g_renderer.numTrianglesDrawn += 36 / 3;
     }
-    assert(sp);
-
-    sp->UseShader();
-    g_renderer.textures[textureType]->Bind();
-    sp->UpdateUniformMat4("u_perspective", 1, false, camera->m_perspective.e);
-    sp->UpdateUniformMat4("u_view",        1, false, camera->m_view.e);
-    sp->UpdateUniformMat4("u_model",       1, false, model.e);
-    sp->UpdateUniformVec3("u_scale",       1,        scale.e);
-    sp->UpdateUniformVec4("u_color",       1,        color.e);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
-    glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
-    glEnableVertexArrayAttrib(g_renderer.vao, 1);
-    glDisableVertexArrayAttrib(g_renderer.vao, 2);
-    glDisableVertexArrayAttrib(g_renderer.vao, 3);
-
-    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-    g_renderer.numTrianglesDrawn += 36 / 3;
+    cubesNeedToBeCleared = true;
 }
 
-void DrawBlockDepthPeeling(const Mat4& model, Vec3 scale, Camera* camera, Color color, Texture::T textureType, BlockType blockType)
+void RenderOpaqueCubes(Camera* playerCamera, const int32 passCount)
 {
-    VertexBuffer vb = VertexBuffer();
+    for (int32 i = 0; i < s_cubesToDraw_opaque.size(); i++)
+    {
+        RenderCube& currentCube = s_cubesToDraw_opaque[i];
+        VertexBuffer vb = VertexBuffer();
+        Vertex vertices[sizeof(cubeVertices) / sizeof(cubeVertices[0].e[0])] = {};
+        for (int32 f = 0; f < +Face::Count; f++)
+            for (int32 i = 0; i < arrsize(VertexFace::e); i++)
+            {
+                int32 index = f * arrsize(VertexFace::e) + i;
+                vertices[index].p = cubeVertices[f].e[i] - 0.5f;
+                auto spriteIndex = g_blocks[+currentCube.block].m_spriteIndices[f];
+                //TODO: Refactor this garbago:
+                Rect UVSquare = GetUVsFromIndex(spriteIndex);
+                vertices[index].uv.x = Lerp(UVSquare.botLeft.x, UVSquare.topRight.x, faceUV[i].x);
+                vertices[index].uv.y = Lerp(UVSquare.topRight.y, UVSquare.botLeft.y, faceUV[i].y);
+            }
 
-    Vertex vertices[sizeof(cubeVertices) / sizeof(cubeVertices[0].e[0])] = {};
+        vb.Upload(vertices, arrsize(vertices));
+        g_renderer.chunkIB->Bind();
+        ShaderProgram* sp = g_renderer.programs[+Shader::CubeDepthPeeling];
+        sp->UseShader();
+        glActiveTexture(GL_TEXTURE0);
+        g_renderer.textures[currentCube.texture]->Bind();
+        sp->UpdateUniformMat4("u_perspective", 1, false, playerCamera->m_perspective.e);
+        sp->UpdateUniformMat4("u_view", 1, false, playerCamera->m_view.e);
+        Mat4 modelMatrix;
+        gb_mat4_translate(&modelMatrix, currentCube.p.p);
+        sp->UpdateUniformMat4("u_model", 1, false, modelMatrix.e);
+        sp->UpdateUniformVec3("u_scale", 1, currentCube.scale.e);
+        sp->UpdateUniformVec4("u_color", 1, currentCube.color.e);
+        sp->UpdateUniformUint8("u_passCount", passCount);
 
-    for (int32 f = 0; f < +Face::Count; f++)
-        for (int32 i = 0; i < arrsize(VertexFace::e); i++)
-        {
-            int32 index = f * arrsize(VertexFace::e) + i;
-            vertices[index].p = cubeVertices[f].e[i] - 0.5f;
-            auto spriteIndex = g_blocks[+blockType].m_spriteIndices[f];
-            //TODO: Refactor this garbago:
-            Rect UVSquare = GetUVsFromIndex(spriteIndex);
-            vertices[index].uv.x = Lerp(UVSquare.botLeft.x, UVSquare.topRight.x, faceUV[i].x);
-            vertices[index].uv.y = Lerp(UVSquare.topRight.y, UVSquare.botLeft.y, faceUV[i].y);
-        }
-
-    vb.Upload(vertices, arrsize(vertices));
-    g_renderer.chunkIB->Bind();
-
-    //const GLenum transparentDrawBuffers[] = { GL_COLOR_ATTACHMENT0 };
-    //glDrawBuffers(1, transparentDrawBuffers);
-    //glReadBuffer();
-
-    ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
-    sp->UseShader();
-    //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, g_renderer.textures[textureType]->m_target, g_renderer.textures[textureType]->m_handle, 0);
-    //glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, depthBuff->m_target, depthBuff->m_handle, 0);
-    g_renderer.textures[textureType]->Bind();
-    sp->UpdateUniformMat4("u_perspective", 1, false, camera->m_perspective.e);
-    sp->UpdateUniformMat4("u_view",        1, false, camera->m_view.e);
-    sp->UpdateUniformMat4("u_model",       1, false, model.e);
-    sp->UpdateUniformVec3("u_scale",       1,        scale.e);
-    sp->UpdateUniformVec4("u_color",       1,        color.e);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
-    glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
-    glEnableVertexArrayAttrib(g_renderer.vao, 1);
-    glDisableVertexArrayAttrib(g_renderer.vao, 2);
-    glDisableVertexArrayAttrib(g_renderer.vao, 3);
-
-    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-    g_renderer.numTrianglesDrawn += 36 / 3;
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+        glEnableVertexArrayAttrib(g_renderer.vao, 0);
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+        glEnableVertexArrayAttrib(g_renderer.vao, 1);
+        glDisableVertexArrayAttrib(g_renderer.vao, 2);
+        glDisableVertexArrayAttrib(g_renderer.vao, 3);
+        glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+        g_renderer.numTrianglesDrawn += 36 / 3;
+    }
+    cubesNeedToBeCleared = true;
 }
 
-void DrawCubeDepthPeeling(WorldPos p, Color color, float scale, Camera* camera)
-{
-    Mat4 modelMatrix;
-    gb_mat4_translate(&modelMatrix, p.p);
-    DrawBlockDepthPeeling(modelMatrix, { scale, scale, scale }, camera, color, Texture::T::Plain, BlockType::Empty);
-}
-void DrawCubeDepthPeeling(WorldPos p, Color color, Vec3 scale, Camera* camera)
-{
-    Mat4 modelMatrix;
-    gb_mat4_translate(&modelMatrix, p.p);
-    DrawBlockDepthPeeling(modelMatrix, scale, camera, color, Texture::T::Plain, BlockType::Empty);
-}
 
-void DrawCube(WorldPos p, Color color, float scale, Camera* camera)
-{
-    Mat4 modelMatrix;
-    gb_mat4_translate(&modelMatrix, p.p);
-    DrawBlock(modelMatrix, scale, camera, color, Texture::T::Plain, BlockType::Empty);
-}
-void DrawCube(WorldPos p, Color color, Vec3  scale, Camera* camera)
-{
-    Mat4 modelMatrix;
-    gb_mat4_translate(&modelMatrix, p.p);
-    DrawBlock(modelMatrix, scale, camera, color, Texture::T::Plain, BlockType::Empty);
-}
+
+
 
 //UNTESTED AND DOES NOT WORK
 void Draw2DSquare(Rect rect, Color color)

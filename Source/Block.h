@@ -75,13 +75,22 @@ extern Block g_blocks[+BlockType::Count];
 
 struct Camera;
 
+//
+struct RenderCube { //assume player camera
+    WorldPos    p;
+    Color       color;
+    Vec3        scale;
+    Texture::T  texture;
+    BlockType   block;
+};
+void AddCubeToRender(WorldPos p, Color color, float scale);
+void AddCubeToRender(WorldPos p, Color color, Vec3  scale);
+void AddCubeToRender(WorldPos p, Color color, float scale, Texture::T textureType, BlockType blockType);
+void AddCubeToRender(WorldPos p, Color color, Vec3  scale, Texture::T textureType, BlockType blockType);
+void RenderTransparentCubes(Camera* playerCamera,   const int32 passCount);
+void RenderOpaqueCubes(     Camera* playerCamera,   const int32 passCount);
+//
+
 void BlockInit();
 Rect GetUVsFromIndex(uint8 index);
-void DrawBlock(const Mat4& modelMatrix, float scale, Camera* camera, Color color, Texture::T textureType, BlockType blockType);
-void DrawBlock(const Mat4& modelMatrix, Vec3 scale,  Camera* camera, Color color, Texture::T textureType, BlockType blockType);
-void DrawBlockDepthPeeling(const Mat4& model, Vec3 scale, Camera* camera, Color color, Texture::T textureType, BlockType blockType);
-void DrawCube(WorldPos p, Color color, Vec3  scale, Camera* camera);
-void DrawCube(WorldPos p, Color color, float scale, Camera* camera);
-void DrawCubeDepthPeeling(WorldPos p, Color color, float scale, Camera* camera);
-void DrawCubeDepthPeeling(WorldPos p, Color color, Vec3 scale, Camera* camera);
 void Draw2DSquare(Rect rect, Color color);

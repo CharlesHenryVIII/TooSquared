@@ -1176,6 +1176,64 @@ White:  Uploaded,");
 
 
 
+            //Debug Checks
+            if (s_debugFlags & +DebugOptions::Enabled)
+            {
+                if (s_debugFlags & +DebugOptions::ChunkStatus)
+                {
+                    g_framebuffers->m_transparent.Bind();
+                    for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
+                    {
+                        if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
+                            continue;
+
+                        Color colors[] = {
+                            { 1, 0, 0, 0.6f },//Red    //Unloaded,
+                            { 0, 1, 0, 0.6f },//Green  //BlocksLoading,
+                            { 0, 0, 1, 0.6f },//Blue   //BlocksLoaded,
+                            { 1, 1, 0, 0.6f },//Yellow //VertexLoading,
+                            { 1, 0, 1, 0.6f },//Purple //VertexLoaded,
+                            { 1, 1, 1, 0.6f },//White  //Uploaded,
+                        };
+
+                        WorldPos chunkP = ToWorld(Convert_ChunkIndexToGame(i));
+                        chunkP.p.x += CHUNK_X / 2.0f;
+                        chunkP.p.y = float(g_chunks->height[i] + 1);
+                        //chunkP.p.y = CHUNK_Y;
+                        chunkP.p.z += CHUNK_Z / 2.0f;
+                        Vec3 size = { CHUNK_X / 4.0f, 1, CHUNK_Z / 4.0f };
+
+                        //DrawCube(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, playerCamera);
+                        AddCubeToRender(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size);
+                    }
+                }
+                if (s_debugFlags & +DebugOptions::LookatBlock)
+                {
+                    if (validHit)
+                    {
+                        g_framebuffers->m_transparent.Bind();
+                        WorldPos pos;
+                        pos = ToWorld(hitBlock);
+                        pos.p = pos.p + 0.5f;
+                        Color temp = Mint;
+                        temp.a = 0.5f;
+                        AddCubeToRender(pos, temp, 1.01f);
+                        //DrawCube(pos, temp, 1.01f, playerCamera);
+                    }
+                }
+                ZoneScopedN("Opaque Code");
+                if (s_debugFlags & +DebugOptions::Enabled)
+                {
+                    for (WorldPos p : cubesToDraw)
+                    {
+                        //DrawCubeDepthPeeling(p, Red, 2.0f, playerCamera, pass + 1);
+                        AddCubeToRender(p, Red, 2.0f);
+                    }
+                }
+            }
+
+
+
 
             RenderUpdate(g_window.size, deltaTime);
 
@@ -1297,6 +1355,19 @@ White:  Uploaded,");
                         }
                     }
 
+                    {
+                        ZoneScopedN("Render Entity");
+                        g_entityList.Render(deltaTime, playerCamera);
+                    }
+
+                    //{
+                    //    ZoneScopedN("Items Render");
+                    //    g_items.Render(deltaTime, playerCamera);
+                    //}
+
+                    RenderOpaqueCubes(playerCamera, 0);
+
+
                     g_framebuffers->m_resolveDepthPeeling.Bind();
                     Texture* colorBuffer = g_framebuffers->m_resolveDepthPeeling.m_opaqueColor;
                     Texture* depthBuffer = g_framebuffers->m_resolveDepthPeeling.m_opaqueDepth;
@@ -1341,6 +1412,7 @@ White:  Uploaded,");
                 //
                 // Depth peeling loop
                 //
+                glDisable(GL_BLEND);
                 for (int32 pass = 0; pass < g_renderer.depthPeelingPasses; pass++)
                 {
                     ZoneScopedN("Depth Peeling Pass");
@@ -1375,7 +1447,26 @@ White:  Uploaded,");
                             }
                         }
                     }
+
+                    RenderTransparentCubes(playerCamera, pass + 1);
                     
+                    {
+                        ZoneScopedN("Debug Rendering");
+                        //DrawCube(testCamera.p.p, { 0, 1, 0, 1 }, 5.0f, perspective);
+                        //DrawCube(lookatPosition, { 1, 0, 0, 1 }, 5.0f, perspective);
+                        if (s_debugFlags & +DebugOptions::Enabled)
+                        {
+                            if (s_debugFlags & +DebugOptions::CollisionTriangles)
+                            {
+                                if (player->m_collider.m_collidedTriangles.size())
+                                {
+                                    DrawTriangles(player->m_collider.m_collidedTriangles, Orange, playerCamera->m_view, playerCamera->m_perspective, false);
+                                    player->m_collider.m_collidedTriangles.clear();
+                                }
+                            }
+                        }
+                    }
+
 
 
                     //Resolve MSAA depth buffer into non-MSAA texture buffer
@@ -1390,86 +1481,8 @@ White:  Uploaded,");
 
                         CheckFrameBufferStatus();
                     }
-
-                    //TODO: Add in once working
-#if 0
-                    {
-                        ZoneScopedN("Render Entity");
-                        g_entityList.Render(deltaTime, playerCamera);
-                    }
-
-                    {
-                        ZoneScopedN("Items Render");
-                        g_items.Render(deltaTime, playerCamera);
-                    }
-
-                    {
-                        ZoneScopedN("Opaque Code");
-                        if (s_debugFlags & +DebugOptions::Enabled)
-                        {
-                            for (WorldPos p : cubesToDraw)
-                            {
-                                DrawCubeDepthPeeling(p, Red, 2.0f, playerCamera);
-                            }
-                        }
-                    }
-
-                    {
-                        ZoneScopedN("Debug Rendering");
-                        //DrawCube(testCamera.p.p, { 0, 1, 0, 1 }, 5.0f, perspective);
-                        //DrawCube(lookatPosition, { 1, 0, 0, 1 }, 5.0f, perspective);
-                        if (s_debugFlags & +DebugOptions::Enabled)
-                        {
-                            if (s_debugFlags & +DebugOptions::ChunkStatus)
-                            {
-                                for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
-                                {
-                                    if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
-                                        continue;
-
-                                    Color colors[] = {
-                                        { 1, 0, 0, 0.4f },//Red    //Unloaded,
-                                        { 0, 1, 0, 0.4f },//Green  //BlocksLoading,
-                                        { 0, 0, 1, 0.4f },//Blue   //BlocksLoaded,
-                                        { 1, 1, 0, 0.4f },//Yellow //VertexLoading,
-                                        { 1, 0, 1, 0.4f },//Purple //VertexLoaded,
-                                        { 1, 1, 1, 0.4f },//White  //Uploaded,
-                                    };
-
-                                    WorldPos chunkP = ToWorld(Convert_ChunkIndexToGame(i));
-                                    chunkP.p.x += CHUNK_X / 2.0f;
-                                    chunkP.p.y = float(g_chunks->height[i] + 1);
-                                    //chunkP.p.y = CHUNK_Y;
-                                    chunkP.p.z += CHUNK_Z / 2.0f;
-                                    Vec3 size = { CHUNK_X / 4.0f, 1, CHUNK_Z / 4.0f };
-
-                                    DrawCubeDepthPeeling(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, playerCamera);
-                                }
-                            }
-                            if (s_debugFlags & +DebugOptions::LookatBlock)
-                            {
-                                if (validHit)
-                                {
-                                    WorldPos pos;
-                                    pos = ToWorld(hitBlock);
-                                    pos.p = pos.p + 0.5f;
-                                    Color temp = Mint;
-                                    temp.a = 0.25f;
-                                    DrawCubeDepthPeeling(pos, temp, 1.01f, playerCamera);
-                                }
-                            }
-                            if (s_debugFlags & +DebugOptions::CollisionTriangles)
-                            {
-                                if (player->m_collider.m_collidedTriangles.size())
-                                {
-                                    DrawTriangles(player->m_collider.m_collidedTriangles, Orange, playerCamera->m_view, playerCamera->m_perspective, false);
-                                    player->m_collider.m_collidedTriangles.clear();
-                                }
-                            }
-                        }
-                    }
-#endif
                 }
+                glEnable(GL_BLEND);
 
                 //Composite the ResolveDepthPeelingTarget m_colors into a single color buffer on postTarget
                 {
@@ -1611,10 +1624,10 @@ White:  Uploaded,");
                     }
                 }
 
-                {
-                    ZoneScopedN("Items Opaque Render");
-                    g_items.RenderOpaque(deltaTime, playerCamera);
-                }
+                //{
+                //    ZoneScopedN("Items Opaque Render");
+                //    g_items.RenderOpaque(deltaTime, playerCamera);
+                //}
 
                 {
                     ZoneScopedN("Opaque Debug Code");
@@ -1624,7 +1637,7 @@ White:  Uploaded,");
                         {
                             g_framebuffers->m_opaque.Bind();
                             //g_renderer.postTarget.Bind();
-                            DrawCube(p, Red, 2.0f, playerCamera);
+                            //DrawCube(p, Red, 2.0f, playerCamera);
                         }
                     }
                 }
@@ -1651,46 +1664,6 @@ White:  Uploaded,");
                     //DrawCube(lookatPosition, { 1, 0, 0, 1 }, 5.0f, perspective);
                     if (s_debugFlags & +DebugOptions::Enabled)
                     {
-                        if (s_debugFlags & +DebugOptions::ChunkStatus)
-                        {
-                            g_framebuffers->m_transparent.Bind();
-                            for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
-                            {
-                                if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
-                                    continue;
-
-                                Color colors[] = {
-                                    { 1, 0, 0, 0.4f },//Red    //Unloaded,
-                                    { 0, 1, 0, 0.4f },//Green  //BlocksLoading,
-                                    { 0, 0, 1, 0.4f },//Blue   //BlocksLoaded,
-                                    { 1, 1, 0, 0.4f },//Yellow //VertexLoading,
-                                    { 1, 0, 1, 0.4f },//Purple //VertexLoaded,
-                                    { 1, 1, 1, 0.4f },//White  //Uploaded,
-                                };
-
-                                WorldPos chunkP = ToWorld(Convert_ChunkIndexToGame(i));
-                                chunkP.p.x += CHUNK_X / 2.0f;
-                                chunkP.p.y = float(g_chunks->height[i] + 1);
-                                //chunkP.p.y = CHUNK_Y;
-                                chunkP.p.z += CHUNK_Z / 2.0f;
-                                Vec3 size = { CHUNK_X / 4.0f, 1, CHUNK_Z / 4.0f };
-
-                                DrawCube(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, playerCamera);
-                            }
-                        }
-                        if (s_debugFlags & +DebugOptions::LookatBlock)
-                        {
-                            if (validHit)
-                            {
-                                g_framebuffers->m_transparent.Bind();
-                                WorldPos pos;
-                                pos = ToWorld(hitBlock);
-                                pos.p = pos.p + 0.5f;
-                                Color temp = Mint;
-                                temp.a = 0.25f;
-                                DrawCube(pos, temp, 1.01f, playerCamera);
-                            }
-                        }
                         if (s_debugFlags & +DebugOptions::CollisionTriangles)
                         {
                             if (player->m_collider.m_collidedTriangles.size())
