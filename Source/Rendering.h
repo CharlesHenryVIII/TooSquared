@@ -167,6 +167,8 @@ struct Renderer {
     Light_Direction moonLight;
     bool msaaEnabled = true;
     int32 maxMSAASamples = 1;
+    float maxAnisotropic;
+    float currentAnisotropic = 1.0f;
     bool usingDepthPeeling = true;
     int32 depthPeelingPasses = 3;
     int32 debug_DepthPeelingPassToDisplay = -1;

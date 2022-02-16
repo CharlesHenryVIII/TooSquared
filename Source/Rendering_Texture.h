@@ -50,9 +50,11 @@ public:
     Vec2Int m_size = {};
     GLuint m_handle = {};
     Vec2Int m_spritesPerSide;
+    float m_anisotropicAmount;
 
 
     TextureArray(const char* fileLocation);
+    void Update(float anisotropicAmount);
     void Bind();
 };
 

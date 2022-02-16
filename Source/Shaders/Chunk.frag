@@ -77,6 +77,7 @@ void main()
 #if 1
     if (pixel.a == 0.0)
         discard;
+
 #endif
 
     //
@@ -166,7 +167,10 @@ void main()
 #endif
     //result = vec3(p_connectedVertices / 2);
 
-    color = vec4(result, pixel.a);
+    if (u_passCount == 0)
+        color = vec4(result, 1.0);
+    else
+        color = vec4(result, pixel.a);
 
     //color.r = float(depthTextureSize.x - 1023);
     //color.r = float(depthTextureSize.y - 575);

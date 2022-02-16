@@ -92,7 +92,7 @@ TextureArray::TextureArray(const char* fileLocation)
 
     glGenTextures(1, &m_handle);
     Bind();
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -131,6 +131,16 @@ TextureArray::TextureArray(const char* fileLocation)
 #ifdef _DEBUGPRINT
     DebugPrint("Texture Created\n");
 #endif
+}
+
+void TextureArray::Update(float anisotropicAmount)
+{
+    if (anisotropicAmount == m_anisotropicAmount)
+        return;
+    m_anisotropicAmount = anisotropicAmount;
+    
+    Bind();
+    glTexParameterf(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_ANISOTROPY_EXT, m_anisotropicAmount);
 }
 
 void TextureArray::Bind()

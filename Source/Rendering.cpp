@@ -409,6 +409,7 @@ void RenderUpdate(Vec2Int windowSize, float deltaTime)
         s_lastShaderUpdateTime = s_incrimentalTime;
     }
     s_incrimentalTime += deltaTime;
+    g_renderer.spriteTextArray->Update(g_renderer.currentAnisotropic);
 
 
     CheckFrameBufferStatus();
@@ -805,6 +806,9 @@ void InitializeVideo()
     g_renderer.msaaEnabled = true;
     glGetIntegerv(GL_MAX_SAMPLES, &g_renderer.maxMSAASamples);
     g_renderer.maxMSAASamples = Min(g_renderer.maxMSAASamples, 16);
+    g_renderer.maxAnisotropic;
+    glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT, &g_renderer.maxAnisotropic);
+
 
     Vertex verticees[] =
     {

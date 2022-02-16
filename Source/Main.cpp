@@ -616,6 +616,7 @@ White:  Uploaded,");
 
                         ImGui::Checkbox("MSAA Enabled", &g_renderer.msaaEnabled);
                         ImGui::SameLine(); HelpMarker("'v' will also toggle this");
+                        ImGui::SliderFloat("Anisotropic", &g_renderer.currentAnisotropic, 1.0f, g_renderer.maxAnisotropic);
                         ImGui::Text("depthPeelingPasses:");
                         ImGui::SliderInt("depthPeelingPasses:", &g_renderer.depthPeelingPasses, 2, 32);
                         ImGui::Text("depthPeelingPassToDisplay:");
