@@ -170,7 +170,7 @@ void RenderTransparentCubes(Camera* playerCamera, const int32 passCount)
 
         vb.Upload(vertices, arrsize(vertices));
         g_renderer.chunkIB->Bind();
-        ShaderProgram* sp = g_renderer.programs[+Shader::CubeDepthPeeling];
+        ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
         sp->UseShader();
         glActiveTexture(GL_TEXTURE0);
         g_renderer.textures[currentCube.texture]->Bind();
@@ -216,7 +216,7 @@ void RenderOpaqueCubes(Camera* playerCamera, const int32 passCount)
 
         vb.Upload(vertices, arrsize(vertices));
         g_renderer.chunkIB->Bind();
-        ShaderProgram* sp = g_renderer.programs[+Shader::CubeDepthPeeling];
+        ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
         sp->UseShader();
         glActiveTexture(GL_TEXTURE0);
         g_renderer.textures[currentCube.texture]->Bind();

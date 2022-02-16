@@ -57,13 +57,9 @@ enum class ts_MessageBox {
 
 enum class Shader : uint32 {
     Invalid,
-    OpaqueChunk,
-    TransparentChunk,
     Chunk,
     Composite,
     Cube,
-    CubeDepthPeeling,
-    TransparentCube,
     BufferCopy,
     BufferCopyAlpha,
     Sun,
@@ -188,8 +184,5 @@ Rect GetRectFromSprite(uint32 i);
 void RenderUpdate(Vec2Int windowSize, float deltaTime);
 void InitializeVideo();
 void CheckFrameBufferStatus();
-void UI_AddDrawCall(RectInt sourceRect, RectInt _destRect, Color colorMod, Texture::T textureType);
-void UI_AddDrawCall(RectInt _sourceRect, Rect destRect, Color colorMod, Texture::T textureType);
 void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& view, const Mat4& perspective, bool depthWrite);
-void UI_Render();
 void RenderAlphaCopy(Texture* source, Texture* destination);

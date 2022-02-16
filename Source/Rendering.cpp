@@ -414,24 +414,8 @@ void RenderUpdate(Vec2Int windowSize, float deltaTime)
 
     CheckFrameBufferStatus();
     g_framebuffers->Update(windowSize, g_renderer.maxMSAASamples, g_renderer.depthPeelingPasses, g_renderer.msaaEnabled);
-    //UpdateFrameBuffers(windowSize, g_renderer.msaaEnabled ? g_renderer.maxMSAASamples : 1);
     g_framebuffers->m_opaque.Bind();
-    //g_renderer.opaqueTarget->Bind();
     glViewport(0, 0, windowSize.x, windowSize.y);
-
-    if (!g_renderer.usingDepthPeeling)
-    {
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        g_framebuffers->m_transparentOIT.Bind();
-
-        Vec4 clearVec0 = Vec4{ 0.0f, 0.0f, 0.0f, 0.0f };
-        glClearBufferfv(GL_COLOR, 0, clearVec0.e);
-        //Vec4 clearVec1 = Vec4{ 1.0f, 1.0f, 1.0f, 1.0f }; //is this right or is only the first value 1.0f and the rest 0.0f?
-        Vec4 clearVec1 = Vec4{ 1.0f, 0.0f, 0.0f, 0.0f };
-        glClearBufferfv(GL_COLOR, 1, clearVec1.e);
-
-        g_framebuffers->m_opaque.Bind();
-    }
 }
 
 Rect GetRectFromSprite(uint32 i)
@@ -504,120 +488,6 @@ void FillIndexBuffer(IndexBuffer* ib)
     ib->Upload(arr.data(), amount);
 }
 
-
-
-
-VertexBuffer* UI_VertexBuffer = nullptr;
-
-struct UI_DrawCall {
-    int32 vertexIndex = 0;
-    Color colorMod = { 1.0f, 1.0f, 1.0f, 1.0f };
-    Texture::T texture;
-};
-
-std::vector<UI_DrawCall> UI_DrawCalls;
-std::vector<Vertex_UI> UI_Vertices;
-
-void UI_AddDrawCall(RectInt sourceRect, RectInt _destRect, Color colorMod, Texture::T textureType)
-{
-    Rect destRect;
-    destRect.botLeft.x  = (_destRect.botLeft.x  / float(g_window.size.x)) * 2.0f - 1.0f;
-    destRect.botLeft.y  = (_destRect.botLeft.y  / float(g_window.size.y)) * 2.0f - 1.0f;
-    destRect.topRight.x = (_destRect.topRight.x / float(g_window.size.x)) * 2.0f - 1.0f;
-    destRect.topRight.y = (_destRect.topRight.y / float(g_window.size.y)) * 2.0f - 1.0f;
-    
-    UI_AddDrawCall(sourceRect, destRect, colorMod, textureType);
-}
-
-void UI_AddDrawCall(RectInt _sourceRect, Rect destRect, Color colorMod, Texture::T textureType)
-{
-    Vec2Int textureSize = g_renderer.textures[textureType]->m_size;
-    Rect sourceRect;
-
-    if ((_sourceRect.botLeft.x == 0) && (_sourceRect.botLeft.y == 0) && (_sourceRect.topRight.x == 0) && (_sourceRect.topRight.y == 0))
-    {
-        _sourceRect.botLeft = {};
-        _sourceRect.topRight = { textureSize.x, textureSize.y };
-    }
-
-    sourceRect.botLeft.x  = _sourceRect.botLeft.x  / float(textureSize.x);
-    sourceRect.botLeft.y  = _sourceRect.botLeft.y  / float(textureSize.y);
-    sourceRect.topRight.x = _sourceRect.topRight.x / float(textureSize.x);
-    sourceRect.topRight.y = _sourceRect.topRight.y / float(textureSize.y);
-
-    UI_DrawCall drawCall;
-    drawCall.vertexIndex = int32(UI_Vertices.size());
-
-    Vec2 p0 = { destRect.botLeft.x,  destRect.topRight.y };
-    Vec2 p1 = { destRect.botLeft.x,  destRect.botLeft.y  };
-    Vec2 p2 = { destRect.topRight.x, destRect.topRight.y };
-    Vec2 p3 = { destRect.topRight.x, destRect.botLeft.y  };
-
-    Vec2 uv0 = { sourceRect.botLeft.x,  sourceRect.topRight.y };
-    Vec2 uv1 = { sourceRect.botLeft.x,  sourceRect.botLeft.y  };
-    Vec2 uv2 = { sourceRect.topRight.x, sourceRect.topRight.y };
-    Vec2 uv3 = { sourceRect.topRight.x, sourceRect.botLeft.y  };
-
-    Vertex_UI v0;
-    v0.p  = p0;
-    v0.uv = uv0;
-    Vertex_UI v1;
-    v1.p  = p1;
-    v1.uv = uv1;
-    Vertex_UI v2;
-    v2.p  = p2;
-    v2.uv = uv2;
-    Vertex_UI v3;
-    v3.p  = p3;
-    v3.uv = uv3;
-
-    UI_Vertices.push_back(v0);
-    UI_Vertices.push_back(v1);
-    UI_Vertices.push_back(v2);
-    UI_Vertices.push_back(v3);
-
-    drawCall.colorMod = colorMod;
-    drawCall.texture = textureType;
-    UI_DrawCalls.push_back(drawCall);
-}
-
-void UI_Render()
-{
-    glDisable(GL_DEPTH_TEST);
-    glDepthMask(GL_FALSE);
-    //glDepthMask(GL_TRUE);
-    glEnable(GL_BLEND);
-    glBlendFunci(0, GL_ONE, GL_ONE);
-    glBlendFunci(1, GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
-    glBlendEquation(GL_FUNC_ADD);
-
-    UI_VertexBuffer->Bind();
-    UI_VertexBuffer->Upload(UI_Vertices.data(), UI_Vertices.size());
-
-    ShaderProgram* sp = g_renderer.programs[+Shader::UI];
-    sp->UseShader();
-
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex_UI), (void*)offsetof(Vertex_UI, p));
-    glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex_UI), (void*)offsetof(Vertex_UI, uv));
-    glEnableVertexArrayAttrib(g_renderer.vao, 1);
-    glDisableVertexArrayAttrib(g_renderer.vao, 2);
-    glDisableVertexArrayAttrib(g_renderer.vao, 3);
-
-    for (auto& drawCall : UI_DrawCalls)
-    {
-        Vec2 scale = { 1.0f, 1.0f };
-        sp->UpdateUniformVec2("u_scale", 1, scale.e);
-        sp->UpdateUniformVec4("u_color", 1, drawCall.colorMod.e);
-
-        g_renderer.textures[drawCall.texture]->Bind();
-
-        glDrawArrays(GL_TRIANGLE_STRIP, drawCall.vertexIndex, 4);
-        g_renderer.numTrianglesDrawn += 2;
-    }
-    UI_Vertices.clear();
-    UI_DrawCalls.clear();
-}
 
 //The UV's are not setup to accept real images
 void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& view, const Mat4& perspective, bool depthWrite)
@@ -781,11 +651,7 @@ void InitializeVideo()
     g_renderer.textures[Texture::T::Plain] = new Texture(s_pixelTextureData, { 1, 1 }, GL_RGBA);
 
     g_renderer.programs[+Shader::Chunk]             = new ShaderProgram("Source/Shaders/Chunk.vert",        "Source/Shaders/Chunk.frag");
-    g_renderer.programs[+Shader::OpaqueChunk]       = new ShaderProgram("Source/Shaders/Chunk.vert",        "Source/Shaders/ChunkOpaque.frag");
-    g_renderer.programs[+Shader::TransparentChunk]  = new ShaderProgram("Source/Shaders/Chunk.vert",        "Source/Shaders/ChunkTransparent.frag");
     g_renderer.programs[+Shader::Cube]              = new ShaderProgram("Source/Shaders/Cube.vert",         "Source/Shaders/Cube.frag");
-    g_renderer.programs[+Shader::CubeDepthPeeling]  = new ShaderProgram("Source/Shaders/Cube.vert",         "Source/Shaders/CubeDepthPeeling.frag");
-    g_renderer.programs[+Shader::TransparentCube]   = new ShaderProgram("Source/Shaders/Cube.vert",         "Source/Shaders/CubeTransparent.frag");
     g_renderer.programs[+Shader::BufferCopy]        = new ShaderProgram("Source/Shaders/BufferCopy.vert",   "Source/Shaders/BufferCopy.frag");
     g_renderer.programs[+Shader::BufferCopyAlpha]   = new ShaderProgram("Source/Shaders/BufferCopy.vert",   "Source/Shaders/BufferCopyAlpha.frag");
     g_renderer.programs[+Shader::Sun]               = new ShaderProgram("Source/Shaders/Sun.vert",          "Source/Shaders/Sun.frag");
@@ -820,48 +686,7 @@ void InitializeVideo()
     g_renderer.postVertexBuffer = new VertexBuffer();
     g_renderer.postVertexBuffer->Upload(verticees, arrsize(verticees));
 
-    UI_VertexBuffer = new VertexBuffer();
-
     FrameBufferInit();
-}
-
-void ResolveTransparentChunkFrameBuffer()
-{
-    ResolveMSAAFramebuffer(&g_framebuffers->m_transparentOIT, &g_framebuffers->m_transparentPost, GL_COLOR_BUFFER_BIT);
-    ResolveMSAAFramebuffer(&g_framebuffers->m_transparentOIT, &g_framebuffers->m_transparentPost, GL_COLOR_BUFFER_BIT, GL_COLOR_ATTACHMENT1);
-
-    // set render states
-    glDepthFunc(GL_ALWAYS);
-    glDisable(GL_DEPTH_TEST);
-    glDepthMask(GL_FALSE);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    //bind opaque framebuffer
-    g_framebuffers->m_post.Bind();
-    //globalRenderer.transparentPostTarget.Bind();
-    //globalRenderer.opaqueTarget.Bind();
-    //glBindFramebuffer(GL_FRAMEBUFFER, opaqueFBO);
-
-    //use composite shader
-    //compositeShader.use();
-    ////////globalRenderer.programs[+Shader::Composite]->UseShader();
-    g_renderer.programs[+Shader::Composite]->UseShader();
-
-    // draw screen quad
-    glActiveTexture(GL_TEXTURE0);
-    g_framebuffers->m_transparentPost.m_color->Bind();
-    glActiveTexture(GL_TEXTURE1);
-    g_framebuffers->m_transparentPost.m_color2->Bind();
-
-    g_renderer.postVertexBuffer->Bind();
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
-    glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
-    glEnableVertexArrayAttrib(g_renderer.vao, 1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, n));
-    glEnableVertexArrayAttrib(g_renderer.vao, 2);
-    glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 }
 
 void RenderAlphaCopy(Texture* s, Texture* d)

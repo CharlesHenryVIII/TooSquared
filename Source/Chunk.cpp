@@ -1757,18 +1757,21 @@ void ChunkArray::UploadChunk(ChunkIndex i)
     g_chunks->state[i] = ChunkArray::Uploaded;
 }
 
-void GenericPreChunkWork(Shader shaderType, const Mat4& perspective, Camera* camera, int32 passCount)
+void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera, uint32 passCount)
 {
-    ShaderProgram* sp = g_renderer.programs[+shaderType];
-
+    ZoneScopedN("Pre Opaque Chunk Render");
+    assert(g_renderer.chunkIB);
+    if (g_renderer.chunkIB)
+        g_renderer.chunkIB->Bind();
+    else
+        return;
+    ShaderProgram* sp = g_renderer.programs[+Shader::Chunk];
     sp->UseShader();
     g_renderer.spriteTextArray->Bind();
-
     sp->UpdateUniformInt2("u_screenSize", g_window.size);
     sp->UpdateUniformMat4("u_perspective", 1, false, perspective.e);
     sp->UpdateUniformMat4("u_view",        1, false, camera->m_view.e);
     sp->UpdateUniformUint8("u_passCount", passCount);
-
 #if DIRECTIONALLIGHT == 1
     sp->UpdateUniformVec3("u_directionalLight_d",  1,  g_renderer.sunLight.d.e);
     sp->UpdateUniformVec3("u_lightColor",  1,  g_renderer.sunLight.c.e);
@@ -1780,11 +1783,9 @@ void GenericPreChunkWork(Shader shaderType, const Mat4& perspective, Camera* cam
 #endif
     //sp->UpdateUniformVec3("u_cameraP",     1,  camera->RealWorldPos().p.e);
     sp->UpdateUniformVec3("u_cameraP",     1,  camera->GetWorldPosition().p.e);
-
     sp->UpdateUniformUint8("u_CHUNK_X", CHUNK_X);
     sp->UpdateUniformUint8("u_CHUNK_Y", CHUNK_Y);
     sp->UpdateUniformUint8("u_CHUNK_Z", CHUNK_Z);
-
     Material material;
     material.ambient = { 0.2f, 0.2f, 0.2f };
     material.diffuse = { 1.0f, 1.0f, 1.0f };
@@ -1794,33 +1795,6 @@ void GenericPreChunkWork(Shader shaderType, const Mat4& perspective, Camera* cam
     sp->UpdateUniformVec3( "material.diffuse",  1,  material.diffuse.e);
     sp->UpdateUniformVec3( "material.specular", 1,  material.specular.e);
     sp->UpdateUniformFloat("material.shininess",    material.shininess);
-
-}
-
-void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera, uint32 passCount)
-{
-    ZoneScopedN("Pre Opaque Chunk Render");
-    assert(g_renderer.chunkIB);
-    if (g_renderer.chunkIB)
-        g_renderer.chunkIB->Bind();
-    else
-        return;
-
-
-    if (g_renderer.usingDepthPeeling)
-    {
-        GenericPreChunkWork(Shader::Chunk, perspective, camera, passCount);
-    }
-    else
-    {
-        GenericPreChunkWork(Shader::OpaqueChunk, perspective, camera, passCount);
-        glEnable(GL_DEPTH_TEST);
-        glDepthMask(GL_TRUE);
-        glDepthFunc(GL_LESS);
-        glDisable(GL_BLEND);
-        g_framebuffers->m_opaque.Bind();
-        glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    }
 }
 
 void ChunkArray::RenderChunkOpaquePeel(ChunkIndex i)
@@ -1864,106 +1838,6 @@ void ChunkArray::RenderChunkTransparentPeel(ChunkIndex i)
         glDrawElements(GL_TRIANGLES, (GLsizei)translucentIndexCount[i], GL_UNSIGNED_INT, 0);
         g_renderer.numTrianglesDrawn += translucentIndexCount[i] / 3;
     }
-}
-
-void ChunkArray::RenderChunk(ChunkIndex i)
-{
-    RenderChunkOpaquePeel(i);
-    RenderChunkTransparentPeel(i);
-}
-
-void ChunkArray::RenderOpaqueChunk(ChunkIndex i)
-{
-    opaqueVertexBuffer[i].Bind();
-
-    glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
-    glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
-    glEnableVertexArrayAttrib(g_renderer.vao, 1);
-    glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, nAndConnectedVertices));
-    glEnableVertexArrayAttrib(g_renderer.vao, 2);
-    //glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, connectedVertices));
-    //glEnableVertexArrayAttrib(g_renderer.vao, 3);
-
-    ShaderProgram* sp = g_renderer.programs[+Shader::OpaqueChunk];
-    sp->UpdateUniformVec3("u_chunkP", 1, ToWorld(Convert_ChunkIndexToGame(i)).p.e);
-
-    glDrawElements(GL_TRIANGLES, (GLsizei)opaqueIndexCount[i], GL_UNSIGNED_INT, 0);
-    g_renderer.numTrianglesDrawn += opaqueIndexCount[i] / 3;
-
-
-    if (translucentIndexCount[i] == 0)
-        return;
-
-    translucentVertexBuffer[i].Bind();
-
-    glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
-    glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
-    glEnableVertexArrayAttrib(g_renderer.vao, 1);
-    glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, nAndConnectedVertices));
-    glEnableVertexArrayAttrib(g_renderer.vao, 2);
-    //glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, connectedVertices));
-    //glEnableVertexArrayAttrib(g_renderer.vao, 3);
-
-    sp->UpdateUniformVec3("u_chunkP", 1, ToWorld(Convert_ChunkIndexToGame(i)).p.e);
-
-    glDrawElements(GL_TRIANGLES, (GLsizei)translucentIndexCount[i], GL_UNSIGNED_INT, 0);
-    g_renderer.numTrianglesDrawn += translucentIndexCount[i] / 3;
-}
-
-void PreTransparentChunkRender(const Mat4& perspective, Camera* camera)
-{
-    assert(g_renderer.chunkIB);
-    if (g_renderer.chunkIB)
-        g_renderer.chunkIB->Bind();
-    else
-        return;
-
-    GenericPreChunkWork(Shader::TransparentChunk, perspective, camera, 0);
-
-    glEnable(GL_DEPTH_TEST);
-    glDepthMask(GL_FALSE);
-    //glDepthMask(GL_TRUE);
-    glEnable(GL_BLEND);
-    glBlendFunci(0, GL_ONE, GL_ONE);
-    glBlendFunci(1, GL_ZERO, GL_ONE_MINUS_SRC_COLOR);
-    glBlendEquation(GL_FUNC_ADD);
-
-    g_framebuffers->m_transparentOIT.Bind();
-    ////g_renderer.postTarget->m_depth->Bind();
-
-    //Vec4 clearVec0 = Vec4{ 0.0f, 0.0f, 0.0f, 0.0f };
-    //glClearBufferfv(GL_COLOR, 0, clearVec0.e);
-    ////Vec4 clearVec1 = Vec4{ 1.0f, 1.0f, 1.0f, 1.0f }; //is this right or is only the first value 1.0f and the rest 0.0f?
-    //Vec4 clearVec1 = Vec4{ 1.0f, 0.0f, 0.0f, 0.0f };
-    //glClearBufferfv(GL_COLOR, 1, clearVec1.e);
-}
-
-void ChunkArray::RenderTransparentChunk(ChunkIndex i)
-{
-    if (translucentIndexCount[i] == 0)
-        return;
-
-    ZoneScopedN("Transparent Render Chunk Draw");
-    translucentVertexBuffer[i].Bind();
-
-    glVertexAttribIPointer(0, 1, GL_UNSIGNED_SHORT, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, blockIndex));
-    glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, spriteIndex));
-    glEnableVertexArrayAttrib(g_renderer.vao, 1);
-    glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, nAndConnectedVertices));
-    glEnableVertexArrayAttrib(g_renderer.vao, 2);
-    //glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Chunk), (void*)offsetof(Vertex_Chunk, connectedVertices));
-    //glEnableVertexArrayAttrib(g_renderer.vao, 3);
-
-    ShaderProgram* sp = g_renderer.programs[+Shader::TransparentChunk];
-    sp->UpdateUniformVec3("u_chunkP", 1, ToWorld(Convert_ChunkIndexToGame(i)).p.e);
-
-    const GLenum transparentDrawBuffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-    glDrawBuffers(2, transparentDrawBuffers);
-    glDrawElements(GL_TRIANGLES, (GLsizei)translucentIndexCount[i], GL_UNSIGNED_INT, 0);
-    g_renderer.numTrianglesDrawn += translucentIndexCount[i] / 3;
 }
 
 void SetBlocks::DoThing()
