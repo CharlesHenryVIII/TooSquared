@@ -108,9 +108,8 @@ void FrameBuffer::CreateTexture(Texture** textureMember, GLenum attachment, GLin
         .internalFormat = internalFormat,
         .format = format,
         .type = type,
-        .samples = m_multisample && g_framebuffers->m_multisampleEnabled ? g_framebuffers->m_multisampleCount : 1,
+        .samples = (m_multisample && g_framebuffers->m_multisampleEnabled) ? g_framebuffers->m_multisampleCount : 1,
     };
-    //m_texInfo.push_back(tp);
     
     *textureMember = new Texture(tp);
 

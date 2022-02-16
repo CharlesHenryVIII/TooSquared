@@ -831,17 +831,10 @@ White:  Uploaded,");
             }
 
 
-#if 1
             {
                 ZoneScopedN("Chunk Items Update");
                 g_chunks->Update(deltaTime);
             }
-#else
-            {
-                ZoneScopedN("Items Update");
-                g_items.Update(deltaTime);
-            }
-#endif
 
             {
                 ZoneScopedN("Entity Update");
@@ -1203,7 +1196,6 @@ White:  Uploaded,");
                         chunkP.p.z += CHUNK_Z / 2.0f;
                         Vec3 size = { CHUNK_X / 4.0f, 1, CHUNK_Z / 4.0f };
 
-                        //DrawCube(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size, playerCamera);
                         AddCubeToRender(chunkP, colors[static_cast<int32>(g_chunks->state[i])], size);
                     }
                 }
@@ -1216,9 +1208,8 @@ White:  Uploaded,");
                         pos = ToWorld(hitBlock);
                         pos.p = pos.p + 0.5f;
                         Color temp = Mint;
-                        temp.a = 0.5f;
+                        temp.a = 0.4f;
                         AddCubeToRender(pos, temp, 1.01f);
-                        //DrawCube(pos, temp, 1.01f, playerCamera);
                     }
                 }
                 ZoneScopedN("Opaque Code");
@@ -1226,7 +1217,6 @@ White:  Uploaded,");
                 {
                     for (WorldPos p : cubesToDraw)
                     {
-                        //DrawCubeDepthPeeling(p, Red, 2.0f, playerCamera, pass + 1);
                         AddCubeToRender(p, Red, 2.0f);
                     }
                 }
@@ -1359,11 +1349,6 @@ White:  Uploaded,");
                         ZoneScopedN("Render Entity");
                         g_entityList.Render(deltaTime, playerCamera);
                     }
-
-                    //{
-                    //    ZoneScopedN("Items Render");
-                    //    g_items.Render(deltaTime, playerCamera);
-                    //}
 
                     RenderOpaqueCubes(playerCamera, 0);
 
@@ -1624,11 +1609,6 @@ White:  Uploaded,");
                     }
                 }
 
-                //{
-                //    ZoneScopedN("Items Opaque Render");
-                //    g_items.RenderOpaque(deltaTime, playerCamera);
-                //}
-
                 {
                     ZoneScopedN("Opaque Debug Code");
                     if (s_debugFlags & +DebugOptions::Enabled)
@@ -1680,11 +1660,6 @@ White:  Uploaded,");
                 {
                     ZoneScopedN("Entity Render");
                     g_entityList.Render(deltaTime, playerCamera);
-                }
-
-                {
-                    ZoneScopedN("Items Transparent Render");
-                    g_items.RenderTransparent(deltaTime, playerCamera);
                 }
 
                 //gb_mat4_look_at(&g_camera.view, g_camera.p + a, g_camera.p, { 0,1,0 });

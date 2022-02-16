@@ -157,20 +157,14 @@ struct Items
     std::mutex        m_listVectorMutex;
     std::vector<Item> m_items;
 
-    //Item* Add(BlockType blockType, const WorldPos& position, const WorldPos& destination);
     Item* Add(std::vector<EntityID>& itemIDs, BlockType blockType, const WorldPos& position, const WorldPos& destination);
     Item* Get(EntityID ID);
     void Update(float deltaTime);
-    void Render(float dt, Camera* camera);
-    void RenderOpaque(float dt, Camera* camera);
-    void RenderTransparent(float dt, Camera* camera);
-    //void Render(float deltaTime, Camera* camera);
     bool Save(const std::vector<ItemDiskData>& diskData, const ChunkPos& p);
     bool Save(const ChunkPos& p);
     bool SaveAll();
     bool Load(std::vector<EntityID>& itemIDs, const ChunkPos& p);
     void CleanUp();
-    //bool Load(const ChunkPos& p, ChunkIndex i);
 };
 
 extern Items g_items;
