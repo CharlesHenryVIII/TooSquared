@@ -1174,7 +1174,7 @@ White:  Uploaded,");
             {
                 if (s_debugFlags & +DebugOptions::ChunkStatus)
                 {
-                    g_framebuffers->m_transparent.Bind();
+                    g_framebuffers->m_transparentOIT.Bind();
                     for (ChunkIndex i = 0; i < MAX_CHUNKS; i++)
                     {
                         if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
@@ -1203,7 +1203,7 @@ White:  Uploaded,");
                 {
                     if (validHit)
                     {
-                        g_framebuffers->m_transparent.Bind();
+                        g_framebuffers->m_transparentOIT.Bind();
                         WorldPos pos;
                         pos = ToWorld(hitBlock);
                         pos.p = pos.p + 0.5f;
@@ -1277,7 +1277,6 @@ White:  Uploaded,");
             {
                 ZoneScopedN("Depth Peeling Pass");
                 assert(g_renderer.depthPeelingPasses);
-                const auto& renderTarget = g_framebuffers->m_opaque;
 
                 //Chunk Rendering
 #ifdef _DEBUG
@@ -1318,6 +1317,7 @@ White:  Uploaded,");
                 // Opaque Pass
                 //
                 {
+                    const auto& renderTarget = g_framebuffers->m_opaque;
                     ZoneScopedN("Opaque Pass");
                     renderTarget.Bind();
 
@@ -1371,6 +1371,7 @@ White:  Uploaded,");
                 // Prepare for depth peeling loop
                 //
                 {
+                    const auto& renderTarget = g_framebuffers->m_transparent;
                     //Clear color buffers before first pass
                     {
                         g_framebuffers->m_resolveDepthPeeling.Bind();
@@ -1400,6 +1401,7 @@ White:  Uploaded,");
                 glDisable(GL_BLEND);
                 for (int32 pass = 0; pass < g_renderer.depthPeelingPasses; pass++)
                 {
+                    const auto& renderTarget = g_framebuffers->m_transparent;
                     ZoneScopedN("Depth Peeling Pass");
                     std::string loopInformation = ToString("DepthPass Number: %i", pass);
                     ZoneText(loopInformation.c_str(), loopInformation.size());
@@ -1463,8 +1465,6 @@ White:  Uploaded,");
                         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,  depthBuffer->m_target, depthBuffer->m_handle, 0);// this doesnt change
 
                         ResolveMSAAFramebuffer(&renderTarget, &g_framebuffers->m_resolveDepthPeeling, GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-
-                        CheckFrameBufferStatus();
                     }
                 }
                 glEnable(GL_BLEND);
@@ -1713,7 +1713,7 @@ White:  Uploaded,");
                     UI_AddDrawCall({}, right, crosshairColor, Texture::T::Plain);
                     UI_AddDrawCall({}, bot, crosshairColor, Texture::T::Plain);
 
-                    g_framebuffers->m_transparent.Bind();
+                    g_framebuffers->m_transparentOIT.Bind();
                     UI_Render();
                 }
 

@@ -421,7 +421,7 @@ void RenderUpdate(Vec2Int windowSize, float deltaTime)
     if (!g_renderer.usingDepthPeeling)
     {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        g_framebuffers->m_transparent.Bind();
+        g_framebuffers->m_transparentOIT.Bind();
 
         Vec4 clearVec0 = Vec4{ 0.0f, 0.0f, 0.0f, 0.0f };
         glClearBufferfv(GL_COLOR, 0, clearVec0.e);
@@ -823,8 +823,8 @@ void InitializeVideo()
 
 void ResolveTransparentChunkFrameBuffer()
 {
-    ResolveMSAAFramebuffer(&g_framebuffers->m_transparent, &g_framebuffers->m_transparentPost, GL_COLOR_BUFFER_BIT);
-    ResolveMSAAFramebuffer(&g_framebuffers->m_transparent, &g_framebuffers->m_transparentPost, GL_COLOR_BUFFER_BIT, GL_COLOR_ATTACHMENT1);
+    ResolveMSAAFramebuffer(&g_framebuffers->m_transparentOIT, &g_framebuffers->m_transparentPost, GL_COLOR_BUFFER_BIT);
+    ResolveMSAAFramebuffer(&g_framebuffers->m_transparentOIT, &g_framebuffers->m_transparentPost, GL_COLOR_BUFFER_BIT, GL_COLOR_ATTACHMENT1);
 
     // set render states
     glDepthFunc(GL_ALWAYS);

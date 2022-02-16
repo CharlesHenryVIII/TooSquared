@@ -24,7 +24,7 @@ struct FrameBuffer_Basic : FrameBuffer {
     Texture* m_depth = nullptr;
 };
 
-struct FrameBuffer_Transparent : FrameBuffer {
+struct FrameBuffer_TransparentOIT : FrameBuffer {
     Texture* m_color = nullptr;
     Texture* m_reveal = nullptr;
 };
@@ -53,7 +53,8 @@ public:
     bool m_multisampleEnabled;
 
     FrameBuffer_Basic               m_opaque;
-    FrameBuffer_Transparent         m_transparent;
+    FrameBuffer_Basic               m_transparent;
+    FrameBuffer_TransparentOIT      m_transparentOIT;
     FrameBuffer_TransparentPost     m_transparentPost;
     FrameBuffer_Basic               m_post;
     FrameBuffer_Basic               m_depthPeeling;

@@ -47,10 +47,16 @@ void FrameBufferManager::Update(const Vec2Int& size, const uint32 samples, const
         m_opaque.CreateTexture(&m_opaque.m_depth, GL_DEPTH_ATTACHMENT,  GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT);
     }
     {//transparent
-        m_transparent.m_multisample = true;
+        m_transparent.m_multisample = false;
         m_transparent.m_size = m_size;
-        m_transparent.CreateTexture(&m_transparent.m_color,  GL_COLOR_ATTACHMENT0, GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT);
-        m_transparent.CreateTexture(&m_transparent.m_reveal, GL_COLOR_ATTACHMENT1, GL_R8,      GL_RED,  GL_FLOAT);
+        m_transparent.CreateTexture(&m_transparent.m_color, GL_COLOR_ATTACHMENT0, GL_RGBA,            GL_RGBA);
+        m_transparent.CreateTexture(&m_transparent.m_depth, GL_DEPTH_ATTACHMENT,  GL_DEPTH_COMPONENT, GL_DEPTH_COMPONENT);
+    }
+    {//transparent OIT
+        m_transparentOIT.m_multisample = true;
+        m_transparentOIT.m_size = m_size;
+        m_transparentOIT.CreateTexture(&m_transparentOIT.m_color,  GL_COLOR_ATTACHMENT0, GL_RGBA16F, GL_RGBA, GL_HALF_FLOAT);
+        m_transparentOIT.CreateTexture(&m_transparentOIT.m_reveal, GL_COLOR_ATTACHMENT1, GL_R8,      GL_RED,  GL_FLOAT);
     }
     {//Transparent Post
         m_transparentPost.m_multisample = false;

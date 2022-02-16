@@ -168,7 +168,7 @@ struct Renderer {
     bool msaaEnabled = true;
     int32 maxMSAASamples = 1;
     bool usingDepthPeeling = true;
-    int32 depthPeelingPasses = 5;
+    int32 depthPeelingPasses = 3;
     int32 debug_DepthPeelingPassToDisplay = -1;
 };
 
