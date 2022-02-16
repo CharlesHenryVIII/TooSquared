@@ -92,10 +92,6 @@ void ChunkArray::ClearChunk(ChunkIndex index)
     }
 
     g_chunks->chunkCount--;
-
-    //delete vertexBuffer[index];
-    //TODO: FIX
-    //vertexBuffer[index] = {};
 }
 
 ChunkIndex ChunkArray::AddChunk(ChunkPos position)

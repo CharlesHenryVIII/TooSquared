@@ -93,13 +93,11 @@ struct Vertex_UI {
 };
 
 //Originally 32 Bytes
-//TODO: convert to 4 bytes by slaming connected vertices and n together
 #pragma pack(push, 1)
 struct Vertex_Chunk {
     uint16 blockIndex;
     uint8 spriteIndex;
     uint8 nAndConnectedVertices = 0;
-    //uint8 connectedVertices = 0;
 };
 #pragma pack(pop)
 
@@ -627,10 +625,9 @@ template <typename T>
 
 //inline float Vec2Distance(Vec2 A, Vec2 B)
 //{
-//    return sqrtf(powf(B.x - A.x, 2) + powf(B.y - A.y, 2));
+//    return sqrtf(((B.x - A.x) * (B.x - A.x)) + ((B.y - A.y) * (B.y - A.y)));
 //}
 
-//TODO: Remove powf and replace with * operator
 //TODO: Improve
 [[nodiscard]] inline Vec3 NormalizeZero(Vec3 v)
 {
@@ -649,7 +646,7 @@ template <typename T>
 }
 [[nodiscard]] inline Vec2 Normalize(Vec2 v)
 {
-    float hyp = sqrtf(powf(v.x, 2) + powf(v.y, 2));
+    float hyp = sqrtf((v.x * v.x) + (v.y * v.y));
     return { (v.x / hyp), (v.y / hyp) };
 }
 inline float* Normalize(float* v, size_t length)
@@ -682,7 +679,7 @@ inline double* Normalize(double* v, size_t length)
 }
 //inline Vec2 NormalizeZero(Vec2 v)
 //{
-//    float hyp = sqrtf(powf(v.x, 2) + powf(v.y, 2));
+//    float hyp = sqrtf((v.x * v.x) + (v.y * v.y));
 //    if (hyp == 0)
 //        return {};
 //	return{ (v.x / hyp), (v.y / hyp) };
@@ -750,7 +747,7 @@ Atan2f return value:
 
 [[nodiscard]] inline float Pythags(const Vec2& a)
 {
-    return sqrtf(powf(a.x, 2) + powf(a.y, 2));
+    return sqrtf((a.x * a.x) + (a.y * a.y));
 }
 [[nodiscard]] inline float Pythags(const Vec3& a)
 {

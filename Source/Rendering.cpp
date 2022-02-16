@@ -235,13 +235,6 @@ void ShaderProgram::CheckForUpdate()
     }
 }
 
-//TODO: Put somewhere appropriate
-#ifdef _DEBUGPRINT
-#define DEBUGLOG(...) DebugPrint(__VA_ARGS__)
-#else
-#define DEBUGLOG(...) ((void)0)
-#endif
-
 void ShaderProgram::UpdateUniformMat4(const char* name, GLsizei count, GLboolean transpose, const GLfloat* value)
 {
     GLint loc = glGetUniformLocation(m_handle, name);

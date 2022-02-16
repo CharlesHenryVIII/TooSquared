@@ -27,6 +27,12 @@ do {                                            \
 } while(0)
 
 
+#ifdef _DEBUGPRINT
+#define DEBUGLOG(...) DebugPrint(__VA_ARGS__)
+#else
+#define DEBUGLOG(...) ((void)0)
+#endif
+
 /**********************************************
  *
  * Defer

@@ -681,7 +681,23 @@ White:  Uploaded,");
                             //#define RADIO_BUTTON_MACRO(type) 
                             if (ImGui::Button("Add Blocks To Inventory"))
                             {
-                                player->m_inventory.Add(ItemToInventoryFromImGUIType, ItemToInventoryFromImGUICount);
+                                uint8 blocksLeft = player->m_inventory.Add(ItemToInventoryFromImGUIType, ItemToInventoryFromImGUICount);
+                                if (blocksLeft)
+                                {
+                                    ChunkIndex chunkIndex;
+                                    if (g_chunks->GetChunkFromPosition(chunkIndex, ToChunk(player->m_transform.m_p)))
+                                    {
+                                        WorldPos itemOrigin;
+                                        itemOrigin.p = player->m_transform.m_p.p;
+                                        itemOrigin.p.y += player->m_collider.m_height / 2;
+                                        WorldPos itemDestination = itemOrigin;
+                                        itemDestination.p += playerCamera->GetForwardVector();
+                                        for (int8 i = 0; i < blocksLeft; i++)
+                                        {
+                                            g_items.Add(g_chunks->itemIDs[chunkIndex], ItemToInventoryFromImGUIType, itemOrigin, itemDestination);
+                                        }
+                                    }
+                                }
                             }
                             ImGui::InputInt("Amount", (int32*)&ItemToInventoryFromImGUICount);
                             ImGui::SameLine(); HelpMarker(
@@ -957,11 +973,6 @@ White:  Uploaded,");
                             {
                                 g_items.Add(g_chunks->itemIDs[chunkIndex], collectedBlockType, itemOrigin, playerCamera->GetWorldPosition());
                             }
-                            //TODO: add feature to drop block if block could not be picked up
-                            //if (auto overflow = player->m_inventory.Add(collectedBlockType, 1))
-                            //{
-                            //    //do something with the excess
-                            //}
                         }
                     }
                 }

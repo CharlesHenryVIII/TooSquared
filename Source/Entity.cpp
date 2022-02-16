@@ -283,8 +283,7 @@ void Player::Update(float dt)
             if (Distance(i.m_transform.m_p.p, this->m_collider.m_tail.p) < 1.5f ||
                 Distance(i.m_transform.m_p.p, this->m_collider.m_tip.p) < 1.5f)
             {
-                m_inventory.Add(i.m_type, 1);
-                i.inUse = false;
+                i.inUse = (!!m_inventory.Add(i.m_type, 1));
             }
         }
     }
@@ -487,17 +486,7 @@ Item* Items::Add(std::vector<EntityID>& itemIDs, BlockType blockType, const Worl
         velocity = NormalizeZero(velocity);
         velocity *= 8;
     }
-    //ChunkIndex chunkIndex;
-    //bool chunkUnderBlock = g_chunks->GetChunkFromPosition(chunkIndex, ToChunk(newItem.m_transform.m_p));
-    //assert(chunkUnderBlock);
-    //if (chunkUnderBlock)
-    //{//Chunk is under new block
     itemIDs.push_back(newItem.m_ID);
-    //}
-    //else
-    //{
-        ////TODO: Save block to disk?
-    //}
 
     newItem.m_rigidBody.m_vel = velocity;
     newItem.m_rigidBody.m_terminalVel = { 100.0f, 100.0f, 100.0f };
