@@ -1245,6 +1245,17 @@ White:  Uploaded,");
                     draw->AddCircleFilled(center, Max(size / 4, 1.0f), white);
                 }
             }
+#if 0
+            {
+                WorldPos cubePosition;
+                cubePosition.p = {-125, 200, 0};
+                AddCubeToRender(cubePosition, White, 1);
+                cubePosition.p.y -= 1;
+                AddCubeToRender(cubePosition, Blue, 0.5f);
+                cubePosition.p.y -= 1;
+                AddCubeToRender(cubePosition, Orange, 0.25f);
+            }
+#endif
 
 
 

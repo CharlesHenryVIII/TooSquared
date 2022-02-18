@@ -668,7 +668,6 @@ void InitializeVideo()
 
     g_renderer.programs[+Shader::Chunk]             = new ShaderProgram("Source/Shaders/Chunk.vert",        "Source/Shaders/Chunk.frag");
     g_renderer.programs[+Shader::Cube]              = new ShaderProgram("Source/Shaders/Cube.vert",         "Source/Shaders/Cube.frag");
-    g_renderer.programs[+Shader::Cube2]             = new ShaderProgram("Source/Shaders/Cube2.vert",        "Source/Shaders/Cube2.frag");
     g_renderer.programs[+Shader::Block]             = new ShaderProgram("Source/Shaders/Block.vert",        "Source/Shaders/Block.frag");
     g_renderer.programs[+Shader::BufferCopy]        = new ShaderProgram("Source/Shaders/BufferCopy.vert",   "Source/Shaders/BufferCopy.frag");
     g_renderer.programs[+Shader::BufferCopyAlpha]   = new ShaderProgram("Source/Shaders/BufferCopy.vert",   "Source/Shaders/BufferCopyAlpha.frag");

@@ -60,7 +60,6 @@ enum class Shader : uint32 {
     Chunk,
     Composite,
     Cube,
-    Cube2,
     Block,
     BufferCopy,
     BufferCopyAlpha,
