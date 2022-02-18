@@ -75,13 +75,15 @@ extern Block g_blocks[+BlockType::Count];
 
 struct Camera;
 
+#define DEBUG_CUBE_RENDERER 2
 //
+#if DEBUG_CUBE_RENDERER == 1
 struct RenderCube { //assume player camera
     WorldPos    p;
     Color       color;
     Vec3        scale;
 };
-
+#endif
 void AddCubeToRender(WorldPos p, Color color, float scale);
 void AddCubeToRender(WorldPos p, Color color, Vec3  scale);
 void RenderTransparentCubes(Camera* playerCamera, const int32 passCount, bool lastPass);

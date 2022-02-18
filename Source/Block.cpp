@@ -111,8 +111,13 @@ Rect GetUVsFromIndex(uint8 index)
 ///
 /// Add Cubes To Render
 ///
+#if DEBUG_CUBE_RENDERER == 1
 std::vector<RenderCube> s_cubesToDraw_transparent;
 std::vector<RenderCube> s_cubesToDraw_opaque;
+#else
+std::vector<Vertex_Cube> s_cubesToDraw_transparent;
+std::vector<Vertex_Cube> s_cubesToDraw_opaque;
+#endif
 
 void AddCubeToRender(WorldPos p, Color color, float scale)
 {
@@ -120,6 +125,7 @@ void AddCubeToRender(WorldPos p, Color color, float scale)
 }
 void AddCubeToRender(WorldPos p, Color color, Vec3  scale)
 {
+#if DEBUG_CUBE_RENDERER == 1
     RenderCube c {
         .p = p,
         .color = color,
@@ -130,9 +136,27 @@ void AddCubeToRender(WorldPos p, Color color, Vec3  scale)
         s_cubesToDraw_opaque.push_back(c);
     else
         s_cubesToDraw_transparent.push_back(c);
+#else
+    Vertex_Cube c {
+        .p = p.p,
+        .color = { color.r, color.g, color.b, color.a },
+        .scale = scale,
+    };
+
+    auto* list = &s_cubesToDraw_opaque;
+    if (color.a != 1.0f)
+        list = &s_cubesToDraw_transparent;
+    for (int32 f = 0; f < +Face::Count; f++)
+        for (int32 v = 0; v < 4; v++)
+        {
+            list->push_back(c);
+        }
+#endif
 }
 void RenderTransparentCubes(Camera* playerCamera, const int32 passCount, bool lastPass)
 {
+    ZoneScopedN("Upload and Render Transparent Cubes");
+#if DEBUG_CUBE_RENDERER == 1
     for (int32 i = 0; i < s_cubesToDraw_transparent.size(); i++)
     {
         RenderCube& currentCube = s_cubesToDraw_transparent[i];
@@ -174,12 +198,39 @@ void RenderTransparentCubes(Camera* playerCamera, const int32 passCount, bool la
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
         g_renderer.numTrianglesDrawn += 36 / 3;
     }
+#else
+    if (s_cubesToDraw_transparent.size() == 0)
+        return;
+    VertexBuffer vBuffer = VertexBuffer();
+    vBuffer.Upload(s_cubesToDraw_transparent.data(), s_cubesToDraw_transparent.size());
+    g_renderer.chunkIB->Bind();
+    ShaderProgram* sp = g_renderer.programs[+Shader::Cube2];
+    sp->UseShader();
+    glActiveTexture(GL_TEXTURE0);
+    g_renderer.textures[Texture::T::Plain]->Bind();
+    sp->UpdateUniformMat4("u_perspective", 1, false, playerCamera->m_perspective.e);
+    sp->UpdateUniformMat4("u_view", 1, false, playerCamera->m_view.e);
+    sp->UpdateUniformUint8("u_passCount", passCount);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex_Cube), (void*)offsetof(Vertex_Cube, p));
+    glEnableVertexArrayAttrib(g_renderer.vao, 0);
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex_Cube), (void*)offsetof(Vertex_Cube, color));
+    glEnableVertexArrayAttrib(g_renderer.vao, 1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex_Cube), (void*)offsetof(Vertex_Cube, scale));
+    glEnableVertexArrayAttrib(g_renderer.vao, 2);
+    glDisableVertexArrayAttrib(g_renderer.vao, 3);
+    glDrawElements(GL_TRIANGLES, (GLsizei)((s_cubesToDraw_transparent.size() / 24) * 36), GL_UNSIGNED_INT, 0);
+    g_renderer.numTrianglesDrawn += 12 * (uint32)s_cubesToDraw_transparent.size();
+
+#endif
     if (lastPass)
         s_cubesToDraw_transparent.clear();
 }
 
 void RenderOpaqueCubes(Camera* playerCamera, const int32 passCount)
 {
+    ZoneScopedN("Upload and Render Opaque Cubes");
+#if DEBUG_CUBE_RENDERER == 1
     for (int32 i = 0; i < s_cubesToDraw_opaque.size(); i++)
     {
         RenderCube& currentCube = s_cubesToDraw_opaque[i];
@@ -221,6 +272,7 @@ void RenderOpaqueCubes(Camera* playerCamera, const int32 passCount)
         glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
         g_renderer.numTrianglesDrawn += 36 / 3;
     }
+#endif
     s_cubesToDraw_opaque.clear();
 }
 
@@ -239,11 +291,11 @@ void AddBlockToRender(WorldPos p, Vec3 scale, BlockType block)
     if (g_blocks[+block].m_translucent)
         list = &s_blocksToDraw_transparent;
     for (int32 f = 0; f < +Face::Count; f++)
+    {
+        b.index = g_blocks[+block].m_spriteIndices[f];
         for (int32 v = 0; v < 4; v++)
-        {
-            b.index = g_blocks[+block].m_spriteIndices[f];
             list->push_back(b);
-        }
+    }
 }
 
 void RenderBlocksInternal(Camera* playerCamera, const int32 passCount, std::vector<Vertex_Block>* blocksToDraw, bool clearBlocksToDraw)
@@ -268,7 +320,7 @@ void RenderBlocksInternal(Camera* playerCamera, const int32 passCount, std::vect
     glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Block), (void*)offsetof(Vertex_Block, index));
     glEnableVertexArrayAttrib(g_renderer.vao, 2);
     glDisableVertexArrayAttrib(g_renderer.vao, 3);
-    glDrawElements(GL_TRIANGLES, (GLsizei)blocksToDraw->size(), GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, (GLsizei)((blocksToDraw->size() / 24) * 36), GL_UNSIGNED_INT, 0);
     g_renderer.numTrianglesDrawn += 12 * (uint32)blocksToDraw->size();
 
     if (clearBlocksToDraw)

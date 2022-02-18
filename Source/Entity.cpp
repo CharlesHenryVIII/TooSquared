@@ -426,9 +426,10 @@ void Item::Update(float dt)
     //result = translation;
     const float scale = 0.5f;
     //AddCubeToRender(m_transform.m_p, White, scale);
-    WorldPos positionWithScale = m_transform.m_p;
-    positionWithScale.p.y += ((scale - 1) / 2);
-    AddBlockToRender(positionWithScale, scale, m_type);
+    //WorldPos positionWithScale = m_transform.m_p;
+    //positionWithScale.p.y += ((scale - 1) / 2);
+    //AddBlockToRender(positionWithScale, scale, m_type);
+    AddBlockToRender(m_transform.m_p, scale, m_type);
 #else
 
     //Old Simple Movement Code

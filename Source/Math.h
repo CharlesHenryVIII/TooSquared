@@ -86,14 +86,16 @@ struct Vertex {
     Vec2 uv;
     Vec3 n;
 };
-struct Vertex_Cube {
-    Vec3 p;
-};
 #pragma pack(push, 1)
 struct Vertex_Block {
     Vec3  p;
     Vec3  scale;
     uint8 index;
+};
+struct Vertex_Cube {
+    Vec3  p;
+    Vec4  color;
+    Vec3  scale;
 };
 #pragma pack(pop)
 struct Vertex_UI {
