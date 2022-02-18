@@ -75,20 +75,12 @@ extern Block g_blocks[+BlockType::Count];
 
 struct Camera;
 
-#define DEBUG_BLOCKRENDER 1
 //
 struct RenderCube { //assume player camera
     WorldPos    p;
     Color       color;
     Vec3        scale;
 };
-#if DEBUG_BLOCKRENDER == 2
-struct RenderBlock { //assume player camera
-    WorldPos    p;
-    Vec3        scale;
-    BlockType   block;
-};
-#endif
 
 void AddCubeToRender(WorldPos p, Color color, float scale);
 void AddCubeToRender(WorldPos p, Color color, Vec3  scale);

@@ -1240,7 +1240,9 @@ White:  Uploaded,");
                     //float   size    = 2.0f;
                     float   size    = Max(g_window.size.x / 640.0f, 2.0f);
                     ImU32   color   = IM_COL32(127, 127, 127, 127);
+                    ImU32   white   = IM_COL32(255, 255, 255, 255);
                     draw->AddCircleFilled(center, size, color);
+                    draw->AddCircleFilled(center, Max(size / 4, 1.0f), white);
                 }
             }
 

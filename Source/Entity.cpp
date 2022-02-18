@@ -1,6 +1,5 @@
 #include "Entity.h"
 #include "Chunk.h"
-#include "Block.h"
 #include "tracy-master/Tracy.hpp"
 
 
@@ -427,13 +426,9 @@ void Item::Update(float dt)
     //result = translation;
     const float scale = 0.5f;
     //AddCubeToRender(m_transform.m_p, White, scale);
-#if DEBUG_BLOCKRENDER == 1
     WorldPos positionWithScale = m_transform.m_p;
     positionWithScale.p.y += ((scale - 1) / 2);
     AddBlockToRender(positionWithScale, scale, m_type);
-#elif DEBUG_BLOCKRENDER == 2
-    AddBlockToRender(m_transform.m_p, scale, m_type);
-#endif
 #else
 
     //Old Simple Movement Code
