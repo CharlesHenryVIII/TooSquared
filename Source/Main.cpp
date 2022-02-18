@@ -1371,6 +1371,7 @@ White:  Uploaded,");
                         g_entityList.Render(deltaTime, playerCamera);
                     }
 
+                    RenderOpaqueBlocks(playerCamera, 0);
                     RenderOpaqueCubes(playerCamera, 0);
 
 
@@ -1459,7 +1460,9 @@ White:  Uploaded,");
                             }
                         }
 
-                        RenderTransparentCubes(playerCamera, pass + 1);
+                        bool lastPass = (pass == (g_renderer.depthPeelingPasses - 1));
+                        RenderTransparentBlocks(playerCamera, pass + 1, lastPass);
+                        RenderTransparentCubes(playerCamera, pass + 1, lastPass);
 
                         {
                             ZoneScopedN("Debug Rendering");

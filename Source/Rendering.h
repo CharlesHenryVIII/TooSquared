@@ -60,6 +60,7 @@ enum class Shader : uint32 {
     Chunk,
     Composite,
     Cube,
+    Block,
     BufferCopy,
     BufferCopyAlpha,
     Sun,
@@ -90,6 +91,7 @@ public:
     void UpdateUniformVec3(const char* name, GLsizei count, const GLfloat* value);
     void UpdateUniformVec2(const char* name, GLsizei count, const GLfloat* value);
     void UpdateUniformFloat(const char* name, GLfloat value);
+    void UpdateUniformFloatStream(const char* name, GLsizei count, const GLfloat* value);
     void UpdateUniformInt2(const char* name, Vec2Int values);
     void UpdateUniformInt2(const char* name, GLint value1, GLint value2);
     void UpdateUniformUint8(const char* name, GLuint value);
@@ -142,6 +144,7 @@ public:
     void Upload(Vertex* vertices, size_t count);
     void Upload(Vertex_UI* vertices, size_t count);
     void Upload(Vertex_Chunk* vertices, size_t count);
+    void Upload(Vertex_Block* vertices, size_t count);
 };
 
 
@@ -155,7 +158,6 @@ struct Renderer {
     IndexBuffer* chunkIB;
     TextureArray* spriteTextArray;
     VertexBuffer* postVertexBuffer;
-    VertexBuffer* cubeVertexBuffer;
     uint32 numTrianglesDrawn = 0;
     TextureCube* skyBoxNight;
     TextureCube* skyBoxDay;

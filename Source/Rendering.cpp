@@ -278,6 +278,15 @@ void ShaderProgram::UpdateUniformFloat(const char* name, GLfloat value)
 #endif
 }
 
+void ShaderProgram::UpdateUniformFloatStream(const char* name, GLsizei count, const GLfloat* value)
+{
+    GLint loc = glGetUniformLocation(m_handle, name);
+    glUniform1fv(loc, count, value);
+#ifdef _DEBUGPRINT
+    DebugPrint("Shader Uniform Updated %s\n", name);
+#endif
+}
+
 void ShaderProgram::UpdateUniformInt2(const char* name, Vec2Int values)
 {
     UpdateUniformInt2(name, GLint(values.x), GLint(values.y));
@@ -367,6 +376,13 @@ void VertexBuffer::Upload(Vertex_UI* vertices, size_t count)
 #endif
 }
 void VertexBuffer::Upload(Vertex_Chunk* vertices, size_t count)
+{
+    UploadData(vertices, sizeof(vertices[0]) * count);
+#ifdef _DEBUGPRINT
+    DebugPrint("Vertex Buffer Upload,size %i\n", count);
+#endif
+}
+void VertexBuffer::Upload(Vertex_Block* vertices, size_t count)
 {
     UploadData(vertices, sizeof(vertices[0]) * count);
 #ifdef _DEBUGPRINT
@@ -645,6 +661,7 @@ void InitializeVideo()
 
     g_renderer.programs[+Shader::Chunk]             = new ShaderProgram("Source/Shaders/Chunk.vert",        "Source/Shaders/Chunk.frag");
     g_renderer.programs[+Shader::Cube]              = new ShaderProgram("Source/Shaders/Cube.vert",         "Source/Shaders/Cube.frag");
+    g_renderer.programs[+Shader::Block]             = new ShaderProgram("Source/Shaders/Block.vert",        "Source/Shaders/Block.frag");
     g_renderer.programs[+Shader::BufferCopy]        = new ShaderProgram("Source/Shaders/BufferCopy.vert",   "Source/Shaders/BufferCopy.frag");
     g_renderer.programs[+Shader::BufferCopyAlpha]   = new ShaderProgram("Source/Shaders/BufferCopy.vert",   "Source/Shaders/BufferCopyAlpha.frag");
     g_renderer.programs[+Shader::Sun]               = new ShaderProgram("Source/Shaders/Sun.vert",          "Source/Shaders/Sun.frag");

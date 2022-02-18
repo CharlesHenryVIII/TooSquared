@@ -1,5 +1,6 @@
 #include "Entity.h"
 #include "Chunk.h"
+#include "Block.h"
 #include "tracy-master/Tracy.hpp"
 
 
@@ -177,7 +178,7 @@ void Player::InputUpdate(float dt, CommandHandler& commands)
     else
     {
         m_transform.m_yaw   -= commands.mouse.pDelta.x * commands.mouse.m_sensitivity;
-        camera->m_transform.m_pitch -= commands.mouse.pDelta.y * commands.mouse.m_sensitivity; 
+        camera->m_transform.m_pitch -= commands.mouse.pDelta.y * commands.mouse.m_sensitivity;
         camera->m_transform.m_pitch = Clamp<float>(camera->m_transform.m_pitch, -89.5f, 89.5f);
     }
 
@@ -425,7 +426,14 @@ void Item::Update(float dt)
     //result = translation * rotation;
     //result = translation;
     const float scale = 0.5f;
-    AddCubeToRender(m_transform.m_p, White, scale, Texture::T::Minecraft, m_type);
+    //AddCubeToRender(m_transform.m_p, White, scale);
+#if DEBUG_BLOCKRENDER == 1
+    WorldPos positionWithScale = m_transform.m_p;
+    positionWithScale.p.y += ((scale - 1) / 2);
+    AddBlockToRender(positionWithScale, scale, m_type);
+#elif DEBUG_BLOCKRENDER == 2
+    AddBlockToRender(m_transform.m_p, scale, m_type);
+#endif
 #else
 
     //Old Simple Movement Code
@@ -666,8 +674,8 @@ bool Items::Load(std::vector<EntityID>& itemIDs, const ChunkPos& p)
 void Items::CleanUp()
 {
     std::lock_guard<std::mutex> lock(m_listVectorMutex);
-    std::erase_if(m_items, 
-        [](const Entity& e) 
+    std::erase_if(m_items,
+        [](const Entity& e)
         {
             return (!(e.inUse));
         });
@@ -715,8 +723,8 @@ void Entitys::InputUpdate(float dt,CommandHandler& commands)
 
 void Entitys::CleanUp()
 {
-    std::erase_if(list, 
-        [](Entity* e) 
+    std::erase_if(list,
+        [](Entity* e)
         {
             if (!e->inUse)
             {

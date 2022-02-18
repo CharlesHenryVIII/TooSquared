@@ -75,20 +75,30 @@ extern Block g_blocks[+BlockType::Count];
 
 struct Camera;
 
+#define DEBUG_BLOCKRENDER 1
 //
 struct RenderCube { //assume player camera
     WorldPos    p;
     Color       color;
     Vec3        scale;
-    Texture::T  texture;
+};
+#if DEBUG_BLOCKRENDER == 2
+struct RenderBlock { //assume player camera
+    WorldPos    p;
+    Vec3        scale;
     BlockType   block;
 };
+#endif
+
 void AddCubeToRender(WorldPos p, Color color, float scale);
 void AddCubeToRender(WorldPos p, Color color, Vec3  scale);
-void AddCubeToRender(WorldPos p, Color color, float scale, Texture::T textureType, BlockType blockType);
-void AddCubeToRender(WorldPos p, Color color, Vec3  scale, Texture::T textureType, BlockType blockType);
-void RenderTransparentCubes(Camera* playerCamera,   const int32 passCount);
+void RenderTransparentCubes(Camera* playerCamera, const int32 passCount, bool lastPass);
 void RenderOpaqueCubes(     Camera* playerCamera,   const int32 passCount);
+//
+void AddBlockToRender(WorldPos p, float scale, BlockType block);
+void AddBlockToRender(WorldPos p, Vec3 scale, BlockType block);
+void RenderTransparentBlocks(Camera* playerCamera,   const int32 passCount, bool lastPass);
+void RenderOpaqueBlocks(     Camera* playerCamera,   const int32 passCount);
 //
 
 void BlockInit();

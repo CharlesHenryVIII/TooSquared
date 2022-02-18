@@ -86,7 +86,16 @@ struct Vertex {
     Vec2 uv;
     Vec3 n;
 };
-
+struct Vertex_Cube {
+    Vec3 p;
+};
+#pragma pack(push, 1)
+struct Vertex_Block {
+    Vec3  p;
+    Vec3  scale;
+    uint8 index;
+};
+#pragma pack(pop)
 struct Vertex_UI {
     Vec2 p;
     Vec2 uv;
@@ -1025,7 +1034,7 @@ const VertexFace cubeVertices[6] = {
 union Triangle {
     struct { WorldPos p0, p1, p2; };
     WorldPos e[3];
-        
+
     Vec3 Normal() const
     {
         Vec3 r = Normalize(CrossProduct(p1.p - p0.p, p2.p - p0.p));
