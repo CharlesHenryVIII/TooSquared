@@ -139,16 +139,19 @@ void RenderCubesInternal(Camera* playerCamera, const int32 passCount, std::vecto
 {
     if (cubesToDraw->size() == 0)
         return;
-    VertexBuffer vBuffer = VertexBuffer();
-    vBuffer.Upload(cubesToDraw->data(), cubesToDraw->size());
     g_renderer.chunkIB->Bind();
     ShaderProgram* sp = g_renderer.programs[+Shader::Cube];
     sp->UseShader();
     glActiveTexture(GL_TEXTURE0);
     g_renderer.textures[Texture::T::Plain]->Bind();
-    sp->UpdateUniformMat4("u_perspective", 1, false, playerCamera->m_perspective.e);
-    sp->UpdateUniformMat4("u_view", 1, false, playerCamera->m_view.e);
-    sp->UpdateUniformUint8("u_passCount", passCount);
+    VertexBuffer vBuffer = VertexBuffer();
+    {
+        ZoneScopedN("Upload Cubes");
+        vBuffer.Upload(cubesToDraw->data(), cubesToDraw->size());
+        sp->UpdateUniformMat4("u_perspective", 1, false, playerCamera->m_perspective.e);
+        sp->UpdateUniformMat4("u_view", 1, false, playerCamera->m_view.e);
+        sp->UpdateUniformUint8("u_passCount", passCount);
+    }
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex_Cube), (void*)offsetof(Vertex_Cube, p));
     glEnableVertexArrayAttrib(g_renderer.vao, 0);
@@ -157,7 +160,10 @@ void RenderCubesInternal(Camera* playerCamera, const int32 passCount, std::vecto
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex_Cube), (void*)offsetof(Vertex_Cube, scale));
     glEnableVertexArrayAttrib(g_renderer.vao, 2);
     glDisableVertexArrayAttrib(g_renderer.vao, 3);
-    glDrawElements(GL_TRIANGLES, (GLsizei)((cubesToDraw->size() / 24) * 36), GL_UNSIGNED_INT, 0);
+    {
+        ZoneScopedN("Render Cubes");
+        glDrawElements(GL_TRIANGLES, (GLsizei)((cubesToDraw->size() / 24) * 36), GL_UNSIGNED_INT, 0);
+    }
     g_renderer.numTrianglesDrawn += 12 * (uint32)cubesToDraw->size();
 
     if (clearCubesToDraw)
@@ -201,16 +207,19 @@ void RenderBlocksInternal(Camera* playerCamera, const int32 passCount, std::vect
 {
     if (blocksToDraw->size() == 0)
         return;
-    VertexBuffer vBuffer = VertexBuffer();
-    vBuffer.Upload(blocksToDraw->data(), blocksToDraw->size());
     g_renderer.chunkIB->Bind();
     ShaderProgram* sp = g_renderer.programs[+Shader::Block];
     sp->UseShader();
     glActiveTexture(GL_TEXTURE0);
     g_renderer.spriteTextArray->Bind();
-    sp->UpdateUniformMat4("u_perspective", 1, false, playerCamera->m_perspective.e);
-    sp->UpdateUniformMat4("u_view", 1, false, playerCamera->m_view.e);
-    sp->UpdateUniformUint8("u_passCount", passCount);
+    VertexBuffer vBuffer = VertexBuffer();
+    {
+        ZoneScopedN("Upload Blocks");
+        vBuffer.Upload(blocksToDraw->data(), blocksToDraw->size());
+        sp->UpdateUniformMat4("u_perspective", 1, false, playerCamera->m_perspective.e);
+        sp->UpdateUniformMat4("u_view", 1, false, playerCamera->m_view.e);
+        sp->UpdateUniformUint8("u_passCount", passCount);
+    }
 
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex_Block), (void*)offsetof(Vertex_Block, p));
     glEnableVertexArrayAttrib(g_renderer.vao, 0);
@@ -219,7 +228,10 @@ void RenderBlocksInternal(Camera* playerCamera, const int32 passCount, std::vect
     glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Block), (void*)offsetof(Vertex_Block, index));
     glEnableVertexArrayAttrib(g_renderer.vao, 2);
     glDisableVertexArrayAttrib(g_renderer.vao, 3);
-    glDrawElements(GL_TRIANGLES, (GLsizei)((blocksToDraw->size() / 24) * 36), GL_UNSIGNED_INT, 0);
+    {
+        ZoneScopedN("Render Blocks");
+        glDrawElements(GL_TRIANGLES, (GLsizei)((blocksToDraw->size() / 24) * 36), GL_UNSIGNED_INT, 0);
+    }
     g_renderer.numTrianglesDrawn += 12 * (uint32)blocksToDraw->size();
 
     if (clearBlocksToDraw)
