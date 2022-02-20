@@ -29,6 +29,7 @@ enum class BlockType : uint8 {
     HalfSlab,
     Slab,
     Glass,
+    Belt,
     Count,
 //CobWeb,
 //Flower_Red,
@@ -50,17 +51,19 @@ enum class Face : uint8 {
 };
 ENUMOPS(Face);
 
+#define BLOCK_SEETHROUGH                BIT(1)
+#define BLOCK_TRANSLUCENT               BIT(2)
+#define BLOCK_COLLIDABLE                BIT(3)
+#define BLOCK_SIDES_SHOULD_BE_RENDERED  BIT(4)
+#define BLOCK_HAS_SHADING               BIT(5)
+
 const uint32 defaultSpriteLocation = 254;
 struct Block {
     uint32 m_spriteIndices[+Face::Count] = {
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation,
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation };
-    float m_collisionHeight       = 1.0f;
-    bool  m_translucent           = false;
-    bool  m_seeThrough            = false;
-    bool  m_collidable            = true;
-    bool  m_sidesShouldBeRendered = false;
-    bool  m_hasShading            = true;
+    float m_collisionHeight = 1.0f;
+    uint32 m_flags          = BLOCK_COLLIDABLE | BLOCK_HAS_SHADING;
     //Material material;
 };
 

@@ -468,6 +468,17 @@ void Item::Update(float dt)
 }
 
 
+void Belt::Update(float dt)
+{
+    
+}
+void Belt::Render(float dt, Camera* camera)
+{
+    
+}
+
+
+
 
 //Items
 Item* Items::Add(std::vector<EntityID>& itemIDs, BlockType blockType, const WorldPos& position, const WorldPos& destination)
@@ -495,7 +506,7 @@ Item* Items::Add(std::vector<EntityID>& itemIDs, BlockType blockType, const Worl
     newItem.m_rigidBody.m_vel = velocity;
     newItem.m_rigidBody.m_terminalVel = { 100.0f, 100.0f, 100.0f };
     std::lock_guard<std::mutex> lock(m_listVectorMutex);
-    if (g_blocks[+blockType].m_translucent)
+    if (g_blocks[+blockType].m_flags & BLOCK_TRANSLUCENT)
     {
         m_items.push_back(newItem);
         return &m_items[m_items.size() - 1];

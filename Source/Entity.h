@@ -18,6 +18,7 @@ enum class EntityType {
     Player,
     Camera,
     Item,
+    Belt,
 };
 
 //Vec3 g_forwardVector = { 0.0f, 0.0f, -1.0f };
@@ -131,6 +132,20 @@ struct Entitys {
     void InputUpdate(float deltaTime, CommandHandler& commands);
     void Update(float deltaTime);
     void Render(float deltaTime, Camera* camera);
+};
+#define ENTITY_MAX_BLOCKS_PER_BELT 2
+struct Belt : public Entity 
+{
+    ENTITYBOILERPLATE(Belt);
+    void Update(float dt) override;
+    void Render(float dt, Camera* camera) override;
+    Cube m_collider = {};
+    BlockType m_blocks[ENTITY_MAX_BLOCKS_PER_BELT];
+
+    //virtual void Save() {};
+    //virtual bool Load() { return false; };
+    //virtual void InputUpdate(float dt, CommandHandler& commands) {};
+    //virtual void Render(float dt, Camera* camera) {};
 };
 
 

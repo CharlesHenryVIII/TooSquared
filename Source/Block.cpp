@@ -20,9 +20,8 @@ void SetMultipleBlockSprites(BlockType bt, uint32 v)
 }
 void SetBlockSprites()
 {
-    g_blocks[+BlockType::Empty].m_translucent = true;
-    g_blocks[+BlockType::Empty].m_collidable  = false;
-    g_blocks[+BlockType::Empty].m_hasShading  = false;
+    g_blocks[+BlockType::Empty].m_flags |= BLOCK_SEETHROUGH | BLOCK_TRANSLUCENT;
+    g_blocks[+BlockType::Empty].m_flags &= ~(BLOCK_COLLIDABLE | BLOCK_HAS_SHADING);
 
     SetMultipleBlockSprites(BlockType::Dirt, 2);
     SetMultipleBlockSprites(BlockType::Grass, 3);
@@ -38,15 +37,11 @@ void SetBlockSprites()
     g_blocks[+BlockType::Wood].m_spriteIndices[+Face::Top] = 21;
     g_blocks[+BlockType::Wood].m_spriteIndices[+Face::Bot] = 21;
     SetMultipleBlockSprites(BlockType::Ice, 67);
-    g_blocks[+BlockType::Ice].m_translucent = true;
-    g_blocks[+BlockType::Leaves].m_sidesShouldBeRendered = false;
+    g_blocks[+BlockType::Ice].m_flags |= BLOCK_SEETHROUGH | BLOCK_TRANSLUCENT;
     SetMultipleBlockSprites(BlockType::Obsidian, 37);
 #if 1
     SetMultipleBlockSprites(BlockType::Leaves, 52);
-    g_blocks[+BlockType::Leaves].m_seeThrough = true;
-    //g_blocks[+BlockType::Leaves].m_translucent = true; //This is because the mipmaps contain alpha transparency
-    g_blocks[+BlockType::Leaves].m_translucent = false;
-    g_blocks[+BlockType::Leaves].m_sidesShouldBeRendered = true;
+    g_blocks[+BlockType::Leaves].m_flags |= BLOCK_SEETHROUGH | BLOCK_SIDES_SHOULD_BE_RENDERED;
 #else
     SetMultipleBlockSprites(BlockType::Leaves, 53);
 #endif
@@ -55,26 +50,31 @@ void SetBlockSprites()
     g_blocks[+BlockType::TNT].m_spriteIndices[+Face::Top] = 9;
     g_blocks[+BlockType::TNT].m_spriteIndices[+Face::Bot] = 10;
     SetMultipleBlockSprites(BlockType::Water, 255);
-    g_blocks[+BlockType::Water].m_seeThrough  = true;
-    g_blocks[+BlockType::Water].m_translucent = true;
-    g_blocks[+BlockType::Water].m_collidable  = false;
+    g_blocks[+BlockType::Water].m_flags |= BLOCK_SEETHROUGH | BLOCK_TRANSLUCENT;
+    g_blocks[+BlockType::Water].m_flags &= ~(BLOCK_COLLIDABLE);
     SetMultipleBlockSprites(BlockType::Bedrock, 17);
 
     SetMultipleBlockSprites(BlockType::HalfSlab, 5);
     g_blocks[+BlockType::HalfSlab].m_spriteIndices[+Face::Top] = 6;
     g_blocks[+BlockType::HalfSlab].m_spriteIndices[+Face::Bot] = 6;
     g_blocks[+BlockType::HalfSlab].m_collisionHeight           = 0.5f;
-    g_blocks[+BlockType::HalfSlab].m_seeThrough              = true;
+    g_blocks[+BlockType::HalfSlab].m_flags |= BLOCK_SEETHROUGH;
 
     SetMultipleBlockSprites(BlockType::Slab, 5);
     g_blocks[+BlockType::Slab].m_spriteIndices[+Face::Top] = 6;
     g_blocks[+BlockType::Slab].m_spriteIndices[+Face::Bot] = 6;
 
     SetMultipleBlockSprites(BlockType::Glass, 49);
-    g_blocks[+BlockType::Glass].m_seeThrough            = true;
-    g_blocks[+BlockType::Glass].m_translucent           = true;//This is because the mipmaps contain alpha transparency
-    g_blocks[+BlockType::Glass].m_sidesShouldBeRendered = false;
-    g_blocks[+BlockType::Glass].m_hasShading            = false;
+    g_blocks[+BlockType::Glass].m_flags |= BLOCK_SEETHROUGH | BLOCK_TRANSLUCENT;
+    g_blocks[+BlockType::Glass].m_flags &= ~(BLOCK_HAS_SHADING);
+
+    g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Left]     = 138;
+    g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Right]    = 138;
+    g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Bot]      = 139;
+    g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Front]    = 154;
+    g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Back]     = 154;
+    g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Top]      = 155;
+    g_blocks[+BlockType::Belt].m_flags |= BLOCK_SEETHROUGH;
 }
 
 void BlockInit()
@@ -193,7 +193,7 @@ void AddBlockToRender(WorldPos p, Vec3 scale, BlockType block)
     b.p = p.p;
     b.scale = scale;
     auto* list = &s_blocksToDraw_opaque;
-    if (g_blocks[+block].m_translucent)
+    if (g_blocks[+block].m_flags & BLOCK_TRANSLUCENT)
         list = &s_blocksToDraw_transparent;
     for (int32 f = 0; f < +Face::Count; f++)
     {

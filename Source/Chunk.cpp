@@ -1651,7 +1651,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
 
                     std::vector<Vertex_Chunk>* vertices   = &opaqueFaceVertices[i];
                     uint32*                    indexCount = &opaqueIndexCount[i];
-                    if (g_blocks[+currentBlockType].m_translucent)
+                    if (g_blocks[+currentBlockType].m_flags & BLOCK_TRANSLUCENT)
                     {
                         vertices   = &translucentFaceVertices[i];
                         indexCount = &translucentIndexCount[i];
@@ -1673,7 +1673,8 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                         }
                         //if (getBlockResult && type == BlockType::Empty || (currentBlockType != BlockType::Water && type == BlockType::Water))
                         //if (/*getBlockResult && */g_blocks[+type].m_unUsualShape || (g_blocks[+type].m_translucent && ((currentBlockType != BlockType::Water && type == BlockType::Water) || type != BlockType::Water))) 
-                        if ((g_blocks[+type].m_seeThrough && (currentBlockType != type)) || (g_blocks[+type].m_translucent && (currentBlockType != type)) || type == BlockType::Leaves) 
+                        const Block& b = g_blocks[+type];
+                        if (((b.m_flags & BLOCK_SEETHROUGH) && (currentBlockType != type)) || (b.m_flags & BLOCK_SIDES_SHOULD_BE_RENDERED)) 
                         {
                             Vertex_Chunk f = {};
                             Vec3 offset = { static_cast<float>(x + realP.p.x), static_cast<float>(y + realP.p.y), static_cast<float>(z + realP.p.z) };
@@ -1707,7 +1708,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
             Vec3Int blockP = GetBlockPosFromIndex(vert.blockIndex);
             BlockType baseBlockType;
             region.GetBlock(baseBlockType, blockP);
-            if (!g_blocks[+baseBlockType].m_hasShading)
+            if (!(g_blocks[+baseBlockType].m_flags & BLOCK_HAS_SHADING))
                 continue;
 
             uint8 normal = (vert.nAndConnectedVertices & 0xF0) >> 4;
@@ -1725,11 +1726,11 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
             region.GetBlock(bType, blockP + blockN + b);
             region.GetBlock(cType, blockP + blockN + c);
 
-            if (g_blocks[+aType].m_hasShading)
+            if (g_blocks[+aType].m_flags & BLOCK_HAS_SHADING)
                 vert.nAndConnectedVertices += 1;
-            if (g_blocks[+bType].m_hasShading)
+            if (g_blocks[+bType].m_flags & BLOCK_HAS_SHADING)
                 vert.nAndConnectedVertices += 1;
-            if (g_blocks[+cType].m_hasShading)
+            if (g_blocks[+cType].m_flags & BLOCK_HAS_SHADING)
                 vert.nAndConnectedVertices += 1;
 
             vertIndex += 2;

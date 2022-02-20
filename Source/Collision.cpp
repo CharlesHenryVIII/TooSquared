@@ -352,7 +352,7 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
     for (int32 faceIndex : faceIndices)
     {
         
-        if (g_blocks[+blockSampler.blocks[faceIndex]].m_collidable)
+        if (g_blocks[+blockSampler.blocks[faceIndex]].m_flags & BLOCK_COLLIDABLE)
             continue;
         for (int32 j = 0; j <= 1; j++)
         {
@@ -496,7 +496,7 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
 
                     BlockType blockCheck;
                     g_chunks->GetBlock(blockCheck, blockp);
-                    if (!g_blocks[+blockCheck].m_collidable)
+                    if (!(g_blocks[+blockCheck].m_flags & BLOCK_COLLIDABLE))
                         continue;
 
                     WorldPos worldBlockP = ToWorld(blockp);
@@ -524,7 +524,7 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                         {
                             BlockType normalFaceBlockType;
                             GamePos normalFaceBlockP = ToGame(WorldPos(worldBlockP.p + normal));
-                            if (!(g_chunks->GetBlock(normalFaceBlockType, normalFaceBlockP)) || (!g_blocks[+normalFaceBlockType].m_collidable))
+                            if (!(g_chunks->GetBlock(normalFaceBlockType, normalFaceBlockP)) || (!(g_blocks[+normalFaceBlockType].m_flags & BLOCK_COLLIDABLE)))
                             {
                                 if (normal.x != 0)
                                     normalMap.x = 1;
