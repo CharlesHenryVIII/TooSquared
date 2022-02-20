@@ -1624,7 +1624,7 @@ uint16 CreateBlockIndex(Vec3Int pos)
 void ChunkArray::BuildChunkVertices(RegionSampler region)
 {
     //why am I sometimes hitting this assertion
-    assert(g_chunks->state[region.center] == ChunkArray::VertexLoading);
+    //assert(g_chunks->state[region.center] == ChunkArray::VertexLoading);
     if (g_chunks->state[region.center] != ChunkArray::VertexLoading)
         return;
     ChunkIndex i = region.center;
@@ -1646,7 +1646,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                 for (int32 z = 0; z < CHUNK_Z; z++)
                 {
                     BlockType currentBlockType = blocks[i].e[x][y][z];
-                    if (currentBlockType == BlockType::Empty)
+                    if (g_blocks[+currentBlockType].m_flags & BLOCK_NON_CUBOIDAL)
                         continue;
 
                     std::vector<Vertex_Chunk>* vertices   = &opaqueFaceVertices[i];
@@ -1671,8 +1671,6 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                             //ACCTIMER(T_Vertices::GetBlock);
                             getBlockResult = (region.GetBlock(type, { xReal, yReal, zReal })) || (yReal == CHUNK_Y);
                         }
-                        //if (getBlockResult && type == BlockType::Empty || (currentBlockType != BlockType::Water && type == BlockType::Water))
-                        //if (/*getBlockResult && */g_blocks[+type].m_unUsualShape || (g_blocks[+type].m_translucent && ((currentBlockType != BlockType::Water && type == BlockType::Water) || type != BlockType::Water))) 
                         const Block& b = g_blocks[+type];
                         if (((b.m_flags & BLOCK_SEETHROUGH) && (currentBlockType != type)) || (b.m_flags & BLOCK_SIDES_SHOULD_BE_RENDERED)) 
                         {
@@ -1871,6 +1869,7 @@ void ChunkUpdateBlocks(ChunkPos p, Vec3Int offset = {})
         g_chunks->BuildChunkVertices(regionUpdate);
     }
 }
+
 void SetBlock(GamePos hitBlock, BlockType setBlockType)
 {
     ZoneScopedN("SetBlock");
@@ -1902,10 +1901,30 @@ void SetBlock(GamePos hitBlock, BlockType setBlockType)
     }
 
 }
-
-bool ChunkArray::GetBlock(BlockType& blockType, const GamePos& blockP)
+void AddBlock(const GamePos& hitBlock, const BlockType block, const ChunkIndex chunkIndex)
 {
-    ChunkIndex chunkIndex = 0;
+    if (g_blocks[+block].m_flags & BLOCK_COMPLEX)
+    {
+        ChunkPos chunkPos;
+        Vec3Int blockPos = Convert_GameToBlock(chunkPos, hitBlock);
+        g_chunks->complexBlocks[chunkIndex].AddNew(block, blockPos);
+    }
+    SetBlock(hitBlock, block);
+}
+void RemoveBlock(const GamePos& hitBlock, const BlockType currentBlock, const ChunkIndex chunkIndex)
+{
+    if (g_blocks[+currentBlock].m_flags & BLOCK_COMPLEX)
+    {
+        ChunkPos chunkPos;
+        Vec3Int blockPos = Convert_GameToBlock(chunkPos, hitBlock);
+        g_chunks->complexBlocks[chunkIndex].Remove(blockPos);
+    }
+    SetBlock(hitBlock, BlockType::Empty);
+}
+
+
+bool ChunkArray::GetBlock(BlockType& blockType, const GamePos& blockP, ChunkIndex& chunkIndex)
+{
     blockType = BlockType::Empty;
     ChunkPos chunkP = ToChunk(blockP);
     if (chunkP.p.y == 0 && g_chunks->GetChunkFromPosition(chunkIndex, chunkP))
@@ -1915,6 +1934,12 @@ bool ChunkArray::GetBlock(BlockType& blockType, const GamePos& blockP)
         return true;
     }
     return false;
+}
+
+bool ChunkArray::GetBlock(BlockType& blockType, const GamePos& blockP)
+{
+    ChunkIndex chunkIndex;
+    return GetBlock(blockType, blockP, chunkIndex);
 }
 
 
@@ -2127,12 +2152,17 @@ bool ChunkArray::LoadChunk(ChunkIndex index)
                 {
                     for (int32 z = 0; z < CHUNK_Z; z++)
                     {
-                        g_chunks->blocks[index].e[x][y][z] = (BlockType)dataStart[i].m_type;
+                        BlockType& block = g_chunks->blocks[index].e[x][y][z];
+                        block = (BlockType)dataStart[i].m_type;
                         blockCount--;
                         if (blockCount == 0)
                         {
                             i++;
                             blockCount = dataStart[i].m_count;
+                        }
+                        if (g_blocks[+block].m_flags & BLOCK_COMPLEX)
+                        {
+                            g_chunks->complexBlocks[index].AddNew(block, {x, y, z});
                         }
                     }
                 }
@@ -2156,6 +2186,13 @@ void ChunkArray::Update(float dt)
     std::vector<ItemToMove> itemsToMove;
     itemsToMove.reserve(100);
 
+    {
+        ZoneScopedN("Updating Items");
+        for (ChunkIndex i = 0; i < highestActiveChunk; i++)
+        {
+            complexBlocks[i].Update(dt, p[i]);
+        }
+    }
     {
         ZoneScopedN("Updating Items");
         for (ChunkIndex i = 0; i < highestActiveChunk; i++)
@@ -2221,5 +2258,21 @@ void ChunkArray::Update(float dt)
             if (!move.erase)
                 g_chunks->itemIDs->push_back(move.itemID);
         }
+    }
+}
+
+void ChunkArray::CleanUp()
+{
+    for (ChunkIndex i = 0; i < highestActiveChunk; i++)
+    {
+        complexBlocks[i].CleanUp();
+    }
+}
+
+void ChunkArray::RenderChunkOpaqueChildren(Camera* playerCamera)
+{
+    for (ChunkIndex i = 0; i < highestActiveChunk; i++)
+    {
+        complexBlocks[i].Render(playerCamera, p[i]);
     }
 }

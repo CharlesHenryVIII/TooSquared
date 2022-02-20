@@ -24,7 +24,7 @@ public:
     InventorySlot m_slots[MAX_SLOTS] = {};
     int32 m_slotSelected = {};
 
-    uint8 Add(BlockType block, uint8 count)
+    uint8 Add(const BlockType& block, uint8 count)
     {
         assert(count);
         if (count == 0)

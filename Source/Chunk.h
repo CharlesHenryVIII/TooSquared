@@ -260,6 +260,7 @@ struct ChunkArray
     std::atomic<uint32>         flags[MAX_CHUNKS]   = {};
     std::atomic<int32>          refs[MAX_CHUNKS]    = {};
     std::vector<EntityID>       itemIDs[MAX_CHUNKS] = {};
+    ComplexBlocks               complexBlocks[MAX_CHUNKS] = {};
 
     ChunkType                   chunkType[MAX_CHUNKS] = {};
     TerrainType                 terrainType[MAX_CHUNKS] = {};
@@ -279,11 +280,14 @@ struct ChunkArray
     void RenderChunkOpaquePeel(ChunkIndex i);
     void RenderChunkTransparentPeel(ChunkIndex i);
     bool GetChunk(ChunkIndex& result, GamePos blockP);
+    bool GetBlock(BlockType& blockType, const GamePos& blockP, ChunkIndex& chunkIndex);
     bool GetBlock(BlockType& blockType, const GamePos& blockP);
     bool SaveChunk(ChunkIndex i);
     bool LoadChunk(ChunkIndex i);
     bool Init();
     void Update(float deltaTime);
+    void CleanUp();
+    void RenderChunkOpaqueChildren(Camera* playerCamera);
 };
 extern ChunkArray* g_chunks;
 
@@ -312,4 +316,5 @@ void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera, uint32 passCo
 void PreTransparentChunkRender(const Mat4& perspective, Camera* camera);
 
 int64 PositionHash(ChunkPos p);
-void SetBlock(GamePos hitBlock, BlockType setBlockType);
+void AddBlock(      const GamePos& hitBlock, const BlockType block,         const ChunkIndex chunkIndex);
+void RemoveBlock(   const GamePos& hitBlock, const BlockType currentBlock,  const ChunkIndex chunkIndex);

@@ -20,7 +20,7 @@ void SetMultipleBlockSprites(BlockType bt, uint32 v)
 }
 void SetBlockSprites()
 {
-    g_blocks[+BlockType::Empty].m_flags |= BLOCK_SEETHROUGH | BLOCK_TRANSLUCENT;
+    g_blocks[+BlockType::Empty].m_flags |= BLOCK_SEETHROUGH | BLOCK_TRANSLUCENT | BLOCK_NON_CUBOIDAL;
     g_blocks[+BlockType::Empty].m_flags &= ~(BLOCK_COLLIDABLE | BLOCK_HAS_SHADING);
 
     SetMultipleBlockSprites(BlockType::Dirt, 2);
@@ -74,7 +74,7 @@ void SetBlockSprites()
     g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Front]    = 154;
     g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Back]     = 154;
     g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Top]      = 155;
-    g_blocks[+BlockType::Belt].m_flags |= BLOCK_SEETHROUGH;
+    g_blocks[+BlockType::Belt].m_flags |= BLOCK_SEETHROUGH | BLOCK_NON_CUBOIDAL | BLOCK_COMPLEX;
 }
 
 void BlockInit()
@@ -103,6 +103,114 @@ Rect GetUVsFromIndex(uint8 index)
         .topRight = { UVs.topRight.x / float(size.x), UVs.topRight.y / float(size.y) },
     };
     return result;
+}
+
+
+
+
+//
+// Complex Blocks
+//
+void ComplexBlocks::AddNew(const BlockType block, const Vec3Int& pos)
+{
+    switch (block)
+    {
+    case BlockType::Belt:
+    {
+        auto* complex = New<Complex_Belt>(pos);
+        complex->OnConstruct();
+        break;
+    }
+    default:
+    {
+        assert(false);
+        break;
+    }
+    }
+
+}
+ComplexBlock* ComplexBlocks::GetBlock(const Vec3Int& p)
+{
+    for (int32 i = 0; i < m_blocks.size(); i++)
+    {
+        if (m_blocks[i]->m_p == p)
+            return m_blocks[i];
+    }
+    return nullptr;
+}
+void ComplexBlocks::Remove(const Vec3Int& p)
+{
+    ComplexBlock* block = GetBlock(p);
+    block->OnDestruct();
+    block->m_inUse = false;
+}
+void ComplexBlocks::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
+{
+    ComplexBlock* b = nullptr;
+    for (int32 i = 0; i < m_blocks.size(); i++)
+    {
+        b = m_blocks[i];
+        if (b->m_inUse)
+            b->Render(playerCamera, chunkPos);
+    }
+}
+void ComplexBlocks::Update(float dt, const ChunkPos& chunkPos)
+{
+    for (int32 i = 0; i < m_blocks.size(); i++)
+    {
+        m_blocks[i]->Update(dt, chunkPos);
+    }
+}
+void ComplexBlocks::CleanUp()
+{
+    std::erase_if(m_blocks,
+        [](const ComplexBlock* b)
+        {
+            return (!(b->m_inUse));
+        });
+}
+
+
+
+//
+// Complex Block Belt
+//
+void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
+{
+    
+}
+void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos) 
+{
+    GamePos chunkLocation = ToGame(chunkPos);
+    GamePos blockLocation = { chunkLocation.p.x + m_p.x, chunkLocation.p.y + m_p.y, chunkLocation.p.z + m_p.z };
+    AddBlockToRender(ToWorld(blockLocation), 1.0f, m_type);
+}
+
+void Block_PlayerPlaceAction(BlockType hitBlock)
+{
+    switch (hitBlock)
+    {
+    case BlockType::Belt:
+    {
+        
+    }
+    default:
+    {
+        
+    }
+    }
+}
+void Block_OnPlace(BlockType hitBlock)
+{
+
+}
+void Block_PlayerRemoveAction(BlockType hitBlock)
+{
+
+}
+void Block_OnRemove(BlockType hitBlock)
+{
+
 }
 
 

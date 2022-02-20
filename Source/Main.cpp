@@ -737,6 +737,8 @@ White:  Uploaded,");
                             ImGui::SameLine();
                             RADIO_BUTTON_MACRO(Slab);
                             RADIO_BUTTON_MACRO(Glass);
+                            ImGui::SameLine();
+                            RADIO_BUTTON_MACRO(Belt);
                             //Stone,
                             //Planks,
                             //StoneSlab,
@@ -850,7 +852,7 @@ White:  Uploaded,");
 
 
             {
-                ZoneScopedN("Chunk Items Update");
+                ZoneScopedN("Chunk Update");
                 g_chunks->Update(deltaTime);
             }
 
@@ -961,10 +963,12 @@ White:  Uploaded,");
                     if (validHit)
                     {
                         BlockType collectedBlockType = BlockType::Empty;
-                        if (g_chunks->GetBlock(collectedBlockType, hitBlock))
+                        ChunkIndex chunkIndex;
+                        if (g_chunks->GetBlock(collectedBlockType, hitBlock, chunkIndex))
                         {
                             assert(collectedBlockType != BlockType::Empty);
-                            SetBlock(hitBlock, BlockType::Empty);
+                            RemoveBlock(hitBlock, collectedBlockType, chunkIndex);
+                            //SetBlock(hitBlock, BlockType::Empty);
                             WorldPos itemOrigin = ToWorld(hitBlock).p + 0.5f;
 
 
@@ -983,16 +987,17 @@ White:  Uploaded,");
                         GamePos addedBlockPosition;
                         addedBlockPosition.p = { hitBlock.p.x + int32(hitNormal.x), hitBlock.p.y + int32(hitNormal.y), hitBlock.p.z + int32(hitNormal.z) };
                         BlockType addedBlockType;
-                        if (g_chunks->GetBlock(addedBlockType, addedBlockPosition))
+                        ChunkIndex chunkIndex;
+                        if (g_chunks->GetBlock(addedBlockType, addedBlockPosition, chunkIndex))
                         {
                             InventorySlot& slot = player->m_inventory.HotSlot();
 
                             if (slot.m_count)
                             {
                                 assert(slot.m_block != BlockType::Empty);
-                                SetBlock(addedBlockPosition, slot.m_block);
-                                //Why must i put this stupid uint8 in here for auto to determine the type -_-
-                                player->m_inventory.Remove(uint8(1));
+                                AddBlock(addedBlockPosition, slot.m_block, chunkIndex);
+                                //SetBlock(addedBlockPosition, slot.m_block);
+                                player->m_inventory.Remove(1);
                             }
                         }
                     }
@@ -1178,6 +1183,10 @@ White:  Uploaded,");
             {
                 ZoneScopedN("Item Deletion");
                 g_items.CleanUp();
+            }
+            {
+                ZoneScopedN("Chunk Clean Up");
+                g_chunks->CleanUp();
             }
 
 
@@ -1377,6 +1386,10 @@ White:  Uploaded,");
                         {
                             g_chunks->RenderChunkOpaquePeel(renderChunk);
                         }
+                    }
+                    {
+                        ZoneScopedN("Chunk Complex Block Render");
+                        g_chunks->RenderChunkOpaqueChildren(playerCamera);
                     }
 
                     {

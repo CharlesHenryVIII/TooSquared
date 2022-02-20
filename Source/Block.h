@@ -2,6 +2,7 @@
 
 #include "Misc.h"
 #include "Rendering.h"
+struct Camera;
 
 enum class BlockType : uint8 {
     Empty,
@@ -56,6 +57,8 @@ ENUMOPS(Face);
 #define BLOCK_COLLIDABLE                BIT(3)
 #define BLOCK_SIDES_SHOULD_BE_RENDERED  BIT(4)
 #define BLOCK_HAS_SHADING               BIT(5)
+#define BLOCK_NON_CUBOIDAL              BIT(6)
+#define BLOCK_COMPLEX                   BIT(7)
 
 const uint32 defaultSpriteLocation = 254;
 struct Block {
@@ -67,6 +70,11 @@ struct Block {
     //Material material;
 };
 
+void Block_PlayerPlaceAction(BlockType hitBlock);
+void Block_OnPlace(BlockType hitBlock);
+void Block_PlayerRemoveAction(BlockType hitBlock);
+void Block_OnRemove(BlockType hitBlock);
+
 struct BlockSampler {
     BlockType blocks[+Face::Count] = {};
     GamePos m_baseBlockP = {};
@@ -76,7 +84,60 @@ struct BlockSampler {
 
 extern Block g_blocks[+BlockType::Count];
 
-struct Camera;
+
+
+
+struct ComplexBlock {
+    BlockType   m_type;
+    Vec3Int     m_p = {};
+    bool        m_inUse = true;
+
+    virtual void Update(float dt, const ChunkPos& chunkPos) = 0;
+    virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) = 0;
+    virtual void OnDestruct() { m_inUse = false; };
+    virtual void OnConstruct() {};
+};
+
+#define COMPLEX_BELT_MAX_BLOCKS_PER_BELT 2
+struct Complex_Belt : ComplexBlock {
+    Complex_Belt(const Complex_Belt& rhs) = delete;
+    Complex_Belt& operator=(const Complex_Belt& rhs) = delete;
+    Complex_Belt() = delete;
+    Complex_Belt(const Vec3Int& p) { m_type = BlockType::Belt; m_p = p; };
+    //Cube m_collider = {};
+    BlockType m_blocks[COMPLEX_BELT_MAX_BLOCKS_PER_BELT] = {};
+
+    virtual void Update(float dt, const ChunkPos& chunkPos) override;
+    virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) override;
+    //virtual void OnDestruct() override;
+    //virtual void OnConstruct() override;
+};
+
+class ComplexBlocks {
+    std::vector<ComplexBlock*> m_blocks;
+
+    template <typename T>
+    T* New(const Vec3Int& p)
+    {
+        T* b = new T(p);
+        m_blocks.push_back(b);
+        return b;
+    }
+
+public:
+
+    ComplexBlock* GetBlock(const Vec3Int& p);
+    void CleanUp();
+    void Render(const Camera* playerCamera, const ChunkPos& chunkPos);
+    void Update(float dt, const ChunkPos& chunkPos);
+    void AddNew(const BlockType block, const Vec3Int& pos);
+    void Remove(const Vec3Int& pos);
+};
+
+
+
+
+
 
 #define DEBUG_CUBE_RENDERER 2
 //

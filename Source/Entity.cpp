@@ -468,18 +468,6 @@ void Item::Update(float dt)
 }
 
 
-void Belt::Update(float dt)
-{
-    
-}
-void Belt::Render(float dt, Camera* camera)
-{
-    
-}
-
-
-
-
 //Items
 Item* Items::Add(std::vector<EntityID>& itemIDs, BlockType blockType, const WorldPos& position, const WorldPos& destination)
 {
