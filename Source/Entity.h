@@ -36,21 +36,21 @@ struct Entity
 
     bool inUse = true;
     virtual void Init() {};
-    virtual EntityType GetType() = 0;
+    virtual EntityType GetType() const = 0;
     virtual void Update(float dt) = 0;
     virtual void Save() {};
     virtual bool Load() { return false; };
     virtual void InputUpdate(float dt, CommandHandler& commands) {};
     virtual void Render(float dt, Camera* camera) {};
-    Mat4 GetWorldMatrix();
-    WorldPos GetWorldPosition();
-    Vec3 GetForwardVector();
+    Mat4 GetWorldMatrix() const; 
+    WorldPos GetWorldPosition() const ;
+    Vec3 GetForwardVector() const;
     void EntityOnCollisionGeneral(RigidBody& rb, const Vec3& collisionPositionDelta);
     //Quat GetTrueRotation();
 };
 
 #define ENTITYBOILERPLATE(name) \
-EntityType GetType() override { return EntityType::name; }
+EntityType GetType() const override { return EntityType::name; }
 
 struct Player : public Entity
 {

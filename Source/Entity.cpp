@@ -42,7 +42,7 @@ void CameraReleaseAndCouple(Player* player, Camera* camera)
 }
 
 
-Mat4 Entity::GetWorldMatrix()
+Mat4 Entity::GetWorldMatrix() const
 {
     Mat4 result;
     Mat4 trans;
@@ -65,14 +65,14 @@ Mat4 Entity::GetWorldMatrix()
     return result;
 }
 
-WorldPos Entity::GetWorldPosition()
+WorldPos Entity::GetWorldPosition() const
 {
     WorldPos result = {};
     result.p = GetWorldMatrix().col[3].xyz;
     return result;
 }
 
-Vec3 Entity::GetForwardVector()
+Vec3 Entity::GetForwardVector() const
 {
     return (GetWorldMatrix() * GetVec4(g_forwardVector, 0.0f)).xyz;
 }

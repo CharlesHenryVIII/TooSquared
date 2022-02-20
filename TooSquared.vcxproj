@@ -178,6 +178,7 @@
     <ClCompile Include="Source\Raycast.cpp" />
     <ClCompile Include="Source\Rendering.cpp" />
     <ClCompile Include="Source\Rendering_Framebuffer.cpp" />
+    <ClCompile Include="Source\Rendering_Skybox.cpp" />
     <ClCompile Include="Source\Rendering_Texture.cpp" />
     <ClCompile Include="Source\WinInterop.cpp" />
   </ItemGroup>

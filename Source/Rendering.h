@@ -168,7 +168,6 @@ struct Renderer {
     int32 maxMSAASamples = 1;
     float maxAnisotropic;
     float currentAnisotropic = 1.0f;
-    bool usingDepthPeeling = true;
     int32 depthPeelingPasses = 3;
     int32 debug_DepthPeelingPassToDisplay = -1;
 };
@@ -189,3 +188,9 @@ void InitializeVideo();
 void CheckFrameBufferStatus();
 void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& view, const Mat4& perspective, bool depthWrite);
 void RenderAlphaCopy(Texture* source, Texture* destination);
+
+
+//Rendering_Skybox.cpp
+struct Camera;
+void RenderSkybox(const Camera* playerCamera);
+void UpdateHeavens();
