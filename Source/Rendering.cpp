@@ -396,6 +396,13 @@ void VertexBuffer::Upload(Vertex_Cube* vertices, size_t count)
     DebugPrint("Vertex Buffer Upload,size %i\n", count);
 #endif
 }
+void VertexBuffer::Upload(Vertex_Complex* vertices, size_t count)
+{
+    UploadData(vertices, sizeof(vertices[0]) * count);
+#ifdef _DEBUGPRINT
+    DebugPrint("Vertex Buffer Upload,size %i\n", count);
+#endif
+}
 
 void DepthWrite(bool status)
 {
@@ -669,6 +676,7 @@ void InitializeVideo()
     g_renderer.programs[+Shader::Chunk]             = new ShaderProgram("Source/Shaders/Chunk.vert",        "Source/Shaders/Chunk.frag");
     g_renderer.programs[+Shader::Cube]              = new ShaderProgram("Source/Shaders/Cube.vert",         "Source/Shaders/Cube.frag");
     g_renderer.programs[+Shader::Block]             = new ShaderProgram("Source/Shaders/Block.vert",        "Source/Shaders/Block.frag");
+    g_renderer.programs[+Shader::BlockComplex]      = new ShaderProgram("Source/Shaders/BlockComplex.vert", "Source/Shaders/Block.frag");
     g_renderer.programs[+Shader::BufferCopy]        = new ShaderProgram("Source/Shaders/BufferCopy.vert",   "Source/Shaders/BufferCopy.frag");
     g_renderer.programs[+Shader::BufferCopyAlpha]   = new ShaderProgram("Source/Shaders/BufferCopy.vert",   "Source/Shaders/BufferCopyAlpha.frag");
     g_renderer.programs[+Shader::Sun]               = new ShaderProgram("Source/Shaders/Sun.vert",          "Source/Shaders/Sun.frag");

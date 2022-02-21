@@ -97,6 +97,12 @@ struct Vertex_Cube {
     Vec4  color;
     Vec3  scale;
 };
+struct Vertex_Complex {
+    Vec3  p;
+    Vec2  uv;
+    Vec3  n;
+    uint8 i;
+};
 #pragma pack(pop)
 struct Vertex_UI {
     Vec2 p;
@@ -1028,6 +1034,51 @@ const VertexFace cubeVertices[6] = {
     Vec3(1.0,  1.0,  0.0 ),
     Vec3(1.0,  0.0,  0.0 ),
     Vec3(0.0,  1.0,  0.0 ),
+    Vec3(0.0,  0.0,  0.0 )
+    })
+};
+
+const VertexFace smallCubeVertices[6] = {
+    // +x
+    VertexFace( {
+    Vec3(1.0,  0.5,  1.0),
+    Vec3(1.0,  0.0,  1.0),
+    Vec3(1.0,  0.5,  0.0),
+    Vec3(1.0,  0.0,  0.0)
+    }),
+    // -x
+    VertexFace({
+    Vec3(0.0,  0.5,  0.0),
+    Vec3(0.0,  0.0,  0.0),
+    Vec3(0.0,  0.5,  1.0),
+    Vec3(0.0,  0.0,  1.0)
+    }),
+    // +y
+    VertexFace({
+    Vec3(1.0,  0.5,  1.0 ),
+    Vec3(1.0,  0.5,  0.0 ),
+    Vec3(0.0,  0.5,  1.0 ),
+    Vec3(0.0,  0.5,  0.0 )
+    }),
+    // -y
+    VertexFace({
+    Vec3(0.0,  0.0,  1.0 ),
+    Vec3(0.0,  0.0,  0.0 ),
+    Vec3(1.0,  0.0,  1.0 ),
+    Vec3(1.0,  0.0,  0.0 )
+    }),
+    // z
+    VertexFace({
+    Vec3(0.0,  0.5,  1.0 ),
+    Vec3(0.0,  0.0,  1.0 ),
+    Vec3(1.0,  0.5,  1.0 ),
+    Vec3(1.0,  0.0,  1.0 )
+    }),
+    // -z
+    VertexFace({
+    Vec3(1.0,  0.5,  0.0 ),
+    Vec3(1.0,  0.0,  0.0 ),
+    Vec3(0.0,  0.5,  0.0 ),
     Vec3(0.0,  0.0,  0.0 )
     })
 };

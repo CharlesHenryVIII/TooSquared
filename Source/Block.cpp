@@ -1,10 +1,11 @@
 #include "Block.h"
 #include "Entity.h"
 #include "Math.h"
+#include "Chunk.h"
 
 Block g_blocks[+BlockType::Count] = {};
 
-static const Vec2 faceUV[4] = {
+const Vec2 faceUV[4] = {
     Vec2{ 0, 1 },
     Vec2{ 0, 0 },
     Vec2{ 1, 1 },
@@ -106,18 +107,69 @@ Rect GetUVsFromIndex(uint8 index)
 }
 
 
+CoordinalPoint ForwardVectorToCoordinalPoint(const Vec3& forward)
+{
+    //TODO: Refactor using dotproduct or something similiar
+    CoordinalPoint result = {};
+#if 1
+    Vec2 f = Normalize( Vec2({ forward.x, forward.z }) );
+    if (f.x > 0)
+    {// not south
+        if (f.y > 0)
+        {// not west
+            if (f.x > f.y)
+                result = CoordinalPoint::North;
+            else
+                result = CoordinalPoint::East;
+        }
+        else
+        {// not east
+            if (f.x > f.y)
+                result = CoordinalPoint::North;
+            else
+                result = CoordinalPoint::West;
+        }
+    }
+    else
+    {// not north
+        if (f.y > 0)
+        {// not west
+            if (fabsf(f.x) > f.y)
+                result = CoordinalPoint::South;
+            else
+                result = CoordinalPoint::East;
+        }
+        else
+        {// not east
+            if (fabsf(f.x) > f.y)
+                result = CoordinalPoint::South;
+            else
+                result = CoordinalPoint::West;
+        }
+    }
+#else
+    Vec2 normal = { 0 , 1 };
+    Vec2 f = Normalize( Vec2({ forward.x, forward.z }) );
+    float rad = acosf(DotProduct(normal, f));
+#endif
+    return result;
+}
 
 
 //
 // Complex Blocks
 //
-void ComplexBlocks::AddNew(const BlockType block, const Vec3Int& pos)
+void ComplexBlocks::AddNew(const BlockType block, const Vec3Int& pos, const Vec3 forwardVector)
 {
     switch (block)
     {
     case BlockType::Belt:
     {
         auto* complex = New<Complex_Belt>(pos);
+        if ((forwardVector.x == forwardVector.y) && (forwardVector.z == 0.0f) && (forwardVector.z == forwardVector.x))
+            complex->m_direction = CoordinalPoint::West;
+        else
+            complex->m_direction = ForwardVectorToCoordinalPoint(forwardVector);
         complex->OnConstruct();
         break;
     }
@@ -133,7 +185,7 @@ ComplexBlock* ComplexBlocks::GetBlock(const Vec3Int& p)
 {
     for (int32 i = 0; i < m_blocks.size(); i++)
     {
-        if (m_blocks[i]->m_p == p)
+        if (m_blocks[i]->m_blockP == p)
             return m_blocks[i];
     }
     return nullptr;
@@ -179,11 +231,69 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
 {
     
 }
-void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos) 
+void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
 {
+#if 1
+
+    //WorldPos pos = ToWorld(chunkPos).p;
+    //pos.p += { float(m_blockP.x), float(m_blockP.y), float(m_blockP.z) };
+    const int32 vertexCount = 4 * +Face::Count;
+    Vertex_Complex vertices[vertexCount];
+    for (int32 f = 0; f < +Face::Count; f++)
+    {
+        for (int32 i = 0; i < 4; i++)
+        {
+            Vertex_Complex& v = vertices[f * 4 + i];
+            v.p = smallCubeVertices[f].e[i];
+            if (f == +Face::Top || f == +Face::Bot)
+                v.uv = faceUV[i];
+            else
+            {
+                v.uv = faceUV[i];
+                v.uv.y = v.uv.y / 2;
+            }
+            v.n = faceNormals[f];
+            v.i = g_blocks[+m_type].m_spriteIndices[f];
+        }
+    }
+    
+
+    VertexBuffer vertexBuffer = VertexBuffer();
+    vertexBuffer.Upload(vertices, vertexCount);
+    vertexBuffer.Bind();
+    g_renderer.chunkIB->Bind();
+    //glactiveTexture(GL_TEXTURE0);
+    //g_renderer.spriteTextArray->Bind();
+    ShaderProgram* sp = g_renderer.programs[+Shader::BlockComplex];
+
+    sp->UseShader();
+    Mat4 rot;
+    gb_mat4_rotate(&rot, {0, 1, 0}, float(m_direction) * (tau / 4.0f));
+    sp->UpdateUniformMat4("u_rotate", 1, false, rot.e);
+    Mat4 model;
+    gb_mat4_identity(&model);
+    gb_mat4_translate(&model, ToWorld(chunkPos).p + Vec3({ float(m_blockP.x), float(m_blockP.y), float(m_blockP.z) }));
+    sp->UpdateUniformMat4("u_model", 1, false, model.e);
+    sp->UpdateUniformMat4("u_perspective", 1, false, playerCamera->m_perspective.e);
+    sp->UpdateUniformMat4("u_view", 1, false, playerCamera->m_view.e);
+    sp->UpdateUniformUint8("u_passCount", 0);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex_Complex), (void*)offsetof(Vertex_Complex, p));
+    glEnableVertexArrayAttrib(g_renderer.vao, 0);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex_Complex), (void*)offsetof(Vertex_Complex, uv));
+    glEnableVertexArrayAttrib(g_renderer.vao, 1);
+    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex_Complex), (void*)offsetof(Vertex_Complex, n));
+    glEnableVertexArrayAttrib(g_renderer.vao, 2);
+    glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Complex), (void*)offsetof(Vertex_Complex, i));
+    glEnableVertexArrayAttrib(g_renderer.vao, 3);
+
+    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
+    g_renderer.numTrianglesDrawn += 36;
+#else
     GamePos chunkLocation = ToGame(chunkPos);
     GamePos blockLocation = { chunkLocation.p.x + m_p.x, chunkLocation.p.y + m_p.y, chunkLocation.p.z + m_p.z };
     AddBlockToRender(ToWorld(blockLocation), 1.0f, m_type);
+#endif
 }
 
 void Block_PlayerPlaceAction(BlockType hitBlock)

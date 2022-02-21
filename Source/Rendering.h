@@ -61,6 +61,7 @@ enum class Shader : uint32 {
     Composite,
     Cube,
     Block,
+    BlockComplex,
     BufferCopy,
     BufferCopyAlpha,
     Sun,
@@ -146,6 +147,7 @@ public:
     void Upload(Vertex_Chunk* vertices, size_t count);
     void Upload(Vertex_Block* vertices, size_t count);
     void Upload(Vertex_Cube* vertices, size_t count);
+    void Upload(Vertex_Complex* vertices, size_t count);
 };
 
 

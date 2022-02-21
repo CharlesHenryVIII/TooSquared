@@ -441,11 +441,14 @@ int main(int argc, char* argv[])
                             Vec4 vel = { player->m_rigidBody.m_vel.x, player->m_rigidBody.m_vel.y, player->m_rigidBody.m_vel.z, 0.0f };
                             Vec4 accel = { player->m_rigidBody.m_acceleration.x, player->m_rigidBody.m_acceleration.y, player->m_rigidBody.m_acceleration.z, 0.0f };
                             Vec4 rot = { player->m_transform.m_yaw, player->m_transform.m_pitch, 0.0f, 0.0f };
+                            Vec3 forward3 = player->GetForwardVector();
+                            Vec4 forward = { forward3.x, forward3.y, forward3.z, 0 };
                             GenericImGuiTable("Vel", "%+08.2f", vel.e, 4);
                             GenericImGuiTable("Accel", "%+08.2f", accel.e, 4);
                             //GenericImGuiTable("Quat",  "%+08.2f", player->m_transform.m_quat.e, 4);
                             GenericImGuiTable("Rot", "%+08.2f", rot.e, 4);
                             //GenericImGuiTable("FV",    "%+08.2f", GetVec4(player->GetForwardVector(), 0.0f).e, 4);
+                            GenericImGuiTable("for", "%+08.2f", forward.e, 4);
                             ImGui::EndTable();
                         }
                         ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -497,9 +500,12 @@ int main(int argc, char* argv[])
                             //
                             Vec4 vel = { playerCamera->m_velocity.x,      playerCamera->m_velocity.y,        playerCamera->m_velocity.z, 0.0f };
                             Vec4 rot = { playerCamera->m_transform.m_yaw, playerCamera->m_transform.m_pitch, 0.0f,                       0.0f };
+                            Vec3 forward3 = playerCamera->GetForwardVector();
+                            Vec4 forward = { forward3.x, forward3.y, forward3.z, 0 };
                             GenericImGuiTable("Vel", "%+08.2f", vel.e, 4);
                             //GenericImGuiTable("Quat",  "%+08.2f", playerCamera->m_transform.m_quat.e, 4);
                             GenericImGuiTable("Rot", "%+08.2f", rot.e, 4);
+                            GenericImGuiTable("for", "%+08.2f", forward.e, 4);
                             ImGui::EndTable();
                         }
                         ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -855,7 +861,7 @@ White:  Uploaded,");
                             if (slot.m_count)
                             {
                                 assert(slot.m_block != BlockType::Empty);
-                                AddBlock(addedBlockPosition, slot.m_block, chunkIndex);
+                                AddBlock(addedBlockPosition, slot.m_block, chunkIndex, playerCamera->GetForwardVector());
                                 player->m_inventory.Remove(1);
                             }
                         }
@@ -974,7 +980,7 @@ White:  Uploaded,");
                         pos = ToWorld(hitBlock);
                         pos.p = pos.p + 0.5f;
                         Color temp = Mint;
-                        temp.a = 0.4f;
+                        temp.a = 0.15f;
                         AddCubeToRender(pos, temp, 1.01f);
                     }
                 }

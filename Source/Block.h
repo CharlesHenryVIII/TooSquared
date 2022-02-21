@@ -86,10 +86,9 @@ extern Block g_blocks[+BlockType::Count];
 
 
 
-
 struct ComplexBlock {
     BlockType   m_type;
-    Vec3Int     m_p = {};
+    Vec3Int     m_blockP = {};
     bool        m_inUse = true;
 
     virtual void Update(float dt, const ChunkPos& chunkPos) = 0;
@@ -98,14 +97,23 @@ struct ComplexBlock {
     virtual void OnConstruct() {};
 };
 
+enum class CoordinalPoint : uint8 {
+    West,
+    North,
+    East,
+    South,
+    Count,
+};
+ENUMOPS(CoordinalPoint);
 #define COMPLEX_BELT_MAX_BLOCKS_PER_BELT 2
 struct Complex_Belt : ComplexBlock {
     Complex_Belt(const Complex_Belt& rhs) = delete;
     Complex_Belt& operator=(const Complex_Belt& rhs) = delete;
     Complex_Belt() = delete;
-    Complex_Belt(const Vec3Int& p) { m_type = BlockType::Belt; m_p = p; };
+    Complex_Belt(const Vec3Int& p) { m_type = BlockType::Belt; m_blockP = p; };
     //Cube m_collider = {};
     BlockType m_blocks[COMPLEX_BELT_MAX_BLOCKS_PER_BELT] = {};
+    CoordinalPoint m_direction = CoordinalPoint::West;
 
     virtual void Update(float dt, const ChunkPos& chunkPos) override;
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) override;
@@ -130,7 +138,7 @@ public:
     void CleanUp();
     void Render(const Camera* playerCamera, const ChunkPos& chunkPos);
     void Update(float dt, const ChunkPos& chunkPos);
-    void AddNew(const BlockType block, const Vec3Int& pos);
+    void AddNew(const BlockType block, const Vec3Int& pos, const Vec3 forwardVector);
     void Remove(const Vec3Int& pos);
 };
 

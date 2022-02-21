@@ -1901,13 +1901,13 @@ void SetBlock(GamePos hitBlock, BlockType setBlockType)
     }
 
 }
-void AddBlock(const GamePos& hitBlock, const BlockType block, const ChunkIndex chunkIndex)
+void AddBlock(const GamePos& hitBlock, const BlockType block, const ChunkIndex chunkIndex, const Vec3& forwardVector)
 {
     if (g_blocks[+block].m_flags & BLOCK_COMPLEX)
     {
         ChunkPos chunkPos;
         Vec3Int blockPos = Convert_GameToBlock(chunkPos, hitBlock);
-        g_chunks->complexBlocks[chunkIndex].AddNew(block, blockPos);
+        g_chunks->complexBlocks[chunkIndex].AddNew(block, blockPos, forwardVector);
     }
     SetBlock(hitBlock, block);
 }
@@ -2162,7 +2162,7 @@ bool ChunkArray::LoadChunk(ChunkIndex index)
                         }
                         if (g_blocks[+block].m_flags & BLOCK_COMPLEX)
                         {
-                            g_chunks->complexBlocks[index].AddNew(block, {x, y, z});
+                            g_chunks->complexBlocks[index].AddNew(block, { x, y, z }, {});
                         }
                     }
                 }
