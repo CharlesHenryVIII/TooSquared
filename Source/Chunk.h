@@ -285,13 +285,14 @@ struct ChunkArray
     bool SaveChunk(ChunkIndex i);
     bool LoadChunk(ChunkIndex i);
     bool Init();
-    void Update(float deltaTime);
+    void ItemUpdate(float deltaTime);
+    void Update(const ChunkPos& cameraPosition, int32 drawDistance, int32 fogDistance, MultiThreading& multiThreading);
     void CleanUp();
     void RenderChunkOpaqueChildren(Camera* playerCamera);
 };
 extern ChunkArray* g_chunks;
 
-struct SetBlocks : public Job {
+struct SetBlocksJob : public Job {
     ChunkIndex chunk;
     void DoThing() override;
 };

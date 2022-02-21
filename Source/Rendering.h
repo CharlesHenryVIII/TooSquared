@@ -193,4 +193,4 @@ void RenderAlphaCopy(Texture* source, Texture* destination);
 //Rendering_Skybox.cpp
 struct Camera;
 void RenderSkybox(const Camera* playerCamera);
-void UpdateHeavens();
+void UpdateHeavens(Light_Direction& sun, Light_Direction& moon, const float inGameTime);

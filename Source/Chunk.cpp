@@ -1835,7 +1835,7 @@ void ChunkArray::RenderChunkTransparentPeel(ChunkIndex i)
     }
 }
 
-void SetBlocks::DoThing()
+void SetBlocksJob::DoThing()
 {
     ZoneScopedN("Building Blocks");
     //PROFILE_SCOPE("THREAD: SetBlocks()");
@@ -2173,15 +2173,127 @@ bool ChunkArray::LoadChunk(ChunkIndex index)
     return false;
 }
 
+void ChunkArray::Update(const ChunkPos& cameraPosition, int32 drawDistance, int32 fogDistance, MultiThreading& multiThreading)
+{
+    //ZoneScopedN("Distance Check For Chunk");
+    for (int32 _drawDistance = 0; _drawDistance < drawDistance; _drawDistance++)
+    {
+        for (int32 z = -_drawDistance; z <= _drawDistance; z++)
+        {
+            for (int32 x = -_drawDistance; x <= _drawDistance; x++)
+            {
+                if (z == _drawDistance || x == _drawDistance ||
+                    z == -_drawDistance || x == -_drawDistance)
+                {
+                    ChunkPos newBlockP = { cameraPosition.p.x + x, 0, cameraPosition.p.z + z };
+                    ChunkIndex funcResult;
+                    if (!g_chunks->GetChunkFromPosition(funcResult, newBlockP))
+                    {
+                        g_chunks->AddChunk(newBlockP);
+                    }
+                }
+            }
+        }
+    }
+
+    {
+        ZoneScopedN("Chunk Delete Check");
+        if (fogDistance)
+        {
+            for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
+            {
+                if (g_chunks->flags[i] & CHUNK_FLAG_ACTIVE)
+                {
+                    if ((g_chunks->p[i].p.x > cameraPosition.p.x + fogDistance || g_chunks->p[i].p.z > cameraPosition.p.z + fogDistance) ||
+                        (g_chunks->p[i].p.x < cameraPosition.p.x - fogDistance || g_chunks->p[i].p.z < cameraPosition.p.z - fogDistance))
+                    {
+                        g_chunks->flags[i] |= CHUNK_FLAG_TODELETE;
+                    }
+                }
+            }
+        }
+    }
+
+    {
+        ZoneScopedN("Semaphore Update");
+
+        for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
+        {
+            if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
+                continue;
+
+            if (g_chunks->state[i] == ChunkArray::Unloaded)
+            {
+                SetBlocksJob* job = new SetBlocksJob();
+                job->chunk = i;
+                g_chunks->state[i] = ChunkArray::BlocksLoading;
+                g_chunks->chunksLoadingBlocks.push_back(i);
+                multiThreading.SubmitJob(job);
+            }
+        }
+    }
+
+    {
+        ZoneScopedN("Chunk Loading Vertex Loop");
+        RegionSampler regionSampler = {};
+        bool loopSucceeded = false;
+        for (auto& i : g_chunks->chunksLoadingBlocks)
+        {
+            if (g_chunks->state[i] == ChunkArray::BlocksLoaded)
+            {
+                regionSampler = {};
+                if (regionSampler.RegionGather(i))
+                {
+                    CreateVertices* job = new CreateVertices();
+                    job->region = regionSampler;
+
+                    g_chunks->state[i] = ChunkArray::VertexLoading;
+                    multiThreading.SubmitJob(job);
+                    loopSucceeded = true;
+                }
+            }
+        }
+
+        if (loopSucceeded)
+        {
+            std::erase_if(g_chunks->chunksLoadingBlocks,
+                [](ChunkIndex i)
+                {
+                    return g_chunks->state[i] == ChunkArray::VertexLoading;
+                });
+        }
+    }
+
+    {
+        ZoneScopedN("Chunk Deletion");
+        for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
+        {
+            assert(g_chunks->refs[i] >= 0);
+            if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
+                continue;
+            if (g_chunks->state[i] == ChunkArray::VertexLoading)
+                continue;
+            if (g_chunks->state[i] == ChunkArray::BlocksLoading)
+                continue;
+
+            if ((g_chunks->flags[i] & CHUNK_FLAG_TODELETE) && (g_chunks->refs[i] == 0))
+            {
+                g_chunks->ClearChunk(i);
+            }
+        }
+        while (g_running == false && multiThreading.GetJobsInFlight() > 0)
+            multiThreading.SleepThread(250);  //do nothing;
+    }
+}
+
+
 struct ItemToMove {
     ChunkIndex newChunk;
     ChunkIndex oldChunk;
     bool erase;
     EntityID itemID;
 };
-
-
-void ChunkArray::Update(float dt)
+void ChunkArray::ItemUpdate(float dt)
 {
     std::vector<ItemToMove> itemsToMove;
     itemsToMove.reserve(100);

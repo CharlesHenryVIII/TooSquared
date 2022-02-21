@@ -70,14 +70,15 @@ bool HeavensInterpolation(float& result, float time, float lo, float hi, float i
     return true;
 }
 
-void UpdateHeavens()
+void UpdateHeavens(Light_Direction& sun, Light_Direction& moon, const float inGameTime)
 {
+    //TODO: Refactor this
     ZoneScopedN("Sun/Moon Update");
 
-    float SunRotationRadians = (((g_gameData.m_currentTime - 6.0f) / 24) * tau);
+    float SunRotationRadians = (((inGameTime - 6.0f) / 24) * tau);
     float sunRotationCos = cosf(SunRotationRadians);
-    g_renderer.sunLight.d = Normalize(Vec3({ -sunRotationCos, -sinf(SunRotationRadians),  0.0f }));
-    g_renderer.moonLight.d = -g_renderer.sunLight.d;
+    sun.d = Normalize(Vec3({ -sunRotationCos, -sinf(SunRotationRadians),  0.0f }));
+    moon.d = -sun.d;
     const Color sunTransitionColor = { 220 / 255.0f,  90 / 255.0f,  40 / 255.0f, 1.0f };
     const Color moonTransitionColor = { 80 / 255.0f,  80 / 255.0f,  90 / 255.0f, 1.0f };
 
@@ -85,25 +86,25 @@ void UpdateHeavens()
     {
 
         float percentOfSun = 0;
-        if (HeavensInterpolation(percentOfSun, g_gameData.m_currentTime, 5.9f, 18.1f, 6.1f, 17.9f))
+        if (HeavensInterpolation(percentOfSun, inGameTime, 5.9f, 18.1f, 6.1f, 17.9f))
         {
-            g_renderer.sunLight.c.r = Lerp<float>(Lerp<float>(White.r, sunTransitionColor.r, 1 - percentOfSun), 0.0f, 1 - percentOfSun);
-            g_renderer.sunLight.c.g = Lerp<float>(Lerp<float>(White.g, sunTransitionColor.g, 1 - percentOfSun), 0.0f, 1 - percentOfSun);
-            g_renderer.sunLight.c.b = Lerp<float>(Lerp<float>(White.b, sunTransitionColor.b, 1 - percentOfSun), 0.0f, 1 - percentOfSun);
+            sun.c.r = Lerp<float>(Lerp<float>(White.r, sunTransitionColor.r, 1 - percentOfSun), 0.0f, 1 - percentOfSun);
+            sun.c.g = Lerp<float>(Lerp<float>(White.g, sunTransitionColor.g, 1 - percentOfSun), 0.0f, 1 - percentOfSun);
+            sun.c.b = Lerp<float>(Lerp<float>(White.b, sunTransitionColor.b, 1 - percentOfSun), 0.0f, 1 - percentOfSun);
         }
         else
-            g_renderer.sunLight.c = { 0, 0, 0 };
+            sun.c = { 0, 0, 0 };
 
         float percentOfMoon = 0;
         //percentOfMoon = 1 - percentOfSun;
-        if (HeavensInterpolation(percentOfMoon, fmodf(g_gameData.m_currentTime + 12.0f, 24.0f), 5.9f, 18.1f, 6.1f, 17.9f))
+        if (HeavensInterpolation(percentOfMoon, fmodf(inGameTime + 12.0f, 24.0f), 5.9f, 18.1f, 6.1f, 17.9f))
         {
-            g_renderer.moonLight.c.r = Lerp<float>(moonTransitionColor.r, {}, 1 - percentOfMoon);
-            g_renderer.moonLight.c.g = Lerp<float>(moonTransitionColor.g, {}, 1 - percentOfMoon);
-            g_renderer.moonLight.c.b = Lerp<float>(moonTransitionColor.b, {}, 1 - percentOfMoon);
+            moon.c.r = Lerp<float>(moonTransitionColor.r, {}, 1 - percentOfMoon);
+            moon.c.g = Lerp<float>(moonTransitionColor.g, {}, 1 - percentOfMoon);
+            moon.c.b = Lerp<float>(moonTransitionColor.b, {}, 1 - percentOfMoon);
         }
         else
-            g_renderer.moonLight.c = { 0, 0, 0 };
+            moon.c = { 0, 0, 0 };
 
     }
 }

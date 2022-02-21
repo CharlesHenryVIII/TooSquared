@@ -33,6 +33,9 @@ struct CommandHandler {
     std::unordered_map<int32, Key> keyStates;
     Mouse mouse = {};
     uint32 ID = ++s_currentID;
+    float m_sensitivity = 0.3f;
+
+    void InputUpdate();
 };
 
 //g_actions[ACTION_MAIN].held

@@ -163,7 +163,6 @@ int main(int argc, char* argv[])
     bool showIMGUI = true;
     //bool debugDraw = false;
     uint32 s_debugFlags = +DebugOptions::LookatBlock | +DebugOptions::Enabled | +DebugOptions::Reticle;
-    bool TEST_CREATE_AND_UPLOAD_CHUNKS = true;
     BlockType ItemToInventoryFromImGUIType = BlockType::Empty;
     uint32 ItemToInventoryFromImGUICount = 0;
 
@@ -348,62 +347,17 @@ int main(int argc, char* argv[])
 
             {
                 ZoneScopedN("Key Updates");
-                for (auto& key : playerInput.keyStates)
-                {
-                    if (key.second.down)
-                    {
-                        key.second.upThisFrame = false;
-                        if (key.second.downPrevFrame)
-                        {
-                            //DebugPrint("KeyDown && DownPreviousFrame: %f\n", totalTime);
-                            key.second.downThisFrame = false;
-
-                        }
-                        else
-                        {
-                            //DebugPrint("Down this frame: %f\n", totalTime);
-                            key.second.downThisFrame = true;
-                        }
-                    }
-                    else
-                    {
-                        key.second.downThisFrame = false;
-                        if (key.second.downPrevFrame)
-                        {
-                            //DebugPrint("Up This frame: %f\n", totalTime);
-                            key.second.upThisFrame = true;
-                        }
-                        else
-                        {
-                            //DebugPrint("KeyNOTDown && NotDownPreviousFrame: %f\n", totalTime);
-                            key.second.upThisFrame = false;
-                        }
-                    }
-                    key.second.downPrevFrame = key.second.down;
-                }
-                if (playerInput.mouse.wheelModifiedLastFrame)
-                {
-                    playerInput.mouse.wheelInstant.y = 0;
-                    playerInput.mouse.wheelModifiedLastFrame = false;
-                }
-                else if (playerInput.mouse.wheelInstant.y)
-                {
-                    playerInput.mouse.wheelModifiedLastFrame = true;
-                }
+                playerInput.InputUpdate();
 
                 if (playerInput.keyStates[SDLK_0].downThisFrame)
                 {
                     CameraReleaseAndCouple(player, playerCamera);
                 }
 
-
-
                 if (playerInput.keyStates[SDLK_ESCAPE].down)
                     ExitApplication(player, playerCamera);
                 if (playerInput.keyStates[SDLK_BACKQUOTE].downThisFrame)
                     s_debugFlags ^= +DebugOptions::Enabled;
-                //if (playerInput.keyStates[SDLK_c].downThisFrame)
-                //    TEST_CREATE_AND_UPLOAD_CHUNKS = !TEST_CREATE_AND_UPLOAD_CHUNKS;
                 if (playerInput.keyStates[SDLK_v].downThisFrame)
                     g_renderer.msaaEnabled = !g_renderer.msaaEnabled;
                 if (playerInput.keyStates[SDLK_m].downThisFrame)
@@ -424,10 +378,6 @@ int main(int argc, char* argv[])
                     showIMGUI = !showIMGUI;
                 }
             }
-
-            // change this value to your liking
-            float sensitivity = 0.3f;
-            playerInput.mouse.pDelta *= sensitivity;
 
             if (playerInput.keyStates[SDLK_e].downThisFrame)
             {
@@ -805,7 +755,6 @@ White:  Uploaded,");
                 }
             }
 
-
             if (g_cursorEngaged)
             {
                 ZoneScopedN("Entity Input Update");
@@ -813,20 +762,19 @@ White:  Uploaded,");
             }
             {
                 ZoneScopedN("Chunk Update");
-                g_chunks->Update(deltaTime);
+                g_chunks->ItemUpdate(deltaTime);
             }
             {
                 ZoneScopedN("Entity Update");
                 g_entityList.Update(deltaTime);
             }
 
-
             Vec3 lookTarget = {};
             WorldPos cameraRealWorldPosition = playerCamera->GetWorldPosition();
             lookTarget = cameraRealWorldPosition.p + playerCamera->GetForwardVector();
             gb_mat4_look_at(&playerCamera->m_view, cameraRealWorldPosition.p, lookTarget, playerCamera->m_up);
 
-            UpdateHeavens();
+            UpdateHeavens(g_renderer.sunLight, g_renderer.moonLight, g_gameData.m_currentTime);
 
             GamePos hitBlock;
             bool validHit = false;
@@ -881,7 +829,6 @@ White:  Uploaded,");
                         {
                             assert(collectedBlockType != BlockType::Empty);
                             RemoveBlock(hitBlock, collectedBlockType, chunkIndex);
-                            //SetBlock(hitBlock, BlockType::Empty);
                             WorldPos itemOrigin = ToWorld(hitBlock).p + 0.5f;
 
 
@@ -909,7 +856,6 @@ White:  Uploaded,");
                             {
                                 assert(slot.m_block != BlockType::Empty);
                                 AddBlock(addedBlockPosition, slot.m_block, chunkIndex);
-                                //SetBlock(addedBlockPosition, slot.m_block);
                                 player->m_inventory.Remove(1);
                             }
                         }
@@ -942,12 +888,6 @@ White:  Uploaded,");
                 }
             }
 
-            //testCamera.p = { 0, 100, 0 };
-            //gb_mat4_look_at(&g_camera.view, g_camera.p.p, testCamera.p.p, {0, 1, 0});
-
-            //Vec3 lookatPosition = { (float)sin(totalTime / 10) * 100, 100, (float)cos(totalTime / 10) * 100};
-            //gb_mat4_look_at(&testCamera.view, testCamera.p.p, lookatPosition, { 0, 1, 0 });
-
             //Near Clip and Far Clip
             gb_mat4_perspective(&playerCamera->m_perspective, 3.14f / 2, float(g_window.size.x) / g_window.size.y, 0.1f, 2000.0f);
             playerCamera->m_viewProj = playerCamera->m_perspective * playerCamera->m_view;
@@ -976,118 +916,9 @@ White:  Uploaded,");
                     break;
                 }
 
-                //ZoneScopedN("Distance Check For Chunk");
-                for (int32 _drawDistance = 0; _drawDistance < playerCamera->m_drawDistance; _drawDistance++)
-                {
-                    for (int32 z = -_drawDistance; z <= _drawDistance; z++)
-                    {
-                        for (int32 x = -_drawDistance; x <= _drawDistance; x++)
-                        {
-                            if (z == _drawDistance || x == _drawDistance ||
-                                z == -_drawDistance || x == -_drawDistance)
-                            {
-                                ChunkPos newBlockP = { chunkPos.p.x + x, 0, chunkPos.p.z + z };
-                                ChunkIndex funcResult;
-                                if (TEST_CREATE_AND_UPLOAD_CHUNKS)
-                                    if (!g_chunks->GetChunkFromPosition(funcResult, newBlockP))
-                                    {
-                                        g_chunks->AddChunk(newBlockP);
-                                    }
-                            }
-                        }
-                    }
-                }
-
-                {
-                    ZoneScopedN("Chunk Delete Check");
-                    if (playerCamera->m_fogDistance)
-                    {
-                        for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
-                        {
-                            if (g_chunks->flags[i] & CHUNK_FLAG_ACTIVE)
-                            {
-                                if (((g_chunks->p[i].p.x > chunkPos.p.x + playerCamera->m_fogDistance || g_chunks->p[i].p.z > chunkPos.p.z + playerCamera->m_fogDistance) ||
-                                    (g_chunks->p[i].p.x < chunkPos.p.x - playerCamera->m_fogDistance || g_chunks->p[i].p.z < chunkPos.p.z - playerCamera->m_fogDistance)) ||
-                                    !TEST_CREATE_AND_UPLOAD_CHUNKS)
-                                {
-                                    g_chunks->flags[i] |= CHUNK_FLAG_TODELETE;
-                                }
-                            }
-                        }
-                    }
-                }
+                g_chunks->Update(chunkPos, playerCamera->m_drawDistance, playerCamera->m_fogDistance, multiThreading);
             }
 
-            {
-                ZoneScopedN("Semaphore Update");
-
-                for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
-                {
-                    if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
-                        continue;
-
-                    if (g_chunks->state[i] == ChunkArray::Unloaded)
-                    {
-                        SetBlocks* job = new SetBlocks();
-                        job->chunk = i;
-                        g_chunks->state[i] = ChunkArray::BlocksLoading;
-                        g_chunks->chunksLoadingBlocks.push_back(i);
-                        multiThreading.SubmitJob(job);
-                    }
-                }
-            }
-
-            {
-                ZoneScopedN("Chunk Loading Vertex Loop");
-                RegionSampler regionSampler = {};
-                bool loopSucceeded = false;
-                for (auto& i : g_chunks->chunksLoadingBlocks)
-                {
-                    if (g_chunks->state[i] == ChunkArray::BlocksLoaded)
-                    {
-                        regionSampler = {};
-                        if (regionSampler.RegionGather(i))
-                        {
-                            CreateVertices* job = new CreateVertices();
-                            job->region = regionSampler;
-
-                            g_chunks->state[i] = ChunkArray::VertexLoading;
-                            multiThreading.SubmitJob(job);
-                            loopSucceeded = true;
-                        }
-                    }
-                }
-
-                if (loopSucceeded)
-                {
-                    std::erase_if(g_chunks->chunksLoadingBlocks,
-                        [](ChunkIndex i)
-                        {
-                            return g_chunks->state[i] == ChunkArray::VertexLoading;
-                        });
-                }
-            }
-
-            {
-                ZoneScopedN("Chunk Deletion");
-                for (ChunkIndex i = 0; i < g_chunks->highestActiveChunk; i++)
-                {
-                    assert(g_chunks->refs[i] >= 0);
-                    if (!(g_chunks->flags[i] & CHUNK_FLAG_ACTIVE))
-                        continue;
-                    if (g_chunks->state[i] == ChunkArray::VertexLoading)
-                        continue;
-                    if (g_chunks->state[i] == ChunkArray::BlocksLoading)
-                        continue;
-
-                    if ((g_chunks->flags[i] & CHUNK_FLAG_TODELETE) && (g_chunks->refs[i] == 0))
-                    {
-                        g_chunks->ClearChunk(i);
-                    }
-                }
-                while (g_running == false && multiThreading.GetJobsInFlight() > 0)
-                    multiThreading.SleepThread(250);  //do nothing;
-            }
 
             {
                 ZoneScopedN("Entity Deletion");
