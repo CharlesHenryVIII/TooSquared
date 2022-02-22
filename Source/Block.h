@@ -114,6 +114,7 @@ struct Complex_Belt : ComplexBlock {
     //Cube m_collider = {};
     BlockType m_blocks[COMPLEX_BELT_MAX_BLOCKS_PER_BELT] = {};
     CoordinalPoint m_direction = CoordinalPoint::West;
+    float rotationTime = 0;
 
     virtual void Update(float dt, const ChunkPos& chunkPos) override;
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) override;

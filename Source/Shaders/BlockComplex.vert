@@ -8,13 +8,16 @@ uniform mat4 u_rotate;
 uniform mat4 u_model;
 uniform mat4 u_perspective;
 uniform mat4 u_view;
+uniform mat4 u_toModel;
+uniform mat4 u_fromModel;
 
 out vec2 p_uv;
 flat out float p_depth;
 
 void main()
 {
-    gl_Position = u_perspective * u_view * u_model * u_rotate * vec4(v_position, 1.0);
+    //gl_Position = u_perspective * u_view * u_model * u_rotate * vec4(v_position, 1.0);
+    gl_Position = u_perspective * u_view * u_model * u_fromModel * u_rotate * u_toModel * vec4(v_position, 1.0);
     p_uv = v_uv;
     p_depth = v_index;
 }

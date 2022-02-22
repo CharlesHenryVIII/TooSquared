@@ -229,12 +229,18 @@ void ComplexBlocks::CleanUp()
 //
 void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
 {
-    
+    rotationTime += dt;
+    if (rotationTime >= 1.0f)
+    {
+        (*(uint8*)&m_direction)++;
+        rotationTime = 0;
+    }
+    if (+m_direction >= +CoordinalPoint::Count)
+        m_direction = {};
 }
 void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
 {
 #if 1
-
     //WorldPos pos = ToWorld(chunkPos).p;
     //pos.p += { float(m_blockP.x), float(m_blockP.y), float(m_blockP.z) };
     const int32 vertexCount = 4 * +Face::Count;
@@ -270,6 +276,12 @@ void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
     Mat4 rot;
     gb_mat4_rotate(&rot, {0, 1, 0}, float(m_direction) * (tau / 4.0f));
     sp->UpdateUniformMat4("u_rotate", 1, false, rot.e);
+    Mat4 translate;
+    gb_mat4_translate(&translate, { -0.5, 0, -0.5 });
+    sp->UpdateUniformMat4("u_toModel", 1, false, translate.e);
+    Mat4 translateBack;
+    gb_mat4_translate(&translateBack, { 0.5, 0, 0.5 });
+    sp->UpdateUniformMat4("u_fromModel", 1, false, translateBack.e);
     Mat4 model;
     gb_mat4_identity(&model);
     gb_mat4_translate(&model, ToWorld(chunkPos).p + Vec3({ float(m_blockP.x), float(m_blockP.y), float(m_blockP.z) }));
