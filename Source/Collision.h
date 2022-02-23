@@ -29,7 +29,7 @@ struct Capsule
     }
 };
 
-struct Cube 
+struct Cube
 {
     float m_length = 0;
     WorldPos m_center;

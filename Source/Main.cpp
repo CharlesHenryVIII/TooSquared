@@ -198,7 +198,6 @@ int main(int argc, char* argv[])
 
     bool g_cursorEngaged = true;
 
-    cubesToDraw.reserve(100000);
     while (g_running)
     {
         {
@@ -502,10 +501,11 @@ int main(int argc, char* argv[])
                             Vec4 rot = { playerCamera->m_transform.m_yaw, playerCamera->m_transform.m_pitch, 0.0f,                       0.0f };
                             Vec3 forward3 = playerCamera->GetForwardVector();
                             Vec4 forward = { forward3.x, forward3.y, forward3.z, 0 };
+
                             GenericImGuiTable("Vel", "%+08.2f", vel.e, 4);
                             //GenericImGuiTable("Quat",  "%+08.2f", playerCamera->m_transform.m_quat.e, 4);
                             GenericImGuiTable("Rot", "%+08.2f", rot.e, 4);
-                            GenericImGuiTable("for", "%+08.2f", forward.e, 4);
+                            GenericImGuiTable("For", "%+08.2f", forward.e, 4);
                             ImGui::EndTable();
                         }
                         ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
@@ -984,14 +984,6 @@ White:  Uploaded,");
                         AddCubeToRender(pos, temp, 1.01f);
                     }
                 }
-                ZoneScopedN("Opaque Code");
-                if (s_debugFlags & +DebugOptions::Enabled)
-                {
-                    for (WorldPos p : cubesToDraw)
-                    {
-                        AddCubeToRender(p, Red, 2.0f);
-                    }
-                }
                 if (s_debugFlags & +DebugOptions::Reticle)
                 {
                     auto draw = ImGui::GetBackgroundDrawList();
@@ -1214,9 +1206,9 @@ White:  Uploaded,");
                                     if (player->m_collider.m_collidedTriangles.size())
                                     {
                                         DrawTriangles(player->m_collider.m_collidedTriangles, Orange, playerCamera->m_view, playerCamera->m_perspective, false);
-                                        player->m_collider.m_collidedTriangles.clear();
                                     }
                                 }
+                                player->m_collider.m_collidedTriangles.clear();
                             }
                         }
 

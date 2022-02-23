@@ -303,8 +303,6 @@ struct CreateVertices : public Job {
 };
 
 
-extern std::vector<WorldPos> cubesToDraw;
-
 
 //Vec3Int Convert_GameToChunk(Vec3 p);
 GamePos Convert_ChunkIndexToGame(ChunkIndex i);

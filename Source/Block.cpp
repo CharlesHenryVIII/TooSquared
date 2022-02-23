@@ -109,49 +109,17 @@ Rect GetUVsFromIndex(uint8 index)
 
 CoordinalPoint ForwardVectorToCoordinalPoint(const Vec3& forward)
 {
-    //TODO: Refactor using dotproduct or something similiar
     CoordinalPoint result = {};
-#if 1
-    Vec2 f = Normalize( Vec2({ forward.x, forward.z }) );
-    if (f.x > 0)
-    {// not south
-        if (f.y > 0)
-        {// not west
-            if (f.x > f.y)
-                result = CoordinalPoint::North;
-            else
-                result = CoordinalPoint::East;
-        }
-        else
-        {// not east
-            if (f.x > f.y)
-                result = CoordinalPoint::North;
-            else
-                result = CoordinalPoint::West;
-        }
-    }
-    else
-    {// not north
-        if (f.y > 0)
-        {// not west
-            if (fabsf(f.x) > f.y)
-                result = CoordinalPoint::South;
-            else
-                result = CoordinalPoint::East;
-        }
-        else
-        {// not east
-            if (fabsf(f.x) > f.y)
-                result = CoordinalPoint::South;
-            else
-                result = CoordinalPoint::West;
-        }
-    }
-#else
-    Vec2 normal = { 0 , 1 };
-    Vec2 f = Normalize( Vec2({ forward.x, forward.z }) );
-    float rad = acosf(DotProduct(normal, f));
-#endif
+    if (forward.x == 0.0f && forward.z == 0.0f)
+        return result;
+    float rad = atan2f(forward.x, forward.z);
+    float deg = RadToDeg(rad);
+    deg += 180;                 //normalize negative values to be 0 to 360
+    deg = deg / 90.0f;          //Get deg in terms of quarter rotations
+    deg += 0.5;                 //Round to the nearest quarter
+    int32 coord = (int32)deg;   //Truncate
+    coord = coord % (+CoordinalPoint::Count);
+    result = (CoordinalPoint)coord;
     return result;
 }
 
@@ -262,7 +230,7 @@ void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
             v.i = g_blocks[+m_type].m_spriteIndices[f];
         }
     }
-    
+
 
     VertexBuffer vertexBuffer = VertexBuffer();
     vertexBuffer.Upload(vertices, vertexCount);
@@ -314,11 +282,11 @@ void Block_PlayerPlaceAction(BlockType hitBlock)
     {
     case BlockType::Belt:
     {
-        
+
     }
     default:
     {
-        
+
     }
     }
 }

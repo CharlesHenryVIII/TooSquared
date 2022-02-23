@@ -320,7 +320,6 @@ uint32 GetLandHeight(WorldPos chunkP, Vec3Int blockP, const NoiseParams& params,
     return Clamp<uint32>(uint32(noiseOffset + CHUNK_Y * Perlin2D(lookupLoc, params)), lowerClamp, upperClamp);
 }
 
-std::vector<WorldPos> cubesToDraw;
 thread_local Vec2 s_setBlocksCheckingPoint = {};
 int32 SortVoronoiLocations(const void* a, const void* b)
 {
@@ -490,7 +489,7 @@ void TreeGenerationProcess(uint32& height, ChunkIndex index, int32 chunkx, int32
         int32 DEBUG_TEST = 10;
 
     if (height >= HEIGHT_MAX_WATER + 1 && TreeIsAtLocation(p, perlinScale, HEIGHT_MIN_WATER) && height < CHUNK_Y)
-    {//determin what will be in the 
+    {//determin what will be in the
         int32 treeY = 0;
         for (treeY; treeY + height < CHUNK_Y && treeY < logHeight; treeY++)
         {
@@ -737,7 +736,7 @@ void ChunkArray::SetBlocks(ChunkIndex chunkIndex)
     int32 noiseOffset = 40;
     const float perlinScale = 0.01f;
 
-    //Step 1: 
+    //Step 1:
     //Generate base layer
     {
         for (uint32 x = 0; x < CHUNK_X; x++)
@@ -1551,12 +1550,12 @@ bool BlockSampler::RegionGather(GamePos base)
 //        - editing the chunk when the chunk is being rebuilt.  Need to know which temp blocks to remove
 //    2. Remove the vertices at the target location and update the vertices at that area.
 //        - issues: inserting vertices out of order would cause problems for future updates
-//        - place new vertices at the back of the 
+//        - place new vertices at the back of the
 //    3. Job priority queue with chunk generation and create these as jobs?
 //        - possibly even have other jobs early out?
 //
 //*/
-//    
+//
 //}
 
 enum class T_Vertices : uint32 {
@@ -1672,7 +1671,7 @@ void ChunkArray::BuildChunkVertices(RegionSampler region)
                             getBlockResult = (region.GetBlock(type, { xReal, yReal, zReal })) || (yReal == CHUNK_Y);
                         }
                         const Block& b = g_blocks[+type];
-                        if (((b.m_flags & BLOCK_SEETHROUGH) && (currentBlockType != type)) || (b.m_flags & BLOCK_SIDES_SHOULD_BE_RENDERED)) 
+                        if (((b.m_flags & BLOCK_SEETHROUGH) && (currentBlockType != type)) || (b.m_flags & BLOCK_SIDES_SHOULD_BE_RENDERED))
                         {
                             Vertex_Chunk f = {};
                             Vec3 offset = { static_cast<float>(x + realP.p.x), static_cast<float>(y + realP.p.y), static_cast<float>(z + realP.p.z) };

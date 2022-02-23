@@ -16,10 +16,16 @@
  * Add bit to nAndConnectedVertices for whether the shader should apply lighting effects to blocks or not
  * Rename "DoThing" to "AsyncJobFunction" or something like that
 
+&nbsp;
 
-
-
-
+ #### Complex Belts TODO:
+ * half heigh collision
+ * Saving information to disk
+ * Animation
+ * Block item interactions
+ * Bellt to belt interaction
+	
+&nbsp;
 
 #### Noise Solutions:
 Mountains:
