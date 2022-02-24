@@ -1974,6 +1974,8 @@ bool ChunkArray::Init()
     filename += "\\Chunk_Data";
     success &= CreateFolder(filename);
     return success;
+
+    ComplexBlocksInit();
 }
 
 bool ChunkArray::SaveChunk(ChunkIndex i)
@@ -2024,6 +2026,11 @@ bool ChunkArray::SaveChunk(ChunkIndex i)
 
         MultiThreading::GetInstance().SubmitJob(job);
         result = true;
+    }
+
+    if (complexBlocks[i].m_blocks.size())
+    {
+        complexBlocks[i].Save(p[i]);
     }
     return result;
 }
@@ -2090,10 +2097,8 @@ void SaveChunkJob::DoThing()
     }
     dataArray.push_back(data);
 
-    std::string filename = GetChunkSaveFilePathFromChunkPos(m_chunkData.p);/// g_gameData.m_saveFolderPath + g_gameData.m_saveFilename + "\\Chunk_Data\\" + ToString("%i_%i.wad", m_data.p.p.x, m_data.p.p.z);
-
+    std::string filename = GetChunkSaveFilePathFromChunkPos(m_chunkData.p);
     File file(filename, File::Mode::Write, true);
-
     if (file.m_handleIsValid)
     {
         bool success = true;
@@ -2112,11 +2117,12 @@ void SaveItemJob::DoThing()
 
 bool ChunkArray::LoadChunk(ChunkIndex index)
 {
+    bool success = false;
     std::string filename = GetChunkSaveFilePathFromChunkPos(g_chunks->p[index]);
     File file(filename, File::Mode::Read, false);
 
     if (!file.m_handleIsValid)
-        return false;
+        return success;
 
     file.GetData();
     if (file.m_binaryDataIsValid)
@@ -2159,17 +2165,20 @@ bool ChunkArray::LoadChunk(ChunkIndex index)
                             i++;
                             blockCount = dataStart[i].m_count;
                         }
-                        if (g_blocks[+block].m_flags & BLOCK_COMPLEX)
-                        {
-                            g_chunks->complexBlocks[index].AddNew(block, { x, y, z }, {});
-                        }
+                        //if (g_blocks[+block].m_flags & BLOCK_COMPLEX)
+                        //{
+                        //    g_chunks->complexBlocks[index].AddNew(block, { x, y, z }, {});
+                        //}
                     }
                 }
             }
-            return true;
+            success = true;
         }
     }
-    return false;
+
+    success = success && complexBlocks[index].Load(p[index]);
+
+    return success;
 }
 
 void ChunkArray::Update(const ChunkPos& cameraPosition, int32 drawDistance, int32 fogDistance, MultiThreading& multiThreading)

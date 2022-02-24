@@ -413,6 +413,10 @@ void Item::Update(float dt)
     {
         EntityOnCollisionGeneral(m_rigidBody, collisionPositionDelta);
     }
+#if _DEBUG
+    if (m_transform.m_p.p.y <= -10.0f)
+        m_transform.m_p.p.y = float(CHUNK_Y + 1);
+#endif
 
     //Mat4 result;
     //Mat4 translation;

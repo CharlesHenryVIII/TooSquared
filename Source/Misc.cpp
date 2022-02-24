@@ -51,5 +51,10 @@ std::string GetEntitySaveFilePathFromChunkPos(const ChunkPos& p)
     return GetSaveFilePathFromChunkPos("\\Entity_Data\\", p);
 }
 
+std::string GetComplexBlockSaveFilePathFromChunkPos(const ChunkPos& p)
+{
+    return GetSaveFilePathFromChunkPos("\\Block_Data\\", p);
+}
+
 GameData g_gameData = {};
 

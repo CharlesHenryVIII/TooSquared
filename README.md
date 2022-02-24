@@ -19,11 +19,11 @@
 &nbsp;
 
  #### Complex Belts TODO:
- * half heigh collision
- * Saving information to disk
- * Animation
- * Block item interactions
- * Bellt to belt interaction
+ - [ ] half height collision
+ - [X] Saving information to disk
+ - [ ] Animation
+ - [ ] Block item interactions
+ - [ ] Belt to belt interaction
 	
 &nbsp;
 

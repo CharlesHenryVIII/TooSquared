@@ -161,6 +161,8 @@ ComplexBlock* ComplexBlocks::GetBlock(const Vec3Int& p)
 void ComplexBlocks::Remove(const Vec3Int& p)
 {
     ComplexBlock* block = GetBlock(p);
+    if (block == nullptr)
+        return;
     block->OnDestruct();
     block->m_inUse = false;
 }
@@ -189,6 +191,82 @@ void ComplexBlocks::CleanUp()
             return (!(b->m_inUse));
         });
 }
+static const std::string complexBlocksSaveDir = "\\Block_Data";
+bool ComplexBlocksInit()
+{
+    bool success = true;
+    std::string filename = g_gameData.m_folderPath;
+    success &= CreateFolder(filename);
+    filename = g_gameData.m_saveFolderPath;
+    success &= CreateFolder(filename);
+    filename += g_gameData.m_saveFilename;
+    success &= CreateFolder(filename);
+    filename += complexBlocksSaveDir;
+    success &= CreateFolder(filename);
+    return success;
+}
+struct ComplexBlocksHeader {
+    uint32 m_header;
+    uint32 m_type;
+    uint32 m_version;
+};
+struct Complex_BeltData {
+    Vec3Int         m_p;
+    CoordinalPoint  m_direction;
+};
+void ComplexBlocks::Save(const ChunkPos& p)
+{
+    ComplexBlocksHeader mainHeader = {};
+    mainHeader.m_header  = SDL_FOURCC('B', 'L', 'O', 'C');
+    mainHeader.m_type    = SDL_FOURCC('C', 'P', 'L', 'X');
+    mainHeader.m_version = 1;
+
+    std::string fullFileName = GetComplexBlockSaveFilePathFromChunkPos(p);
+    assert(fullFileName.size() > 0);
+    File file = File(fullFileName, File::Mode::Write, true);
+    file.Write(&mainHeader, sizeof(ComplexBlocksHeader));
+    
+    for (int32 i = 0; i < m_blocks.size(); i++)
+    {
+        auto& block = m_blocks[i];
+        block->Save(&file);
+    }
+}
+bool ComplexBlocks::Load(const ChunkPos& p)
+{
+    ComplexBlocksHeader mainHeaderRef = {};
+    mainHeaderRef.m_header  = SDL_FOURCC('B', 'L', 'O', 'C');
+    mainHeaderRef.m_type    = SDL_FOURCC('C', 'P', 'L', 'X');
+    mainHeaderRef.m_version = 1;
+
+    //ItemDiskData itemData = {};
+
+    std::string fullFilePath = GetComplexBlockSaveFilePathFromChunkPos(p);
+    File file(fullFilePath, File::Mode::Read, false);
+    bool success = true;
+    if (file.m_handleIsValid)
+    {
+        file.GetData();
+        if (file.m_binaryDataIsValid)
+        {
+            ComplexBlocksHeader* mainHeader = (ComplexBlocksHeader*)file.m_dataBinary.data();
+            if (mainHeader->m_header == mainHeaderRef.m_header && mainHeader->m_type == mainHeaderRef.m_type && mainHeader->m_version == mainHeaderRef.m_version)
+            {
+                size_t count = (file.m_dataBinary.size() - sizeof(ComplexBlocksHeader)) / sizeof(Complex_BeltData);
+                Complex_BeltData* blockStart = (Complex_BeltData*)(mainHeader + 1);
+                for (size_t i = 0; i < count; i++)
+                {
+                    Complex_BeltData cbData = (Complex_BeltData)blockStart[i];
+                    Complex_Belt* cb = New<Complex_Belt>(cbData.m_p);
+                    cb->m_direction = cbData.m_direction;
+                }
+            }
+        }
+    }
+    else
+        success = false;
+    return success;
+}
 
 
 
@@ -197,6 +275,7 @@ void ComplexBlocks::CleanUp()
 //
 void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
 {
+#if 0
     rotationTime += dt;
     if (rotationTime >= 1.0f)
     {
@@ -205,6 +284,7 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
     }
     if (+m_direction >= +CoordinalPoint::Count)
         m_direction = {};
+#endif
 }
 void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
 {
@@ -274,6 +354,15 @@ void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
     GamePos blockLocation = { chunkLocation.p.x + m_p.x, chunkLocation.p.y + m_p.y, chunkLocation.p.z + m_p.z };
     AddBlockToRender(ToWorld(blockLocation), 1.0f, m_type);
 #endif
+}
+bool Complex_Belt::Save(File* file)
+{
+    bool success = true;
+    Complex_BeltData cbData;
+    cbData.m_p = m_blockP;
+    cbData.m_direction = m_direction;
+    success &= file->Write(&cbData, sizeof(Complex_BeltData));
+    return success;
 }
 
 void Block_PlayerPlaceAction(BlockType hitBlock)

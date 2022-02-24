@@ -93,6 +93,7 @@ struct ComplexBlock {
 
     virtual void Update(float dt, const ChunkPos& chunkPos) = 0;
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) = 0;
+    virtual bool Save(File* file) { return true; };
     virtual void OnDestruct() { m_inUse = false; };
     virtual void OnConstruct() {};
 };
@@ -118,12 +119,12 @@ struct Complex_Belt : ComplexBlock {
 
     virtual void Update(float dt, const ChunkPos& chunkPos) override;
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) override;
+    virtual bool Save(File* file);
     //virtual void OnDestruct() override;
     //virtual void OnConstruct() override;
 };
 
 class ComplexBlocks {
-    std::vector<ComplexBlock*> m_blocks;
 
     template <typename T>
     T* New(const Vec3Int& p)
@@ -135,14 +136,18 @@ class ComplexBlocks {
 
 public:
 
+    std::vector<ComplexBlock*> m_blocks;
     ComplexBlock* GetBlock(const Vec3Int& p);
     void CleanUp();
     void Render(const Camera* playerCamera, const ChunkPos& chunkPos);
     void Update(float dt, const ChunkPos& chunkPos);
     void AddNew(const BlockType block, const Vec3Int& pos, const Vec3 forwardVector);
     void Remove(const Vec3Int& pos);
+    bool Load(const ChunkPos& p);
+    void Save(const ChunkPos& p);
 };
 
+bool ComplexBlocksInit();
 
 
 

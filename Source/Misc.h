@@ -140,3 +140,4 @@ extern GameData g_gameData;
 
 std::string GetChunkSaveFilePathFromChunkPos(const ChunkPos& p);
 std::string GetEntitySaveFilePathFromChunkPos(const ChunkPos& p);
+std::string GetComplexBlockSaveFilePathFromChunkPos(const ChunkPos& p);

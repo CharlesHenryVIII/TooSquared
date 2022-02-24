@@ -114,6 +114,7 @@ int main(int argc, char* argv[])
     InitializeVideo();
     InitializeWinInterop();
     EntityInit();
+    ComplexBlocksInit();
     MultiThreading& multiThreading = MultiThreading::GetInstance();
 
     double freq = double(SDL_GetPerformanceFrequency()); //HZ
