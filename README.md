@@ -19,8 +19,8 @@
 &nbsp;
 
  #### Complex Belts TODO:
- - [ ] half height collision
- - [X] Saving information to disk
+ - [X] half height player collision
+ - [ ] half height item collision
  - [ ] Animation
  - [ ] Block item interactions
  - [ ] Belt to belt interaction

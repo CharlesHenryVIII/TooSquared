@@ -1206,7 +1206,7 @@ White:  Uploaded,");
                                 {
                                     if (player->m_collider.m_collidedTriangles.size())
                                     {
-                                        DrawTriangles(player->m_collider.m_collidedTriangles, Orange, playerCamera->m_view, playerCamera->m_perspective, false);
+                                        DrawTriangles(player->m_collider.m_collidedTriangles, Orange, playerCamera->m_view, playerCamera->m_perspective, false, pass + 1);
                                     }
                                 }
                                 player->m_collider.m_collidedTriangles.clear();

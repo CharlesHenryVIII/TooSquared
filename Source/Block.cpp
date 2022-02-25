@@ -58,7 +58,7 @@ void SetBlockSprites()
     SetMultipleBlockSprites(BlockType::HalfSlab, 5);
     g_blocks[+BlockType::HalfSlab].m_spriteIndices[+Face::Top] = 6;
     g_blocks[+BlockType::HalfSlab].m_spriteIndices[+Face::Bot] = 6;
-    g_blocks[+BlockType::HalfSlab].m_collisionHeight           = 0.5f;
+    g_blocks[+BlockType::HalfSlab].m_size.y = 0.5f;
     g_blocks[+BlockType::HalfSlab].m_flags |= BLOCK_SEETHROUGH;
 
     SetMultipleBlockSprites(BlockType::Slab, 5);
@@ -76,6 +76,7 @@ void SetBlockSprites()
     g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Back]     = 154;
     g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Top]      = 155;
     g_blocks[+BlockType::Belt].m_flags |= BLOCK_SEETHROUGH | BLOCK_NON_CUBOIDAL | BLOCK_COMPLEX;
+    g_blocks[+BlockType::Belt].m_size.y = 0.5f;
 }
 
 void BlockInit()
@@ -220,7 +221,6 @@ void ComplexBlocks::Save(const ChunkPos& p)
     mainHeader.m_header  = SDL_FOURCC('B', 'L', 'O', 'C');
     mainHeader.m_type    = SDL_FOURCC('C', 'P', 'L', 'X');
     mainHeader.m_version = 1;
-
     std::string fullFileName = GetComplexBlockSaveFilePathFromChunkPos(p);
     assert(fullFileName.size() > 0);
     File file = File(fullFileName, File::Mode::Write, true);
@@ -238,8 +238,6 @@ bool ComplexBlocks::Load(const ChunkPos& p)
     mainHeaderRef.m_header  = SDL_FOURCC('B', 'L', 'O', 'C');
     mainHeaderRef.m_type    = SDL_FOURCC('C', 'P', 'L', 'X');
     mainHeaderRef.m_version = 1;
-
-    //ItemDiskData itemData = {};
 
     std::string fullFilePath = GetComplexBlockSaveFilePathFromChunkPos(p);
     File file(fullFilePath, File::Mode::Read, false);
@@ -275,6 +273,7 @@ bool ComplexBlocks::Load(const ChunkPos& p)
 //
 void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
 {
+
 #if 0
     rotationTime += dt;
     if (rotationTime >= 1.0f)

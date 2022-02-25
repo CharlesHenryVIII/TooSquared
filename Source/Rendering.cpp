@@ -513,32 +513,33 @@ void FillIndexBuffer(IndexBuffer* ib)
 
 
 //The UV's are not setup to accept real images
-void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& view, const Mat4& perspective, bool depthWrite)
+void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& view, const Mat4& perspective, bool depthWrite, const int32 passCount)
 {
     VertexBuffer vertexBuffer;
     IndexBuffer indexBuffer;
 
-    std::vector<Vertex> vertices;
+    std::vector<Vertex_Cube> vertices;
     std::vector<uint32> indices;
     vertices.reserve(triangles.size());
    
 
     for (int32 i = 0; i < triangles.size(); i++)
     {
-        Vertex a = {};
+        Vertex_Cube a = {};
+        a.scale = { 1.0f, 1.0f, 1.0f };
         Vec3 normal = triangles[i].Normal();
 
         //this is to bring the triangle outside of the object and avoid Z-Fighting
-        Vec3 normalPlusOffset = normal * 0.03f;
+        Vec3 normalPlusOffset = normal * 0.001f;
 
         a.p = triangles[i].p0.p + normalPlusOffset;
-        a.uv = { 0.0f, 0.0f };
+        a.color = { transRed.r, transRed.g, transRed.b, transRed.a };
         vertices.push_back(a);
         a.p = triangles[i].p1.p + normalPlusOffset;
-        a.uv = { 1.0f, 0.0f };
+        a.color = { transPurple.r, transPurple.g, transPurple.b, transPurple.a };
         vertices.push_back(a);
         a.p = triangles[i].p2.p + normalPlusOffset;
-        a.uv = { 1.0f, 1.0f };
+        a.color = { transBlue.r, transBlue.g, transBlue.b, transBlue.a };
         vertices.push_back(a);
         indices.push_back(i * 3 + 0);
         indices.push_back(i * 3 + 1);
@@ -573,11 +574,14 @@ void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Ma
     sp->UpdateUniformMat4("u_model",       1, false, transform.e);
     sp->UpdateUniformVec3("u_scale",       1,        scale.e);
     sp->UpdateUniformVec4("u_color",       1,        color.e);
+    sp->UpdateUniformUint8("u_passCount", passCount);
 
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, p));
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex_Cube), (void*)offsetof(Vertex_Cube, p));
     glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, uv));
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(Vertex_Cube), (void*)offsetof(Vertex_Cube, color));
     glEnableVertexArrayAttrib(g_renderer.vao, 1);
+    //glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex_Cube), (void*)offsetof(Vertex_Cube, scale));
+    //glEnableVertexArrayAttrib(g_renderer.vao, 2);
     glDisableVertexArrayAttrib(g_renderer.vao, 2);
     glDisableVertexArrayAttrib(g_renderer.vao, 3);
 

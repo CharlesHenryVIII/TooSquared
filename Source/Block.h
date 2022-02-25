@@ -65,8 +65,9 @@ struct Block {
     uint32 m_spriteIndices[+Face::Count] = {
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation,
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation };
-    float m_collisionHeight = 1.0f;
     uint32 m_flags          = BLOCK_COLLIDABLE | BLOCK_HAS_SHADING;
+    Vec3 m_size = { 1.0f, 1.0f, 1.0f };
+
     //Material material;
 };
 

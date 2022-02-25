@@ -42,6 +42,19 @@ struct Cube
     }
 };
 
+struct Cuboid
+{
+    Vec3 m_lengths = {};
+    WorldPos m_center;
+    std::vector<Triangle> m_collidedTriangles;
+
+    void UpdateBottomMiddleLocation(const WorldPos& newLoc)
+    {
+        m_center = newLoc;
+        m_center.p += m_lengths / 2.0f;
+    }
+};
+
 struct RigidBody {
     Vec3 m_vel = {};
     Vec3 m_acceleration = {};

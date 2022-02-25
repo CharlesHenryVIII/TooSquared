@@ -33,6 +33,7 @@ const Color transRed    = { 1.00f, 0.00f, 0.00f, 0.50f };
 const Color transGreen  = { 0.00f, 1.00f, 0.00f, 0.50f };
 const Color transBlue   = { 0.00f, 0.00f, 1.00f, 0.50f };
 const Color transOrange = { 1.00f, 0.50f, 0.00f, 0.50f };
+const Color transPurple = { 1.00f, 0.00f, 1.00f, 0.50f };
 const Color lightRed    = { 1.00f, 0.00f, 0.00f, 0.25f };
 const Color lightGreen  = { 0.00f, 1.00f, 0.00f, 0.25f };
 const Color lightBlue   = { 0.00f, 0.00f, 1.00f, 0.25f };

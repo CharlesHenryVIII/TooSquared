@@ -1536,12 +1536,16 @@ bool BlockSampler::RegionGather(GamePos base)
             blocks[faceIndex] = BlockType::Empty;
         }
     }
+#if 1
+    return true;
+#else
     for (uint8 faceIndex = 0; faceIndex < +Face::Count; faceIndex++)
     {
         if (blocks[faceIndex] != BlockType::Empty)
             return true;
     }
     return false;
+#endif
 }
 
 //{

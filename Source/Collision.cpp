@@ -351,15 +351,30 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
 
     for (int32 faceIndex : faceIndices)
     {
-        
-        if (g_blocks[+blockSampler.blocks[faceIndex]].m_flags & BLOCK_COLLIDABLE)
+        Block& faceBlock = g_blocks[+blockSampler.blocks[faceIndex]];
+        Block& baseBlock = g_blocks[+blockSampler.m_baseBlockType];
+        if (faceBlock.m_flags & BLOCK_COLLIDABLE)
             continue;
+        if (baseBlock.m_flags & BLOCK_COMPLEX)
+            int32 asdf = 213124;
         for (int32 j = 0; j <= 1; j++)
         {
             triangle = {};
             for (int32 k = 0; k < 3; k++)
             {
-                triangle.e[k] = blockP.p + cubeVertices[faceIndex].e[cubeIndices[k + (j * 3)]];
+#if 1
+#if 1
+                triangle.e[k].p.x = blockP.p.x + ((1 - baseBlock.m_size.x) / 2) + (cubeVertices[faceIndex].e[cubeIndices[k + (j * 3)]].x * baseBlock.m_size.x);
+                triangle.e[k].p.y = blockP.p.y +                                  (cubeVertices[faceIndex].e[cubeIndices[k + (j * 3)]].y * baseBlock.m_size.y);
+                triangle.e[k].p.z = blockP.p.z + ((1 - baseBlock.m_size.z) / 2) + (cubeVertices[faceIndex].e[cubeIndices[k + (j * 3)]].z * baseBlock.m_size.z);
+#else
+                triangle.e[k].p.x = blockP.p.x + ((1 - faceBlock.m_size.x) / 2) + (cubeVertices[faceIndex].e[cubeIndices[k + (j * 3)]].x * faceBlock.m_size.x);
+                triangle.e[k].p.y = blockP.p.y +                                  (cubeVertices[faceIndex].e[cubeIndices[k + (j * 3)]].y * faceBlock.m_size.y);
+                triangle.e[k].p.z = blockP.p.z + ((1 - faceBlock.m_size.z) / 2) + (cubeVertices[faceIndex].e[cubeIndices[k + (j * 3)]].z * faceBlock.m_size.z);
+#endif
+#else
+                triangle.e[k] = blockP.p + (cubeVertices[faceIndex].e[cubeIndices[k + (j * 3)]];
+#endif
             }
 
             directionToTriangle = {};
@@ -427,7 +442,7 @@ bool CapsuleVsWorldBlocks(Capsule capsuleCollider, Vec3 in_positionDelta, Vec3& 
                         continue;
                     if (!(blockSampler.RegionGather(GamePos(referenceGamePosition.p + Vec3Int({ x, y, z })))))
                         continue;
-                    if (blockSampler.m_baseBlockType == BlockType::Water)
+                    if (!(g_blocks[+blockSampler.m_baseBlockType].m_flags & BLOCK_COLLIDABLE))
                         continue;
                     Vec3 outsideOfBlock = {};
                     if (CapsuleVsBlock(capsuleCollider, blockSampler, outsideOfBlock, debug_trianglesToDraw))

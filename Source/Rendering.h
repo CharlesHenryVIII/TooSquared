@@ -188,7 +188,7 @@ Rect GetRectFromSprite(uint32 i);
 void RenderUpdate(Vec2Int windowSize, float deltaTime);
 void InitializeVideo();
 void CheckFrameBufferStatus();
-void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& view, const Mat4& perspective, bool depthWrite);
+void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Mat4& view, const Mat4& perspective, bool depthWrite, const int32 passCount);
 void RenderAlphaCopy(Texture* source, Texture* destination);
 
 
