@@ -15,5 +15,5 @@ struct Ray {
 
 RaycastResult LineCast(const Ray& ray, float length);
 RaycastResult RayVsChunk(const Ray& ray, float length);
-bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal, uint8& face, Vec3& direction);
+bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal, Vec3& actualMove);
 bool RayVsAABB(const Ray& ray, const AABB& box);

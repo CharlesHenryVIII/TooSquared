@@ -19,7 +19,6 @@
 &nbsp;
 
  #### Complex Belts TODO:
- - [X] half height item collision
  - [ ] Animation
  - [ ] Block item interactions
  - [ ] Belt to belt interaction

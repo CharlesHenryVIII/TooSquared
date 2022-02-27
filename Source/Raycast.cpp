@@ -56,7 +56,7 @@ RaycastResult RayVsChunk(const Ray& ray, float length)
     return result;
 }
 
-bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal, uint8& face, Vec3& direction)
+bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec3& normal, Vec3& actualMove)
 {
     float tmin = 0;
     float tmax = FLT_MAX;
@@ -71,7 +71,6 @@ bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec
         }
         else
         {
-
             float ood = 1.0f / ray.direction.e[slab];
             float t1 = (box.min.e[slab] - ray.origin.e[slab]) * ood;
             float t2 = (box.max.e[slab] - ray.origin.e[slab]) * ood;
@@ -81,21 +80,14 @@ bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec
             }
             tmin = Max(tmin, t1);
             tmax = Min(tmax, t2);
-
             if (tmin > tmax)
                 return false;
-
         }
     }
-
-
     intersect = ray.origin + ray.direction * tmin;
     min = tmin;
 
-    Vec3 center = (box.max + box.min) / 2.0f;
-    Vec3 toNormal = intersect - center;
-    Vec3 normalized = Normalize(toNormal);
-    Vec3 normals[] = {
+    const static Vec3 normals[] = {
         {1, 0, 0},
         {-1, 0, 0},
         {0, 1, 0},
@@ -105,35 +97,37 @@ bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec
     };
 
 #if 1
-    float d[6] = {};
-    Vec3  v[6] = {};
+    Vec3  v[6];
     v[0] = { box.max.x,   intersect.y, intersect.z };
     v[1] = { box.min.x,   intersect.y, intersect.z };
     v[2] = { intersect.x, box.max.y,   intersect.z };
     v[3] = { intersect.x, box.min.y,   intersect.z };
-    v[4] = { intersect.x, intersect.y, box.max.z };
-    v[5] = { intersect.x, intersect.y, box.min.z };
-    d[0] = Distance(intersect, v[0]);
-    d[1] = Distance(intersect, v[1]);
-    d[2] = Distance(intersect, v[2]);
-    d[3] = Distance(intersect, v[3]);
-    d[4] = Distance(intersect, v[4]);
-    d[5] = Distance(intersect, v[5]);
+    v[4] = { intersect.x, intersect.y, box.max.z   };
+    v[5] = { intersect.x, intersect.y, box.min.z   };
+
+    float currentDistance = 0;
     float ClosestDistance = FLT_MAX;
     int32 closestFace = 0;
-    for (int32 i = 0; i < arrsize(d); i++)
+    for (int32 i = 0; i < arrsize(v); i++)
     {
-        if (d[i] < ClosestDistance)
+        currentDistance = Distance(intersect, v[i]);
+        if (currentDistance < ClosestDistance)
         {
-            ClosestDistance = d[i];
+            ClosestDistance = currentDistance;
             closestFace = i;
         }
     }
     normal = normals[closestFace];
-    face = closestFace;
-    direction = v[closestFace] - intersect;
 
+    //one of these will be zero maybe I just add instead of branching?
+    if (min)
+        actualMove = NormalizeZero(intersect - ray.origin) * min;
+    else
+        actualMove = v[closestFace] - intersect;
 #else
+    Vec3 center = (box.max + box.min) / 2.0f;
+    Vec3 toNormal = intersect - center;
+    Vec3 normalized = Normalize(toNormal);
     float distance = -1;
     int32 index = 0;
     for (Vec3 n : normals)
@@ -143,7 +137,6 @@ bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec
         {
             distance = newDistance;
             normal = n;
-            face = index;
         }
         index++;
     }
@@ -158,6 +151,5 @@ bool RayVsAABB(const Ray& ray, const AABB& box)
     Vec3 intersect;
     Vec3 normal;
     Vec3 direction;
-    uint8 face;
-    return RayVsAABB(ray, box, min, intersect, normal, face, direction);
+    return RayVsAABB(ray, box, min, intersect, normal, direction);
 }

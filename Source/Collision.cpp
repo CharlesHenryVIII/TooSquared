@@ -506,9 +506,6 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                 for (int32 z = minBoundsCheck.p.z; z <= maxBoundsCheck.p.z; z++)
                 {
                     blockp.p = { x, y, z };
-
-
-
                     BlockType blockCheck;
                     g_chunks->GetBlock(blockCheck, blockp);
                     if (!(g_blocks[+blockCheck].m_flags & BLOCK_COLLIDABLE))
@@ -517,35 +514,12 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                         int32 testsetset = 123123;
 
                     WorldPos worldBlockP = ToWorld(blockp);
-#if 1
-                    //Vec3 min = Vec3({ Sign(worldBlockP.p.x) * halfLengths.x, Sign(worldBlockP.p.y) * halfLengths.y, Sign(worldBlockP.p.z) * halfLengths.z });
-                    Vec3 min = Vec3({ halfLengths.x, halfLengths.y, halfLengths.z });
-                    //Vec3 min = Vec3({ collider.m_length, halfLengths.y, collider.m_length });
-                    Vec3 minkowskiMax = {};
-#if 0
-                    minkowskiMax.x = (g_blocks[+blockCheck].m_size.x + collider.m_length);
-                    minkowskiMax.y = (g_blocks[+blockCheck].m_size.y + collider.m_length);
-                    minkowskiMax.z = (g_blocks[+blockCheck].m_size.z + collider.m_length);
-#else
-                    minkowskiMax.x = (g_blocks[+blockCheck].m_size.x + halfLengths.x);
-                    minkowskiMax.y = (g_blocks[+blockCheck].m_size.y + halfLengths.y);
-                    minkowskiMax.z = (g_blocks[+blockCheck].m_size.z + halfLengths.z);
-
-                    //minkowskiMax.x = (g_blocks[+blockCheck].m_size.x + collider.m_length);
-                    //minkowskiMax.y = (g_blocks[+blockCheck].m_size.y + halfLengths.y);
-                    //minkowskiMax.z = (g_blocks[+blockCheck].m_size.z + collider.m_length);
-#endif
-                    AABB minkowskiSum = {
-                        .min = worldBlockP.p - min,
-                        .max = worldBlockP.p + minkowskiMax,
-                    };
-                    AddCubeToRender(minkowskiSum.Center(), transRed, minkowskiSum.GetLengths());
-#else
                     AABB minkowskiSum = {
                         .min = worldBlockP.p - halfLengths,
-                        .max = worldBlockP.p + Vec3( { 1.0f, 1.0f, 1.0f} ) + halfLengths,
+                        .max = worldBlockP.p + g_blocks[+blockCheck].m_size + halfLengths,
                     };
-#endif
+                    //AddCubeToRender(minkowskiSum.Center(), transRed, minkowskiSum.GetLengths());
+
                     Ray ray = {
                         .origin = collider.m_center.p,
                         .direction = Normalize(pDelta),
@@ -554,9 +528,8 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                     float distanceToMove;
                     Vec3 intersect;
                     Vec3 normal;
-                    Vec3 direction;
-                    uint8 face;
-                    if (RayVsAABB(ray, minkowskiSum, distanceToMove, intersect, normal, face, direction))
+                    Vec3 totalMovement;
+                    if (RayVsAABB(ray, minkowskiSum, distanceToMove, intersect, normal, totalMovement))
                     {
                         if ((normal.x != 0.0f && Sign(normal.x) == Sign(pDelta.x)) ||
                             (normal.y != 0.0f && Sign(normal.y) == Sign(pDelta.y)) ||
@@ -565,23 +538,15 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
 
                         if (distanceToMove < Length(pDelta))
                         {
-                            //BlockType normalFaceBlockType;
-                            //GamePos normalFaceBlockP = ToGame(WorldPos(worldBlockP.p + normal));
-                            //if (!(g_chunks->GetBlock(normalFaceBlockType, normalFaceBlockP)) || (!(g_blocks[+normalFaceBlockType].m_flags & BLOCK_COLLIDABLE)))
-                            {
-                                if (normal.x != 0)
-                                    normalMap.x = 1;
-                                else if (normal.y != 0)
-                                    normalMap.y = 1;
-                                else if (normal.z != 0)
-                                    normalMap.z = 1;
+                            if (normal.x != 0)
+                                normalMap.x = 1;
+                            else if (normal.y != 0)
+                                normalMap.y = 1;
+                            else if (normal.z != 0)
+                                normalMap.z = 1;
 
-                                Vec3 delta = NormalizeZero(intersect - collider.m_center.p) * distanceToMove;
-                                if (distanceToMove == 0)
-                                    delta = direction;
-                                collider.m_center.p += delta;
-                                result = true;
-                            }
+                            collider.m_center.p += totalMovement;
+                            result = true;
                         }
                     }
                 }
