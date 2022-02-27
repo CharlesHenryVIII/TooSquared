@@ -20,6 +20,8 @@ enum class EntityType {
     Item,
 };
 
+extern Vec3 g_itemScale;
+
 //Vec3 g_forwardVector = { 0.0f, 0.0f, -1.0f };
 //extern Vec4 g_forwardVectorRotation;
 //extern Vec4 g_forwardVectorPosition;

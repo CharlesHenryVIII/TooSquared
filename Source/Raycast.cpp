@@ -88,12 +88,12 @@ bool RayVsAABB(const Ray& ray, const AABB& box, float& min, Vec3& intersect, Vec
     min = tmin;
 
     const static Vec3 normals[] = {
-        {1, 0, 0},
-        {-1, 0, 0},
-        {0, 1, 0},
-        {0, -1, 0},
-        {0, 0, 1},
-        {0, 0, -1},
+        {  1,  0,  0 },
+        { -1,  0,  0 },
+        {  0,  1,  0 },
+        {  0, -1,  0 },
+        {  0,  0,  1 },
+        {  0,  0, -1 },
     };
 
 #if 1

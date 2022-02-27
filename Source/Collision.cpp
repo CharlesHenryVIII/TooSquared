@@ -483,18 +483,15 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
 
     while (in_positionDelta.x != 0.0f || in_positionDelta.y != 0.0f || in_positionDelta.z != 0.0f)
     {
-        //at 100 items this took 8.27ms
         Vec3 pDelta = {};
         float clampVal = 0.3f;
         pDelta.x = Clamp(in_positionDelta.x, -clampVal, clampVal);
         pDelta.y = Clamp(in_positionDelta.y, -clampVal, clampVal);
         pDelta.z = Clamp(in_positionDelta.z, -clampVal, clampVal);
-
         in_positionDelta -= pDelta;
 
         Vec3 halfLengths = { collider.m_length / 2.0f, collider.m_length / 2.0f, collider.m_length / 2.0f };
         GamePos blockp = {};
-
         WorldPos minBoundsCheckWorld = collider.m_center.p - halfLengths;
         WorldPos maxBoundsCheckWorld = collider.m_center.p + halfLengths;
         GamePos minBoundsCheck = ToGame(minBoundsCheckWorld);

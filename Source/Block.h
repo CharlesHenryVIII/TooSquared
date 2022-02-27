@@ -59,6 +59,7 @@ ENUMOPS(Face);
 #define BLOCK_HAS_SHADING               BIT(5)
 #define BLOCK_NON_CUBOIDAL              BIT(6)
 #define BLOCK_COMPLEX                   BIT(7)
+#define BLOCK_INTERACT                  BIT(8)
 
 const uint32 defaultSpriteLocation = 254;
 struct Block {
@@ -92,9 +93,11 @@ struct ComplexBlock {
     Vec3Int     m_blockP = {};
     bool        m_inUse = true;
 
+    WorldPos GetWorldPos(const ChunkPos& chunkPos) const;
     virtual void Update(float dt, const ChunkPos& chunkPos) = 0;
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) = 0;
     virtual bool Save(File* file) { return true; };
+    virtual bool OnInteract(const BlockType& blockType, uint8& count) { return true; };
     virtual void OnDestruct() { m_inUse = false; };
     virtual void OnConstruct() {};
 };
@@ -107,6 +110,10 @@ enum class CoordinalPoint : uint8 {
     Count,
 };
 ENUMOPS(CoordinalPoint);
+struct Complex_Belt_Child_Block {
+    BlockType m_type = BlockType::Empty;
+    float m_position;
+};
 #define COMPLEX_BELT_MAX_BLOCKS_PER_BELT 2
 struct Complex_Belt : ComplexBlock {
     Complex_Belt(const Complex_Belt& rhs) = delete;
@@ -114,11 +121,13 @@ struct Complex_Belt : ComplexBlock {
     Complex_Belt() = delete;
     Complex_Belt(const Vec3Int& p) { m_type = BlockType::Belt; m_blockP = p; };
     //Cube m_collider = {};
-    BlockType m_blocks[COMPLEX_BELT_MAX_BLOCKS_PER_BELT] = {};
+    Complex_Belt_Child_Block m_blocks[COMPLEX_BELT_MAX_BLOCKS_PER_BELT] = {};
     CoordinalPoint m_direction = CoordinalPoint::West;
+    float m_beltSpeed = 1.0f;
     float rotationTime = 0;
 
     virtual void Update(float dt, const ChunkPos& chunkPos) override;
+    bool OnInteract(const BlockType& blockType, uint8& count) override;
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) override;
     virtual bool Save(File* file);
     //virtual void OnDestruct() override;

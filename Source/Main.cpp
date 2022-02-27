@@ -826,30 +826,65 @@ White:  Uploaded,");
 
                 //Block Deletion and Placement
                 //TODO: Optimize to update corners (max 4 chunks)
-                if (playerInput.keyStates[SDL_BUTTON_RIGHT].downThisFrame)
+                if (validHit)
                 {
-                    if (validHit)
+                    BlockType hitBlockType = BlockType::Empty;
+                    ChunkIndex chunkIndex;
+                    if (g_chunks->GetBlock(hitBlockType, hitBlock, chunkIndex))
                     {
-                        BlockType collectedBlockType = BlockType::Empty;
-                        ChunkIndex chunkIndex;
-                        if (g_chunks->GetBlock(collectedBlockType, hitBlock, chunkIndex))
+                        if (g_blocks[+hitBlockType].m_flags & BLOCK_INTERACT)
                         {
-                            assert(collectedBlockType != BlockType::Empty);
-                            RemoveBlock(hitBlock, collectedBlockType, chunkIndex);
+                            const float PAD = 0.0f;
+                            ImGuiIO& io = ImGui::GetIO();
+                            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+                            ImVec2 window_pos;
+                            window_pos.x = viewport->WorkSize.x / 2 + PAD;
+                            window_pos.y = viewport->WorkSize.y / 2 + PAD - 30;
+                            ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, { 0.5f, 0.5f });
+
+                            ImGui::SetNextWindowBgAlpha(0.25f);
+                            ImGuiWindowFlags windowFlags =
+                                ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs |
+                                ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollWithMouse;
+
+
+                            std::string interactText = "'F' To Interact";
+                            if (ImGui::Begin(interactText.c_str(), nullptr, windowFlags))
+                            {
+                                ImGui::Text(interactText.c_str());
+                            }
+                            ImGui::End();
+                        }
+                    }
+                    if (playerInput.keyStates[SDLK_f].downThisFrame)
+                    {
+                        if (hitBlockType != BlockType::Empty)
+                        {
+                            ChunkPos chunkP = {};
+                            ComplexBlock* CB = g_chunks->complexBlocks[chunkIndex].GetBlock(Convert_GameToBlock(chunkP, hitBlock));
+                            assert(chunkP.p == g_chunks->p[chunkIndex].p);
+                            if (CB)
+                            {
+                                CB->OnInteract(player->m_inventory.HotSlot().m_block, player->m_inventory.HotSlot().m_count);
+                            }
+                        }
+                    }
+                    else if (playerInput.keyStates[SDL_BUTTON_RIGHT].downThisFrame)
+                    {
+                        if (hitBlockType != BlockType::Empty)
+                        {
+                            RemoveBlock(hitBlock, hitBlockType, chunkIndex);
                             WorldPos itemOrigin = ToWorld(hitBlock).p + 0.5f;
 
 
                             ChunkIndex chunkIndex;
                             if (g_chunks->GetChunkFromPosition(chunkIndex, ToChunk(itemOrigin)))
                             {
-                                g_items.Add(g_chunks->itemIDs[chunkIndex], collectedBlockType, itemOrigin, playerCamera->GetWorldPosition());
+                                g_items.Add(g_chunks->itemIDs[chunkIndex], hitBlockType, itemOrigin, playerCamera->GetWorldPosition());
                             }
                         }
                     }
-                }
-                else if (playerInput.keyStates[SDL_BUTTON_LEFT].downThisFrame)
-                {
-                    if (validHit)
+                    else if (playerInput.keyStates[SDL_BUTTON_LEFT].downThisFrame)
                     {
                         GamePos addedBlockPosition;
                         addedBlockPosition.p = { hitBlock.p.x + int32(hitNormal.x), hitBlock.p.y + int32(hitNormal.y), hitBlock.p.z + int32(hitNormal.z) };
@@ -979,7 +1014,7 @@ White:  Uploaded,");
                         g_framebuffers->m_transparent.Bind();
                         WorldPos pos;
                         pos = ToWorld(hitBlock);
-                        pos.p = pos.p + 0.5f;
+                        pos.p = pos.p + (g_blocks[+BlockType::Grass].m_size / 2.0f);
                         Color temp = Mint;
                         temp.a = 0.15f;
                         AddCubeToRender(pos, temp, 1.01f);

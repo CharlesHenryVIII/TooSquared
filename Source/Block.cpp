@@ -75,7 +75,7 @@ void SetBlockSprites()
     g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Front]    = 154;
     g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Back]     = 154;
     g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Top]      = 155;
-    g_blocks[+BlockType::Belt].m_flags |= BLOCK_SEETHROUGH | BLOCK_NON_CUBOIDAL | BLOCK_COMPLEX;
+    g_blocks[+BlockType::Belt].m_flags |= BLOCK_SEETHROUGH | BLOCK_NON_CUBOIDAL | BLOCK_COMPLEX | BLOCK_INTERACT;
     g_blocks[+BlockType::Belt].m_size.y = 0.5f;
 }
 
@@ -266,6 +266,13 @@ bool ComplexBlocks::Load(const ChunkPos& p)
     return success;
 }
 
+WorldPos ComplexBlock::GetWorldPos(const ChunkPos& chunkPos) const
+{
+    WorldPos result;
+    result.p = ToWorld(chunkPos).p;
+    result.p += Vec3({ float(m_blockP.x), float(m_blockP.y), float(m_blockP.z) });
+    return result;
+}
 
 
 //
@@ -273,6 +280,20 @@ bool ComplexBlocks::Load(const ChunkPos& p)
 //
 void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
 {
+    for (int32 i = 0; i < COMPLEX_BELT_MAX_BLOCKS_PER_BELT; i++)
+    {
+        const BlockType childType = m_blocks[i].m_type;
+        if (childType != BlockType::Empty)
+        {
+            WorldPos childBlockSize;
+            childBlockSize.p = HadamardProduct(g_blocks[+childType].m_size, g_itemScale);
+
+            WorldPos p = GetWorldPos(chunkPos);
+            p.p.y += g_blocks[+BlockType::Belt].m_size.y;
+            p.p.y += childBlockSize.p.y / 2;//size of miniature blocks
+            AddBlockToRender(p, g_itemScale, childType);
+        }
+    }
 
 #if 0
     rotationTime += dt;
@@ -362,6 +383,22 @@ bool Complex_Belt::Save(File* file)
     cbData.m_direction = m_direction;
     success &= file->Write(&cbData, sizeof(Complex_BeltData));
     return success;
+}
+
+bool Complex_Belt::OnInteract(const BlockType& blockType, uint8& count)
+{
+    bool result = false;
+    if (count)
+    {
+        if (m_blocks[0].m_type == BlockType::Empty && m_blocks[1].m_type == BlockType::Empty)
+        {
+            m_blocks[0].m_type = blockType;
+            m_blocks[0].m_position = 0.0f;
+            --count;
+            result = true;
+        }
+    }
+    return result;
 }
 
 void Block_PlayerPlaceAction(BlockType hitBlock)

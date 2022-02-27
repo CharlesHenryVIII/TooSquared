@@ -5,6 +5,7 @@
 
 Entitys g_entityList;
 Items   g_items;
+Vec3    g_itemScale = { 0.4f, 0.4f, 0.4f };
 
 Vec3 g_forwardVector = { 0.0f, 0.0f, -1.0f };
 //Vec4 g_forwardVectorRotation = { 0, 0, -1, 0.0f };
@@ -428,12 +429,12 @@ void Item::Update(float dt)
     //gb_mat4_translate(&translation, m_transform.m_p.p); // based on m_transform being the center
     //result = translation * rotation;
     //result = translation;
-    const float scale = 0.5f;
+    //const float scale = 0.5f;
     //AddCubeToRender(m_transform.m_p, White, scale);
     //WorldPos positionWithScale = m_transform.m_p;
     //positionWithScale.p.y += ((scale - 1) / 2);
     //AddBlockToRender(positionWithScale, scale, m_type);
-    AddBlockToRender(m_transform.m_p, scale, m_type);
+    AddBlockToRender(m_transform.m_p, g_itemScale, m_type);
 #else
 
     //Old Simple Movement Code
@@ -481,7 +482,7 @@ Item* Items::Add(std::vector<EntityID>& itemIDs, BlockType blockType, const Worl
     if (newItem.m_transform.m_p.p.y < 0)
         newItem.m_transform.m_p.p.y = ToWorld(GamePos({ 0, CHUNK_Y, 0})).p.y;
     newItem.m_type = blockType;
-    newItem.m_collider.m_length = 0.5f;
+    newItem.m_collider.m_length = g_itemScale.x;
     newItem.m_lootable = false;
     newItem.m_lootableCountDown = 1.0f; //seconds
 
