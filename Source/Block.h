@@ -87,7 +87,7 @@ struct BlockSampler {
 extern Block g_blocks[+BlockType::Count];
 
 
-
+struct Inventory;
 struct ComplexBlock {
     BlockType   m_type;
     Vec3Int     m_blockP = {};
@@ -97,7 +97,7 @@ struct ComplexBlock {
     virtual void Update(float dt, const ChunkPos& chunkPos) = 0;
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) = 0;
     virtual bool Save(File* file) { return true; };
-    virtual bool OnInteract(const BlockType& blockType, uint8& count) { return true; };
+    virtual bool OnInteract(Inventory& inventory) { return true; };
     virtual void OnDestruct() { m_inUse = false; };
     virtual void OnConstruct() {};
 };
@@ -123,11 +123,11 @@ struct Complex_Belt : ComplexBlock {
     //Cube m_collider = {};
     Complex_Belt_Child_Block m_blocks[COMPLEX_BELT_MAX_BLOCKS_PER_BELT] = {};
     CoordinalPoint m_direction = CoordinalPoint::West;
-    float m_beltSpeed = 1.0f;
+    float m_beltSpeed = 0.1f; //units per second, 0.1 would take 10 seconds to go 1 block
     float rotationTime = 0;
 
     virtual void Update(float dt, const ChunkPos& chunkPos) override;
-    bool OnInteract(const BlockType& blockType, uint8& count) override;
+    bool OnInteract(Inventory& inventory) override;
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) override;
     virtual bool Save(File* file);
     //virtual void OnDestruct() override;

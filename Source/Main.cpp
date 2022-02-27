@@ -865,7 +865,7 @@ White:  Uploaded,");
                             assert(chunkP.p == g_chunks->p[chunkIndex].p);
                             if (CB)
                             {
-                                CB->OnInteract(player->m_inventory.HotSlot().m_block, player->m_inventory.HotSlot().m_count);
+                                CB->OnInteract(player->m_inventory);
                             }
                         }
                     }

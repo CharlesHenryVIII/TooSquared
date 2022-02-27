@@ -274,6 +274,12 @@ WorldPos ComplexBlock::GetWorldPos(const ChunkPos& chunkPos) const
     return result;
 }
 
+const Vec2 s_coordinalDirections[] = {
+    {  0, -1 },
+    {  1,  0 },
+    {  0,  1 },
+    { -1,  0 },
+};
 
 //
 // Complex Block Belt
@@ -283,14 +289,53 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
     for (int32 i = 0; i < COMPLEX_BELT_MAX_BLOCKS_PER_BELT; i++)
     {
         const BlockType childType = m_blocks[i].m_type;
+        float& distance = m_blocks[i].m_position;
         if (childType != BlockType::Empty)
         {
+            if (distance < 1.0f)
+            {
+                distance += (m_beltSpeed * dt);
+                distance = Min(distance, 1.0f);
+            }
+
+            WorldPos p = GetWorldPos(chunkPos);
+#if 0
+            Vec4 childBlockRelativeToParent = {};
+            childBlockRelativeToParent.x = distance;
+            childBlockRelativeToParent.z = 0.5f;
+            childBlockRelativeToParent.w = 1.0f;
+            float rads = (1.0f - (float(+m_direction) / +CoordinalPoint::Count)) * tau;
+            Mat4 rot;
+            gb_mat4_rotate(&rot, {0, 1, 0}, rads);
+            Vec4 finalPosition = rot * childBlockRelativeToParent;
+#else
+            if (s_coordinalDirections[+m_direction].x)
+            {
+                p.p.z += (g_blocks[+BlockType::Belt].m_size.z / 2.0f);
+                float amount = distance;
+                if (s_coordinalDirections[+m_direction].x > 0)
+                    amount = 1 - amount;
+                p.p.x += amount;
+            }
+            else
+            {
+                p.p.x += (g_blocks[+BlockType::Belt].m_size.x / 2.0f);
+                float amount = distance;
+                if (s_coordinalDirections[+m_direction].y < 0)
+                    amount = 1 - amount;
+                p.p.z += amount;
+            }
+#endif
+
+
+            //Render child blocks
             WorldPos childBlockSize;
             childBlockSize.p = HadamardProduct(g_blocks[+childType].m_size, g_itemScale);
 
-            WorldPos p = GetWorldPos(chunkPos);
             p.p.y += g_blocks[+BlockType::Belt].m_size.y;
             p.p.y += childBlockSize.p.y / 2;//size of miniature blocks
+            //p.p.x += finalPosition.x;
+            //p.p.z += finalPosition.z;
             AddBlockToRender(p, g_itemScale, childType);
         }
     }
@@ -385,49 +430,21 @@ bool Complex_Belt::Save(File* file)
     return success;
 }
 
-bool Complex_Belt::OnInteract(const BlockType& blockType, uint8& count)
+bool Complex_Belt::OnInteract(Inventory& inventory)
 {
     bool result = false;
-    if (count)
+    BlockType type = inventory.HotSlot().m_block;
+    if (m_blocks[0].m_type == BlockType::Empty && m_blocks[1].m_type == BlockType::Empty)
     {
-        if (m_blocks[0].m_type == BlockType::Empty && m_blocks[1].m_type == BlockType::Empty)
+        if (inventory.Remove(1))
         {
-            m_blocks[0].m_type = blockType;
+            m_blocks[0].m_type = type;
             m_blocks[0].m_position = 0.0f;
-            --count;
             result = true;
         }
     }
     return result;
 }
-
-void Block_PlayerPlaceAction(BlockType hitBlock)
-{
-    switch (hitBlock)
-    {
-    case BlockType::Belt:
-    {
-
-    }
-    default:
-    {
-
-    }
-    }
-}
-void Block_OnPlace(BlockType hitBlock)
-{
-
-}
-void Block_PlayerRemoveAction(BlockType hitBlock)
-{
-
-}
-void Block_OnRemove(BlockType hitBlock)
-{
-
-}
-
 
 
 
