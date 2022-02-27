@@ -510,8 +510,6 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
                     g_chunks->GetBlock(blockCheck, blockp);
                     if (!(g_blocks[+blockCheck].m_flags & BLOCK_COLLIDABLE))
                         continue;
-                    if (g_blocks[+blockCheck].m_flags & BLOCK_COMPLEX)
-                        int32 testsetset = 123123;
 
                     WorldPos worldBlockP = ToWorld(blockp);
                     AABB minkowskiSum = {
@@ -555,11 +553,9 @@ bool CubeVsWorldBlocks(Cube collider, Vec3 in_positionDelta, Vec3& out_positionD
 
     }
 
-//#if RAY_ATTEMPT != 0
     if (result)
     {
         out_positionDelta = HadamardProduct((collider.m_center.p - boxOrigin.p) - deltaPOrigin, normalMap);
     }
-//#endif
     return result;
 }
