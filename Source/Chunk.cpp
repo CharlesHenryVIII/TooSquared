@@ -1845,6 +1845,7 @@ void SetBlocksJob::DoThing()
     g_chunks->refs[chunk]++;
     if (!g_chunks->LoadChunk(chunk))
         g_chunks->SetBlocks(chunk);
+    g_chunks->complexBlocks[chunk].Load(g_chunks->p[chunk]);
     g_items.Load(g_chunks->itemIDs[chunk], g_chunks->p[chunk]);
     g_chunks->state[chunk] = ChunkArray::BlocksLoaded;
     g_chunks->refs[chunk]--;
@@ -1920,7 +1921,7 @@ void RemoveBlock(const GamePos& hitBlock, const BlockType currentBlock, const Ch
     {
         ChunkPos chunkPos;
         Vec3Int blockPos = Convert_GameToBlock(chunkPos, hitBlock);
-        g_chunks->complexBlocks[chunkIndex].Remove(blockPos);
+        g_chunks->complexBlocks[chunkIndex].Remove(chunkPos, blockPos);
     }
     SetBlock(hitBlock, BlockType::Empty);
 }
@@ -2169,19 +2170,12 @@ bool ChunkArray::LoadChunk(ChunkIndex index)
                             i++;
                             blockCount = dataStart[i].m_count;
                         }
-                        //if (g_blocks[+block].m_flags & BLOCK_COMPLEX)
-                        //{
-                        //    g_chunks->complexBlocks[index].AddNew(block, { x, y, z }, {});
-                        //}
                     }
                 }
             }
             success = true;
         }
     }
-
-    success = success && complexBlocks[index].Load(p[index]);
-
     return success;
 }
 

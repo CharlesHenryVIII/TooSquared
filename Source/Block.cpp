@@ -159,12 +159,12 @@ ComplexBlock* ComplexBlocks::GetBlock(const Vec3Int& p)
     }
     return nullptr;
 }
-void ComplexBlocks::Remove(const Vec3Int& p)
+void ComplexBlocks::Remove(const ChunkPos& chunkP, const Vec3Int& p)
 {
     ComplexBlock* block = GetBlock(p);
     if (block == nullptr)
         return;
-    block->OnDestruct();
+    block->OnDestruct(chunkP);
     block->m_inUse = false;
 }
 void ComplexBlocks::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
@@ -215,12 +215,77 @@ struct Complex_BeltData {
     Vec3Int         m_p;
     CoordinalPoint  m_direction;
 };
+#pragma pack(push, 1)
+struct Complex_BeltData_V2 {
+    Vec3Int         m_p = {};
+    CoordinalPoint  m_direction = {};
+    Complex_Belt_Child_Block m_blocks[COMPLEX_BELT_MAX_BLOCKS_PER_BELT] = {};
+};
+#pragma pack(pop)
+
+void ConvertComplexBlockSaveFile(std::string filePath, uint32 fromVersion, uint32 toVersion)
+{
+    if (fromVersion == 1 && toVersion == 2)
+    {
+        {
+            File readFile(filePath, File::Mode::Read, false);
+            if (readFile.m_handleIsValid)
+            {
+                readFile.GetData();
+                if (readFile.m_binaryDataIsValid)
+                {
+                    {
+                        File writeFile(filePath + ".part", File::Mode::Write, true);
+                        writeFile.Write(readFile.m_dataBinary.data(), readFile.m_dataBinary.size());
+                    }
+                }
+            }
+        }
+        {
+            File readFile(filePath + ".part", File::Mode::Read, true);
+            if (readFile.m_handleIsValid)
+            {
+                readFile.GetData();
+                if (readFile.m_binaryDataIsValid)
+                {
+                    {
+                        File writeFile(filePath, File::Mode::Write, true);
+
+                        ComplexBlocksHeader mainHeaderRef = {};
+                        mainHeaderRef.m_header = SDL_FOURCC('B', 'L', 'O', 'C');
+                        mainHeaderRef.m_type = SDL_FOURCC('C', 'P', 'L', 'X');
+                        mainHeaderRef.m_version = 2;
+                        writeFile.Write(&mainHeaderRef, sizeof(ComplexBlocksHeader));
+
+                        ComplexBlocksHeader* mainHeader = (ComplexBlocksHeader*)readFile.m_dataBinary.data();
+                        size_t count = (readFile.m_dataBinary.size() - sizeof(ComplexBlocksHeader)) / sizeof(Complex_BeltData);
+                        Complex_BeltData* blockStart = (Complex_BeltData*)(mainHeader + 1);
+                        for (size_t i = 0; i < count; i++)
+                        {
+                            Complex_BeltData bd1 = blockStart[i];
+                            Complex_BeltData_V2 bd2;
+                            bd2.m_direction = bd1.m_direction;
+                            bd2.m_p = bd1.m_p;
+                            bd2.m_blocks;
+
+                            writeFile.Write(&bd2, sizeof(Complex_BeltData_V2));
+                        }
+                    }
+                }
+            }
+            readFile.Delete();
+        }
+    }
+    else
+        assert(false);
+}
+
 void ComplexBlocks::Save(const ChunkPos& p)
 {
     ComplexBlocksHeader mainHeader = {};
     mainHeader.m_header  = SDL_FOURCC('B', 'L', 'O', 'C');
     mainHeader.m_type    = SDL_FOURCC('C', 'P', 'L', 'X');
-    mainHeader.m_version = 1;
+    mainHeader.m_version = 2;
     std::string fullFileName = GetComplexBlockSaveFilePathFromChunkPos(p);
     assert(fullFileName.size() > 0);
     File file = File(fullFileName, File::Mode::Write, true);
@@ -237,35 +302,60 @@ bool ComplexBlocks::Load(const ChunkPos& p)
     ComplexBlocksHeader mainHeaderRef = {};
     mainHeaderRef.m_header  = SDL_FOURCC('B', 'L', 'O', 'C');
     mainHeaderRef.m_type    = SDL_FOURCC('C', 'P', 'L', 'X');
-    mainHeaderRef.m_version = 1;
+    mainHeaderRef.m_version = 2;
 
     std::string fullFilePath = GetComplexBlockSaveFilePathFromChunkPos(p);
-    File file(fullFilePath, File::Mode::Read, false);
-    bool success = true;
-    if (file.m_handleIsValid)
+    bool success = false;
+    bool needsReload = true;
+    uint32 versionDiscrepency = 0;
+    while (needsReload)
     {
-        file.GetData();
-        if (file.m_binaryDataIsValid)
         {
-            ComplexBlocksHeader* mainHeader = (ComplexBlocksHeader*)file.m_dataBinary.data();
-            if (mainHeader->m_header == mainHeaderRef.m_header && mainHeader->m_type == mainHeaderRef.m_type && mainHeader->m_version == mainHeaderRef.m_version)
+            File file(fullFilePath, File::Mode::Read, false);
+            if (file.m_handleIsValid)
             {
-                size_t count = (file.m_dataBinary.size() - sizeof(ComplexBlocksHeader)) / sizeof(Complex_BeltData);
-                Complex_BeltData* blockStart = (Complex_BeltData*)(mainHeader + 1);
-                for (size_t i = 0; i < count; i++)
+                file.GetData();
+                if (file.m_binaryDataIsValid)
                 {
-                    Complex_BeltData cbData = (Complex_BeltData)blockStart[i];
-                    Complex_Belt* cb = New<Complex_Belt>(cbData.m_p);
-                    cb->m_direction = cbData.m_direction;
+                    ComplexBlocksHeader* mainHeader = (ComplexBlocksHeader*)file.m_dataBinary.data();
+                    if (mainHeader->m_header == mainHeaderRef.m_header && mainHeader->m_type == mainHeaderRef.m_type)
+                    {
+                        if (mainHeader->m_version == mainHeaderRef.m_version)
+                        {
+                            size_t count = (file.m_dataBinary.size() - sizeof(ComplexBlocksHeader)) / sizeof(Complex_BeltData_V2);
+                            Complex_BeltData_V2* blockStart = (Complex_BeltData_V2*)(mainHeader + 1);
+                            for (size_t i = 0; i < count; i++)
+                            {
+                                Complex_BeltData_V2 cbData = (Complex_BeltData_V2)blockStart[i];
+                                Complex_Belt* cb = New<Complex_Belt>(cbData.m_p);
+                                cb->m_direction = cbData.m_direction;
+                                for (int32 i = 0; i < COMPLEX_BELT_MAX_BLOCKS_PER_BELT; i++)
+                                    cb->m_blocks[i] = cbData.m_blocks[i];
+                            }
+                            success = true;
+                            needsReload = false;
+                        }
+                        else
+                        {
+                            versionDiscrepency = mainHeaderRef.m_version - mainHeader->m_version;
+                        }
+                    }
                 }
             }
+            else
+            {
+                needsReload = false;
+            }
+        }
+        if (!success && versionDiscrepency)
+        {
+            ConvertComplexBlockSaveFile(fullFilePath, mainHeaderRef.m_version - versionDiscrepency, mainHeaderRef.m_version);
+            needsReload = true;
         }
     }
-    else
-        success = false;
+
     return success;
 }
-
 WorldPos ComplexBlock::GetWorldPos(const ChunkPos& chunkPos) const
 {
     WorldPos result;
@@ -351,6 +441,23 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
         m_direction = {};
 #endif
 }
+void Complex_Belt::OnDestruct(const ChunkPos& chunkP)
+{
+    for (int32 i = 0; i < COMPLEX_BELT_MAX_BLOCKS_PER_BELT; i++)
+    {
+        if (m_blocks[i].m_type != BlockType::Empty)
+        {
+            ChunkIndex chunkIndex;
+            if (g_chunks->GetChunk(chunkIndex, ToGame(chunkP)))
+            {
+                WorldPos blockWorldP = GetWorldPos(chunkP);
+                WorldPos dest = blockWorldP.p;
+                dest.p.y += 1.0f;
+                g_items.Add(g_chunks->itemIDs[chunkIndex], m_blocks[i].m_type, blockWorldP, dest);
+            }
+        }
+    }
+}
 void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
 {
 #if 1
@@ -423,10 +530,12 @@ void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
 bool Complex_Belt::Save(File* file)
 {
     bool success = true;
-    Complex_BeltData cbData;
+    Complex_BeltData_V2 cbData;
     cbData.m_p = m_blockP;
     cbData.m_direction = m_direction;
-    success &= file->Write(&cbData, sizeof(Complex_BeltData));
+    for (int32 i = 0; i < COMPLEX_BELT_MAX_BLOCKS_PER_BELT; i++)
+        cbData.m_blocks[i] = m_blocks[i];
+    success &= file->Write(&cbData, sizeof(Complex_BeltData_V2));
     return success;
 }
 

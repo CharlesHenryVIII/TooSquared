@@ -72,11 +72,6 @@ struct Block {
     //Material material;
 };
 
-void Block_PlayerPlaceAction(BlockType hitBlock);
-void Block_OnPlace(BlockType hitBlock);
-void Block_PlayerRemoveAction(BlockType hitBlock);
-void Block_OnRemove(BlockType hitBlock);
-
 struct BlockSampler {
     BlockType blocks[+Face::Count] = {};
     GamePos m_baseBlockP = {};
@@ -98,7 +93,7 @@ struct ComplexBlock {
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) = 0;
     virtual bool Save(File* file) { return true; };
     virtual bool OnInteract(Inventory& inventory) { return true; };
-    virtual void OnDestruct() { m_inUse = false; };
+    virtual void OnDestruct(const ChunkPos& chunkP) { m_inUse = false; };
     virtual void OnConstruct() {};
 };
 
@@ -110,10 +105,12 @@ enum class CoordinalPoint : uint8 {
     Count,
 };
 ENUMOPS(CoordinalPoint);
+#pragma pack(push, 1)
 struct Complex_Belt_Child_Block {
     BlockType m_type = BlockType::Empty;
     float m_position;
 };
+#pragma pack(pop)
 #define COMPLEX_BELT_MAX_BLOCKS_PER_BELT 2
 struct Complex_Belt : ComplexBlock {
     Complex_Belt(const Complex_Belt& rhs) = delete;
@@ -128,10 +125,9 @@ struct Complex_Belt : ComplexBlock {
 
     virtual void Update(float dt, const ChunkPos& chunkPos) override;
     bool OnInteract(Inventory& inventory) override;
+    virtual void OnDestruct(const ChunkPos& chunkP) override;
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) override;
     virtual bool Save(File* file);
-    //virtual void OnDestruct() override;
-    //virtual void OnConstruct() override;
 };
 
 class ComplexBlocks {
@@ -152,7 +148,7 @@ public:
     void Render(const Camera* playerCamera, const ChunkPos& chunkPos);
     void Update(float dt, const ChunkPos& chunkPos);
     void AddNew(const BlockType block, const Vec3Int& pos, const Vec3 forwardVector);
-    void Remove(const Vec3Int& pos);
+    void Remove(const ChunkPos& chunkP, const Vec3Int& pos);
     bool Load(const ChunkPos& p);
     void Save(const ChunkPos& p);
 };

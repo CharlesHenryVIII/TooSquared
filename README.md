@@ -20,9 +20,8 @@
 
  #### Complex Belts TODO:
  - [ ] Animation
- - [X] Block item interactions
- - [X] Render block with rotations
  - [ ] Belt to belt interaction
+ - [X] Save and Load child blocks
 	
 &nbsp;
 
