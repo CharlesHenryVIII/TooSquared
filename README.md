@@ -21,7 +21,6 @@
  #### Complex Belts TODO:
  - [ ] Animation
  - [ ] Belt to belt interaction
- - [X] Save and Load child blocks
 	
 &nbsp;
 
