@@ -19,8 +19,14 @@
 &nbsp;
 
  #### Complex Belts TODO:
- - [ ] Animation
+ - [X] half height player collision
+ - [X] half height item collision
+ - [X] Saving information to disk
+ - [X] Save and Load child blocks
+ - [X] Render block with rotations
+ - [X] Block item interactions
  - [X] Belt to belt interaction
+ - [X] Animation
 	
 &nbsp;
 

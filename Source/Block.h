@@ -129,6 +129,7 @@ public:
     float rotationTime = 0;
     int32 m_blockCount = 0;
     bool m_running = false;
+    float m_beltPosition = 0.0f;
 
     virtual void Update(float dt, const ChunkPos& chunkPos) override;
     bool OnInteract(Inventory& inventory) override;

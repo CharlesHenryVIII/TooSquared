@@ -499,6 +499,9 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
         }
     }
 
+    if (m_running)
+        m_beltPosition = fmodf(m_beltPosition + m_beltSpeed * dt, 1.0f);
+
     for (int32 i = 0; i < COMPLEX_BELT_MAX_BLOCKS_PER_BELT; i++)
     {
         const BlockType childType = m_blocks[i].m_type;
@@ -548,6 +551,7 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
                             {
                                 m_blocks[j].m_position -= diff;
                             }
+                            m_beltPosition -= diff;
                         }
                         m_running = false;
                     }
@@ -689,19 +693,34 @@ void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
     Vertex_Complex vertices[vertexCount];
     for (int32 f = 0; f < +Face::Count; f++)
     {
-        for (int32 i = 0; i < 4; i++)
+        if (f == +Face::Top)
         {
-            Vertex_Complex& v = vertices[f * 4 + i];
-            v.p = smallCubeVertices[f].e[i];
-            if (f == +Face::Top || f == +Face::Bot)
-                v.uv = faceUV[i];
-            else
+            for (int32 i = 0; i < 4; i++)
             {
+                Vertex_Complex& v = vertices[f * 4 + i];
+                v.p  = smallCubeVertices[f].e[i];
                 v.uv = faceUV[i];
-                v.uv.y = v.uv.y / 2;
+                v.uv.y += m_beltPosition;
+                v.n  = faceNormals[f];
+                v.i  = g_blocks[+m_type].m_spriteIndices[f];
             }
-            v.n = faceNormals[f];
-            v.i = g_blocks[+m_type].m_spriteIndices[f];
+        }
+        else
+        {
+            for (int32 i = 0; i < 4; i++)
+            {
+                Vertex_Complex& v = vertices[f * 4 + i];
+                v.p = smallCubeVertices[f].e[i];
+                if (f == +Face::Bot)
+                    v.uv = faceUV[i];
+                else
+                {
+                    v.uv = faceUV[i];
+                    v.uv.y = v.uv.y / 2;
+                }
+                v.n = faceNormals[f];
+                v.i = g_blocks[+m_type].m_spriteIndices[f];
+            }
         }
     }
 
