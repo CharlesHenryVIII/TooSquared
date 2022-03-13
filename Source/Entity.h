@@ -160,6 +160,7 @@ struct Items
     std::vector<Item> m_items;
 
     Item* Add(std::vector<EntityID>& itemIDs, BlockType blockType, const WorldPos& position, const WorldPos& destination);
+    Item* Add(std::vector<EntityID>& itemIDs, BlockType blockType, const WorldPos& position);
     Item* Get(EntityID ID);
     void Update(float deltaTime);
     bool Save(const std::vector<ItemDiskData>& diskData, const ChunkPos& p);

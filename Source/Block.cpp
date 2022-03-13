@@ -363,6 +363,13 @@ WorldPos ComplexBlock::GetWorldPos(const ChunkPos& chunkPos) const
     result.p += Vec3({ float(m_blockP.x), float(m_blockP.y), float(m_blockP.z) });
     return result;
 }
+GamePos ComplexBlock::GetGamePos(const ChunkPos& chunkPos) const
+{
+    GamePos result;
+    result.p = ToGame(chunkPos).p;
+    result.p += m_blockP;
+    return result;
+}
 
 const Vec2 s_coordinalDirections[] = {
     {  0, -1 },
@@ -374,59 +381,192 @@ const Vec2 s_coordinalDirections[] = {
 //
 // Complex Block Belt
 //
+WorldPos Complex_Belt::GetChildBlockPos(const int32 index, const WorldPos& parentPos)
+{
+    WorldPos p = parentPos;
+    float& distance = m_blocks[index].m_position;
+#if 0
+    Vec4 childBlockRelativeToParent = {};
+    childBlockRelativeToParent.x = distance;
+    childBlockRelativeToParent.z = 0.5f;
+    childBlockRelativeToParent.w = 1.0f;
+    float rads = (1.0f - (float(+m_direction) / +CoordinalPoint::Count)) * tau;
+    Mat4 rot;
+    gb_mat4_rotate(&rot, { 0, 1, 0 }, rads);
+    Vec4 finalPosition = rot * childBlockRelativeToParent;
+#else
+
+    if (s_coordinalDirections[+m_direction].x)
+    {
+        p.p.z += (g_blocks[+BlockType::Belt].m_size.z / 2.0f);
+        float amount = distance;
+        if (s_coordinalDirections[+m_direction].x > 0)
+            amount = 1 - amount;
+        p.p.x += amount;
+    }
+    else
+    {
+        p.p.x += (g_blocks[+BlockType::Belt].m_size.x / 2.0f);
+        float amount = distance;
+        if (s_coordinalDirections[+m_direction].y < 0)
+            amount = 1 - amount;
+        p.p.z += amount;
+    }
+#endif
+    WorldPos childBlockSize;
+    childBlockSize.p = HadamardProduct(g_blocks[+m_blocks[index].m_type].m_size, g_itemScale);
+    p.p.y += g_blocks[+BlockType::Belt].m_size.y;
+    p.p.y += childBlockSize.p.y / 2;//size of miniature blocks
+    return p;
+}
+Complex_Belt* Complex_Belt::GetNextBelt(const ChunkPos& chunkPos)
+{
+    GamePos nextBlockP = GetGamePos(chunkPos);
+    nextBlockP.p += Vec3Int(int32(-1 * s_coordinalDirections[+m_direction].x), 0, int32(s_coordinalDirections[+m_direction].y));
+    //fetch next block
+    BlockType nextBlock;
+    ChunkIndex nextChunkIndex;
+    if (g_chunks->GetBlock(nextBlock, nextBlockP, nextChunkIndex) && nextBlock == BlockType::Belt)
+    {
+        ChunkPos c;
+        Vec3Int nextBlockPos = Convert_GameToBlock(c, nextBlockP);
+        ComplexBlock* cb = g_chunks->complexBlocks[nextChunkIndex].GetBlock(nextBlockPos);
+        Complex_Belt* belt = (Complex_Belt*)cb;
+        return belt;
+    }
+    return nullptr;
+}
+void Complex_Belt::RemoveFinalBlock()
+{
+    for (int32 i = COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 2; i >= 0; i--)
+    {
+        m_blocks[i + 1] = m_blocks[i];
+    }
+    m_blocks[0] = {};
+    m_blockCount--;
+    if (m_blockCount == 0)
+        m_running = false;
+}
 void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
 {
+    const WorldPos worldP = GetWorldPos(chunkPos);
+    const Complex_Belt_Child_Block& finalBlock = m_blocks[COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 1];
+    assert(m_blockCount >= 0);
+    assert(m_blockCount >= 0 && m_blockCount <= COMPLEX_BELT_MAX_BLOCKS_PER_BELT);
+    assert((m_blockCount > 0) == (finalBlock.m_type != BlockType::Empty));
+    if (!m_blockCount)
+    { 
+        assert(m_running == false);
+        m_running = false;
+        return;
+    }
+
+    //Determine if the belt should be runnning
+    //Useless????
+    float maxDistance = 0.0f;
+    bool nextBeltHasSpace = false;
+    Complex_Belt* nextBelt = nullptr;
+    nextBelt = GetNextBelt(chunkPos);
+    int32 index;
+    if (nextBelt && nextBelt->CanAddBlock_Beginning(index, finalBlock.m_type))
+    {
+        //there is a next belt
+        maxDistance = 1.0f;
+        nextBeltHasSpace = true;
+    }
+    else
+    {
+        maxDistance = g_blocks[+BlockType::Belt].m_size.x - (g_itemScale.x * g_blocks[+finalBlock.m_type].m_size.x) / 2.0f;
+    }
+    //if (m_running && finalBlock.m_position >= maxDistance)
+    //{
+    //    m_running = false;
+    //}
+    if (!m_running)
+    {
+        if (finalBlock.m_position < maxDistance)
+            m_running = true;
+        else if (finalBlock.m_position > maxDistance)
+        {
+            assert(false); //am I ever hitting this?
+            ChunkIndex chunkIndex;
+            WorldPos p = GetChildBlockPos(COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 1, worldP);
+            assert(g_chunks->GetChunk(chunkIndex, ToGame(p)));
+            WorldPos d = p;
+            d.p.y += 1.0f;
+            g_items.Add(g_chunks->itemIDs[chunkIndex], finalBlock.m_type, p, d);
+            RemoveFinalBlock();
+        }
+    }
+
     for (int32 i = 0; i < COMPLEX_BELT_MAX_BLOCKS_PER_BELT; i++)
     {
         const BlockType childType = m_blocks[i].m_type;
         float& distance = m_blocks[i].m_position;
         if (childType != BlockType::Empty)
         {
-            if (distance < 1.0f)
+            if (m_running)
             {
                 distance += (m_beltSpeed * dt);
-                distance = Min(distance, 1.0f);
+                //float maxDistance = (1.0f / float(COMPLEX_BELT_MAX_BLOCKS_PER_BELT)) * (i + 1) - ((g_itemScale.x * g_blocks[+childType].m_size.x) / 2.0f);
+                if (distance >= maxDistance)
+                {
+                    assert(i == COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 1);
+                    if (nextBeltHasSpace && m_blockCount > 0)
+                    {
+                        //m_running = true;
+                        WorldPos p = GetChildBlockPos(i, worldP);
+                        AddBlockToRender(p, g_itemScale, childType);
+                        
+                        if (!nextBelt->AddBlock_Beginning(childType))
+                        {
+                            ChunkIndex chunkIndex;
+                            assert(g_chunks->GetChunk(chunkIndex, ToGame(p)));
+                            g_items.Add(g_chunks->itemIDs[chunkIndex], childType, p);
+                        }
+                        assert(COMPLEX_BELT_MAX_BLOCKS_PER_BELT >= 2);
+                        RemoveFinalBlock();
+                        
+                        break;
+                    }
+                    else
+                    {
+                        float diff = distance - maxDistance;
+                        if (diff > m_beltSpeed * dt)
+                        {
+                            ChunkIndex chunkIndex;
+                            WorldPos p = GetChildBlockPos(COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 1, worldP);
+                            assert(g_chunks->GetChunk(chunkIndex, ToGame(p)));
+                            WorldPos d = p;
+                            d.p.y += 1.0f;
+                            g_items.Add(g_chunks->itemIDs[chunkIndex], finalBlock.m_type, p, d);
+                            RemoveFinalBlock();
+                        }
+                        for (int32 j = 0; j < COMPLEX_BELT_MAX_BLOCKS_PER_BELT; j++)
+                        {
+                            if (m_blocks[j].m_type != BlockType::Empty)
+                            {
+                                m_blocks[j].m_position -= diff;
+                            }
+                        }
+                        m_running = false;
+                    }
+                }
             }
 
-            WorldPos p = GetWorldPos(chunkPos);
-#if 0
-            Vec4 childBlockRelativeToParent = {};
-            childBlockRelativeToParent.x = distance;
-            childBlockRelativeToParent.z = 0.5f;
-            childBlockRelativeToParent.w = 1.0f;
-            float rads = (1.0f - (float(+m_direction) / +CoordinalPoint::Count)) * tau;
-            Mat4 rot;
-            gb_mat4_rotate(&rot, {0, 1, 0}, rads);
-            Vec4 finalPosition = rot * childBlockRelativeToParent;
-#else
-            if (s_coordinalDirections[+m_direction].x)
-            {
-                p.p.z += (g_blocks[+BlockType::Belt].m_size.z / 2.0f);
-                float amount = distance;
-                if (s_coordinalDirections[+m_direction].x > 0)
-                    amount = 1 - amount;
-                p.p.x += amount;
-            }
-            else
-            {
-                p.p.x += (g_blocks[+BlockType::Belt].m_size.x / 2.0f);
-                float amount = distance;
-                if (s_coordinalDirections[+m_direction].y < 0)
-                    amount = 1 - amount;
-                p.p.z += amount;
-            }
-#endif
-
-
-            //Render child blocks
-            WorldPos childBlockSize;
-            childBlockSize.p = HadamardProduct(g_blocks[+childType].m_size, g_itemScale);
-
-            p.p.y += g_blocks[+BlockType::Belt].m_size.y;
-            p.p.y += childBlockSize.p.y / 2;//size of miniature blocks
-            //p.p.x += finalPosition.x;
-            //p.p.z += finalPosition.z;
+            WorldPos p = GetChildBlockPos(i, worldP);
             AddBlockToRender(p, g_itemScale, childType);
+
+            if (distance == 1.0f)
+            {
+                assert(false);
+                Complex_Belt* belt = GetNextBelt(chunkPos);
+                if (belt && belt->AddBlock_Beginning(childType))
+                {
+                    m_blocks[i] = {};
+                    m_blockCount--;
+                }
+            }
         }
     }
 
@@ -441,8 +581,84 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
         m_direction = {};
 #endif
 }
+bool Complex_Belt::CanAddBlock_Beginning(int32& index, const BlockType child) const
+{
+    for (int32 i = COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 1; i >= 0; i--)
+    {
+        if (m_blocks[i].m_type == BlockType::Empty)
+        {
+            if ((i + 1) < COMPLEX_BELT_MAX_BLOCKS_PER_BELT)
+            {
+                // TODO: Impliment rototion into calculation so longer blocks in one dimension will fill the belt
+                float offset = (g_itemScale.x * g_blocks[+m_blocks[i + 1].m_type].m_size.x) / 2;
+                if (m_blocks[i + 1].m_position > offset)
+                {
+                    index = i;
+                    return true;
+                }
+            }
+            else
+            {
+                index = i;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+bool Complex_Belt::AddBlock_Beginning(BlockType child)
+{
+    int32 index;
+    if (CanAddBlock_Beginning(index, child))
+    {
+        m_blocks[index].m_type = child;
+        m_blocks[index].m_position = 0;
+        m_blockCount++;
+        return true;
+    }
+    return false;
+}
+bool Complex_Belt::CanAddBlock_Offset(int32& index, const BlockType child) const
+{
+    for (int32 i = COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 1; i >= 0; i--)
+    {
+        if (m_blocks[i].m_type == BlockType::Empty)
+        {
+            // TODO: Impliment rototion into calculation so longer blocks in one dimension will fill the belt
+            float newBlockSize          = (g_itemScale.x * g_blocks[+child].m_size.x);
+            float currentBlockOffset    = (g_itemScale.x * g_blocks[+m_blocks[i].m_type].m_size.x) / 2.0f;
+            if (i + 1 < COMPLEX_BELT_MAX_BLOCKS_PER_BELT)
+            {
+                if (m_blocks[i + 1].m_position >= (newBlockSize + currentBlockOffset)) 
+                {
+                    index = i;
+                    return true;
+                }
+            }
+            else
+            {
+                index = i;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+bool Complex_Belt::AddBlock_Offset(BlockType child)
+{
+    int32 index;
+    if (CanAddBlock_Offset(index, child))
+    {
+        m_blocks[index].m_type = child;
+        m_blocks[index].m_position = (g_itemScale.x * g_blocks[+child].m_size.x) / 2;
+        m_blockCount++;
+        return true;
+    }
+    return false;
+}
 void Complex_Belt::OnDestruct(const ChunkPos& chunkP)
 {
+    WorldPos worldPos = GetWorldPos(chunkP);
     for (int32 i = 0; i < COMPLEX_BELT_MAX_BLOCKS_PER_BELT; i++)
     {
         if (m_blocks[i].m_type != BlockType::Empty)
@@ -450,10 +666,16 @@ void Complex_Belt::OnDestruct(const ChunkPos& chunkP)
             ChunkIndex chunkIndex;
             if (g_chunks->GetChunk(chunkIndex, ToGame(chunkP)))
             {
+#if 1
+                WorldPos blockWorldP = GetChildBlockPos(i, worldPos);
+#else
                 WorldPos blockWorldP = GetWorldPos(chunkP);
                 WorldPos dest = blockWorldP.p;
                 dest.p.y += 1.0f;
-                g_items.Add(g_chunks->itemIDs[chunkIndex], m_blocks[i].m_type, blockWorldP, dest);
+#endif
+
+                g_items.Add(g_chunks->itemIDs[chunkIndex], m_blocks[i].m_type, blockWorldP);
+                m_blockCount--;
             }
         }
     }
@@ -543,6 +765,13 @@ bool Complex_Belt::OnInteract(Inventory& inventory)
 {
     bool result = false;
     BlockType type = inventory.HotSlot().m_block;
+#if 1
+    if (AddBlock_Offset(type))
+    {
+        inventory.Remove(1);
+        result = true;
+    }
+#else
     if (m_blocks[0].m_type == BlockType::Empty && m_blocks[1].m_type == BlockType::Empty)
     {
         if (inventory.Remove(1))
@@ -552,6 +781,7 @@ bool Complex_Belt::OnInteract(Inventory& inventory)
             result = true;
         }
     }
+#endif
     return result;
 }
 

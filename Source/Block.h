@@ -89,6 +89,7 @@ struct ComplexBlock {
     bool        m_inUse = true;
 
     WorldPos GetWorldPos(const ChunkPos& chunkPos) const;
+    GamePos GetGamePos(const ChunkPos& chunkPos) const;
     virtual void Update(float dt, const ChunkPos& chunkPos) = 0;
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) = 0;
     virtual bool Save(File* file) { return true; };
@@ -117,17 +118,29 @@ struct Complex_Belt : ComplexBlock {
     Complex_Belt& operator=(const Complex_Belt& rhs) = delete;
     Complex_Belt() = delete;
     Complex_Belt(const Vec3Int& p) { m_type = BlockType::Belt; m_blockP = p; };
-    //Cube m_collider = {};
+
+private:
+    void RemoveFinalBlock();
+
+public:
     Complex_Belt_Child_Block m_blocks[COMPLEX_BELT_MAX_BLOCKS_PER_BELT] = {};
     CoordinalPoint m_direction = CoordinalPoint::West;
     float m_beltSpeed = 0.1f; //units per second, 0.1 would take 10 seconds to go 1 block
     float rotationTime = 0;
+    int32 m_blockCount = 0;
+    bool m_running = false;
 
     virtual void Update(float dt, const ChunkPos& chunkPos) override;
     bool OnInteract(Inventory& inventory) override;
     virtual void OnDestruct(const ChunkPos& chunkP) override;
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) override;
     virtual bool Save(File* file);
+    bool AddBlock_Beginning(BlockType child);
+    bool AddBlock_Offset(BlockType child);
+    WorldPos GetChildBlockPos(const int32 index, const WorldPos& parentPos);
+    Complex_Belt* GetNextBelt(const ChunkPos& chunkPos);
+    bool CanAddBlock_Beginning(int32& index, const BlockType child) const;
+    bool CanAddBlock_Offset(int32& index, const BlockType child) const;
 };
 
 class ComplexBlocks {

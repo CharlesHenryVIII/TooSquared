@@ -20,7 +20,7 @@
 
  #### Complex Belts TODO:
  - [ ] Animation
- - [ ] Belt to belt interaction
+ - [X] Belt to belt interaction
 	
 &nbsp;
 

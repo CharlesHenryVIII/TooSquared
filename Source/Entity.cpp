@@ -476,6 +476,21 @@ void Item::Update(float dt)
 //Items
 Item* Items::Add(std::vector<EntityID>& itemIDs, BlockType blockType, const WorldPos& position, const WorldPos& destination)
 {
+    Item* item = Add(itemIDs, blockType, position);
+    Vec3 velocity = destination.p - position.p;
+    if (!(velocity == Vec3({})))
+    {
+        velocity = NormalizeZero(velocity);
+        velocity.y = 0.5f;
+        velocity = NormalizeZero(velocity);
+        velocity *= 8;
+    }
+    item->m_rigidBody.m_vel = velocity;
+    return item;
+}
+
+Item* Items::Add(std::vector<EntityID>& itemIDs, BlockType blockType, const WorldPos& position)
+{
     Item newItem;
     assert(blockType != BlockType::Empty);
     newItem.m_transform.m_p.p = position.p;
@@ -485,19 +500,10 @@ Item* Items::Add(std::vector<EntityID>& itemIDs, BlockType blockType, const Worl
     newItem.m_collider.m_length = g_itemScale.x;
     newItem.m_lootable = false;
     newItem.m_lootableCountDown = 1.0f; //seconds
-
-    Vec3 velocity = destination.p - position.p;
-    if (!(velocity == Vec3({})))
-    {
-        velocity = NormalizeZero(velocity);
-        velocity.y = 0.5f;
-        velocity = NormalizeZero(velocity);
-        velocity *= 8;
-    }
-    itemIDs.push_back(newItem.m_ID);
-
-    newItem.m_rigidBody.m_vel = velocity;
+    newItem.m_rigidBody.m_vel = {};
     newItem.m_rigidBody.m_terminalVel = { 100.0f, 100.0f, 100.0f };
+
+    itemIDs.push_back(newItem.m_ID);
     std::lock_guard<std::mutex> lock(m_listVectorMutex);
     if (g_blocks[+blockType].m_flags & BLOCK_TRANSLUCENT)
     {
