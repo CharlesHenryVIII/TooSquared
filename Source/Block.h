@@ -93,9 +93,14 @@ struct ComplexBlock {
     virtual void Update(float dt, const ChunkPos& chunkPos) = 0;
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) = 0;
     virtual bool Save(File* file) { return true; };
-    virtual bool OnInteract(Inventory& inventory) { return true; };
-    virtual void OnDestruct(const ChunkPos& chunkP) { m_inUse = false; };
+    //virtual bool OnInteract(Inventory& inventory) { return true; };
+    virtual void OnHover();
+    virtual bool CanAddBlock_Front( int32& index, const BlockType child) const { return false; };
+    virtual bool CanAddBlock_Offset(int32& index, const BlockType child) const { return false; };
+    virtual bool AddBlock_Front( BlockType child) { return false; };
+    virtual bool AddBlock_Offset(BlockType child) { return false; };
     virtual void OnConstruct() {};
+    virtual void OnDestruct(const ChunkPos& chunkP) { m_inUse = false; };
 };
 
 enum class CoordinalPoint : uint8 {
@@ -132,16 +137,17 @@ public:
     float m_beltPosition = 0.0f;
 
     virtual void Update(float dt, const ChunkPos& chunkPos) override;
-    bool OnInteract(Inventory& inventory) override;
+    //bool OnInteract(Inventory& inventory) override;
     virtual void OnDestruct(const ChunkPos& chunkP) override;
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) override;
     virtual bool Save(File* file);
-    bool AddBlock_Beginning(BlockType child);
-    bool AddBlock_Offset(BlockType child);
+    virtual void OnHover();
+    virtual bool AddBlock_Front (BlockType child);
+    virtual bool AddBlock_Offset(BlockType child);
+    virtual bool CanAddBlock_Front (int32& index, const BlockType child) const;
+    virtual bool CanAddBlock_Offset(int32& index, const BlockType child) const;
     WorldPos GetChildBlockPos(const int32 index, const WorldPos& parentPos);
     Complex_Belt* GetNextBelt(const ChunkPos& chunkPos);
-    bool CanAddBlock_Beginning(int32& index, const BlockType child) const;
-    bool CanAddBlock_Offset(int32& index, const BlockType child) const;
 };
 
 class ComplexBlocks {

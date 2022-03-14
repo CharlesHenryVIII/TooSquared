@@ -834,26 +834,10 @@ White:  Uploaded,");
                     {
                         if (g_blocks[+hitBlockType].m_flags & BLOCK_INTERACT)
                         {
-                            const float PAD = 0.0f;
-                            ImGuiIO& io = ImGui::GetIO();
-                            const ImGuiViewport* viewport = ImGui::GetMainViewport();
-                            ImVec2 window_pos;
-                            window_pos.x = viewport->WorkSize.x / 2 + PAD;
-                            window_pos.y = viewport->WorkSize.y / 2 + PAD - 30;
-                            ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, { 0.5f, 0.5f });
-
-                            ImGui::SetNextWindowBgAlpha(0.25f);
-                            ImGuiWindowFlags windowFlags =
-                                ImGuiWindowFlags_NoNav | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs |
-                                ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollWithMouse;
-
-
-                            std::string interactText = "'F' To Interact";
-                            if (ImGui::Begin(interactText.c_str(), nullptr, windowFlags))
-                            {
-                                ImGui::Text(interactText.c_str());
-                            }
-                            ImGui::End();
+                            ChunkPos chunkP;
+                            Vec3Int blockP = Convert_GameToBlock(chunkP, hitBlock);
+                            ComplexBlock* cb = g_chunks->complexBlocks[chunkIndex].GetBlock(blockP);
+                            cb->OnHover();
                         }
                     }
                     if (playerInput.keyStates[SDLK_f].downThisFrame)
@@ -865,7 +849,11 @@ White:  Uploaded,");
                             assert(chunkP.p == g_chunks->p[chunkIndex].p);
                             if (CB)
                             {
-                                CB->OnInteract(player->m_inventory);
+                                BlockType type = player->m_inventory.HotSlot().m_block;
+                                if (CB->AddBlock_Offset(type))
+                                {
+                                    player->m_inventory.Remove(1);
+                                }
                             }
                         }
                     }
