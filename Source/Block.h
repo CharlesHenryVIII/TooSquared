@@ -110,6 +110,14 @@ enum class CoordinalPoint : uint8 {
     South,
     Count,
 };
+enum class BeltType : uint8 {
+    Error,
+    Normal,
+    UpVert,
+    DownVert,
+    Turn,
+    Count,
+};
 ENUMOPS(CoordinalPoint);
 #pragma pack(push, 1)
 struct Complex_Belt_Child_Block {
@@ -135,9 +143,10 @@ public:
     int32 m_blockCount = 0;
     bool m_running = false;
     float m_beltPosition = 0.0f;
+    BeltType m_beltType = BeltType::Normal;
+
 
     virtual void Update(float dt, const ChunkPos& chunkPos) override;
-    //bool OnInteract(Inventory& inventory) override;
     virtual void OnDestruct(const ChunkPos& chunkP) override;
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) override;
     virtual bool Save(File* file);
@@ -149,6 +158,28 @@ public:
     WorldPos GetChildBlockPos(const int32 index, const WorldPos& parentPos);
     Complex_Belt* GetNextBelt(const ChunkPos& chunkPos);
 };
+
+
+struct Complex_BeltData {
+    Vec3Int         m_p;
+    CoordinalPoint  m_direction;
+};
+#pragma pack(push, 1)
+struct Complex_BeltData_V2 {
+    Vec3Int         m_p = {};
+    CoordinalPoint  m_direction = {};
+    Complex_Belt_Child_Block m_blocks[COMPLEX_BELT_MAX_BLOCKS_PER_BELT] = {};
+};
+struct Complex_BeltData_V3 {
+    Vec3Int         m_p = {};
+    CoordinalPoint  m_direction = {};
+    BeltType        m_beltType = {};
+    Complex_Belt_Child_Block m_blocks[COMPLEX_BELT_MAX_BLOCKS_PER_BELT] = {};
+    float           m_beltPosition;
+    bool            m_running;
+};
+#pragma pack(pop)
+
 
 class ComplexBlocks {
 

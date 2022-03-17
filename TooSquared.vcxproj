@@ -162,6 +162,7 @@
     <ClCompile Include="Contrib\imgui\imgui_widgets.cpp" />
     <ClCompile Include="Contrib\tracy-master\TracyClient.cpp" />
     <ClCompile Include="Source\Block.cpp" />
+    <ClCompile Include="Source\Block_Belt.cpp" />
     <ClCompile Include="Source\Chunk.cpp" />
     <ClCompile Include="Source\Collision.cpp" />
     <ClCompile Include="Source\Computer.cpp" />

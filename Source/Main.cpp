@@ -837,7 +837,8 @@ White:  Uploaded,");
                             ChunkPos chunkP;
                             Vec3Int blockP = Convert_GameToBlock(chunkP, hitBlock);
                             ComplexBlock* cb = g_chunks->complexBlocks[chunkIndex].GetBlock(blockP);
-                            cb->OnHover();
+                            if (cb)
+                                cb->OnHover();
                         }
                     }
                     if (playerInput.keyStates[SDLK_f].downThisFrame)
