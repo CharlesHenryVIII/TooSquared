@@ -68,14 +68,24 @@ void SetBlockSprites()
     g_blocks[+BlockType::Glass].m_flags |= BLOCK_SEETHROUGH | BLOCK_TRANSLUCENT;
     g_blocks[+BlockType::Glass].m_flags &= ~(BLOCK_HAS_SHADING);
 
-    g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Left]     = 138;
     g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Right]    = 138;
-    g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Bot]      = 139;
-    g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Front]    = 154;
-    g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Back]     = 154;
+    g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Left]     = 138;
     g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Top]      = 155;
+    g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Bot]      = 139;
+    g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Back]     = 154;
+    g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Front]    = 154;
     g_blocks[+BlockType::Belt].m_flags |= BLOCK_SEETHROUGH | BLOCK_NON_CUBOIDAL | BLOCK_COMPLEX | BLOCK_INTERACT;
     g_blocks[+BlockType::Belt].m_size.y = 0.5f;
+    g_blocks[+BlockType::Belt] =
+        g_blocks[+BlockType::Belt_UpVert] =
+        g_blocks[+BlockType::Belt_DownVert] =
+        g_blocks[+BlockType::Belt_Turn] = g_blocks[+BlockType::Belt];
+    g_blocks[+BlockType::Belt_UpVert].m_spriteIndices[+Face::Right] = 170;
+    g_blocks[+BlockType::Belt_UpVert].m_spriteIndices[+Face::Left]  = 170;
+    g_blocks[+BlockType::Belt_UpVert].m_spriteIndices[+Face::Back]  = 171;
+    g_blocks[+BlockType::Belt_DownVert].m_spriteIndices[+Face::Right]   = 170;
+    g_blocks[+BlockType::Belt_DownVert].m_spriteIndices[+Face::Left]    = 170;
+    g_blocks[+BlockType::Belt_Turn].m_spriteIndices[+Face::Top] = 172;
 }
 
 void BlockInit()
@@ -180,8 +190,12 @@ void ComplexBlocks::AddNew(const BlockType block, const Vec3Int& pos, const Vec3
     switch (block)
     {
     case BlockType::Belt:
+    case BlockType::Belt_DownVert:
+    case BlockType::Belt_UpVert:
+    case BlockType::Belt_Turn:
     {
         auto* complex = New<Complex_Belt>(pos);
+        complex->m_type = block;
         if ((forwardVector.x == forwardVector.y) && (forwardVector.z == 0.0f) && (forwardVector.z == forwardVector.x))
             complex->m_direction = CoordinalPoint::West;
         else

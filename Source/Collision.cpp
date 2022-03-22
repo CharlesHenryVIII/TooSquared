@@ -355,8 +355,6 @@ bool CapsuleVsBlock(Capsule collider, const BlockSampler& blockSampler, Vec3& to
         Block& baseBlock = g_blocks[+blockSampler.m_baseBlockType];
         if (faceBlock.m_flags & BLOCK_COLLIDABLE)
             continue;
-        if (baseBlock.m_flags & BLOCK_COMPLEX)
-            int32 asdf = 213124;
         for (int32 j = 0; j <= 1; j++)
         {
             triangle = {};

@@ -18,6 +18,7 @@ const Vec2 faceUV[4] = {
     Vec2{ 1, 0 }
 };
 
+
 //
 //  Belt Common
 //
@@ -109,9 +110,13 @@ WorldPos Complex_Belt::GetChildBlockPos(const int32 index, const WorldPos& paren
 {
     WorldPos p = parentPos;
     float& distance = m_blocks[index].m_position;
-    switch (m_beltType)
+
+    //Find the X and Z of the child block
+    switch (m_type)
     {
-    case BeltType::Normal:
+    case BlockType::Belt:
+    case BlockType::Belt_UpVert:
+    case BlockType::Belt_DownVert:
     {
 #if 0
         Vec4 childBlockRelativeToParent = {};
@@ -141,35 +146,40 @@ WorldPos Complex_Belt::GetChildBlockPos(const int32 index, const WorldPos& paren
             p.p.z += amount;
         }
 #endif
-        WorldPos childBlockSize;
-        childBlockSize.p = HadamardProduct(g_blocks[+m_blocks[index].m_type].m_size, g_itemScale);
+        break;
+    }
+    case BlockType::Belt_Turn:
+    {
+        assert(false);
+    }
+    }
+
+    //Find the Y of the child block
+    WorldPos childBlockSize;
+    childBlockSize.p = HadamardProduct(g_blocks[+m_blocks[index].m_type].m_size, g_itemScale);
+    switch (m_type)
+    {
+    case BlockType::Belt_Turn:
+    case BlockType::Belt:
+    {
         p.p.y += g_blocks[+BlockType::Belt].m_size.y;
         p.p.y += childBlockSize.p.y / 2;//size of miniature blocks
         break;
     }
-    case BeltType::UpVert:
+    case BlockType::Belt_UpVert:
     {
-
+        //p.p.y += g_blocks[+BlockType::Belt].m_size.y;
         break;
     }
-    case BeltType::DownVert:
+    case BlockType::Belt_DownVert:
     {
-
-        break;
-    }
-    case BeltType::Turn:
-    {
-
-        break;
-    }
-    default:
-    {
-        assert(false);
+        //p.p.y += g_blocks[+BlockType::Belt].m_size.y;
         break;
     }
     }
     return p;
 }
+
 void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
 {
     const WorldPos worldP = GetWorldPos(chunkPos);
@@ -293,81 +303,7 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
         m_direction = {};
 #endif
 }
-bool Complex_Belt::CanAddBlock_Front(int32& index, const BlockType child) const
-{
-    for (int32 i = COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 1; i >= 0; i--)
-    {
-        if (m_blocks[i].m_type == BlockType::Empty)
-        {
-            if ((i + 1) < COMPLEX_BELT_MAX_BLOCKS_PER_BELT)
-            {
-                // TODO: Impliment rototion into calculation so longer blocks in one dimension will fill the belt
-                float offset = (g_itemScale.x * g_blocks[+m_blocks[i + 1].m_type].m_size.x) / 2;
-                if (m_blocks[i + 1].m_position > offset)
-                {
-                    index = i;
-                    return true;
-                }
-            }
-            else
-            {
-                index = i;
-                return true;
-            }
-        }
-    }
-    return false;
-}
-bool Complex_Belt::AddBlock_Front(BlockType child)
-{
-    int32 index;
-    if (CanAddBlock_Front(index, child))
-    {
-        m_blocks[index].m_type = child;
-        m_blocks[index].m_position = 0;
-        m_blockCount++;
-        return true;
-    }
-    return false;
-}
-bool Complex_Belt::CanAddBlock_Offset(int32& index, const BlockType child) const
-{
-    for (int32 i = COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 1; i >= 0; i--)
-    {
-        if (m_blocks[i].m_type == BlockType::Empty)
-        {
-            // TODO: Impliment rototion into calculation so longer blocks in one dimension will fill the belt
-            float newBlockSize          = (g_itemScale.x * g_blocks[+child].m_size.x);
-            float currentBlockOffset    = (g_itemScale.x * g_blocks[+m_blocks[i].m_type].m_size.x) / 2.0f;
-            if (i + 1 < COMPLEX_BELT_MAX_BLOCKS_PER_BELT)
-            {
-                if (m_blocks[i + 1].m_position >= (newBlockSize + currentBlockOffset)) 
-                {
-                    index = i;
-                    return true;
-                }
-            }
-            else
-            {
-                index = i;
-                return true;
-            }
-        }
-    }
-    return false;
-}
-bool Complex_Belt::AddBlock_Offset(BlockType child)
-{
-    int32 index;
-    if (CanAddBlock_Offset(index, child))
-    {
-        m_blocks[index].m_type = child;
-        m_blocks[index].m_position = (g_itemScale.x * g_blocks[+child].m_size.x) / 2;
-        m_blockCount++;
-        return true;
-    }
-    return false;
-}
+
 void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
 {
 #if 1
@@ -452,6 +388,7 @@ void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
     AddBlockToRender(ToWorld(blockLocation), 1.0f, m_type);
 #endif
 }
+
 bool Complex_Belt::Save(File* file)
 {
     bool success = true;
@@ -465,4 +402,83 @@ bool Complex_Belt::Save(File* file)
         cbData.m_blocks[i] = m_blocks[i];
     success &= file->Write(&cbData, sizeof(Complex_BeltData_V3));
     return success;
+}
+
+bool Complex_Belt::AddBlock_Front(BlockType child)
+{
+    int32 index;
+    if (CanAddBlock_Front(index, child))
+    {
+        m_blocks[index].m_type = child;
+        m_blocks[index].m_position = 0;
+        m_blockCount++;
+        return true;
+    }
+    return false;
+}
+
+bool Complex_Belt::AddBlock_Offset(BlockType child)
+{
+    int32 index;
+    if (CanAddBlock_Offset(index, child))
+    {
+        m_blocks[index].m_type = child;
+        m_blocks[index].m_position = (g_itemScale.x * g_blocks[+child].m_size.x) / 2;
+        m_blockCount++;
+        return true;
+    }
+    return false;
+}
+
+bool Complex_Belt::CanAddBlock_Front(int32& index, const BlockType child) const
+{
+    for (int32 i = COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 1; i >= 0; i--)
+    {
+        if (m_blocks[i].m_type == BlockType::Empty)
+        {
+            if ((i + 1) < COMPLEX_BELT_MAX_BLOCKS_PER_BELT)
+            {
+                // TODO: Impliment rototion into calculation so longer blocks in one dimension will fill the belt
+                float offset = (g_itemScale.x * g_blocks[+m_blocks[i + 1].m_type].m_size.x) / 2;
+                if (m_blocks[i + 1].m_position > offset)
+                {
+                    index = i;
+                    return true;
+                }
+            }
+            else
+            {
+                index = i;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool Complex_Belt::CanAddBlock_Offset(int32& index, const BlockType child) const
+{
+    for (int32 i = COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 1; i >= 0; i--)
+    {
+        if (m_blocks[i].m_type == BlockType::Empty)
+        {
+            // TODO: Impliment rototion into calculation so longer blocks in one dimension will fill the belt
+            float newBlockSize          = (g_itemScale.x * g_blocks[+child].m_size.x);
+            float currentBlockOffset    = (g_itemScale.x * g_blocks[+m_blocks[i].m_type].m_size.x) / 2.0f;
+            if (i + 1 < COMPLEX_BELT_MAX_BLOCKS_PER_BELT)
+            {
+                if (m_blocks[i + 1].m_position >= (newBlockSize + currentBlockOffset)) 
+                {
+                    index = i;
+                    return true;
+                }
+            }
+            else
+            {
+                index = i;
+                return true;
+            }
+        }
+    }
+    return false;
 }

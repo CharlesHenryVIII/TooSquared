@@ -31,6 +31,9 @@ enum class BlockType : uint8 {
     Slab,
     Glass,
     Belt,
+    Belt_UpVert,
+    Belt_DownVert,
+    Belt_Turn,
     Count,
 //CobWeb,
 //Flower_Red,
@@ -66,15 +69,13 @@ struct Block {
     uint32 m_spriteIndices[+Face::Count] = {
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation,
         defaultSpriteLocation, defaultSpriteLocation, defaultSpriteLocation };
-    uint32 m_flags          = BLOCK_COLLIDABLE | BLOCK_HAS_SHADING;
-    Vec3 m_size = { 1.0f, 1.0f, 1.0f };
-
-    //Material material;
+    uint32 m_flags = BLOCK_COLLIDABLE | BLOCK_HAS_SHADING;
+    Vec3   m_size  = { 1.0f, 1.0f, 1.0f };
 };
 
 struct BlockSampler {
     BlockType blocks[+Face::Count] = {};
-    GamePos m_baseBlockP = {};
+    GamePos   m_baseBlockP = {};
     BlockType m_baseBlockType = BlockType::Empty;
     bool RegionGather(GamePos m_baseBlockP);
 };
@@ -110,6 +111,7 @@ enum class CoordinalPoint : uint8 {
     South,
     Count,
 };
+ENUMOPS(CoordinalPoint);
 enum class BeltType : uint8 {
     Error,
     Normal,
@@ -118,7 +120,7 @@ enum class BeltType : uint8 {
     Turn,
     Count,
 };
-ENUMOPS(CoordinalPoint);
+ENUMOPS(BeltType);
 #pragma pack(push, 1)
 struct Complex_Belt_Child_Block {
     BlockType m_type = BlockType::Empty;
@@ -132,32 +134,34 @@ struct Complex_Belt : ComplexBlock {
     Complex_Belt() = delete;
     Complex_Belt(const Vec3Int& p) { m_type = BlockType::Belt; m_blockP = p; };
 
-private:
-    void RemoveFinalBlock();
-
 public:
     Complex_Belt_Child_Block m_blocks[COMPLEX_BELT_MAX_BLOCKS_PER_BELT] = {};
-    CoordinalPoint m_direction = CoordinalPoint::West;
-    float m_beltSpeed = 0.1f; //units per second, 0.1 would take 10 seconds to go 1 block
-    float rotationTime = 0;
-    int32 m_blockCount = 0;
-    bool m_running = false;
-    float m_beltPosition = 0.0f;
-    BeltType m_beltType = BeltType::Normal;
+    CoordinalPoint  m_direction = CoordinalPoint::West;
+    float           m_beltSpeed = 0.1f; //units per second, 0.1 would take 10 seconds to go 1 block
+    float           rotationTime = 0;
+    int32           m_blockCount = 0;
+    bool            m_running = false;
+    float           m_beltPosition = 0.0f;
+    BeltType        m_beltType = BeltType::Normal;
 
 
     virtual void Update(float dt, const ChunkPos& chunkPos) override;
     virtual void OnDestruct(const ChunkPos& chunkP) override;
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) override;
-    virtual bool Save(File* file);
-    virtual void OnHover();
-    virtual bool AddBlock_Front (BlockType child);
-    virtual bool AddBlock_Offset(BlockType child);
-    virtual bool CanAddBlock_Front (int32& index, const BlockType child) const;
-    virtual bool CanAddBlock_Offset(int32& index, const BlockType child) const;
+    virtual bool Save(File* file) override;
+    virtual void OnHover() override;
+    virtual bool AddBlock_Front(BlockType child) override;
+    virtual bool AddBlock_Offset(BlockType child) override;
+    virtual bool CanAddBlock_Front (int32& index, const BlockType child) const override;
+    virtual bool CanAddBlock_Offset(int32& index, const BlockType child) const override;
     WorldPos GetChildBlockPos(const int32 index, const WorldPos& parentPos);
     Complex_Belt* GetNextBelt(const ChunkPos& chunkPos);
+
+protected:
+    void RemoveFinalBlock();
 };
+
+
 
 
 struct Complex_BeltData {
