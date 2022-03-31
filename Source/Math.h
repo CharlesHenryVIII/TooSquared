@@ -82,6 +82,13 @@ typedef gbQuat Quat;
 //    float e[5];
 //};
 
+union Uint32Pack {
+    uint32 pack;
+    struct { uint8 r, g, b, a; };
+    struct { uint8 x, y, z, w; };
+    uint8 e[4];
+};
+
 struct Vertex {
     Vec3 p;
     Vec2 uv;
@@ -103,6 +110,12 @@ struct Vertex_Complex {
     Vec2  uv;
     Vec3  n;
     uint8 i;
+};
+struct Vertex_Voxel {
+    Vec3  p;
+    uint8 n;
+    uint8 ao;
+    Uint32Pack rgba;
 };
 #pragma pack(pop)
 struct Vertex_UI {

@@ -2,6 +2,7 @@
 #include "Chunk.h"
 #include "WinInterop.h"
 #include "Input.h"
+#include "Vox.h"
 
 #include "tracy-master/Tracy.hpp"
 #include "STB/stb_image.h"
@@ -11,6 +12,7 @@
 
 Renderer g_renderer;
 Window g_window;
+Vec3 g_ambientLight = { 0.2f, 0.2f, 0.2f };
 //Camera g_camera;
 #if DIRECTIONALLIGHT == 1
 //Light_Direction g_light;
@@ -355,6 +357,7 @@ GLuint GpuBuffer::GetGLHandle()
 
 void IndexBuffer::Upload(uint32* indices, size_t count)
 {
+    m_count = max(m_count, count);
     UploadData(indices, sizeof(indices[0]) * count);
 #ifdef _DEBUGPRINT
     DebugPrint("Index Buffer Upload,size %i\n", count);
@@ -397,6 +400,13 @@ void VertexBuffer::Upload(Vertex_Cube* vertices, size_t count)
 #endif
 }
 void VertexBuffer::Upload(Vertex_Complex* vertices, size_t count)
+{
+    UploadData(vertices, sizeof(vertices[0]) * count);
+#ifdef _DEBUGPRINT
+    DebugPrint("Vertex Buffer Upload,size %i\n", count);
+#endif
+}
+void VertexBuffer::Upload(Vertex_Voxel* vertices, size_t count)
 {
     UploadData(vertices, sizeof(vertices[0]) * count);
 #ifdef _DEBUGPRINT
@@ -591,8 +601,19 @@ void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Ma
 
 
 
+void LoadVoxelRenderData(const Mesh& mesh, const std::string& filePath)
+{
+    VoxelMesh vm = {};
+    assert(LoadVoxFile(vm, g_renderer.voxelModels[+mesh], filePath));
+    for (int32 i = 0; i < g_renderer.voxelModels[+mesh].size(); i++)
+    {
+        g_renderer.meshVertexBuffers[+mesh].push_back(new VertexBuffer());
+        g_renderer.meshVertexBuffers[+mesh][g_renderer.meshVertexBuffers[+mesh].size() - 1]->Upload(vm.vertices[i].data(), vm.vertices[i].size());
+        g_renderer.meshIndexBuffers[+mesh].push_back(new IndexBuffer());
+        g_renderer.meshIndexBuffers[+mesh][g_renderer.meshIndexBuffers[+mesh].size() - 1]->Upload(vm.indices[i].data(), vm.indices[i].size());
+    }
+}
 uint8 s_pixelTextureData[] = { 255, 255, 255, 255 };
-
 void InitializeVideo()
 {
     SDL_Init(SDL_INIT_VIDEO);
@@ -677,6 +698,12 @@ void InitializeVideo()
     g_renderer.skyBoxDay   = new TextureCube("Assets/sky.dds");//DayMinecraftSkybox2.dds");
     g_renderer.textures[Texture::T::Plain] = new Texture(s_pixelTextureData, { 1, 1 }, GL_RGBA);
 
+#if 1
+    LoadVoxelRenderData(Mesh::Belt_Normal, "Assets/Belt_Normal.vox");
+#else
+    //LoadVoxelRenderData(Mesh::Belt_Normal, "Assets/Conveyer_Propper_Orientation.vox");
+#endif
+
     g_renderer.programs[+Shader::Chunk]             = new ShaderProgram("Source/Shaders/Chunk.vert",        "Source/Shaders/Chunk.frag");
     g_renderer.programs[+Shader::Cube]              = new ShaderProgram("Source/Shaders/Cube.vert",         "Source/Shaders/Cube.frag");
     g_renderer.programs[+Shader::Block]             = new ShaderProgram("Source/Shaders/Block.vert",        "Source/Shaders/Block.frag");
@@ -686,6 +713,7 @@ void InitializeVideo()
     g_renderer.programs[+Shader::Sun]               = new ShaderProgram("Source/Shaders/Sun.vert",          "Source/Shaders/Sun.frag");
     g_renderer.programs[+Shader::UI]                = new ShaderProgram("Source/Shaders/UI.vert",           "Source/Shaders/UI.frag");
     g_renderer.programs[+Shader::Composite]         = new ShaderProgram("Source/Shaders/BufferCopy.vert",   "Source/Shaders/Composite.frag");
+    g_renderer.programs[+Shader::Voxel]             = new ShaderProgram("Source/Shaders/Voxel.vert",        "Source/Shaders/Voxel.frag");
 
 #if DIRECTIONALLIGHT == 1
     g_renderer.sunLight.d = Normalize(Vec3({  0.0f, -1.0f,  0.0f }));

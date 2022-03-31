@@ -126,85 +126,6 @@ Vec3 faceNormals[+Face::Count] = {
 {  0.0f,  0.0f, -1.0f },
 };
 
-//TODO: Block Pos?
-union VertexBlockCheck {
-    struct { Vec3Int e0, e1, e2, e3, e4, e5, e6, e7; };
-};
-
-static const VertexBlockCheck vertexBlocksToCheck[+Face::Count] = {
-    {//right +X
-        Vec3Int({  0,  1,  0 }),//Vertex 0
-                {  0,  0,  1 },
-
-                {  0,  0,  1 }, //Vertex 1
-                {  0, -1,  0 },
-                {  0,  1,  0 }, //Vertex 2
-                {  0,  0, -1 },
-
-                {  0,  0, -1 }, //Vertex 3
-                {  0, -1,  0 },
-    },
-    {//left -X
-        Vec3Int({  0,  1,  0 }),//Vertex 0
-                {  0,  0, -1 },
-
-                {  0,  0, -1 }, //Vertex 1
-                {  0, -1,  0 },
-                {  0,  1,  0 }, //Vertex 2
-                {  0,  0,  1 },
-
-                {  0,  0,  1 }, //Vertex 3
-                {  0, -1,  0 },
-    },
-    {//Top +Y
-        Vec3Int({  1,  0,  0 }),//Vertex 0
-                {  0,  0,  1 },
-
-                {  1,  0,  0 }, //Vertex 1
-                {  0,  0, -1 },
-                { -1,  0,  0 }, //Vertex 2
-                {  0,  0,  1 },
-
-                { -1,  0,  0 }, //Vertex 3
-                {  0,  0, -1 },
-    },
-    {//Bot -Y
-        Vec3Int({ -1,  0,  0 }),//Vertex 0
-                {  0,  0,  1 },
-
-                { -1,  0,  0 }, //Vertex 1
-                {  0,  0, -1 },
-                {  1,  0,  0 }, //Vertex 2
-                {  0,  0,  1 },
-
-                {  1,  0,  0 }, //Vertex 3
-                {  0,  0, -1 },
-    },
-    {//Front +Z
-        Vec3Int({ -1,  0,  0 }),//Vertex 0
-                {  0,  1,  0 },
-
-                { -1,  0,  0 }, //Vertex 1
-                {  0, -1,  0 },
-                {  1,  0,  0 }, //Vertex 2
-                {  0,  1,  0 },
-
-                {  1,  0,  0 }, //Vertex 3
-                {  0, -1,  0 },
-    },
-    {//Front -Z
-        Vec3Int({  1,  0,  0 }),//Vertex 0
-                {  0,  1,  0 },
-
-                {  1,  0,  0 }, //Vertex 1
-                {  0, -1,  0 },
-                { -1,  0,  0 }, //Vertex 2
-                {  0,  1,  0 },
-
-                { -1,  0,  0 }, //Vertex 3
-                {  0, -1,  0 },
-    },
-};
 
 //TODO: Move to ChunkPos
 GamePos Convert_ChunkIndexToGame(ChunkIndex i)
@@ -1784,15 +1705,13 @@ void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera, uint32 passCo
     sp->UpdateUniformUint8("u_CHUNK_X", CHUNK_X);
     sp->UpdateUniformUint8("u_CHUNK_Y", CHUNK_Y);
     sp->UpdateUniformUint8("u_CHUNK_Z", CHUNK_Z);
-    Material material;
-    material.ambient = { 0.2f, 0.2f, 0.2f };
-    material.diffuse = { 1.0f, 1.0f, 1.0f };
-    material.specular = { 0.4f, 0.4f,  0.4f };
-    material.shininess = 32;//0.78125f;
-    sp->UpdateUniformVec3( "material.ambient",  1,  material.ambient.e);
-    sp->UpdateUniformVec3( "material.diffuse",  1,  material.diffuse.e);
-    sp->UpdateUniformVec3( "material.specular", 1,  material.specular.e);
-    sp->UpdateUniformFloat("material.shininess",    material.shininess);
+    Vec3 diffuse = { 1.0f, 1.0f, 1.0f };
+    Vec3 specular = { 0.4f, 0.4f,  0.4f };
+    float shininess = 32;//0.78125f;
+    sp->UpdateUniformVec3( "u_ambientLight",    1,  g_ambientLight.e);
+    sp->UpdateUniformVec3( "material.diffuse",  1,  diffuse.e);
+    sp->UpdateUniformVec3( "material.specular", 1,  specular.e);
+    sp->UpdateUniformFloat("material.shininess",    shininess);
 }
 
 void ChunkArray::RenderChunkOpaquePeel(ChunkIndex i)

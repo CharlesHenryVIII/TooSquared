@@ -105,6 +105,9 @@
     <ClCompile Include="Source\Block_Belt.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Source\Vox.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md">
@@ -221,6 +224,9 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Source\Rendering_Texture.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Source\Vox.h">
       <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>

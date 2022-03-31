@@ -5,6 +5,7 @@
 #include "Misc.h"
 #include "Rendering_Framebuffer.h"
 #include "Rendering_Texture.h"
+#include "Vox.h"
 
 #include <string>
 
@@ -21,6 +22,7 @@ extern Window g_window;
 struct Light_Point;
 extern Light_Point g_light;
 #endif
+extern Vec3 g_ambientLight;
 
 
 struct Window {
@@ -66,9 +68,18 @@ enum class Shader : uint32 {
     BufferCopyAlpha,
     Sun,
     UI,
+    Shader,
+    Voxel,
     Count,
 };
 ENUMOPS(Shader);
+
+enum class Mesh : uint32 {
+    Invalid,
+    Belt_Normal,
+    Count,
+};
+ENUMOPS(Mesh);
 
 class ShaderProgram
 {
@@ -129,10 +140,10 @@ public:
 class IndexBuffer : public GpuBuffer
 {
 public:
-
     IndexBuffer()
         : GpuBuffer(GL_ELEMENT_ARRAY_BUFFER)
     { }
+    size_t m_count = 0;
     void Upload(uint32* indices, size_t count);
 };
 
@@ -148,6 +159,15 @@ public:
     void Upload(Vertex_Block* vertices, size_t count);
     void Upload(Vertex_Cube* vertices, size_t count);
     void Upload(Vertex_Complex* vertices, size_t count);
+    void Upload(Vertex_Voxel* vertices, size_t count);
+    template <typename T>
+    void Upload(T* vertices, size_t count)
+    {
+        UploadData(vertices, sizeof(vertices[0]) * count);
+#ifdef _DEBUGPRINT
+        DebugPrint("Vertex Buffer Upload,size %i\n", count);
+#endif
+    }
 };
 
 
@@ -172,6 +192,9 @@ struct Renderer {
     float currentAnisotropic = 1.0f;
     int32 depthPeelingPasses = 3;
     int32 debug_DepthPeelingPassToDisplay = -1;
+    std::vector<Voxels> voxelModels[+Mesh::Count] = {};
+    std::vector<VertexBuffer*> meshVertexBuffers[+Mesh::Count] = {};
+    std::vector<IndexBuffer*> meshIndexBuffers[+Mesh::Count] = {};
 };
 
 const uint32 pixelsPerBlock = 16;

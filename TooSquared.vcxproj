@@ -181,6 +181,7 @@
     <ClCompile Include="Source\Rendering_Framebuffer.cpp" />
     <ClCompile Include="Source\Rendering_Skybox.cpp" />
     <ClCompile Include="Source\Rendering_Texture.cpp" />
+    <ClCompile Include="Source\Vox.cpp" />
     <ClCompile Include="Source\WinInterop.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -223,6 +224,7 @@
     <ClInclude Include="Source\Rendering.h" />
     <ClInclude Include="Source\Rendering_Framebuffer.h" />
     <ClInclude Include="Source\Rendering_Texture.h" />
+    <ClInclude Include="Source\Vox.h" />
     <ClInclude Include="Source\WinInterop.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

@@ -302,6 +302,85 @@ struct CreateVertices : public Job {
     void DoThing() override;
 };
 
+//TODO: Block Pos?
+union VertexBlockCheck {
+    struct { Vec3Int e0, e1, e2, e3, e4, e5, e6, e7; };
+};
+
+static const VertexBlockCheck vertexBlocksToCheck[+Face::Count] = {
+    {//right +X
+        Vec3Int({  0,  1,  0 }),//Vertex 0
+                {  0,  0,  1 },
+
+                {  0,  0,  1 }, //Vertex 1
+                {  0, -1,  0 },
+                {  0,  1,  0 }, //Vertex 2
+                {  0,  0, -1 },
+
+                {  0,  0, -1 }, //Vertex 3
+                {  0, -1,  0 },
+    },
+    {//left -X
+        Vec3Int({  0,  1,  0 }),//Vertex 0
+                {  0,  0, -1 },
+
+                {  0,  0, -1 }, //Vertex 1
+                {  0, -1,  0 },
+                {  0,  1,  0 }, //Vertex 2
+                {  0,  0,  1 },
+
+                {  0,  0,  1 }, //Vertex 3
+                {  0, -1,  0 },
+    },
+    {//Top +Y
+        Vec3Int({  1,  0,  0 }),//Vertex 0
+                {  0,  0,  1 },
+
+                {  1,  0,  0 }, //Vertex 1
+                {  0,  0, -1 },
+                { -1,  0,  0 }, //Vertex 2
+                {  0,  0,  1 },
+
+                { -1,  0,  0 }, //Vertex 3
+                {  0,  0, -1 },
+    },
+    {//Bot -Y
+        Vec3Int({ -1,  0,  0 }),//Vertex 0
+                {  0,  0,  1 },
+
+                { -1,  0,  0 }, //Vertex 1
+                {  0,  0, -1 },
+                {  1,  0,  0 }, //Vertex 2
+                {  0,  0,  1 },
+
+                {  1,  0,  0 }, //Vertex 3
+                {  0,  0, -1 },
+    },
+    {//Front +Z
+        Vec3Int({ -1,  0,  0 }),//Vertex 0
+                {  0,  1,  0 },
+
+                { -1,  0,  0 }, //Vertex 1
+                {  0, -1,  0 },
+                {  1,  0,  0 }, //Vertex 2
+                {  0,  1,  0 },
+
+                {  1,  0,  0 }, //Vertex 3
+                {  0, -1,  0 },
+    },
+    {//Front -Z
+        Vec3Int({  1,  0,  0 }),//Vertex 0
+                {  0,  1,  0 },
+
+                {  1,  0,  0 }, //Vertex 1
+                {  0, -1,  0 },
+                { -1,  0,  0 }, //Vertex 2
+                {  0,  1,  0 },
+
+                { -1,  0,  0 }, //Vertex 3
+                {  0, -1,  0 },
+    },
+};
 
 
 //Vec3Int Convert_GameToChunk(Vec3 p);

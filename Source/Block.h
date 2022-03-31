@@ -64,6 +64,8 @@ ENUMOPS(Face);
 #define BLOCK_COMPLEX                   BIT(7)
 #define BLOCK_INTERACT                  BIT(8)
 
+#define VOXELS_PER_BLOCK    16
+
 const uint32 defaultSpriteLocation = 254;
 struct Block {
     uint32 m_spriteIndices[+Face::Count] = {
@@ -105,10 +107,10 @@ struct ComplexBlock {
 };
 
 enum class CoordinalPoint : uint8 {
-    West,
     North,
     East,
     South,
+    West,
     Count,
 };
 ENUMOPS(CoordinalPoint);
@@ -154,7 +156,7 @@ public:
     virtual bool AddBlock_Offset(BlockType child) override;
     virtual bool CanAddBlock_Front (int32& index, const BlockType child) const override;
     virtual bool CanAddBlock_Offset(int32& index, const BlockType child) const override;
-    WorldPos GetChildBlockPos(const int32 index, const WorldPos& parentPos);
+    WorldPos GetChildBlockPos(const int32 index, const WorldPos& parentPos, bool voxelStep);
     Complex_Belt* GetNextBelt(const ChunkPos& chunkPos);
 
 protected:

@@ -4,20 +4,19 @@ layout(location = 1) in uint v_spriteIndex;                 //1Byte
 layout(location = 2) in uint v_normalAndConnectedVertices;  //1Byte
 //layout(location = 3) in uint v_connectedVertices;         //1Byte
 
-uniform mat4 u_perspective;
-uniform mat4 u_view;
-
-uniform vec3 u_chunkP;
-uniform uint u_CHUNK_X;
-uniform uint u_CHUNK_Y;
-uniform uint u_CHUNK_Z;
-
 out vec2 p_uv;
 flat out float p_depth;
 out vec3 p_normal;
 out vec3 p_pixelP;
 out mat4 p_view;
 out float p_connectedVertices;
+
+uniform mat4 u_perspective;
+uniform mat4 u_view;
+uniform vec3 u_chunkP;
+uniform uint u_CHUNK_X;
+uniform uint u_CHUNK_Y;
+uniform uint u_CHUNK_Z;
 
 const vec3 faceNormals[6] = vec3[6](
     vec3(  1.0,  0.0,  0.0 ),

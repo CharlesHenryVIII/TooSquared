@@ -33,7 +33,7 @@ void Complex_Belt::OnDestruct(const ChunkPos& chunkP)
             if (g_chunks->GetChunk(chunkIndex, ToGame(chunkP)))
             {
 #if 1
-                WorldPos blockWorldP = GetChildBlockPos(i, worldPos);
+                WorldPos blockWorldP = GetChildBlockPos(i, worldPos, false);
 #else
                 WorldPos blockWorldP = GetWorldPos(chunkP);
                 WorldPos dest = blockWorldP.p;
@@ -106,10 +106,19 @@ void Complex_Belt::OnHover()
 //
 // Complex Block Belt
 //
-WorldPos Complex_Belt::GetChildBlockPos(const int32 index, const WorldPos& parentPos)
+WorldPos Complex_Belt::GetChildBlockPos(const int32 index, const WorldPos& parentPos, bool voxelStep)
 {
     WorldPos p = parentPos;
-    float& distance = m_blocks[index].m_position;
+    float distance = 0;
+    if (voxelStep)
+    {
+        float origin = m_beltPosition - m_blocks[index].m_position;
+        int32 originDiv = int32(origin * VOXELS_PER_BLOCK);
+        int32 totalDiv  = int32(m_beltPosition * VOXELS_PER_BLOCK);
+        distance  = (totalDiv - originDiv) / float(VOXELS_PER_BLOCK);
+    }
+    else
+        distance = m_blocks[index].m_position;
 
     //Find the X and Z of the child block
     switch (m_type)
@@ -219,7 +228,7 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
         {
             assert(false); //am I ever hitting this?
             ChunkIndex chunkIndex;
-            WorldPos p = GetChildBlockPos(COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 1, worldP);
+            WorldPos p = GetChildBlockPos(COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 1, worldP, false);
             assert(g_chunks->GetChunk(chunkIndex, ToGame(p)));
             WorldPos d = p;
             d.p.y += 1.0f;
@@ -229,7 +238,7 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
     }
 
     if (m_running)
-        m_beltPosition = fmodf(m_beltPosition + m_beltSpeed * dt, 1.0f);
+        m_beltPosition = fmodf(m_beltPosition + m_beltSpeed * dt, 16.0f);
 
     for (int32 i = 0; i < COMPLEX_BELT_MAX_BLOCKS_PER_BELT; i++)
     {
@@ -246,7 +255,7 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
                     if (nextBeltHasSpace && m_blockCount > 0)
                     {
                         //m_running = true;
-                        WorldPos p = GetChildBlockPos(i, worldP);
+                        WorldPos p = GetChildBlockPos(i, worldP, false);
                         AddBlockToRender(p, g_itemScale, childType);
                         
                         if (!nextBelt->AddBlock_Front(childType))
@@ -266,7 +275,7 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
                         if (diff > m_beltSpeed * dt)
                         {
                             ChunkIndex chunkIndex;
-                            WorldPos p = GetChildBlockPos(COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 1, worldP);
+                            WorldPos p = GetChildBlockPos(COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 1, worldP, false);
                             assert(g_chunks->GetChunk(chunkIndex, ToGame(p)));
                             WorldPos d = p;
                             d.p.y += 1.0f;
@@ -286,7 +295,7 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
                 }
             }
 
-            WorldPos p = GetChildBlockPos(i, worldP);
+            WorldPos p = GetChildBlockPos(i, worldP, true);
             AddBlockToRender(p, g_itemScale, childType);
         }
     }
@@ -307,6 +316,54 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
 void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
 {
 #if 1
+    assert(g_renderer.meshVertexBuffers[+Mesh::Belt_Normal].size());
+    int32 modelIndex = int32((m_beltPosition * float(VOXEL_MAX_SIZE))) % g_renderer.meshVertexBuffers[+Mesh::Belt_Normal].size();
+    modelIndex = Min<int32>(modelIndex, int32(g_renderer.meshVertexBuffers[+Mesh::Belt_Normal].size() - 1));
+    g_renderer.meshVertexBuffers[+Mesh::Belt_Normal][modelIndex]->Bind();
+    g_renderer.meshIndexBuffers[+Mesh::Belt_Normal][modelIndex]->Bind();
+    ShaderProgram* sp = g_renderer.programs[+Shader::Voxel];
+
+    sp->UseShader();
+    //Mat4 rot2;
+    //gb_mat4_rotate(&rot2, {1, 0, 0}, tau / 4.0f * 3.0f);
+    //sp->UpdateUniformMat4("u_modelRotate", 1, false, rot2.e);
+    //Mat4 rotMov;
+    //gb_mat4_translate(&rotMov, {0, 0, 1});
+    //sp->UpdateUniformMat4("u_modelMove", 1, false, rotMov.e);
+    Mat4 rot;
+    gb_mat4_rotate(&rot, {0, 1, 0}, float(m_direction) * (tau / 4.0f));
+    sp->UpdateUniformMat4("u_rotate", 1, false, rot.e);
+    Mat4 translate;
+    gb_mat4_translate(&translate, { -0.5, 0, -0.5 });
+    sp->UpdateUniformMat4("u_toModel", 1, false, translate.e);
+    Mat4 translateBack;
+    gb_mat4_translate(&translateBack, { 0.5, 0, 0.5 });
+    sp->UpdateUniformMat4("u_fromModel", 1, false, translateBack.e);
+    Mat4 model;
+    gb_mat4_identity(&model);
+    gb_mat4_translate(&model, ToWorld(chunkPos).p + Vec3({ float(m_blockP.x), float(m_blockP.y), float(m_blockP.z) }));
+    sp->UpdateUniformMat4( "u_model", 1, false, model.e);
+    sp->UpdateUniformMat4( "u_perspective", 1, false, playerCamera->m_perspective.e);
+    sp->UpdateUniformMat4( "u_view", 1, false, playerCamera->m_view.e);
+    sp->UpdateUniformUint8("u_passCount", 0);
+    sp->UpdateUniformVec3( "u_ambientLight",            1,  g_ambientLight.e);
+    sp->UpdateUniformVec3( "u_directionalLight_d",      1,  g_renderer.sunLight.d.e);
+    sp->UpdateUniformVec3( "u_lightColor",              1,  g_renderer.sunLight.c.e);
+    sp->UpdateUniformVec3( "u_directionalLightMoon_d",  1,  g_renderer.moonLight.d.e);
+    sp->UpdateUniformVec3( "u_moonColor",               1,  g_renderer.moonLight.c.e);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex_Voxel), (void*)offsetof(Vertex_Voxel, p));
+    glEnableVertexArrayAttrib(g_renderer.vao, 0);
+    glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Voxel), (void*)offsetof(Vertex_Voxel, n));
+    glEnableVertexArrayAttrib(g_renderer.vao, 1);
+    glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Voxel), (void*)offsetof(Vertex_Voxel, ao));
+    glEnableVertexArrayAttrib(g_renderer.vao, 2);
+    glVertexAttribIPointer(3, 4, GL_UNSIGNED_BYTE, sizeof(Vertex_Voxel), (void*)offsetof(Vertex_Voxel, rgba.r));
+    glEnableVertexArrayAttrib(g_renderer.vao, 3);
+
+    glDrawElements(GL_TRIANGLES, (GLsizei)g_renderer.meshIndexBuffers[+Mesh::Belt_Normal][modelIndex]->m_count, GL_UNSIGNED_INT, 0);
+    g_renderer.numTrianglesDrawn += (uint32)g_renderer.meshIndexBuffers[+Mesh::Belt_Normal][modelIndex]->m_count / 3;
+#else
     //WorldPos pos = ToWorld(chunkPos).p;
     //pos.p += { float(m_blockP.x), float(m_blockP.y), float(m_blockP.z) };
     const int32 vertexCount = 4 * +Face::Count;
@@ -382,10 +439,6 @@ void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
 
     glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
     g_renderer.numTrianglesDrawn += 36;
-#else
-    GamePos chunkLocation = ToGame(chunkPos);
-    GamePos blockLocation = { chunkLocation.p.x + m_p.x, chunkLocation.p.y + m_p.y, chunkLocation.p.z + m_p.z };
-    AddBlockToRender(ToWorld(blockLocation), 1.0f, m_type);
 #endif
 }
 

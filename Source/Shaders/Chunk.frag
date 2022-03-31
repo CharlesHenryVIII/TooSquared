@@ -17,7 +17,6 @@ in float p_connectedVertices;
 //in vec4 gl_FragCoord;
 
 struct Material {
-    vec3  ambient;
     vec3  diffuse;
     vec3  specular;
     float shininess;
@@ -36,6 +35,7 @@ uniform vec3 u_lightP;
 #endif
 uniform vec3 u_cameraP;
 uniform float u_reflect;
+uniform vec3 u_ambientLight;
 uniform Material material;
 
 out vec4 color;
@@ -84,7 +84,7 @@ void main()
     //AMBIENT Lighting:
     //
     //vec3 ambient = vec3(1.0) * material.ambient;
-    vec3 ambient = clamp(u_lightColor + u_moonColor, 0, 1) * material.ambient;
+    vec3 ambient = clamp(u_lightColor + u_moonColor, 0, 1) * u_ambientLight;
 
 
     //
@@ -140,7 +140,8 @@ void main()
     //
     //RESULT:
     //
-    vec3 result = (max(ambient + diffuse + specular - ambientOcclusion, 0.01)) * pixel.xyz;
+    //vec3 result = (max(ambient + diffuse + specular - ambientOcclusion, 0.01)) * pixel.xyz;
+    vec3 result = (max(ambient + diffuse - ambientOcclusion, 0.01)) * pixel.xyz;
     //ambient = vec3(1);
     //result = (max(ambient - ambientOcclusion, 0)) * pixel.xyz;
 

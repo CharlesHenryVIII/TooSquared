@@ -15,6 +15,7 @@
 #include "Gameplay.h"
 #include "Entity.h"
 #include "Raycast.h"
+#include "Vox.h"
 
 #include "imgui.h"
 #include "imgui_impl_sdl.h"
@@ -196,7 +197,6 @@ int main(int argc, char* argv[])
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     ImGuiIO& imGuiIO = ImGui::GetIO();
-
     bool g_cursorEngaged = true;
 
     while (g_running)
