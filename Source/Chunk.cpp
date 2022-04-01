@@ -1956,6 +1956,17 @@ bool ChunkArray::SaveChunk(ChunkIndex i)
     {
         complexBlocks[i].Save(p[i]);
     }
+    else
+    {
+        std::string fullFileName = GetComplexBlockSaveFilePathFromChunkPos(p[i]);
+        assert(fullFileName.size() > 0);
+        File file = File(fullFileName, File::Mode::Write, false);
+        if (file.m_handleIsValid)
+        {
+            bool d = file.Delete();
+            assert(d);
+        }
+    }
     return result;
 }
 
