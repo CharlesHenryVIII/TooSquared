@@ -844,6 +844,11 @@ Atan2f return value:
     Vec3 r = { roundf(a.x), roundf(a.y), roundf(a.z) };
     return r;
 }
+[[nodiscard]] inline Vec4 Round(const Vec4& a)
+{
+    Vec4 r = { roundf(a.x), roundf(a.y), roundf(a.z), roundf(a.w) };
+    return r;
+}
 [[nodiscard]] inline float Sign(float value)
 {
     return value < 0.0f ? -1.0f : 1.0f;

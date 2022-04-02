@@ -20,15 +20,15 @@ void InitializeWinInterop()
 }
 
 
-File::File(char const* filename, File::Mode fileMode, bool updateFile)
+File::File(char const* filename, File::Mode fileMode, bool createIfNotFound)
 {
     std::string sFileName = std::string(filename);
-    Init(sFileName, fileMode, updateFile);
+    Init(sFileName, fileMode, createIfNotFound);
 }
 
-File::File(const std::string& filename, File::Mode fileMode, bool updateFile)
+File::File(const std::string& filename, File::Mode fileMode, bool createIfNotFound)
 {
-    Init(filename, fileMode, updateFile);
+    Init(filename, fileMode, createIfNotFound);
 }
 
 void File::GetHandle()

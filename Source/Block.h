@@ -31,16 +31,7 @@ enum class BlockType : uint8 {
     Slab,
     Glass,
     Belt,
-    Belt_UpVert,
-    Belt_DownVert,
-    Belt_Turn,
     Count,
-//CobWeb,
-//Flower_Red,
-//Flower_Yellow,
-//Flower_Blue,
-//Sappling,
-//Chest,
 };
 ENUMOPS(BlockType);
 
@@ -54,6 +45,14 @@ enum class Face : uint8 {
     Count,
 };
 ENUMOPS(Face);
+
+const Vec2 g_coordinalDirections[] = {
+    {  0, -1 }, //0 == 0
+    {  1,  0 }, //1 == 3
+    {  0,  1 }, //2 == 2
+    { -1,  0 }, //3 == 1
+};
+
 
 #define BLOCK_SEETHROUGH                BIT(1)
 #define BLOCK_TRANSLUCENT               BIT(2)
@@ -79,7 +78,7 @@ struct BlockSampler {
     BlockType blocks[+Face::Count] = {};
     GamePos   m_baseBlockP = {};
     BlockType m_baseBlockType = BlockType::Empty;
-    bool RegionGather(GamePos m_baseBlockP);
+    bool RegionGather(GamePos m_baseBlockP, bool baseBlockEmpty = false);
 };
 
 extern Block g_blocks[+BlockType::Count];
@@ -117,9 +116,12 @@ ENUMOPS(CoordinalPoint);
 enum class BeltType : uint8 {
     Error,
     Normal,
-    UpVert,
-    DownVert,
-    Turn,
+    Turn_CCW,
+    Turn_CW,
+    Up1,
+    Up2,
+    Down1,
+    Down2,
     Count,
 };
 ENUMOPS(BeltType);

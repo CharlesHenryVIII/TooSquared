@@ -77,6 +77,8 @@ ENUMOPS(Shader);
 enum class Mesh : uint32 {
     Invalid,
     Belt_Normal,
+    Belt_Turn_CCW,
+    Belt_Turn_CW,
     Count,
 };
 ENUMOPS(Mesh);

@@ -698,11 +698,9 @@ void InitializeVideo()
     g_renderer.skyBoxDay   = new TextureCube("Assets/sky.dds");//DayMinecraftSkybox2.dds");
     g_renderer.textures[Texture::T::Plain] = new Texture(s_pixelTextureData, { 1, 1 }, GL_RGBA);
 
-#if 1
-    LoadVoxelRenderData(Mesh::Belt_Normal, "Assets/Belt_Normal.vox");
-#else
-    //LoadVoxelRenderData(Mesh::Belt_Normal, "Assets/Conveyer_Propper_Orientation.vox");
-#endif
+    LoadVoxelRenderData(Mesh::Belt_Normal,      "Assets/Belt_Normal.vox");
+    LoadVoxelRenderData(Mesh::Belt_Turn_CCW,    "Assets/Belt_Turn_CCW.vox");
+    LoadVoxelRenderData(Mesh::Belt_Turn_CW,     "Assets/Belt_Turn_CW.vox");
 
     g_renderer.programs[+Shader::Chunk]             = new ShaderProgram("Source/Shaders/Chunk.vert",        "Source/Shaders/Chunk.frag");
     g_renderer.programs[+Shader::Cube]              = new ShaderProgram("Source/Shaders/Cube.vert",         "Source/Shaders/Cube.frag");

@@ -4,13 +4,6 @@
 #include "Chunk.h"
 
 
-const Vec2 s_coordinalDirections[] = {
-    {  0, -1 },
-    {  1,  0 },
-    {  0,  1 },
-    { -1,  0 },
-};
-
 const Vec2 faceUV[4] = {
     Vec2{ 0, 1 },
     Vec2{ 0, 0 },
@@ -49,7 +42,7 @@ void Complex_Belt::OnDestruct(const ChunkPos& chunkP)
 Complex_Belt* Complex_Belt::GetNextBelt(const ChunkPos& chunkPos)
 {
     GamePos nextBlockP = GetGamePos(chunkPos);
-    nextBlockP.p += Vec3Int(int32(-1 * s_coordinalDirections[+m_direction].x), 0, int32(s_coordinalDirections[+m_direction].y));
+    nextBlockP.p += Vec3Int(int32(-1 * g_coordinalDirections[+m_direction].x), 0, int32(g_coordinalDirections[+m_direction].y));
     //fetch next block
     BlockType nextBlock;
     ChunkIndex nextChunkIndex;
@@ -121,11 +114,9 @@ WorldPos Complex_Belt::GetChildBlockPos(const int32 index, const WorldPos& paren
         distance = m_blocks[index].m_position;
 
     //Find the X and Z of the child block
-    switch (m_type)
+    switch (m_beltType)
     {
-    case BlockType::Belt:
-    case BlockType::Belt_UpVert:
-    case BlockType::Belt_DownVert:
+    case BeltType::Normal:
     {
 #if 0
         Vec4 childBlockRelativeToParent = {};
@@ -138,11 +129,11 @@ WorldPos Complex_Belt::GetChildBlockPos(const int32 index, const WorldPos& paren
         Vec4 finalPosition = rot * childBlockRelativeToParent;
 #else
 
-        if (s_coordinalDirections[+m_direction].x)
+        if (g_coordinalDirections[+m_direction].x)
         {
             p.p.z += (g_blocks[+BlockType::Belt].m_size.z / 2.0f);
             float amount = distance;
-            if (s_coordinalDirections[+m_direction].x > 0)
+            if (g_coordinalDirections[+m_direction].x > 0)
                 amount = 1 - amount;
             p.p.x += amount;
         }
@@ -150,41 +141,44 @@ WorldPos Complex_Belt::GetChildBlockPos(const int32 index, const WorldPos& paren
         {
             p.p.x += (g_blocks[+BlockType::Belt].m_size.x / 2.0f);
             float amount = distance;
-            if (s_coordinalDirections[+m_direction].y < 0)
+            if (g_coordinalDirections[+m_direction].y < 0)
                 amount = 1 - amount;
             p.p.z += amount;
         }
 #endif
         break;
     }
-    case BlockType::Belt_Turn:
+    case BeltType::Turn_CCW://uh oh
+    case BeltType::Turn_CW://uh oh
     {
-        assert(false);
+        bool isClockWise = false;
+        float angle = distance* ((tau / 4) * +m_direction);
+        float radius = (8 / 16);
+        p.p.x += cosf(angle) * radius;
+        p.p.z += sinf(angle) * radius;
+        break;
     }
+    default:
+        assert(false);
+        break;
     }
 
     //Find the Y of the child block
     WorldPos childBlockSize;
     childBlockSize.p = HadamardProduct(g_blocks[+m_blocks[index].m_type].m_size, g_itemScale);
-    switch (m_type)
+    switch (m_beltType)
     {
-    case BlockType::Belt_Turn:
-    case BlockType::Belt:
+    case BeltType::Turn_CCW:
+    case BeltType::Turn_CW:
+    case BeltType::Normal:
     {
         p.p.y += g_blocks[+BlockType::Belt].m_size.y;
         p.p.y += childBlockSize.p.y / 2;//size of miniature blocks
         break;
     }
-    case BlockType::Belt_UpVert:
-    {
-        //p.p.y += g_blocks[+BlockType::Belt].m_size.y;
+    default:
+        assert(false);
         break;
-    }
-    case BlockType::Belt_DownVert:
-    {
-        //p.p.y += g_blocks[+BlockType::Belt].m_size.y;
-        break;
-    }
     }
     return p;
 }
@@ -313,14 +307,38 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
 #endif
 }
 
+float CoordinalPointToRad(const CoordinalPoint point)
+{
+    //CoordinalPoint;
+    //g_coordinalDirections;
+    int32 multiplier = ((!!(+point)) * +CoordinalPoint::Count) - +point;
+    float result = float(multiplier) * (tau / 4.0f);
+    return result;
+}
 void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
 {
 #if 1
-    assert(g_renderer.meshVertexBuffers[+Mesh::Belt_Normal].size());
-    int32 modelIndex = int32((m_beltPosition * float(VOXEL_MAX_SIZE))) % g_renderer.meshVertexBuffers[+Mesh::Belt_Normal].size();
-    modelIndex = Min<int32>(modelIndex, int32(g_renderer.meshVertexBuffers[+Mesh::Belt_Normal].size() - 1));
-    g_renderer.meshVertexBuffers[+Mesh::Belt_Normal][modelIndex]->Bind();
-    g_renderer.meshIndexBuffers[+Mesh::Belt_Normal][modelIndex]->Bind();
+    Mesh mesh = Mesh::Invalid;
+    switch (m_beltType)
+    {
+    case BeltType::Normal:
+        mesh = Mesh::Belt_Normal;
+        break;
+    case BeltType::Turn_CCW:
+        mesh = Mesh::Belt_Turn_CCW;
+        break;
+    case BeltType::Turn_CW:
+        mesh = Mesh::Belt_Turn_CW;
+        break;
+    default:
+        assert(false);
+        mesh = Mesh::Belt_Normal;
+    }
+    assert(g_renderer.meshVertexBuffers[+mesh].size());
+    int32 modelIndex = int32((m_beltPosition * float(VOXEL_MAX_SIZE))) % g_renderer.meshVertexBuffers[+mesh].size();
+    modelIndex = Min<int32>(modelIndex, int32(g_renderer.meshVertexBuffers[+mesh].size() - 1));
+    g_renderer.meshVertexBuffers[+mesh][modelIndex]->Bind();
+    g_renderer.meshIndexBuffers[+mesh][modelIndex]->Bind();
     ShaderProgram* sp = g_renderer.programs[+Shader::Voxel];
 
     sp->UseShader();
@@ -331,7 +349,7 @@ void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
     //gb_mat4_translate(&rotMov, {0, 0, 1});
     //sp->UpdateUniformMat4("u_modelMove", 1, false, rotMov.e);
     Mat4 rot;
-    gb_mat4_rotate(&rot, {0, 1, 0}, float(m_direction) * (tau / 4.0f));
+    gb_mat4_rotate(&rot, {0, 1, 0}, CoordinalPointToRad(m_direction));
     sp->UpdateUniformMat4("u_rotate", 1, false, rot.e);
     Mat4 translate;
     gb_mat4_translate(&translate, { -0.5, 0, -0.5 });
@@ -361,8 +379,8 @@ void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
     glVertexAttribIPointer(3, 4, GL_UNSIGNED_BYTE, sizeof(Vertex_Voxel), (void*)offsetof(Vertex_Voxel, rgba.r));
     glEnableVertexArrayAttrib(g_renderer.vao, 3);
 
-    glDrawElements(GL_TRIANGLES, (GLsizei)g_renderer.meshIndexBuffers[+Mesh::Belt_Normal][modelIndex]->m_count, GL_UNSIGNED_INT, 0);
-    g_renderer.numTrianglesDrawn += (uint32)g_renderer.meshIndexBuffers[+Mesh::Belt_Normal][modelIndex]->m_count / 3;
+    glDrawElements(GL_TRIANGLES, (GLsizei)g_renderer.meshIndexBuffers[+mesh][modelIndex]->m_count, GL_UNSIGNED_INT, 0);
+    g_renderer.numTrianglesDrawn += (uint32)g_renderer.meshIndexBuffers[+mesh][modelIndex]->m_count / 3;
 #else
     //WorldPos pos = ToWorld(chunkPos).p;
     //pos.p += { float(m_blockP.x), float(m_blockP.y), float(m_blockP.z) };

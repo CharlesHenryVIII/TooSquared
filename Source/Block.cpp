@@ -77,15 +77,15 @@ void SetBlockSprites()
     g_blocks[+BlockType::Belt].m_flags |= BLOCK_SEETHROUGH | BLOCK_NON_CUBOIDAL | BLOCK_COMPLEX | BLOCK_INTERACT;
     g_blocks[+BlockType::Belt].m_size.y = 0.5f;
     g_blocks[+BlockType::Belt] =
-        g_blocks[+BlockType::Belt_UpVert] =
-        g_blocks[+BlockType::Belt_DownVert] =
-        g_blocks[+BlockType::Belt_Turn] = g_blocks[+BlockType::Belt];
-    g_blocks[+BlockType::Belt_UpVert].m_spriteIndices[+Face::Right] = 170;
-    g_blocks[+BlockType::Belt_UpVert].m_spriteIndices[+Face::Left]  = 170;
-    g_blocks[+BlockType::Belt_UpVert].m_spriteIndices[+Face::Back]  = 171;
-    g_blocks[+BlockType::Belt_DownVert].m_spriteIndices[+Face::Right]   = 170;
-    g_blocks[+BlockType::Belt_DownVert].m_spriteIndices[+Face::Left]    = 170;
-    g_blocks[+BlockType::Belt_Turn].m_spriteIndices[+Face::Top] = 172;
+        //g_blocks[+BlockType::Belt_UpVert] =
+        //g_blocks[+BlockType::Belt_DownVert] =
+        /*g_blocks[+BlockType::Belt_Turn] =*/ g_blocks[+BlockType::Belt];
+    //g_blocks[+BlockType::Belt_UpVert].m_spriteIndices[+Face::Right] = 170;
+    //g_blocks[+BlockType::Belt_UpVert].m_spriteIndices[+Face::Left]  = 170;
+    //g_blocks[+BlockType::Belt_UpVert].m_spriteIndices[+Face::Back]  = 171;
+    //g_blocks[+BlockType::Belt_DownVert].m_spriteIndices[+Face::Right]   = 170;
+    //g_blocks[+BlockType::Belt_DownVert].m_spriteIndices[+Face::Left]    = 170;
+    //g_blocks[+BlockType::Belt_Turn].m_spriteIndices[+Face::Top] = 172;
 }
 
 void BlockInit()
@@ -120,16 +120,34 @@ Rect GetUVsFromIndex(uint8 index)
 CoordinalPoint ForwardVectorToCoordinalPoint(const Vec3& forward)
 {
     CoordinalPoint result = {};
+    //{  0, -1 },
+    //{  1,  0 },
+    //{  0,  1 },
+    //{ -1,  0 },
+#if 1
+    if (fabsf(forward.x) > fabsf(forward.z))
+    {
+        if (forward.x > 0) result = CoordinalPoint::East;
+        else result = CoordinalPoint::West;
+    }
+    else
+    {
+        if (forward.z > 0) result = CoordinalPoint::South;
+        else result = CoordinalPoint::North;
+    }
+#else
     if (forward.x == 0.0f && forward.z == 0.0f)
         return result;
     float rad = atan2f(forward.x, forward.z);
     float deg = RadToDeg(rad);
+    deg *= -1;                  //Inverse the direction
     deg += 180;                 //normalize negative values to be 0 to 360
     deg = deg / 90.0f;          //Get deg in terms of quarter rotations
     deg += 0.5;                 //Round to the nearest quarter
     int32 coord = (int32)deg;   //Truncate
     coord = coord % (+CoordinalPoint::Count);
     result = (CoordinalPoint)coord;
+#endif
     return result;
 }
 
@@ -190,14 +208,11 @@ void ComplexBlocks::AddNew(const BlockType block, const Vec3Int& pos, const Vec3
     switch (block)
     {
     case BlockType::Belt:
-    case BlockType::Belt_DownVert:
-    case BlockType::Belt_UpVert:
-    case BlockType::Belt_Turn:
     {
         auto* complex = New<Complex_Belt>(pos);
         complex->m_type = block;
         if ((forwardVector.x == forwardVector.y) && (forwardVector.z == 0.0f) && (forwardVector.z == forwardVector.x))
-            complex->m_direction = CoordinalPoint::West;
+            complex->m_direction = CoordinalPoint::North;
         else
             complex->m_direction = ForwardVectorToCoordinalPoint(forwardVector);
         complex->OnConstruct();
