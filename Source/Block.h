@@ -47,10 +47,10 @@ enum class Face : uint8 {
 ENUMOPS(Face);
 
 const Vec2 g_coordinalDirections[] = {
-    {  0, -1 }, //0 == 0
-    {  1,  0 }, //1 == 3
-    {  0,  1 }, //2 == 2
-    { -1,  0 }, //3 == 1
+    {  0, -1 }, //North
+    {  1,  0 }, //East
+    {  0,  1 }, //South
+    { -1,  0 }, //West
 };
 
 
@@ -101,7 +101,7 @@ struct ComplexBlock {
     virtual bool CanAddBlock_Offset(int32& index, const BlockType child) const { return false; };
     virtual bool AddBlock_Front( BlockType child) { return false; };
     virtual bool AddBlock_Offset(BlockType child) { return false; };
-    virtual void OnConstruct() {};
+    virtual void OnConstruct(const GamePos& hitBlock, const Vec3Int& pos, const Vec3 forwardVector) {};
     virtual void OnDestruct(const ChunkPos& chunkP) { m_inUse = false; };
 };
 
@@ -151,6 +151,7 @@ public:
 
     virtual void Update(float dt, const ChunkPos& chunkPos) override;
     virtual void OnDestruct(const ChunkPos& chunkP) override;
+    virtual void OnConstruct(const GamePos& hitBlock, const Vec3Int& pos, const Vec3 forwardVector) override;
     virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) override;
     virtual bool Save(File* file) override;
     virtual void OnHover() override;
@@ -206,7 +207,7 @@ public:
     void CleanUp();
     void Render(const Camera* playerCamera, const ChunkPos& chunkPos);
     void Update(float dt, const ChunkPos& chunkPos);
-    void AddNew(const BlockType block, const Vec3Int& pos, const Vec3 forwardVector);
+    void AddNew(const GamePos& hitBlock, const BlockType block, const Vec3Int& pos, const Vec3 forwardVector);
     void Remove(const ChunkPos& chunkP, const Vec3Int& pos);
     bool Load(const ChunkPos& p);
     void Save(const ChunkPos& p);

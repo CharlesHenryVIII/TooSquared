@@ -76,16 +76,7 @@ void SetBlockSprites()
     g_blocks[+BlockType::Belt].m_spriteIndices[+Face::Front]    = 154;
     g_blocks[+BlockType::Belt].m_flags |= BLOCK_SEETHROUGH | BLOCK_NON_CUBOIDAL | BLOCK_COMPLEX | BLOCK_INTERACT;
     g_blocks[+BlockType::Belt].m_size.y = 0.5f;
-    g_blocks[+BlockType::Belt] =
-        //g_blocks[+BlockType::Belt_UpVert] =
-        //g_blocks[+BlockType::Belt_DownVert] =
-        /*g_blocks[+BlockType::Belt_Turn] =*/ g_blocks[+BlockType::Belt];
-    //g_blocks[+BlockType::Belt_UpVert].m_spriteIndices[+Face::Right] = 170;
-    //g_blocks[+BlockType::Belt_UpVert].m_spriteIndices[+Face::Left]  = 170;
-    //g_blocks[+BlockType::Belt_UpVert].m_spriteIndices[+Face::Back]  = 171;
-    //g_blocks[+BlockType::Belt_DownVert].m_spriteIndices[+Face::Right]   = 170;
-    //g_blocks[+BlockType::Belt_DownVert].m_spriteIndices[+Face::Left]    = 170;
-    //g_blocks[+BlockType::Belt_Turn].m_spriteIndices[+Face::Top] = 172;
+    g_blocks[+BlockType::Belt] = g_blocks[+BlockType::Belt];
 }
 
 void BlockInit()
@@ -120,10 +111,6 @@ Rect GetUVsFromIndex(uint8 index)
 CoordinalPoint ForwardVectorToCoordinalPoint(const Vec3& forward)
 {
     CoordinalPoint result = {};
-    //{  0, -1 },
-    //{  1,  0 },
-    //{  0,  1 },
-    //{ -1,  0 },
 #if 1
     if (fabsf(forward.x) > fabsf(forward.z))
     {
@@ -203,7 +190,7 @@ void ComplexBlock::OnHover()
 //
 // Complex Blocks
 //
-void ComplexBlocks::AddNew(const BlockType block, const Vec3Int& pos, const Vec3 forwardVector)
+void ComplexBlocks::AddNew(const GamePos& hitBlock, const BlockType block, const Vec3Int& pos, const Vec3 forwardVector)
 {
     switch (block)
     {
@@ -215,7 +202,7 @@ void ComplexBlocks::AddNew(const BlockType block, const Vec3Int& pos, const Vec3
             complex->m_direction = CoordinalPoint::North;
         else
             complex->m_direction = ForwardVectorToCoordinalPoint(forwardVector);
-        complex->OnConstruct();
+        complex->OnConstruct(hitBlock, pos, forwardVector);
         break;
     }
     default:

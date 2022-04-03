@@ -604,7 +604,8 @@ void DrawTriangles(const std::vector<Triangle>& triangles, Color color, const Ma
 void LoadVoxelRenderData(const Mesh& mesh, const std::string& filePath)
 {
     VoxelMesh vm = {};
-    assert(LoadVoxFile(vm, g_renderer.voxelModels[+mesh], filePath));
+    bool loadVoxelSuccess = LoadVoxFile(vm, g_renderer.voxelModels[+mesh], filePath);
+    assert(loadVoxelSuccess);
     for (int32 i = 0; i < g_renderer.voxelModels[+mesh].size(); i++)
     {
         g_renderer.meshVertexBuffers[+mesh].push_back(new VertexBuffer());

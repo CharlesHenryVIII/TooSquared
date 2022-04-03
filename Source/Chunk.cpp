@@ -1824,99 +1824,16 @@ void SetBlock(GamePos hitBlock, BlockType setBlockType)
     }
 
 }
-Face GetFace(const Vec3& v)
-{
-    Face f;
-    if (faceNormals[+Face::Front] == v)
-        f = Face::Front;
-    else if (faceNormals[+Face::Back] == v)
-        f = Face::Back;
-    else if (faceNormals[+Face::Left] == v)
-        f = Face::Left;
-    else if (faceNormals[+Face::Right] == v)
-        f = Face::Right;
-    else
-        assert(false);
-    return f;
-}
-bool IsBeltFacingBelt(const BlockSampler& bs, const Vec3& sideOffset, const Face face)
-{
-    GamePos blockGameP;
-    blockGameP.p = bs.m_baseBlockP.p + Vec3ToVec3Int(sideOffset);
-    ChunkIndex chunkIndex;
-    g_chunks->GetChunk(chunkIndex, blockGameP);
-    ChunkPos chunkP;
-    Vec3Int blockP = Convert_GameToBlock(chunkP, blockGameP);
-    assert(g_chunks->p[chunkIndex].p == chunkP.p);
-    Complex_Belt* belt = (Complex_Belt*)g_chunks->complexBlocks[chunkIndex].GetBlock(blockP);
-    assert(belt);
-    if (belt)
-    {
-        Vec3 forward = { g_coordinalDirections[+belt->m_direction].x, 0, g_coordinalDirections[+belt->m_direction].y };
-        if (faceNormals[+face] + forward == Vec3({}))
-            return true;
-    }
-    return false;
-}
 void AddBlock(const GamePos& hitBlock, const BlockType block, const ChunkIndex chunkIndex, const Vec3& forwardVector)
 {
     if (g_blocks[+block].m_flags & BLOCK_COMPLEX)
     {
         ChunkPos chunkPos;
         Vec3Int blockPos = Convert_GameToBlock(chunkPos, hitBlock);
-        g_chunks->complexBlocks[chunkIndex].AddNew(block, blockPos, forwardVector);
+        g_chunks->complexBlocks[chunkIndex].AddNew(hitBlock, block, blockPos, forwardVector);
         if (block == BlockType::Belt)
         {
 
-            BlockSampler bs;
-            bs.RegionGather(hitBlock, true);
-            if (bs.blocks[+Face::Front] == BlockType::Belt || bs.blocks[+Face::Back] == BlockType::Belt ||
-                bs.blocks[+Face::Left] == BlockType::Belt || bs.blocks[+Face::Right] == BlockType::Belt)
-            {
-                Complex_Belt* belt = (Complex_Belt*)g_chunks->complexBlocks[chunkIndex].GetBlock(blockPos);
-                const Vec3 forward = { g_coordinalDirections[+belt->m_direction].x, 0, g_coordinalDirections[+belt->m_direction].y };
-                const Vec3 leftVecOffset  = { forward.z, 0, -forward.x };
-                const Vec3 rightVecOffset = { -forward.z, 0, forward.x };
-                const Face leftFace  = GetFace(leftVecOffset);
-                const Face rightFace = GetFace(rightVecOffset);
-
-                if (bs.blocks[+leftFace] == BlockType::Belt && bs.blocks[+rightFace] == BlockType::Belt)
-                {
-                    bool leftIsFacingNewBelt = IsBeltFacingBelt(bs, leftVecOffset,  leftFace);
-                    bool rightIsFacingNewBelt  = IsBeltFacingBelt(bs, rightVecOffset, rightFace);
-                    if (leftIsFacingNewBelt != rightIsFacingNewBelt)
-                    {
-                        if (leftIsFacingNewBelt)
-                        {
-                            belt->m_beltType = BeltType::Turn_CCW;
-                        }
-                        else
-                        {
-                            belt->m_beltType = BeltType::Turn_CW;
-                        }
-                    }
-                }
-                else if (bs.blocks[+leftFace] == BlockType::Belt)
-                {
-                    if (IsBeltFacingBelt(bs, leftVecOffset, leftFace))
-                        belt->m_beltType = BeltType::Turn_CCW;
-                }
-                else if (bs.blocks[+rightFace] == BlockType::Belt)
-                {
-                    if (IsBeltFacingBelt(bs, rightVecOffset, rightFace))
-                        belt->m_beltType = BeltType::Turn_CW;
-                }
-
-                const Face frontFace  = GetFace(forward);
-                if (bs.blocks[+leftFace] == BlockType::Belt)
-                {
-                    //update belt in front if its turned perpindicular
-                }
-
-                GamePos leftBlockPos = ToGame(ToWorld(hitBlock).p + leftVecOffset);
-                GamePos rightBlockPos = ToGame(ToWorld(hitBlock).p + rightVecOffset);
-
-            }
         }
     }
     SetBlock(hitBlock, block);
@@ -2351,7 +2268,7 @@ void ChunkArray::ItemUpdate(float dt)
                             {
                                 ChunkIndex newChunkIndex;
                                 bool checkForChunk = GetChunkFromPosition(newChunkIndex, updatedChunkPos);
-                                assert(checkForChunk);
+                                //assert(checkForChunk);
                                 if (checkForChunk)
                                 {
                                     ItemToMove itemToMove = {

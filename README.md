@@ -16,6 +16,8 @@
  * Add bit to nAndConnectedVertices for whether the shader should apply lighting effects to blocks or not
  * Rename "DoThing" to "AsyncJobFunction" or something like that
  * Add Upload template type in vertex and index buffer objects
+ * Remove the need to add SDL.dll to each building version
+	* Build directly against the lib instead?
 
 &nbsp;
 

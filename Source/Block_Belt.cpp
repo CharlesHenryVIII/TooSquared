@@ -39,10 +39,104 @@ void Complex_Belt::OnDestruct(const ChunkPos& chunkP)
         }
     }
 }
+Face GetFace(const Vec3& v)
+{
+    Face f;
+    if (faceNormals[+Face::Front] == v)
+        f = Face::Front;
+    else if (faceNormals[+Face::Back] == v)
+        f = Face::Back;
+    else if (faceNormals[+Face::Left] == v)
+        f = Face::Left;
+    else if (faceNormals[+Face::Right] == v)
+        f = Face::Right;
+    else
+        assert(false);
+    return f;
+}
+Complex_Belt* GetBeltFromOffset(const BlockSampler& bs, const Vec3& sideOffset, const Face face)
+{
+    GamePos blockGameP;
+    blockGameP.p = bs.m_baseBlockP.p + Vec3ToVec3Int(sideOffset);
+    ChunkIndex chunkIndex;
+    g_chunks->GetChunk(chunkIndex, blockGameP);
+    ChunkPos chunkP;
+    Vec3Int blockP = Convert_GameToBlock(chunkP, blockGameP);
+    assert(g_chunks->p[chunkIndex].p == chunkP.p);
+    return (Complex_Belt*)g_chunks->complexBlocks[chunkIndex].GetBlock(blockP);
+}
+bool IsBeltFacingBelt(const BlockSampler& bs, const Vec3& sideOffset, const Face face)
+{
+    Complex_Belt* belt = GetBeltFromOffset(bs, sideOffset, face);
+    assert(belt);
+    if (belt)
+    {
+        Vec3 forward = { g_coordinalDirections[+belt->m_direction].x, 0, g_coordinalDirections[+belt->m_direction].y };
+        if (faceNormals[+face] + forward == Vec3({}))
+            return true;
+    }
+    return false;
+}
+void Complex_Belt::OnConstruct(const GamePos& thisBlock, const Vec3Int& pos, const Vec3 forwardVector)
+{
+    BlockSampler bs;
+    bs.RegionGather(thisBlock, true);
+    if (bs.blocks[+Face::Front] == BlockType::Belt || bs.blocks[+Face::Back] == BlockType::Belt ||
+        bs.blocks[+Face::Left] == BlockType::Belt || bs.blocks[+Face::Right] == BlockType::Belt)
+    {
+        const Vec3 forward = { g_coordinalDirections[+m_direction].x, 0, g_coordinalDirections[+m_direction].y };
+        const Vec3 leftVecOffset = { forward.z, 0, -forward.x };
+        const Vec3 rightVecOffset = { -forward.z, 0, forward.x };
+        const Face leftFace = GetFace(leftVecOffset);
+        const Face rightFace = GetFace(rightVecOffset);
+        const Face frontFace = GetFace(forward);
+
+        if (bs.blocks[+leftFace] == BlockType::Belt && bs.blocks[+rightFace] == BlockType::Belt)
+        {
+            bool leftIsFacingNewBelt = IsBeltFacingBelt(bs, leftVecOffset, leftFace);
+            bool rightIsFacingNewBelt = IsBeltFacingBelt(bs, rightVecOffset, rightFace);
+            if (leftIsFacingNewBelt != rightIsFacingNewBelt)
+            {
+                if (leftIsFacingNewBelt)
+                {
+                    m_beltType = BeltType::Turn_CCW;
+                }
+                else
+                {
+                    m_beltType = BeltType::Turn_CW;
+                }
+            }
+        }
+        else if (bs.blocks[+leftFace] == BlockType::Belt)
+        {
+            if (IsBeltFacingBelt(bs, leftVecOffset, leftFace))
+                m_beltType = BeltType::Turn_CCW;
+        }
+        else if (bs.blocks[+rightFace] == BlockType::Belt)
+        {
+            if (IsBeltFacingBelt(bs, rightVecOffset, rightFace))
+                m_beltType = BeltType::Turn_CW;
+        }
+
+        if (bs.blocks[+frontFace] == BlockType::Belt)
+        {
+            Complex_Belt* frontBelt = GetBeltFromOffset(bs, forward, frontFace);
+            assert(frontBelt);
+            if (frontBelt)
+            {
+                Vec3 frontForward = { g_coordinalDirections[+frontBelt->m_direction].x, 0, g_coordinalDirections[+frontBelt->m_direction].y };
+                if (frontForward == leftVecOffset)
+                    frontBelt->m_beltType = BeltType::Turn_CCW;
+                else if (frontForward == rightVecOffset)
+                    frontBelt->m_beltType = BeltType::Turn_CW;
+            }
+        }
+    }
+}
 Complex_Belt* Complex_Belt::GetNextBelt(const ChunkPos& chunkPos)
 {
     GamePos nextBlockP = GetGamePos(chunkPos);
-    nextBlockP.p += Vec3Int(int32(-1 * g_coordinalDirections[+m_direction].x), 0, int32(g_coordinalDirections[+m_direction].y));
+    nextBlockP.p += Vec3Int(int32(g_coordinalDirections[+m_direction].x), 0, int32(g_coordinalDirections[+m_direction].y));
     //fetch next block
     BlockType nextBlock;
     ChunkIndex nextChunkIndex;
@@ -95,6 +189,12 @@ void Complex_Belt::OnHover()
     }
 }
 
+float CoordinalPointToRad(const CoordinalPoint point)
+{
+    int32 multiplier = ((!!(+point)) * +CoordinalPoint::Count) - +point;
+    float result = float(multiplier) * (tau / 4.0f);
+    return result;
+}
 
 //
 // Complex Block Belt
@@ -133,7 +233,7 @@ WorldPos Complex_Belt::GetChildBlockPos(const int32 index, const WorldPos& paren
         {
             p.p.z += (g_blocks[+BlockType::Belt].m_size.z / 2.0f);
             float amount = distance;
-            if (g_coordinalDirections[+m_direction].x > 0)
+            if (g_coordinalDirections[+m_direction].x < 0)
                 amount = 1 - amount;
             p.p.x += amount;
         }
@@ -148,14 +248,32 @@ WorldPos Complex_Belt::GetChildBlockPos(const int32 index, const WorldPos& paren
 #endif
         break;
     }
-    case BeltType::Turn_CCW://uh oh
-    case BeltType::Turn_CW://uh oh
+    case BeltType::Turn_CCW:
+    case BeltType::Turn_CW:
     {
-        bool isClockWise = false;
-        float angle = distance* ((tau / 4) * +m_direction);
-        float radius = (8 / 16);
-        p.p.x += cosf(angle) * radius;
-        p.p.z += sinf(angle) * radius;
+        const Vec3 forward = { g_coordinalDirections[+m_direction].x, 0, g_coordinalDirections[+m_direction].y };
+        float theta = distance * (tau / 4.0f); 
+        Vec4 rotVec = { 0, 0, 0, 1.0f };
+        rotVec.x = 0.5f * cosf(theta);
+        rotVec.z = 0.5f * sinf(theta);
+        Mat4 rot;
+        gb_mat4_rotate(&rot, { 0,1,0 }, CoordinalPointToRad(m_direction));
+        Vec3 vecOffset;
+        Vec4 rotOffset;
+        if (m_beltType == BeltType::Turn_CCW)
+        {
+            vecOffset = 0.5f * Vec3({ forward.z, 0, -forward.x });
+            rotOffset = { rotVec.z, 0.0f, rotVec.x, 1.0f };
+        }
+        else
+        {
+            vecOffset = 0.5f * Vec3({ -forward.z, 0, forward.x });
+            rotOffset = { -rotVec.z, 0.0f, rotVec.x, 1.0f };
+        }
+        p.p += Vec3({ 0.5f, 0, 0.5f }) + vecOffset;
+        p.p += 0.5f * forward;
+        Vec4 rotation = rot * rotOffset;
+        p.p += rotation.xyz;
         break;
     }
     default:
@@ -204,7 +322,7 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
     Complex_Belt* nextBelt = nullptr;
     nextBelt = GetNextBelt(chunkPos);
     int32 index;
-    if (nextBelt && nextBelt->CanAddBlock_Front(index, finalBlock.m_type))
+    if (nextBelt && nextBelt->CanAddBlock_Front(index, finalBlock.m_type) && (+nextBelt->m_direction + 2 != +m_direction))
     {
         //there is a next belt
         maxDistance = 1.0f;
@@ -223,7 +341,8 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
             assert(false); //am I ever hitting this?
             ChunkIndex chunkIndex;
             WorldPos p = GetChildBlockPos(COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 1, worldP, false);
-            assert(g_chunks->GetChunk(chunkIndex, ToGame(p)));
+            bool assertValue = g_chunks->GetChunk(chunkIndex, ToGame(p));
+            assert(assertValue);
             WorldPos d = p;
             d.p.y += 1.0f;
             g_items.Add(g_chunks->itemIDs[chunkIndex], finalBlock.m_type, p, d);
@@ -255,7 +374,8 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
                         if (!nextBelt->AddBlock_Front(childType))
                         {
                             ChunkIndex chunkIndex;
-                            assert(g_chunks->GetChunk(chunkIndex, ToGame(p)));
+                            bool assertValue = g_chunks->GetChunk(chunkIndex, ToGame(p));
+                            assert(assertValue);
                             g_items.Add(g_chunks->itemIDs[chunkIndex], childType, p);
                         }
                         assert(COMPLEX_BELT_MAX_BLOCKS_PER_BELT >= 2);
@@ -270,7 +390,8 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
                         {
                             ChunkIndex chunkIndex;
                             WorldPos p = GetChildBlockPos(COMPLEX_BELT_MAX_BLOCKS_PER_BELT - 1, worldP, false);
-                            assert(g_chunks->GetChunk(chunkIndex, ToGame(p)));
+                            bool assertValue = g_chunks->GetChunk(chunkIndex, ToGame(p));
+                            assert(assertValue);
                             WorldPos d = p;
                             d.p.y += 1.0f;
                             g_items.Add(g_chunks->itemIDs[chunkIndex], finalBlock.m_type, p, d);
@@ -307,14 +428,6 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
 #endif
 }
 
-float CoordinalPointToRad(const CoordinalPoint point)
-{
-    //CoordinalPoint;
-    //g_coordinalDirections;
-    int32 multiplier = ((!!(+point)) * +CoordinalPoint::Count) - +point;
-    float result = float(multiplier) * (tau / 4.0f);
-    return result;
-}
 void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
 {
 #if 1

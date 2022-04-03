@@ -7,16 +7,28 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "TooSquared", "TooSquared.vc
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug_NoProfiling|x64 = Debug_NoProfiling|x64
+		Debug_NoProfiling|x86 = Debug_NoProfiling|x86
 		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
+		Release_NoTiming|x64 = Release_NoTiming|x64
+		Release_NoTiming|x86 = Release_NoTiming|x86
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2C4210BA-3F1D-44EA-9827-B22C4D597D66}.Debug_NoProfiling|x64.ActiveCfg = Debug_NoProfiling|x64
+		{2C4210BA-3F1D-44EA-9827-B22C4D597D66}.Debug_NoProfiling|x64.Build.0 = Debug_NoProfiling|x64
+		{2C4210BA-3F1D-44EA-9827-B22C4D597D66}.Debug_NoProfiling|x86.ActiveCfg = Debug_NoProfiling|Win32
+		{2C4210BA-3F1D-44EA-9827-B22C4D597D66}.Debug_NoProfiling|x86.Build.0 = Debug_NoProfiling|Win32
 		{2C4210BA-3F1D-44EA-9827-B22C4D597D66}.Debug|x64.ActiveCfg = Debug|x64
 		{2C4210BA-3F1D-44EA-9827-B22C4D597D66}.Debug|x64.Build.0 = Debug|x64
 		{2C4210BA-3F1D-44EA-9827-B22C4D597D66}.Debug|x86.ActiveCfg = Debug|Win32
 		{2C4210BA-3F1D-44EA-9827-B22C4D597D66}.Debug|x86.Build.0 = Debug|Win32
+		{2C4210BA-3F1D-44EA-9827-B22C4D597D66}.Release_NoTiming|x64.ActiveCfg = Release|x64
+		{2C4210BA-3F1D-44EA-9827-B22C4D597D66}.Release_NoTiming|x64.Build.0 = Release|x64
+		{2C4210BA-3F1D-44EA-9827-B22C4D597D66}.Release_NoTiming|x86.ActiveCfg = Release_NoProfiling|Win32
+		{2C4210BA-3F1D-44EA-9827-B22C4D597D66}.Release_NoTiming|x86.Build.0 = Release_NoProfiling|Win32
 		{2C4210BA-3F1D-44EA-9827-B22C4D597D66}.Release|x64.ActiveCfg = Release|x64
 		{2C4210BA-3F1D-44EA-9827-B22C4D597D66}.Release|x64.Build.0 = Release|x64
 		{2C4210BA-3F1D-44EA-9827-B22C4D597D66}.Release|x86.ActiveCfg = Release|Win32
