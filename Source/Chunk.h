@@ -288,7 +288,7 @@ struct ChunkArray
     void ItemUpdate(float deltaTime);
     void Update(const ChunkPos& cameraPosition, int32 drawDistance, int32 fogDistance, MultiThreading& multiThreading);
     void CleanUp();
-    void RenderChunkOpaqueChildren(Camera* playerCamera);
+    void RenderChunkOpaqueChildren(const Camera* playerCamera, const int32 passCount);
 };
 extern ChunkArray* g_chunks;
 

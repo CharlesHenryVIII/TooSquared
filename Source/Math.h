@@ -45,6 +45,7 @@ const Color Brown       = { 0.50f, 0.40f, 0.25f, 1.00f };
 const Color Mint        = { 0.00f, 1.00f, 0.50f, 1.00f };
 const Color Orange      = { 1.00f, 0.50f, 0.00f, 1.00f };
 const Color Grey        = { 0.50f, 0.50f, 0.50f, 1.00f };
+const Color transCyan   = { 0.60f, 0.60f, 1.00f, 0.50f };
 
 const Color backgroundColor = { 0.263f, 0.706f, 0.965f, 0.0f };
 
@@ -98,6 +99,7 @@ struct Vertex {
 struct Vertex_Block {
     Vec3  p;
     Vec3  scale;
+    Color color;
     uint8 index;
 };
 struct Vertex_Cube {
@@ -296,10 +298,9 @@ inline void operator+=(Vec3& a, float b)
 {
     a = {a.x + b, a.y + b, a.z + b};
 }
-[[nodiscard]] inline Vec3 operator-=(Vec3& a, float b)
+inline void operator-=(Vec3& a, float b)
 {
     a = {a.x - b, a.y - b, a.z - b};
-    return a;
 }
 [[nodiscard]] inline bool operator==(Vec3Int a, Vec3Int b)
 {

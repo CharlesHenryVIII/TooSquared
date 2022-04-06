@@ -1831,10 +1831,6 @@ void AddBlock(const GamePos& hitBlock, const BlockType block, const ChunkIndex c
         ChunkPos chunkPos;
         Vec3Int blockPos = Convert_GameToBlock(chunkPos, hitBlock);
         g_chunks->complexBlocks[chunkIndex].AddNew(hitBlock, block, blockPos, forwardVector);
-        if (block == BlockType::Belt)
-        {
-
-        }
     }
     SetBlock(hitBlock, block);
 }
@@ -2321,10 +2317,10 @@ void ChunkArray::CleanUp()
     }
 }
 
-void ChunkArray::RenderChunkOpaqueChildren(Camera* playerCamera)
+void ChunkArray::RenderChunkOpaqueChildren(const Camera* playerCamera, const int32 passCount)
 {
     for (ChunkIndex i = 0; i < highestActiveChunk; i++)
     {
-        complexBlocks[i].Render(playerCamera, p[i]);
+        complexBlocks[i].Render(playerCamera, passCount, p[i]);
     }
 }

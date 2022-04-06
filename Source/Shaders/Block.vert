@@ -1,12 +1,14 @@
 #version 420 core
 layout(location = 0) in vec3 v_position;
 layout(location = 1) in vec3 v_scale;
-layout(location = 2) in uint v_index;
+layout(location = 2) in vec4 v_color;
+layout(location = 3) in uint v_index;
 
 uniform mat4 u_perspective;
 uniform mat4 u_view;
 
 out vec2 p_uv;
+out vec4 p_color;
 flat out float p_depth;
 
 const vec2 faceUV[4] = vec2[4](
@@ -130,6 +132,6 @@ void main()
     vec3 baseVertexPosition = cubeVertices[relativeIndex / 4].e[relativeIndex % 4];
     gl_Position = u_perspective * u_view * model * vec4(baseVertexPosition * v_scale, 1.0);
     p_uv = faceUV[gl_VertexID % 4];
-
+    p_color = v_color;
     p_depth = v_index;
 }

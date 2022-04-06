@@ -6,7 +6,7 @@ struct InventorySlot {
 };
 
 #define MAX_SLOTS 8
-#define MAX_BLOCKS std::numeric_limits<decltype(InventorySlot::m_count)>::max()
+#define MAX_BLOCKS UCHAR_MAX //std::numeric_limits<decltype(InventorySlot::m_count)>::max()
 
 struct Inventory {
 private:

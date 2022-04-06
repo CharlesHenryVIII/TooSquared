@@ -79,6 +79,8 @@ enum class Mesh : uint32 {
     Belt_Normal,
     Belt_Turn_CCW,
     Belt_Turn_CW,
+    Belt_Up1,
+    Belt_Up2,
     Count,
 };
 ENUMOPS(Mesh);
@@ -173,7 +175,6 @@ public:
 };
 
 
-#include "Rendering_Framebuffer.h"
 struct Renderer {
     SDL_GLContext GL_Context = {};
     ShaderProgram* programs[+Shader::Count] = {};
@@ -221,3 +222,7 @@ void RenderAlphaCopy(Texture* source, Texture* destination);
 struct Camera;
 void RenderSkybox(const Camera* playerCamera);
 void UpdateHeavens(Light_Direction& sun, Light_Direction& moon, const float inGameTime);
+
+//Rendering blocks
+void RenderVoxMesh(WorldPos p, const float scale, const Camera* camera, const Mesh mesh, const int32 meshAnimationState, float rotationInRads, const int32 passCount, const Color& color = White);
+void RenderVoxMesh(WorldPos p, const Vec3 scale,  const Camera* camera, const Mesh mesh, const int32 meshAnimationState, float rotationInRads, const int32 passCount, const Color& color = White);

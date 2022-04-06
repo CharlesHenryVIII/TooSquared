@@ -68,7 +68,7 @@ Complex_Belt* GetBeltFromOffset(const BlockSampler& bs, const Vec3& sideOffset, 
 bool IsBeltFacingBelt(const BlockSampler& bs, const Vec3& sideOffset, const Face face)
 {
     Complex_Belt* belt = GetBeltFromOffset(bs, sideOffset, face);
-    assert(belt);
+    //assert(belt);
     if (belt)
     {
         Vec3 forward = { g_coordinalDirections[+belt->m_direction].x, 0, g_coordinalDirections[+belt->m_direction].y };
@@ -87,35 +87,44 @@ void Complex_Belt::OnConstruct(const GamePos& thisBlock, const Vec3Int& pos, con
         const Vec3 forward = { g_coordinalDirections[+m_direction].x, 0, g_coordinalDirections[+m_direction].y };
         const Vec3 leftVecOffset = { forward.z, 0, -forward.x };
         const Vec3 rightVecOffset = { -forward.z, 0, forward.x };
-        const Face leftFace = GetFace(leftVecOffset);
+        const Face leftFace  = GetFace(leftVecOffset);
         const Face rightFace = GetFace(rightVecOffset);
         const Face frontFace = GetFace(forward);
+        const Face backFace  = GetFace(-forward);
 
         if (bs.blocks[+leftFace] == BlockType::Belt && bs.blocks[+rightFace] == BlockType::Belt)
         {
             bool leftIsFacingNewBelt = IsBeltFacingBelt(bs, leftVecOffset, leftFace);
             bool rightIsFacingNewBelt = IsBeltFacingBelt(bs, rightVecOffset, rightFace);
+            bool backIsFacingNewBelt = IsBeltFacingBelt(bs, -forward, backFace);
             if (leftIsFacingNewBelt != rightIsFacingNewBelt)
             {
-                if (leftIsFacingNewBelt)
+                if (!backIsFacingNewBelt)
                 {
-                    m_beltType = BeltType::Turn_CCW;
-                }
-                else
-                {
-                    m_beltType = BeltType::Turn_CW;
+                    if (leftIsFacingNewBelt)
+                    {
+                        m_beltType = BeltType::Turn_CCW;
+                    }
+                    else
+                    {
+                        m_beltType = BeltType::Turn_CW;
+                    }
                 }
             }
         }
         else if (bs.blocks[+leftFace] == BlockType::Belt)
         {
-            if (IsBeltFacingBelt(bs, leftVecOffset, leftFace))
+            if (IsBeltFacingBelt(bs, leftVecOffset, leftFace) && !IsBeltFacingBelt(bs, -forward, backFace))
                 m_beltType = BeltType::Turn_CCW;
+            else
+                m_beltType = BeltType::Normal;
         }
         else if (bs.blocks[+rightFace] == BlockType::Belt)
         {
-            if (IsBeltFacingBelt(bs, rightVecOffset, rightFace))
+            if (IsBeltFacingBelt(bs, rightVecOffset, rightFace) && !IsBeltFacingBelt(bs, -forward, backFace))
                 m_beltType = BeltType::Turn_CW;
+            else
+                m_beltType = BeltType::Normal;
         }
 
         if (bs.blocks[+frontFace] == BlockType::Belt)
@@ -428,9 +437,8 @@ void Complex_Belt::Update(float dt, const ChunkPos& chunkPos)
 #endif
 }
 
-void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
+void Complex_Belt::Render(const Camera* playerCamera, const int32 passCount, const ChunkPos& chunkPos)
 {
-#if 1
     Mesh mesh = Mesh::Invalid;
     switch (m_beltType)
     {
@@ -450,127 +458,9 @@ void Complex_Belt::Render(const Camera* playerCamera, const ChunkPos& chunkPos)
     assert(g_renderer.meshVertexBuffers[+mesh].size());
     int32 modelIndex = int32((m_beltPosition * float(VOXEL_MAX_SIZE))) % g_renderer.meshVertexBuffers[+mesh].size();
     modelIndex = Min<int32>(modelIndex, int32(g_renderer.meshVertexBuffers[+mesh].size() - 1));
-    g_renderer.meshVertexBuffers[+mesh][modelIndex]->Bind();
-    g_renderer.meshIndexBuffers[+mesh][modelIndex]->Bind();
-    ShaderProgram* sp = g_renderer.programs[+Shader::Voxel];
+    WorldPos p = ToWorld(chunkPos).p + Vec3({ float(m_blockP.x), float(m_blockP.y), float(m_blockP.z) });
+    RenderVoxMesh(p, 1.0f, playerCamera, mesh, modelIndex, CoordinalPointToRad(m_direction), passCount);
 
-    sp->UseShader();
-    //Mat4 rot2;
-    //gb_mat4_rotate(&rot2, {1, 0, 0}, tau / 4.0f * 3.0f);
-    //sp->UpdateUniformMat4("u_modelRotate", 1, false, rot2.e);
-    //Mat4 rotMov;
-    //gb_mat4_translate(&rotMov, {0, 0, 1});
-    //sp->UpdateUniformMat4("u_modelMove", 1, false, rotMov.e);
-    Mat4 rot;
-    gb_mat4_rotate(&rot, {0, 1, 0}, CoordinalPointToRad(m_direction));
-    sp->UpdateUniformMat4("u_rotate", 1, false, rot.e);
-    Mat4 translate;
-    gb_mat4_translate(&translate, { -0.5, 0, -0.5 });
-    sp->UpdateUniformMat4("u_toModel", 1, false, translate.e);
-    Mat4 translateBack;
-    gb_mat4_translate(&translateBack, { 0.5, 0, 0.5 });
-    sp->UpdateUniformMat4("u_fromModel", 1, false, translateBack.e);
-    Mat4 model;
-    gb_mat4_identity(&model);
-    gb_mat4_translate(&model, ToWorld(chunkPos).p + Vec3({ float(m_blockP.x), float(m_blockP.y), float(m_blockP.z) }));
-    sp->UpdateUniformMat4( "u_model", 1, false, model.e);
-    sp->UpdateUniformMat4( "u_perspective", 1, false, playerCamera->m_perspective.e);
-    sp->UpdateUniformMat4( "u_view", 1, false, playerCamera->m_view.e);
-    sp->UpdateUniformUint8("u_passCount", 0);
-    sp->UpdateUniformVec3( "u_ambientLight",            1,  g_ambientLight.e);
-    sp->UpdateUniformVec3( "u_directionalLight_d",      1,  g_renderer.sunLight.d.e);
-    sp->UpdateUniformVec3( "u_lightColor",              1,  g_renderer.sunLight.c.e);
-    sp->UpdateUniformVec3( "u_directionalLightMoon_d",  1,  g_renderer.moonLight.d.e);
-    sp->UpdateUniformVec3( "u_moonColor",               1,  g_renderer.moonLight.c.e);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex_Voxel), (void*)offsetof(Vertex_Voxel, p));
-    glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Voxel), (void*)offsetof(Vertex_Voxel, n));
-    glEnableVertexArrayAttrib(g_renderer.vao, 1);
-    glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Voxel), (void*)offsetof(Vertex_Voxel, ao));
-    glEnableVertexArrayAttrib(g_renderer.vao, 2);
-    glVertexAttribIPointer(3, 4, GL_UNSIGNED_BYTE, sizeof(Vertex_Voxel), (void*)offsetof(Vertex_Voxel, rgba.r));
-    glEnableVertexArrayAttrib(g_renderer.vao, 3);
-
-    glDrawElements(GL_TRIANGLES, (GLsizei)g_renderer.meshIndexBuffers[+mesh][modelIndex]->m_count, GL_UNSIGNED_INT, 0);
-    g_renderer.numTrianglesDrawn += (uint32)g_renderer.meshIndexBuffers[+mesh][modelIndex]->m_count / 3;
-#else
-    //WorldPos pos = ToWorld(chunkPos).p;
-    //pos.p += { float(m_blockP.x), float(m_blockP.y), float(m_blockP.z) };
-    const int32 vertexCount = 4 * +Face::Count;
-    Vertex_Complex vertices[vertexCount];
-    for (int32 f = 0; f < +Face::Count; f++)
-    {
-        if (f == +Face::Top)
-        {
-            for (int32 i = 0; i < 4; i++)
-            {
-                Vertex_Complex& v = vertices[f * 4 + i];
-                v.p  = smallCubeVertices[f].e[i];
-                v.uv = faceUV[i];
-                v.uv.y += m_beltPosition;
-                v.n  = faceNormals[f];
-                v.i  = g_blocks[+m_type].m_spriteIndices[f];
-            }
-        }
-        else
-        {
-            for (int32 i = 0; i < 4; i++)
-            {
-                Vertex_Complex& v = vertices[f * 4 + i];
-                v.p = smallCubeVertices[f].e[i];
-                if (f == +Face::Bot)
-                    v.uv = faceUV[i];
-                else
-                {
-                    v.uv = faceUV[i];
-                    v.uv.y = v.uv.y / 2;
-                }
-                v.n = faceNormals[f];
-                v.i = g_blocks[+m_type].m_spriteIndices[f];
-            }
-        }
-    }
-
-
-    VertexBuffer vertexBuffer = VertexBuffer();
-    vertexBuffer.Upload(vertices, vertexCount);
-    vertexBuffer.Bind();
-    g_renderer.chunkIB->Bind();
-    //glactiveTexture(GL_TEXTURE0);
-    //g_renderer.spriteTextArray->Bind();
-    ShaderProgram* sp = g_renderer.programs[+Shader::BlockComplex];
-
-    sp->UseShader();
-    Mat4 rot;
-    gb_mat4_rotate(&rot, {0, 1, 0}, float(m_direction) * (tau / 4.0f));
-    sp->UpdateUniformMat4("u_rotate", 1, false, rot.e);
-    Mat4 translate;
-    gb_mat4_translate(&translate, { -0.5, 0, -0.5 });
-    sp->UpdateUniformMat4("u_toModel", 1, false, translate.e);
-    Mat4 translateBack;
-    gb_mat4_translate(&translateBack, { 0.5, 0, 0.5 });
-    sp->UpdateUniformMat4("u_fromModel", 1, false, translateBack.e);
-    Mat4 model;
-    gb_mat4_identity(&model);
-    gb_mat4_translate(&model, ToWorld(chunkPos).p + Vec3({ float(m_blockP.x), float(m_blockP.y), float(m_blockP.z) }));
-    sp->UpdateUniformMat4("u_model", 1, false, model.e);
-    sp->UpdateUniformMat4("u_perspective", 1, false, playerCamera->m_perspective.e);
-    sp->UpdateUniformMat4("u_view", 1, false, playerCamera->m_view.e);
-    sp->UpdateUniformUint8("u_passCount", 0);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex_Complex), (void*)offsetof(Vertex_Complex, p));
-    glEnableVertexArrayAttrib(g_renderer.vao, 0);
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex_Complex), (void*)offsetof(Vertex_Complex, uv));
-    glEnableVertexArrayAttrib(g_renderer.vao, 1);
-    glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex_Complex), (void*)offsetof(Vertex_Complex, n));
-    glEnableVertexArrayAttrib(g_renderer.vao, 2);
-    glVertexAttribIPointer(3, 1, GL_UNSIGNED_BYTE,  sizeof(Vertex_Complex), (void*)offsetof(Vertex_Complex, i));
-    glEnableVertexArrayAttrib(g_renderer.vao, 3);
-
-    glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_INT, 0);
-    g_renderer.numTrianglesDrawn += 36;
-#endif
 }
 
 bool Complex_Belt::Save(File* file)

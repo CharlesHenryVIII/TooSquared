@@ -10,6 +10,7 @@ uniform uint u_passCount;
 
 in vec2 p_uv;
 in vec4 gl_FragCoord;
+in vec4 p_color;
 flat in float p_depth;
 
 out vec4 color;
@@ -29,7 +30,7 @@ void main()
             discard;
     }
 
-    vec4 tempColor = texture(sampler, vec3(p_uv, p_depth));
+    vec4 tempColor = texture(sampler, vec3(p_uv, p_depth)) * p_color;
     if (tempColor.a == 0)
         discard;
 

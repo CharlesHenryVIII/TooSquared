@@ -702,6 +702,8 @@ void InitializeVideo()
     LoadVoxelRenderData(Mesh::Belt_Normal,      "Assets/Belt_Normal.vox");
     LoadVoxelRenderData(Mesh::Belt_Turn_CCW,    "Assets/Belt_Turn_CCW.vox");
     LoadVoxelRenderData(Mesh::Belt_Turn_CW,     "Assets/Belt_Turn_CW.vox");
+    LoadVoxelRenderData(Mesh::Belt_Up1,         "Assets/Belt_Up1.vox");
+    LoadVoxelRenderData(Mesh::Belt_Up2,         "Assets/Belt_Up2.vox");
 
     g_renderer.programs[+Shader::Chunk]             = new ShaderProgram("Source/Shaders/Chunk.vert",        "Source/Shaders/Chunk.frag");
     g_renderer.programs[+Shader::Cube]              = new ShaderProgram("Source/Shaders/Cube.vert",         "Source/Shaders/Cube.frag");
@@ -785,4 +787,57 @@ void RenderAlphaCopy(Texture* s, Texture* d)
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, alphaBuffer.m_color->m_target, alphaBuffer.m_color->m_handle, 0);
+}
+
+#include "Entity.h"
+void RenderVoxMesh(WorldPos p, const float scale, const Camera* camera, const Mesh mesh, const int32 meshAnimationState, float rotationInRads, const int32 passCount, const Color& color)
+{ RenderVoxMesh(p, Vec3({ scale, scale, scale }), camera, mesh, meshAnimationState, rotationInRads, passCount, color); }
+void RenderVoxMesh(WorldPos p, const Vec3 scale, const Camera* camera, const Mesh mesh, const int32 meshAnimationState, float rotationInRads, const int32 passCount, const Color& color)
+{
+    g_renderer.meshVertexBuffers[+mesh][meshAnimationState]->Bind();
+    g_renderer.meshIndexBuffers[+mesh][meshAnimationState]->Bind();
+    ShaderProgram* sp = g_renderer.programs[+Shader::Voxel];
+
+    sp->UseShader();
+    //Mat4 rot2;
+    //gb_mat4_rotate(&rot2, {1, 0, 0}, tau / 4.0f * 3.0f);
+    //sp->UpdateUniformMat4("u_modelRotate", 1, false, rot2.e);
+    //Mat4 rotMov;
+    //gb_mat4_translate(&rotMov, {0, 0, 1});
+    //sp->UpdateUniformMat4("u_modelMove", 1, false, rotMov.e);
+    Mat4 rot;
+    gb_mat4_rotate(&rot, {0, 1, 0}, rotationInRads);
+    sp->UpdateUniformMat4("u_rotate", 1, false, rot.e);
+    Mat4 translate;
+    gb_mat4_translate(&translate, { -0.5, 0, -0.5 });
+    sp->UpdateUniformMat4("u_toModel", 1, false, translate.e);
+    Mat4 translateBack;
+    gb_mat4_translate(&translateBack, { 0.5, 0, 0.5 });
+    sp->UpdateUniformMat4("u_fromModel", 1, false, translateBack.e);
+    Mat4 model;
+    gb_mat4_identity(&model);
+    gb_mat4_translate(&model, p.p);
+    sp->UpdateUniformMat4( "u_model", 1, false, model.e);
+    sp->UpdateUniformMat4( "u_perspective", 1, false, camera->m_perspective.e);
+    sp->UpdateUniformMat4( "u_view", 1, false, camera->m_view.e);
+    sp->UpdateUniformVec3( "u_scale", 1, scale.e);
+    sp->UpdateUniformUint8("u_passCount", passCount);
+    sp->UpdateUniformVec4( "u_color", 1, color.e);
+    sp->UpdateUniformVec3( "u_ambientLight",            1,  g_ambientLight.e);
+    sp->UpdateUniformVec3( "u_directionalLight_d",      1,  g_renderer.sunLight.d.e);
+    sp->UpdateUniformVec3( "u_lightColor",              1,  g_renderer.sunLight.c.e);
+    sp->UpdateUniformVec3( "u_directionalLightMoon_d",  1,  g_renderer.moonLight.d.e);
+    sp->UpdateUniformVec3( "u_moonColor",               1,  g_renderer.moonLight.c.e);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex_Voxel), (void*)offsetof(Vertex_Voxel, p));
+    glEnableVertexArrayAttrib(g_renderer.vao, 0);
+    glVertexAttribIPointer(1, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Voxel), (void*)offsetof(Vertex_Voxel, n));
+    glEnableVertexArrayAttrib(g_renderer.vao, 1);
+    glVertexAttribIPointer(2, 1, GL_UNSIGNED_BYTE, sizeof(Vertex_Voxel), (void*)offsetof(Vertex_Voxel, ao));
+    glEnableVertexArrayAttrib(g_renderer.vao, 2);
+    glVertexAttribIPointer(3, 4, GL_UNSIGNED_BYTE, sizeof(Vertex_Voxel), (void*)offsetof(Vertex_Voxel, rgba.r));
+    glEnableVertexArrayAttrib(g_renderer.vao, 3);
+
+    glDrawElements(GL_TRIANGLES, (GLsizei)g_renderer.meshIndexBuffers[+mesh][meshAnimationState]->m_count, GL_UNSIGNED_INT, 0);
+    g_renderer.numTrianglesDrawn += (uint32)g_renderer.meshIndexBuffers[+mesh][meshAnimationState]->m_count / 3;
 }

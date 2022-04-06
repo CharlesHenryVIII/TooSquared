@@ -92,8 +92,10 @@ void main()
         resultColor = vec3( 0, 0, adjustedVertexCount);
 #endif
 
-    //if (u_passCount == 0)
-    color = vec4(resultColor.xyz, 1);
+    if (u_passCount == 0)
+        color = vec4(resultColor.xyz, 1);
+    else
+        color = vec4(resultColor, p_color.a);
     //color.xyz = p_normal;
     //color.xyz += (ambientOcclusion / 10000);
 }

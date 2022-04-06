@@ -198,6 +198,9 @@ int main(int argc, char* argv[])
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     ImGuiIO& imGuiIO = ImGui::GetIO();
     bool g_cursorEngaged = true;
+    BlockType startHitAddBlockType = BlockType::Empty;
+    GamePos   startHitAddBlockP = {};
+    float     startHitAddRotation = 0;
 
     while (g_running)
     {
@@ -875,6 +878,11 @@ White:  Uploaded,");
                     }
                     else if (playerInput.keyStates[SDL_BUTTON_LEFT].downThisFrame)
                     {
+#if 1
+                        startHitAddBlockType = hitBlockType;
+                        startHitAddBlockP.p = hitBlock.p + Vec3ToVec3Int(hitNormal);
+                        startHitAddRotation = 0;
+#else
                         GamePos addedBlockPosition;
                         addedBlockPosition.p = { hitBlock.p.x + int32(hitNormal.x), hitBlock.p.y + int32(hitNormal.y), hitBlock.p.z + int32(hitNormal.z) };
                         BlockType addedBlockType;
@@ -890,6 +898,101 @@ White:  Uploaded,");
                                 player->m_inventory.Remove(1);
                             }
                         }
+#endif
+                    }
+
+                    if (playerInput.keyStates[SDL_BUTTON_LEFT].down)
+                    {
+                        if (playerInput.keyStates[SDLK_r].downThisFrame)
+                        {
+                            if (playerInput.keyStates[SDLK_LSHIFT].down || playerInput.keyStates[SDLK_RSHIFT].down)
+                                startHitAddRotation -= tau / 4;
+                            else
+                                startHitAddRotation += tau / 4;
+                        }
+                        const Vec3Int hitBlockPlusNormal = hitBlock.p + Vec3ToVec3Int(hitNormal);
+                        Vec3 forwardVector = Vec3IntToVec3(hitBlockPlusNormal - startHitAddBlockP.p);
+                        if (forwardVector == Vec3({}))
+                            forwardVector = player->GetForwardVector();
+                        Mat4 rot;
+                        gb_mat4_rotate(&rot, { 0,1,0 }, startHitAddRotation);
+                        forwardVector = (rot * Vec4({ forwardVector.x, forwardVector.y, forwardVector.z, 1.0f })).xyz;
+
+                        BlockType blockType = player->m_inventory.HotSlot().m_block;
+                        const int32 totalBlockCount = player->m_inventory.HotSlot().m_count;
+                        int32 blockCounter = 0;
+                        //render each block that is potentially going to be added
+                        const int32 minx = Min(startHitAddBlockP.p.x, hitBlockPlusNormal.x);
+                        const int32 miny = Min(startHitAddBlockP.p.y, hitBlockPlusNormal.y);
+                        const int32 minz = Min(startHitAddBlockP.p.z, hitBlockPlusNormal.z);
+                        const int32 maxx = Max(startHitAddBlockP.p.x, hitBlockPlusNormal.x);
+                        const int32 maxy = Max(startHitAddBlockP.p.y, hitBlockPlusNormal.y);
+                        const int32 maxz = Max(startHitAddBlockP.p.z, hitBlockPlusNormal.z);
+                        if (blockType != BlockType::Empty)
+                        {
+                            for (int32 x = minx; x <= maxx; x++)
+                            {
+                                for (int32 y = miny; y <= maxy; y++)
+                                {
+                                    for (int32 z = minz; z <= maxz; z++)
+                                    {
+                                        if (blockCounter < totalBlockCount)
+                                        {
+                                            WorldPos p = Vec3IntToVec3(Vec3Int({ x, y, z })) + 0.5f;
+                                            AddBlockToRender(p, 1.0f, blockType, transCyan, forwardVector);
+                                            blockCounter++;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    else if (playerInput.keyStates[SDL_BUTTON_LEFT].upThisFrame)
+                    {
+                        //Place all the blocks between the start and end (hitpoint)
+                        const Vec3Int hitBlockPlusNormal = hitBlock.p + Vec3ToVec3Int(hitNormal);
+                        Vec3 forwardVector = Vec3IntToVec3(hitBlockPlusNormal - startHitAddBlockP.p);
+                        if (startHitAddRotation != 0)
+                            int32 asdf = 123;
+                        if (forwardVector == Vec3({}))
+                            forwardVector = player->GetForwardVector();
+
+                        Mat4 rot;
+                        gb_mat4_rotate(&rot, { 0,1,0 }, startHitAddRotation);
+                        forwardVector = (rot * Vec4({ forwardVector.x, forwardVector.y, forwardVector.z, 1.0f })).xyz;
+
+                        const int32 minx = Min(startHitAddBlockP.p.x, hitBlockPlusNormal.x);
+                        const int32 miny = Min(startHitAddBlockP.p.y, hitBlockPlusNormal.y);
+                        const int32 minz = Min(startHitAddBlockP.p.z, hitBlockPlusNormal.z);
+                        const int32 maxx = Max(startHitAddBlockP.p.x, hitBlockPlusNormal.x);
+                        const int32 maxy = Max(startHitAddBlockP.p.y, hitBlockPlusNormal.y);
+                        const int32 maxz = Max(startHitAddBlockP.p.z, hitBlockPlusNormal.z);
+                        InventorySlot& slot = player->m_inventory.HotSlot();
+                        for (int32 x = minx; x <= maxx; x++)
+                        {
+                            for (int32 y = miny; y <= maxy; y++)
+                            {
+                                for (int32 z = minz; z <= maxz; z++)
+                                {
+                                    if (!(slot.m_count))
+                                        goto endLoop;
+                                    GamePos addedBlockPosition;
+                                    addedBlockPosition.p = { x, y, z };
+                                    BlockType currentBlockType;
+                                    ChunkIndex chunkIndex;
+                                    if (g_chunks->GetBlock(currentBlockType, addedBlockPosition, chunkIndex))
+                                    {
+                                        if (slot.m_count && +slot.m_block && (currentBlockType == BlockType::Empty))
+                                        {
+                                            assert(slot.m_block != BlockType::Empty);
+                                            AddBlock(addedBlockPosition, slot.m_block, chunkIndex, forwardVector);
+                                            player->m_inventory.Remove(1);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    endLoop: { }
                     }
                 }
 
@@ -917,6 +1020,7 @@ White:  Uploaded,");
                         player->m_inventory.Remove(uint8(1));
                     }
                 }
+
             }
 
             //Near Clip and Far Clip
@@ -1119,7 +1223,7 @@ White:  Uploaded,");
                     }
                     {
                         ZoneScopedN("Chunk Complex Block Render");
-                        g_chunks->RenderChunkOpaqueChildren(playerCamera);
+                        g_chunks->RenderChunkOpaqueChildren(playerCamera, 0);
                     }
 
                     {

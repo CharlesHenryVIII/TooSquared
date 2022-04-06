@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Misc.h"
+#include "Math.h"
 #include "Rendering.h"
 struct Camera;
 
@@ -93,7 +93,7 @@ struct ComplexBlock {
     WorldPos GetWorldPos(const ChunkPos& chunkPos) const;
     GamePos GetGamePos(const ChunkPos& chunkPos) const;
     virtual void Update(float dt, const ChunkPos& chunkPos) = 0;
-    virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) = 0;
+    virtual void Render(const Camera* playerCamera, const int32 passCount, const ChunkPos& chunkPos) = 0;
     virtual bool Save(File* file) { return true; };
     //virtual bool OnInteract(Inventory& inventory) { return true; };
     virtual void OnHover();
@@ -152,7 +152,7 @@ public:
     virtual void Update(float dt, const ChunkPos& chunkPos) override;
     virtual void OnDestruct(const ChunkPos& chunkP) override;
     virtual void OnConstruct(const GamePos& hitBlock, const Vec3Int& pos, const Vec3 forwardVector) override;
-    virtual void Render(const Camera* playerCamera, const ChunkPos& chunkPos) override;
+    virtual void Render(const Camera* playerCamera, const int32 passCount, const ChunkPos& chunkPos);
     virtual bool Save(File* file) override;
     virtual void OnHover() override;
     virtual bool AddBlock_Front(BlockType child) override;
@@ -166,6 +166,8 @@ protected:
     void RemoveFinalBlock();
 };
 
+float CoordinalPointToRad(const CoordinalPoint point);
+CoordinalPoint ForwardVectorToCoordinalPoint(const Vec3& forward);
 
 
 
@@ -205,7 +207,7 @@ public:
     std::vector<ComplexBlock*> m_blocks;
     ComplexBlock* GetBlock(const Vec3Int& p);
     void CleanUp();
-    void Render(const Camera* playerCamera, const ChunkPos& chunkPos);
+    void Render(const Camera* playerCamera, const int32 passCount, const ChunkPos& chunkPos);
     void Update(float dt, const ChunkPos& chunkPos);
     void AddNew(const GamePos& hitBlock, const BlockType block, const Vec3Int& pos, const Vec3 forwardVector);
     void Remove(const ChunkPos& chunkP, const Vec3Int& pos);
@@ -219,22 +221,13 @@ bool ComplexBlocksInit();
 
 
 
-#define DEBUG_CUBE_RENDERER 2
-//
-#if DEBUG_CUBE_RENDERER == 1
-struct RenderCube { //assume player camera
-    WorldPos    p;
-    Color       color;
-    Vec3        scale;
-};
-#endif
 void AddCubeToRender(WorldPos p, Color color, float scale);
 void AddCubeToRender(WorldPos p, Color color, Vec3  scale);
 void RenderTransparentCubes(Camera* playerCamera, const int32 passCount, bool lastPass);
 void RenderOpaqueCubes(     Camera* playerCamera,   const int32 passCount);
 //
-void AddBlockToRender(WorldPos p, float scale, BlockType block);
-void AddBlockToRender(WorldPos p, Vec3 scale, BlockType block);
+void AddBlockToRender(const WorldPos& p, const float scale, const BlockType block, const Color& c = White, const Vec3& forward = {});
+void AddBlockToRender(const WorldPos& p, const Vec3& scale, const BlockType block, const Color& c = White, const Vec3& forward = {});
 void RenderTransparentBlocks(Camera* playerCamera,   const int32 passCount, bool lastPass);
 void RenderOpaqueBlocks(     Camera* playerCamera,   const int32 passCount);
 //
