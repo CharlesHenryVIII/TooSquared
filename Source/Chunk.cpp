@@ -1793,6 +1793,94 @@ void ChunkUpdateBlocks(ChunkPos p, Vec3Int offset = {})
     }
 }
 
+void CheckForChunkIndexAndAdd(std::vector<ChunkIndex>& unique, ChunkIndex newIndex)
+{
+    bool chunkIndexFound = false;
+    for (int32 c = 0; c < unique.size(); c++)
+    {
+        if (unique[c] == newIndex)
+        {
+            chunkIndexFound = true;
+            break;
+        }
+    }
+    if (!chunkIndexFound)
+        unique.push_back(newIndex);
+}
+
+void SetBlockMultiple(const std::vector<Vec3Int>& positions, const std::vector<BlockType>& types, const std::vector<ChunkIndex>& chunkIndices)
+{
+    ZoneScopedN("SetBlockMultiple");
+
+    if (!((positions.size() == chunkIndices.size()) && ((types.size() == chunkIndices.size()) || (types.size() == 1))))
+    {
+        assert(false);
+        return;
+    }
+    std::vector<ChunkIndex> uniqueChunkIndices;
+    for (int32 i = 0; i < chunkIndices.size(); i++)
+    {
+        CheckForChunkIndexAndAdd(uniqueChunkIndices, chunkIndices[i]);
+    }
+    for (int32 i = 0; i < positions.size(); i++)
+    {
+        ZoneScopedN("Setting Blocks");
+        BlockType type = types[0];
+        if (types.size() > 1)
+            type = types[i];
+        const Vec3Int& relPos = positions[i];
+        const ChunkIndex chunkIndex = chunkIndices[i];
+        g_chunks->blocks[chunkIndex].e[relPos.x][relPos.y][relPos.z] = type;
+        g_chunks->height[chunkIndex] = Max((uint16)(relPos.y + 1), g_chunks->height[chunkIndex]);
+        g_chunks->flags[chunkIndex]  |= CHUNK_FLAG_MODIFIED;
+
+        if (relPos.x == CHUNK_X - 1)
+        {
+            ChunkIndex index;
+            ChunkPos chunk;
+            chunk.p = g_chunks->p[chunkIndex].p + Vec3Int({  1, 0, 0 });
+            if (g_chunks->GetChunkFromPosition(index, chunk))
+                CheckForChunkIndexAndAdd(uniqueChunkIndices, index);
+        }
+        if (relPos.x == 0)
+        {
+            ChunkIndex index;
+            ChunkPos chunk;
+            chunk.p = g_chunks->p[chunkIndex].p + Vec3Int({ -1,  0,  0 });
+            if (g_chunks->GetChunkFromPosition(index, chunk))
+                CheckForChunkIndexAndAdd(uniqueChunkIndices, index);
+        }
+        if (relPos.z == CHUNK_Z - 1)
+        {
+            ChunkIndex index;
+            ChunkPos chunk;
+            chunk.p = g_chunks->p[chunkIndex].p + Vec3Int({  0,  0,  1 });
+            if (g_chunks->GetChunkFromPosition(index, chunk))
+                CheckForChunkIndexAndAdd(uniqueChunkIndices, index);
+        }
+        if (relPos.z == 0)
+        {
+            ChunkIndex index;
+            ChunkPos chunk;
+            chunk.p = g_chunks->p[chunkIndex].p + Vec3Int({  0,  0, -1 });
+            if (g_chunks->GetChunkFromPosition(index, chunk))
+                CheckForChunkIndexAndAdd(uniqueChunkIndices, index);
+        }
+    }
+    for (int32 i = 0; i < uniqueChunkIndices.size(); i++)
+    {
+        std::string scopeTitle;
+        scopeTitle = "Updating " + (int32)uniqueChunkIndices.size();
+        scopeTitle = scopeTitle + " Vertices";
+        ZoneScopedN("Updating Vertices");
+        ZoneText(scopeTitle.c_str(), scopeTitle.size());
+        const ChunkIndex& u = uniqueChunkIndices[i];
+        RegionSampler regionUpdate;
+        regionUpdate.RegionGather(u);
+        g_chunks->state[u] = ChunkArray::VertexLoading;
+        g_chunks->BuildChunkVertices(regionUpdate);
+    }
+}
 void SetBlock(GamePos hitBlock, BlockType setBlockType)
 {
     ZoneScopedN("SetBlock");
@@ -1823,6 +1911,30 @@ void SetBlock(GamePos hitBlock, BlockType setBlockType)
             ChunkUpdateBlocks(hitChunkPos, { 0,  0, -1 });
     }
 
+}
+void AddBlockMultiple(const std::vector<GamePos>& positions, const std::vector<ChunkIndex>& chunkIndices, const std::vector<BlockType>& types, const Vec3& forwardVector)
+{
+    if (!((positions.size() == chunkIndices.size()) && ((types.size() == chunkIndices.size()) || (types.size() == 1))))
+    {
+        assert(false);
+        return;
+    }
+    std::vector<Vec3Int> blockPositions;
+    blockPositions.reserve(positions.size());
+    ChunkPos chunkPos = {};
+    BlockType type = types[0];
+    for (int32 i = 0; i < positions.size(); i++)
+    {
+        if (types.size() > 1)
+            type = types[i];
+
+        blockPositions.push_back(Convert_GameToBlock(chunkPos, positions[i]));
+        if (g_blocks[+type].m_flags & BLOCK_COMPLEX)
+        {
+            g_chunks->complexBlocks[chunkIndices[i]].AddNew(positions[i], type, blockPositions[i], forwardVector);
+        }
+    }
+    SetBlockMultiple(blockPositions, types, chunkIndices);
 }
 void AddBlock(const GamePos& hitBlock, const BlockType block, const ChunkIndex chunkIndex, const Vec3& forwardVector)
 {

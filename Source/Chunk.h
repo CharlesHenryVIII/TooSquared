@@ -394,5 +394,6 @@ void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera, uint32 passCo
 void PreTransparentChunkRender(const Mat4& perspective, Camera* camera);
 
 int64 PositionHash(ChunkPos p);
+void AddBlockMultiple(const std::vector<GamePos>& positions, const std::vector<ChunkIndex>& chunkIndices, const std::vector<BlockType>& types, const Vec3& forwardVector);
 void AddBlock(      const GamePos& hitBlock, const BlockType block,         const ChunkIndex chunkIndex, const Vec3& forwardVector);
 void RemoveBlock(   const GamePos& hitBlock, const BlockType currentBlock,  const ChunkIndex chunkIndex);

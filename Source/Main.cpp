@@ -951,23 +951,18 @@ White:  Uploaded,");
                     {
                         //Place all the blocks between the start and end (hitpoint)
                         const Vec3Int hitBlockPlusNormal = hitBlock.p + Vec3ToVec3Int(hitNormal);
-                        Vec3 forwardVector = Vec3IntToVec3(hitBlockPlusNormal - startHitAddBlockP.p);
-                        if (startHitAddRotation != 0)
-                            int32 asdf = 123;
-                        if (forwardVector == Vec3({}))
-                            forwardVector = player->GetForwardVector();
 
-                        Mat4 rot;
-                        gb_mat4_rotate(&rot, { 0,1,0 }, startHitAddRotation);
-                        forwardVector = (rot * Vec4({ forwardVector.x, forwardVector.y, forwardVector.z, 1.0f })).xyz;
-
+                        InventorySlot& slot = player->m_inventory.HotSlot();
                         const int32 minx = Min(startHitAddBlockP.p.x, hitBlockPlusNormal.x);
                         const int32 miny = Min(startHitAddBlockP.p.y, hitBlockPlusNormal.y);
                         const int32 minz = Min(startHitAddBlockP.p.z, hitBlockPlusNormal.z);
                         const int32 maxx = Max(startHitAddBlockP.p.x, hitBlockPlusNormal.x);
                         const int32 maxy = Max(startHitAddBlockP.p.y, hitBlockPlusNormal.y);
                         const int32 maxz = Max(startHitAddBlockP.p.z, hitBlockPlusNormal.z);
-                        InventorySlot& slot = player->m_inventory.HotSlot();
+                        std::vector<GamePos> positions;
+                        std::vector<ChunkIndex> chunkIndices;
+                        std::vector<BlockType> types;
+                        types.push_back(slot.m_block);
                         for (int32 x = minx; x <= maxx; x++)
                         {
                             for (int32 y = miny; y <= maxy; y++)
@@ -985,7 +980,8 @@ White:  Uploaded,");
                                         if (slot.m_count && +slot.m_block && (currentBlockType == BlockType::Empty))
                                         {
                                             assert(slot.m_block != BlockType::Empty);
-                                            AddBlock(addedBlockPosition, slot.m_block, chunkIndex, forwardVector);
+                                            positions.push_back(addedBlockPosition);
+                                            chunkIndices.push_back(chunkIndex);
                                             player->m_inventory.Remove(1);
                                         }
                                     }
@@ -993,6 +989,15 @@ White:  Uploaded,");
                             }
                         }
                     endLoop: { }
+                        Vec3 forwardVector = Vec3IntToVec3(hitBlockPlusNormal - startHitAddBlockP.p);
+                        if (startHitAddRotation != 0)
+                            int32 asdf = 123;
+                        if (forwardVector == Vec3({}))
+                            forwardVector = player->GetForwardVector();
+                        Mat4 rot;
+                        gb_mat4_rotate(&rot, { 0,1,0 }, startHitAddRotation);
+                        forwardVector = (rot * Vec4({ forwardVector.x, forwardVector.y, forwardVector.z, 1.0f })).xyz;
+                        AddBlockMultiple(positions, chunkIndices, types, forwardVector);
                     }
                 }
 
