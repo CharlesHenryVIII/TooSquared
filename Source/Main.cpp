@@ -201,6 +201,7 @@ int main(int argc, char* argv[])
     BlockType startHitAddBlockType = BlockType::Empty;
     GamePos   startHitAddBlockP = {};
     float     startHitAddRotation = 0;
+    bool      placementCancelled = false;
 
     while (g_running)
     {
@@ -829,17 +830,17 @@ White:  Uploaded,");
 
                 //Block Deletion and Placement
                 //TODO: Optimize to update corners (max 4 chunks)
+                BlockType hitBlockType = BlockType::Empty;
+                ChunkIndex hitChunkIndex = 0;
                 if (validHit)
                 {
-                    BlockType hitBlockType = BlockType::Empty;
-                    ChunkIndex chunkIndex;
-                    if (g_chunks->GetBlock(hitBlockType, hitBlock, chunkIndex))
+                    if (g_chunks->GetBlock(hitBlockType, hitBlock, hitChunkIndex))
                     {
                         if (g_blocks[+hitBlockType].m_flags & BLOCK_INTERACT)
                         {
                             ChunkPos chunkP;
                             Vec3Int blockP = Convert_GameToBlock(chunkP, hitBlock);
-                            ComplexBlock* cb = g_chunks->complexBlocks[chunkIndex].GetBlock(blockP);
+                            ComplexBlock* cb = g_chunks->complexBlocks[hitChunkIndex].GetBlock(blockP);
                             if (cb)
                                 cb->OnHover();
                         }
@@ -849,8 +850,8 @@ White:  Uploaded,");
                         if (hitBlockType != BlockType::Empty)
                         {
                             ChunkPos chunkP = {};
-                            ComplexBlock* CB = g_chunks->complexBlocks[chunkIndex].GetBlock(Convert_GameToBlock(chunkP, hitBlock));
-                            assert(chunkP.p == g_chunks->p[chunkIndex].p);
+                            ComplexBlock* CB = g_chunks->complexBlocks[hitChunkIndex].GetBlock(Convert_GameToBlock(chunkP, hitBlock));
+                            assert(chunkP.p == g_chunks->p[hitChunkIndex].p);
                             if (CB)
                             {
                                 BlockType type = player->m_inventory.HotSlot().m_block;
@@ -861,159 +862,116 @@ White:  Uploaded,");
                             }
                         }
                     }
-                    else if (playerInput.keyStates[SDL_BUTTON_RIGHT].downThisFrame)
+                }
+                if (playerInput.keyStates[SDL_BUTTON_LEFT].down && playerInput.keyStates[SDL_BUTTON_RIGHT].down)
+                    placementCancelled = true;
+                else if (playerInput.keyStates[SDL_BUTTON_RIGHT].downThisFrame && !placementCancelled)
+                {
+                    if (hitBlockType != BlockType::Empty)
                     {
-                        if (hitBlockType != BlockType::Empty)
+                        g_chunks->RemoveBlock(hitBlock, hitBlockType, hitChunkIndex);
+                        WorldPos itemOrigin = ToWorld(hitBlock).p + 0.5f;
+
+
+                        ChunkIndex chunkIndex;
+                        if (g_chunks->GetChunkFromPosition(chunkIndex, ToChunk(itemOrigin)))
                         {
-                            g_chunks->RemoveBlock(hitBlock, hitBlockType, chunkIndex);
-                            WorldPos itemOrigin = ToWorld(hitBlock).p + 0.5f;
-
-
-                            ChunkIndex chunkIndex;
-                            if (g_chunks->GetChunkFromPosition(chunkIndex, ToChunk(itemOrigin)))
-                            {
-                                g_items.Add(g_chunks->itemIDs[chunkIndex], hitBlockType, itemOrigin, playerCamera->GetWorldPosition());
-                            }
+                            g_items.Add(g_chunks->itemIDs[chunkIndex], hitBlockType, itemOrigin, playerCamera->GetWorldPosition());
                         }
                     }
-                    else if (playerInput.keyStates[SDL_BUTTON_LEFT].downThisFrame)
+                }
+                else if (playerInput.keyStates[SDL_BUTTON_LEFT].downThisFrame && !placementCancelled)
+                {
+                    if (validHit)
                     {
-#if 1
                         startHitAddBlockType = hitBlockType;
                         startHitAddBlockP.p = hitBlock.p + Vec3ToVec3Int(hitNormal);
                         startHitAddRotation = 0;
-#else
-                        GamePos addedBlockPosition;
-                        addedBlockPosition.p = { hitBlock.p.x + int32(hitNormal.x), hitBlock.p.y + int32(hitNormal.y), hitBlock.p.z + int32(hitNormal.z) };
-                        BlockType addedBlockType;
-                        ChunkIndex chunkIndex;
-                        if (g_chunks->GetBlock(addedBlockType, addedBlockPosition, chunkIndex))
-                        {
-                            InventorySlot& slot = player->m_inventory.HotSlot();
-
-                            if (slot.m_count)
-                            {
-                                assert(slot.m_block != BlockType::Empty);
-                                AddBlock(addedBlockPosition, slot.m_block, chunkIndex, playerCamera->GetForwardVector());
-                                player->m_inventory.Remove(1);
-                            }
-                        }
-#endif
                     }
+                    else
+                        placementCancelled = true;
+                }
 
-                    if (playerInput.keyStates[SDL_BUTTON_LEFT].down)
+
+                if ((playerInput.keyStates[SDL_BUTTON_LEFT].down || playerInput.keyStates[SDL_BUTTON_LEFT].upThisFrame)
+                    && !placementCancelled && validHit)
+                {
+                    if (playerInput.keyStates[SDLK_r].downThisFrame && playerInput.keyStates[SDL_BUTTON_LEFT].down)
                     {
-                        if (playerInput.keyStates[SDLK_r].downThisFrame)
-                        {
-                            if (playerInput.keyStates[SDLK_LSHIFT].down || playerInput.keyStates[SDLK_RSHIFT].down)
-                                startHitAddRotation -= tau / 4;
-                            else
-                                startHitAddRotation += tau / 4;
-                        }
-                        const Vec3Int hitBlockPlusNormal = hitBlock.p + Vec3ToVec3Int(hitNormal);
-                        Vec3 forwardVector = Vec3IntToVec3(hitBlockPlusNormal - startHitAddBlockP.p);
-                        if (forwardVector == Vec3({}))
-                            forwardVector = player->GetForwardVector();
-                        Mat4 rot;
-                        gb_mat4_rotate(&rot, { 0,1,0 }, startHitAddRotation);
-                        forwardVector = (rot * Vec4({ forwardVector.x, forwardVector.y, forwardVector.z, 1.0f })).xyz;
-
-                        InventorySlot& slot = player->m_inventory.HotSlot();
-                        BlockType blockType = slot.m_block;
-                        int32 totalBlockCount = slot.m_count;
-                        //render each block that is potentially going to be added
-                        const int32 minx = Min(startHitAddBlockP.p.x, hitBlockPlusNormal.x);
-                        const int32 miny = Min(startHitAddBlockP.p.y, hitBlockPlusNormal.y);
-                        const int32 minz = Min(startHitAddBlockP.p.z, hitBlockPlusNormal.z);
-                        const int32 maxx = Max(startHitAddBlockP.p.x, hitBlockPlusNormal.x);
-                        const int32 maxy = Max(startHitAddBlockP.p.y, hitBlockPlusNormal.y);
-                        const int32 maxz = Max(startHitAddBlockP.p.z, hitBlockPlusNormal.z);
-
-                        if (blockType != BlockType::Empty)
-                        {
-                            for (int32 x = minx; x <= maxx; x++)
-                            {
-                                for (int32 y = miny; y <= maxy; y++)
-                                {
-                                    for (int32 z = minz; z <= maxz; z++)
-                                    {
-                                        if (!(totalBlockCount))
-                                            goto endLoop1;
-                                        GamePos addedBlockPosition;
-                                        addedBlockPosition.p = { x, y, z };
-                                        BlockType currentBlockType;
-                                        ChunkIndex chunkIndex;
-                                        if (g_chunks->GetBlock(currentBlockType, addedBlockPosition, chunkIndex))
-                                        {
-                                            if (totalBlockCount && (currentBlockType == BlockType::Empty))
-                                            {
-                                                assert(slot.m_block != BlockType::Empty);
-                                                WorldPos p = Vec3IntToVec3(Vec3Int({ x, y, z })) + 0.5f;
-                                                AddBlockToRender(p, 1.0f, blockType, transCyan, forwardVector);
-                                                totalBlockCount--;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        endLoop1: { }
-                        }
+                        if (playerInput.keyStates[SDLK_LSHIFT].down || playerInput.keyStates[SDLK_RSHIFT].down)
+                            startHitAddRotation -= tau / 4;
+                        else
+                            startHitAddRotation += tau / 4;
                     }
-                    else if (playerInput.keyStates[SDL_BUTTON_LEFT].upThisFrame)
-                    {
-                        //Place all the blocks between the start and end (hitpoint)
-                        const Vec3Int hitBlockPlusNormal = hitBlock.p + Vec3ToVec3Int(hitNormal);
+                    std::vector<GamePos> positions;
+                    std::vector<ChunkIndex> chunkIndices;
+                    std::vector<BlockType> types;
+                    GamePos hitBlockPlusNormal;
+                    hitBlockPlusNormal.p = hitBlock.p + Vec3ToVec3Int(hitNormal);
+                    Vec3 forwardVector = Vec3IntToVec3(hitBlockPlusNormal.p - startHitAddBlockP.p);
+                    if (forwardVector == Vec3({}))
+                        forwardVector = playerCamera->GetForwardVector();
+                    Mat4 rot;
+                    gb_mat4_rotate(&rot, { 0, 1, 0 }, startHitAddRotation);
+                    forwardVector = (rot * Vec4({ forwardVector.x, forwardVector.y, forwardVector.z, 1.0f })).xyz;
 
-                        InventorySlot& slot = player->m_inventory.HotSlot();
-                        const int32 minx = Min(startHitAddBlockP.p.x, hitBlockPlusNormal.x);
-                        const int32 miny = Min(startHitAddBlockP.p.y, hitBlockPlusNormal.y);
-                        const int32 minz = Min(startHitAddBlockP.p.z, hitBlockPlusNormal.z);
-                        const int32 maxx = Max(startHitAddBlockP.p.x, hitBlockPlusNormal.x);
-                        const int32 maxy = Max(startHitAddBlockP.p.y, hitBlockPlusNormal.y);
-                        const int32 maxz = Max(startHitAddBlockP.p.z, hitBlockPlusNormal.z);
-                        std::vector<GamePos> positions;
-                        std::vector<ChunkIndex> chunkIndices;
-                        std::vector<BlockType> types;
-                        types.push_back(slot.m_block);
-                        if (slot.m_block != BlockType::Empty)
+                    InventorySlot& slot = player->m_inventory.HotSlot();
+                    BlockType blockType = slot.m_block;
+                    int32 totalBlockCount = slot.m_count;
+                    const int32 minx = Min(startHitAddBlockP.p.x, hitBlockPlusNormal.p.x);
+                    const int32 miny = Min(startHitAddBlockP.p.y, hitBlockPlusNormal.p.y);
+                    const int32 minz = Min(startHitAddBlockP.p.z, hitBlockPlusNormal.p.z);
+                    const int32 maxx = Max(startHitAddBlockP.p.x, hitBlockPlusNormal.p.x);
+                    const int32 maxy = Max(startHitAddBlockP.p.y, hitBlockPlusNormal.p.y);
+                    const int32 maxz = Max(startHitAddBlockP.p.z, hitBlockPlusNormal.p.z);
+                    types.push_back(slot.m_block);
+                    if (blockType != BlockType::Empty)
+                    {
+                        for (int32 x = minx; x <= maxx; x++)
                         {
-                            for (int32 x = minx; x <= maxx; x++)
+                            for (int32 y = miny; y <= maxy; y++)
                             {
-                                for (int32 y = miny; y <= maxy; y++)
+                                for (int32 z = minz; z <= maxz; z++)
                                 {
-                                    for (int32 z = minz; z <= maxz; z++)
+                                    if (!(totalBlockCount))
+                                        goto loopEnd;
+                                    GamePos addedBlockPosition;
+                                    addedBlockPosition.p = { x, y, z };
+                                    BlockType currentBlockType;
+                                    ChunkIndex chunkIndex;
+                                    if (g_chunks->GetBlock(currentBlockType, addedBlockPosition, chunkIndex))
                                     {
-                                        if (!(slot.m_count))
-                                            goto endLoop2;
-                                        GamePos addedBlockPosition;
-                                        addedBlockPosition.p = { x, y, z };
-                                        BlockType currentBlockType;
-                                        ChunkIndex chunkIndex;
-                                        if (g_chunks->GetBlock(currentBlockType, addedBlockPosition, chunkIndex))
+                                        if (totalBlockCount && (currentBlockType == BlockType::Empty))
                                         {
-                                            if (slot.m_count && (currentBlockType == BlockType::Empty))
+                                            BlockSampler sampler;
+                                            sampler.RegionGather(addedBlockPosition);
+                                            Vec3 unused;
+                                            std::vector<Triangle> debug_triangles;
+                                            if (CapsuleVsBlock(player->m_collider, sampler, unused, debug_triangles))
+                                                continue;
+
+                                            assert(slot.m_block != BlockType::Empty);
+                                            if (playerInput.keyStates[SDL_BUTTON_LEFT].upThisFrame)
                                             {
-                                                assert(slot.m_block != BlockType::Empty);
+                                                player->m_inventory.Remove(1);
                                                 positions.push_back(addedBlockPosition);
                                                 chunkIndices.push_back(chunkIndex);
-                                                player->m_inventory.Remove(1);
                                             }
+                                            else
+                                            {
+                                                WorldPos p = Vec3IntToVec3(Vec3Int({ x, y, z })) + 0.5f;
+                                                AddBlockToRender(p, 1.0f, blockType, transCyan, forwardVector);
+                                            }
+                                            totalBlockCount--;
                                         }
                                     }
                                 }
                             }
-                        endLoop2: { }
-                            Vec3 forwardVector = Vec3IntToVec3(hitBlockPlusNormal - startHitAddBlockP.p);
-                            if (startHitAddRotation != 0)
-                                int32 asdf = 123;
-                            if (forwardVector == Vec3({}))
-                                forwardVector = player->GetForwardVector();
-                            Mat4 rot;
-                            gb_mat4_rotate(&rot, { 0,1,0 }, startHitAddRotation);
-                            forwardVector = (rot * Vec4({ forwardVector.x, forwardVector.y, forwardVector.z, 1.0f })).xyz;
-                            g_chunks->AddBlockMultiple(positions, chunkIndices, types, forwardVector);
                         }
                     }
+                loopEnd: {}
+                    if (playerInput.keyStates[SDL_BUTTON_LEFT].upThisFrame)
+                        g_chunks->AddBlockMultiple(positions, chunkIndices, types, forwardVector);
                 }
 
                 if (playerInput.keyStates[SDLK_x].downThisFrame)
@@ -1041,6 +999,8 @@ White:  Uploaded,");
                     }
                 }
 
+                if ((!playerInput.keyStates[SDL_BUTTON_LEFT].down) && (!playerInput.keyStates[SDL_BUTTON_RIGHT].down))
+                    placementCancelled = false;
             }
 
             //Near Clip and Far Clip
