@@ -1808,7 +1808,7 @@ void CheckForChunkIndexAndAdd(std::vector<ChunkIndex>& unique, ChunkIndex newInd
         unique.push_back(newIndex);
 }
 
-void SetBlockMultiple(const std::vector<Vec3Int>& positions, const std::vector<BlockType>& types, const std::vector<ChunkIndex>& chunkIndices)
+void ChunkArray::SetBlockMultiple(const std::vector<Vec3Int>& positions, const std::vector<BlockType>& types, const std::vector<ChunkIndex>& chunkIndices)
 {
     ZoneScopedN("SetBlockMultiple");
 
@@ -1830,40 +1830,40 @@ void SetBlockMultiple(const std::vector<Vec3Int>& positions, const std::vector<B
             type = types[i];
         const Vec3Int& relPos = positions[i];
         const ChunkIndex chunkIndex = chunkIndices[i];
-        g_chunks->blocks[chunkIndex].e[relPos.x][relPos.y][relPos.z] = type;
-        g_chunks->height[chunkIndex] = Max((uint16)(relPos.y + 1), g_chunks->height[chunkIndex]);
-        g_chunks->flags[chunkIndex]  |= CHUNK_FLAG_MODIFIED;
+        blocks[chunkIndex].e[relPos.x][relPos.y][relPos.z] = type;
+        height[chunkIndex] = Max((uint16)(relPos.y + 1), height[chunkIndex]);
+        flags[chunkIndex]  |= CHUNK_FLAG_MODIFIED;
 
         if (relPos.x == CHUNK_X - 1)
         {
             ChunkIndex index;
             ChunkPos chunk;
-            chunk.p = g_chunks->p[chunkIndex].p + Vec3Int({  1, 0, 0 });
-            if (g_chunks->GetChunkFromPosition(index, chunk))
+            chunk.p = p[chunkIndex].p + Vec3Int({  1, 0, 0 });
+            if (GetChunkFromPosition(index, chunk))
                 CheckForChunkIndexAndAdd(uniqueChunkIndices, index);
         }
         if (relPos.x == 0)
         {
             ChunkIndex index;
             ChunkPos chunk;
-            chunk.p = g_chunks->p[chunkIndex].p + Vec3Int({ -1,  0,  0 });
-            if (g_chunks->GetChunkFromPosition(index, chunk))
+            chunk.p = p[chunkIndex].p + Vec3Int({ -1,  0,  0 });
+            if (GetChunkFromPosition(index, chunk))
                 CheckForChunkIndexAndAdd(uniqueChunkIndices, index);
         }
         if (relPos.z == CHUNK_Z - 1)
         {
             ChunkIndex index;
             ChunkPos chunk;
-            chunk.p = g_chunks->p[chunkIndex].p + Vec3Int({  0,  0,  1 });
-            if (g_chunks->GetChunkFromPosition(index, chunk))
+            chunk.p = p[chunkIndex].p + Vec3Int({  0,  0,  1 });
+            if (GetChunkFromPosition(index, chunk))
                 CheckForChunkIndexAndAdd(uniqueChunkIndices, index);
         }
         if (relPos.z == 0)
         {
             ChunkIndex index;
             ChunkPos chunk;
-            chunk.p = g_chunks->p[chunkIndex].p + Vec3Int({  0,  0, -1 });
-            if (g_chunks->GetChunkFromPosition(index, chunk))
+            chunk.p = p[chunkIndex].p + Vec3Int({  0,  0, -1 });
+            if (GetChunkFromPosition(index, chunk))
                 CheckForChunkIndexAndAdd(uniqueChunkIndices, index);
         }
     }
@@ -1877,29 +1877,29 @@ void SetBlockMultiple(const std::vector<Vec3Int>& positions, const std::vector<B
         const ChunkIndex& u = uniqueChunkIndices[i];
         RegionSampler regionUpdate;
         regionUpdate.RegionGather(u);
-        g_chunks->state[u] = ChunkArray::VertexLoading;
-        g_chunks->BuildChunkVertices(regionUpdate);
+        state[u] = ChunkArray::VertexLoading;
+        BuildChunkVertices(regionUpdate);
     }
 }
-void SetBlock(GamePos hitBlock, BlockType setBlockType)
+void ChunkArray::SetBlock(GamePos hitBlock, BlockType setBlockType)
 {
     ZoneScopedN("SetBlock");
 
     ChunkPos hitChunkPos;
     Vec3Int hitBlockRelP = Convert_GameToBlock(hitChunkPos, hitBlock);
     ChunkIndex hitChunkIndex;
-    if (g_chunks->GetChunkFromPosition(hitChunkIndex, hitChunkPos) && (hitBlock.p.y >= 0) && (hitBlock.p.y < CHUNK_Y))
+    if (GetChunkFromPosition(hitChunkIndex, hitChunkPos) && (hitBlock.p.y >= 0) && (hitBlock.p.y < CHUNK_Y))
     {
         ZoneScopedN("SetBlock Success");
 
-        g_chunks->blocks[hitChunkIndex].e[hitBlockRelP.x][hitBlockRelP.y][hitBlockRelP.z] = setBlockType;
-        g_chunks->height[hitChunkIndex] = Max((uint16)(hitBlockRelP.y + 1), g_chunks->height[hitChunkIndex]);
-        g_chunks->flags[hitChunkIndex]  |= CHUNK_FLAG_MODIFIED;
+        blocks[hitChunkIndex].e[hitBlockRelP.x][hitBlockRelP.y][hitBlockRelP.z] = setBlockType;
+        height[hitChunkIndex] = Max((uint16)(hitBlockRelP.y + 1), height[hitChunkIndex]);
+        flags[hitChunkIndex]  |= CHUNK_FLAG_MODIFIED;
 
         RegionSampler regionUpdate;
         regionUpdate.RegionGather(hitChunkIndex);
-        g_chunks->state[hitChunkIndex] = ChunkArray::VertexLoading;
-        g_chunks->BuildChunkVertices(regionUpdate);
+        state[hitChunkIndex] = ChunkArray::VertexLoading;
+        BuildChunkVertices(regionUpdate);
 
         if (hitBlockRelP.x == CHUNK_X - 1)
             ChunkUpdateBlocks(hitChunkPos, { 1,  0,  0 });
@@ -1912,7 +1912,7 @@ void SetBlock(GamePos hitBlock, BlockType setBlockType)
     }
 
 }
-void AddBlockMultiple(const std::vector<GamePos>& positions, const std::vector<ChunkIndex>& chunkIndices, const std::vector<BlockType>& types, const Vec3& forwardVector)
+void ChunkArray::AddBlockMultiple(const std::vector<GamePos>& positions, const std::vector<ChunkIndex>& chunkIndices, const std::vector<BlockType>& types, const Vec3& forwardVector)
 {
     if (!((positions.size() == chunkIndices.size()) && ((types.size() == chunkIndices.size()) || (types.size() == 1))))
     {
@@ -1931,12 +1931,12 @@ void AddBlockMultiple(const std::vector<GamePos>& positions, const std::vector<C
         blockPositions.push_back(Convert_GameToBlock(chunkPos, positions[i]));
         if (g_blocks[+type].m_flags & BLOCK_COMPLEX)
         {
-            g_chunks->complexBlocks[chunkIndices[i]].AddNew(positions[i], type, blockPositions[i], forwardVector);
+            complexBlocks[chunkIndices[i]].AddNew(positions[i], type, blockPositions[i], forwardVector);
         }
     }
     SetBlockMultiple(blockPositions, types, chunkIndices);
 }
-void AddBlock(const GamePos& hitBlock, const BlockType block, const ChunkIndex chunkIndex, const Vec3& forwardVector)
+void ChunkArray::AddBlock(const GamePos& hitBlock, const BlockType block, const ChunkIndex chunkIndex, const Vec3& forwardVector)
 {
     if (g_blocks[+block].m_flags & BLOCK_COMPLEX)
     {
@@ -1946,7 +1946,7 @@ void AddBlock(const GamePos& hitBlock, const BlockType block, const ChunkIndex c
     }
     SetBlock(hitBlock, block);
 }
-void RemoveBlock(const GamePos& hitBlock, const BlockType currentBlock, const ChunkIndex chunkIndex)
+void ChunkArray::RemoveBlock(const GamePos& hitBlock, const BlockType currentBlock, const ChunkIndex chunkIndex)
 {
     if (g_blocks[+currentBlock].m_flags & BLOCK_COMPLEX)
     {

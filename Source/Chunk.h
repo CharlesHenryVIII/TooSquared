@@ -289,6 +289,13 @@ struct ChunkArray
     void Update(const ChunkPos& cameraPosition, int32 drawDistance, int32 fogDistance, MultiThreading& multiThreading);
     void CleanUp();
     void RenderChunkOpaqueChildren(const Camera* playerCamera, const int32 passCount);
+    void AddBlockMultiple(const std::vector<GamePos>& positions, const std::vector<ChunkIndex>& chunkIndices, const std::vector<BlockType>& types, const Vec3& forwardVector);
+    void AddBlock(const GamePos& hitBlock, const BlockType block, const ChunkIndex chunkIndex, const Vec3& forwardVector);
+    void RemoveBlock(const GamePos& hitBlock, const BlockType currentBlock, const ChunkIndex chunkIndex);
+
+private:
+    void SetBlockMultiple(const std::vector<Vec3Int>& positions, const std::vector<BlockType>& types, const std::vector<ChunkIndex>& chunkIndices);
+    void SetBlock(GamePos hitBlock, BlockType setBlockType);
 };
 extern ChunkArray* g_chunks;
 
@@ -394,6 +401,3 @@ void PreOpaqueChunkRender(const Mat4& perspective, Camera* camera, uint32 passCo
 void PreTransparentChunkRender(const Mat4& perspective, Camera* camera);
 
 int64 PositionHash(ChunkPos p);
-void AddBlockMultiple(const std::vector<GamePos>& positions, const std::vector<ChunkIndex>& chunkIndices, const std::vector<BlockType>& types, const Vec3& forwardVector);
-void AddBlock(      const GamePos& hitBlock, const BlockType block,         const ChunkIndex chunkIndex, const Vec3& forwardVector);
-void RemoveBlock(   const GamePos& hitBlock, const BlockType currentBlock,  const ChunkIndex chunkIndex);
