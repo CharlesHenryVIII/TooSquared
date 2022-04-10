@@ -82,6 +82,26 @@ struct BlockSampler {
 };
 
 extern Block g_blocks[+BlockType::Count];
+enum OrientationType : uint32 {
+    Orientation_Any         = 0,
+    Orientation_None        = BIT(0),
+    Orientation_Towards     = BIT(1),
+    Orientation_NotTowards  = BIT(2),
+#if 0
+    Orientation_RightNone       = BIT( 0),
+    Orientation_RightTowards    = BIT( 1),
+    Orientation_RightNotTowards = BIT( 2),
+    Orientation_LeftNone        = BIT( 3),
+    Orientation_LeftTowards     = BIT( 4),
+    Orientation_LeftNotTowards  = BIT( 5),
+    Orientation_BackNone        = BIT( 6),
+    Orientation_BackTowards     = BIT( 7),
+    Orientation_BackNotTowards  = BIT( 8),
+    Orientation_FrontNone       = BIT( 9),
+    Orientation_FrontTowards    = BIT(10),
+    Orientation_FrontNotTowards = BIT(11),
+#endif
+};
 
 
 struct Inventory;
@@ -125,6 +145,11 @@ enum class BeltType : uint8 {
     Count,
 };
 ENUMOPS(BeltType);
+struct Orientations
+{
+    OrientationType e[+Face::Count];
+    BeltType type;
+};
 #pragma pack(push, 1)
 struct Complex_Belt_Child_Block {
     BlockType m_type = BlockType::Empty;
@@ -138,7 +163,7 @@ struct Complex_Belt : ComplexBlock {
     Complex_Belt() = delete;
     Complex_Belt(const Vec3Int& p) { m_type = BlockType::Belt; m_blockP = p; };
 
-public:
+    static std::vector<Orientations> beltPermutations;
     Complex_Belt_Child_Block m_blocks[COMPLEX_BELT_MAX_BLOCKS_PER_BELT] = {};
     CoordinalPoint  m_direction = CoordinalPoint::West;
     float           m_beltSpeed = 0.1f; //units per second, 0.1 would take 10 seconds to go 1 block
@@ -149,6 +174,7 @@ public:
     BeltType        m_beltType = BeltType::Normal;
 
 
+    void UpdateOrientation(const GamePos& thisBlock, bool updateNeighbors);
     virtual void Update(float dt, const ChunkPos& chunkPos) override;
     virtual void OnDestruct(const ChunkPos& chunkP) override;
     virtual void OnConstruct(const GamePos& hitBlock, const Vec3Int& pos, const Vec3 forwardVector) override;

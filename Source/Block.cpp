@@ -82,6 +82,57 @@ void SetBlockSprites()
 void BlockInit()
 {
     SetBlockSprites();
+
+    Orientations o;
+    o = {};
+    o.type              = BeltType::Turn_CCW;
+    o.e[+Face::Right]   = Orientation_NotTowards;
+    o.e[+Face::Left]    = Orientation_Towards;
+    o.e[+Face::Top]     = Orientation_Any;
+    o.e[+Face::Bot]     = Orientation_Any;
+    o.e[+Face::Back]    = Orientation_NotTowards;
+    o.e[+Face::Front]   = Orientation_Any;
+    Complex_Belt::beltPermutations.push_back(o);
+
+    o = {};
+    o.type              = BeltType::Turn_CW;
+    o.e[+Face::Right]   = Orientation_Towards;
+    o.e[+Face::Left]    = Orientation_NotTowards;
+    o.e[+Face::Top]     = Orientation_Any;
+    o.e[+Face::Bot]     = Orientation_Any;
+    o.e[+Face::Back]    = Orientation_NotTowards;
+    o.e[+Face::Front]   = Orientation_Any;
+    Complex_Belt::beltPermutations.push_back(o);
+
+    o = {};
+    o.type              = BeltType::Normal;
+    o.e[+Face::Right]   = Orientation_Towards;
+    o.e[+Face::Left]    = Orientation_Towards;
+    o.e[+Face::Top]     = Orientation_Any;
+    o.e[+Face::Bot]     = Orientation_Any;
+    o.e[+Face::Back]    = Orientation_Any;
+    o.e[+Face::Front]   = Orientation_Any;
+    Complex_Belt::beltPermutations.push_back(o);
+
+    o = {};
+    o.type              = BeltType::Normal;
+    o.e[+Face::Right]   = Orientation_NotTowards;
+    o.e[+Face::Left]    = Orientation_NotTowards;
+    o.e[+Face::Top]     = Orientation_Any;
+    o.e[+Face::Bot]     = Orientation_Any;
+    o.e[+Face::Back]    = Orientation_Any;
+    o.e[+Face::Front]   = Orientation_Any;
+    Complex_Belt::beltPermutations.push_back(o);
+
+    o = {};
+    o.type              = BeltType::Normal;
+    o.e[+Face::Right]   = Orientation_Any;
+    o.e[+Face::Left]    = Orientation_Any;
+    o.e[+Face::Top]     = Orientation_Any;
+    o.e[+Face::Bot]     = Orientation_Any;
+    o.e[+Face::Back]    = Orientation_Towards;
+    o.e[+Face::Front]   = Orientation_Any;
+    Complex_Belt::beltPermutations.push_back(o);
 }
 
 Rect GetUVsFromIndex(uint8 index)
@@ -216,7 +267,7 @@ ComplexBlock* ComplexBlocks::GetBlock(const Vec3Int& p)
 {
     for (int32 i = 0; i < m_blocks.size(); i++)
     {
-        if (m_blocks[i]->m_blockP == p)
+        if (m_blocks[i]->m_blockP == p && m_blocks[i]->m_inUse)
             return m_blocks[i];
     }
     return nullptr;
@@ -226,8 +277,8 @@ void ComplexBlocks::Remove(const ChunkPos& chunkP, const Vec3Int& p)
     ComplexBlock* block = GetBlock(p);
     if (block == nullptr)
         return;
-    block->OnDestruct(chunkP);
     block->m_inUse = false;
+    block->OnDestruct(chunkP);
 }
 void ComplexBlocks::Render(const Camera* playerCamera, const int32 passCount, const ChunkPos& chunkPos)
 {

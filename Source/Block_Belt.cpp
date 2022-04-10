@@ -3,6 +3,7 @@
 #include "Math.h"
 #include "Chunk.h"
 
+std::vector<Orientations> Complex_Belt::beltPermutations;
 
 const Vec2 faceUV[4] = {
     Vec2{ 0, 1 },
@@ -38,6 +39,8 @@ void Complex_Belt::OnDestruct(const ChunkPos& chunkP)
             }
         }
     }
+
+    UpdateOrientation(GetGamePos(chunkP), true);
 }
 Face GetFace(const Vec3& v)
 {
@@ -54,7 +57,7 @@ Face GetFace(const Vec3& v)
         assert(false);
     return f;
 }
-Complex_Belt* GetBeltFromOffset(const BlockSampler& bs, const Vec3& sideOffset, const Face face)
+Complex_Belt* GetBeltFromOffset(const BlockSampler& bs, const Vec3& sideOffset)
 {
     GamePos blockGameP;
     blockGameP.p = bs.m_baseBlockP.p + Vec3ToVec3Int(sideOffset);
@@ -65,9 +68,16 @@ Complex_Belt* GetBeltFromOffset(const BlockSampler& bs, const Vec3& sideOffset, 
     assert(g_chunks->p[chunkIndex].p == chunkP.p);
     return (Complex_Belt*)g_chunks->complexBlocks[chunkIndex].GetBlock(blockP);
 }
+bool IsBeltFacingBelt(const Complex_Belt* belt, const Face face)
+{
+    Vec3 forward = { g_coordinalDirections[+belt->m_direction].x, 0, g_coordinalDirections[+belt->m_direction].y };
+    if (faceNormals[+face] + forward == Vec3({}))
+        return true;
+    return false;
+}
 bool IsBeltFacingBelt(const BlockSampler& bs, const Vec3& sideOffset, const Face face)
 {
-    Complex_Belt* belt = GetBeltFromOffset(bs, sideOffset, face);
+    Complex_Belt* belt = GetBeltFromOffset(bs, sideOffset);
     //assert(belt);
     if (belt)
     {
@@ -77,70 +87,83 @@ bool IsBeltFacingBelt(const BlockSampler& bs, const Vec3& sideOffset, const Face
     }
     return false;
 }
-void Complex_Belt::OnConstruct(const GamePos& thisBlock, const Vec3Int& pos, const Vec3 forwardVector)
+void Complex_Belt::UpdateOrientation(const GamePos& thisBlock, bool updateNeighbors)
 {
     BlockSampler bs;
     bs.RegionGather(thisBlock, true);
-    if (bs.blocks[+Face::Front] == BlockType::Belt || bs.blocks[+Face::Back] == BlockType::Belt ||
-        bs.blocks[+Face::Left] == BlockType::Belt || bs.blocks[+Face::Right] == BlockType::Belt)
+    if (!(bs.blocks[+Face::Front] == BlockType::Belt || bs.blocks[+Face::Back] == BlockType::Belt ||
+        bs.blocks[+Face::Left] == BlockType::Belt || bs.blocks[+Face::Right] == BlockType::Belt))
     {
-        const Vec3 forward = { g_coordinalDirections[+m_direction].x, 0, g_coordinalDirections[+m_direction].y };
-        const Vec3 leftVecOffset = { forward.z, 0, -forward.x };
-        const Vec3 rightVecOffset = { -forward.z, 0, forward.x };
-        const Face leftFace  = GetFace(leftVecOffset);
-        const Face rightFace = GetFace(rightVecOffset);
-        const Face frontFace = GetFace(forward);
-        const Face backFace  = GetFace(-forward);
+        m_beltType = BeltType::Normal;
+        return;
+    }
+    Vec3 offsets[+Face::Count] = {};
+    offsets[+Face::Front]   = {  g_coordinalDirections[+m_direction].x, 0,  g_coordinalDirections[+m_direction].y };
+    offsets[+Face::Left]    = {  offsets[+Face::Front].z,               0, -offsets[+Face::Front].x };
+    offsets[+Face::Right]   = { -offsets[+Face::Front].z,               0,  offsets[+Face::Front].x };
+    offsets[+Face::Back]    = { -offsets[+Face::Front] };
 
-        if (bs.blocks[+leftFace] == BlockType::Belt && bs.blocks[+rightFace] == BlockType::Belt)
+    Face relativeFaces[+Face::Count];
+    Complex_Belt* belts[+Face::Count] = {};
+    for (int32 i = 0; i < +Face::Count; i++)
+    {
+        if (!(i == +Face::Top || i == +Face::Bot))
         {
-            bool leftIsFacingNewBelt = IsBeltFacingBelt(bs, leftVecOffset, leftFace);
-            bool rightIsFacingNewBelt = IsBeltFacingBelt(bs, rightVecOffset, rightFace);
-            bool backIsFacingNewBelt = IsBeltFacingBelt(bs, -forward, backFace);
-            if (leftIsFacingNewBelt != rightIsFacingNewBelt)
+            relativeFaces[i] = GetFace(offsets[i]);
+            belts[i] = GetBeltFromOffset(bs, offsets[i]);
+        }
+    }
+
+    Orientations o;
+    for (int32 i = 0; i < +Face::Count; i++)
+    {
+        o.e[i] = Orientation_None;
+        if (i == +Face::Top || i == +Face::Bot || i == +Face::Front)
+            continue;
+
+        if (belts[i])
+        {
+            o.e[i] = IsBeltFacingBelt(belts[i], relativeFaces[i]) ? Orientation_Towards : Orientation_NotTowards;
+        }
+    }
+    bool matchFound = false;
+    for (int32 i = 0; i < beltPermutations.size(); i++)
+    {
+        const Orientations& p = beltPermutations[i];
+        bool permutationMatch = true;
+        for (int32 j = 0; j < +Face::Count; j++)
+        {
+            if (!((p.e[j] == o.e[j]) || (p.e[j] == Orientation_Any) || 
+                (p.e[j] == Orientation_NotTowards && o.e[j] == Orientation_None) ))
             {
-                if (!backIsFacingNewBelt)
-                {
-                    if (leftIsFacingNewBelt)
-                    {
-                        m_beltType = BeltType::Turn_CCW;
-                    }
-                    else
-                    {
-                        m_beltType = BeltType::Turn_CW;
-                    }
-                }
+                permutationMatch = false;
+                break;
             }
         }
-        else if (bs.blocks[+leftFace] == BlockType::Belt)
+        if (permutationMatch)
         {
-            if (IsBeltFacingBelt(bs, leftVecOffset, leftFace) && !IsBeltFacingBelt(bs, -forward, backFace))
-                m_beltType = BeltType::Turn_CCW;
-            else
-                m_beltType = BeltType::Normal;
+            m_beltType = p.type;
+            matchFound = true;
+            break;
         }
-        else if (bs.blocks[+rightFace] == BlockType::Belt)
+    }
+    assert(matchFound);
+    if (updateNeighbors)
+    {
+        for (int32 i = 0; i < +Face::Count; i++)
         {
-            if (IsBeltFacingBelt(bs, rightVecOffset, rightFace) && !IsBeltFacingBelt(bs, -forward, backFace))
-                m_beltType = BeltType::Turn_CW;
-            else
-                m_beltType = BeltType::Normal;
-        }
-
-        if (bs.blocks[+frontFace] == BlockType::Belt)
-        {
-            Complex_Belt* frontBelt = GetBeltFromOffset(bs, forward, frontFace);
-            assert(frontBelt);
-            if (frontBelt)
+            if (belts[i])
             {
-                Vec3 frontForward = { g_coordinalDirections[+frontBelt->m_direction].x, 0, g_coordinalDirections[+frontBelt->m_direction].y };
-                if (frontForward == leftVecOffset)
-                    frontBelt->m_beltType = BeltType::Turn_CCW;
-                else if (frontForward == rightVecOffset)
-                    frontBelt->m_beltType = BeltType::Turn_CW;
+                GamePos p;
+                p.p = thisBlock.p + Vec3ToVec3Int(offsets[i]);
+                belts[i]->UpdateOrientation(p, false);
             }
         }
     }
+}
+void Complex_Belt::OnConstruct(const GamePos& thisBlock, const Vec3Int& pos, const Vec3 forwardVector)
+{
+    UpdateOrientation(thisBlock, true);
 }
 Complex_Belt* Complex_Belt::GetNextBelt(const ChunkPos& chunkPos)
 {

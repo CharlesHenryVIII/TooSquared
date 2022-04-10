@@ -1929,32 +1929,35 @@ void ChunkArray::AddBlockMultiple(const std::vector<GamePos>& positions, const s
             type = types[i];
 
         blockPositions.push_back(Convert_GameToBlock(chunkPos, positions[i]));
+    }
+    SetBlockMultiple(blockPositions, types, chunkIndices);
+    for (int32 i = 0; i < positions.size(); i++)
+    {
         if (g_blocks[+type].m_flags & BLOCK_COMPLEX)
         {
             complexBlocks[chunkIndices[i]].AddNew(positions[i], type, blockPositions[i], forwardVector);
         }
     }
-    SetBlockMultiple(blockPositions, types, chunkIndices);
 }
 void ChunkArray::AddBlock(const GamePos& hitBlock, const BlockType block, const ChunkIndex chunkIndex, const Vec3& forwardVector)
 {
+    SetBlock(hitBlock, block);
     if (g_blocks[+block].m_flags & BLOCK_COMPLEX)
     {
         ChunkPos chunkPos;
         Vec3Int blockPos = Convert_GameToBlock(chunkPos, hitBlock);
         g_chunks->complexBlocks[chunkIndex].AddNew(hitBlock, block, blockPos, forwardVector);
     }
-    SetBlock(hitBlock, block);
 }
 void ChunkArray::RemoveBlock(const GamePos& hitBlock, const BlockType currentBlock, const ChunkIndex chunkIndex)
 {
+    SetBlock(hitBlock, BlockType::Empty);
     if (g_blocks[+currentBlock].m_flags & BLOCK_COMPLEX)
     {
         ChunkPos chunkPos;
         Vec3Int blockPos = Convert_GameToBlock(chunkPos, hitBlock);
         g_chunks->complexBlocks[chunkIndex].Remove(chunkPos, blockPos);
     }
-    SetBlock(hitBlock, BlockType::Empty);
 }
 
 
