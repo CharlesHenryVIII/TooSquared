@@ -444,6 +444,7 @@ void RenderUpdate(Vec2Int windowSize, float deltaTime)
     s_incrimentalTime += deltaTime;
     g_renderer.spriteTextArray->Update(g_renderer.currentAnisotropic);
 
+    SDL_GL_SetSwapInterval(g_renderer.swapInterval);
 
     CheckFrameBufferStatus();
     g_framebuffers->Update(windowSize, g_renderer.maxMSAASamples, g_renderer.depthPeelingPasses, g_renderer.msaaEnabled);
