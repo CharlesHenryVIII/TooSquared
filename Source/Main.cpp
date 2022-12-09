@@ -18,8 +18,8 @@
 #include "Vox.h"
 
 #include "imgui.h"
-#include "imgui_impl_sdl.h"
-#include "imgui_impl_opengl3.h"
+#include "Imgui/imgui_impl_sdl.h"
+#include "Imgui/imgui_impl_opengl3.h"
 #include "tracy-master/Tracy.hpp"
 
 #include <unordered_map>
@@ -396,6 +396,7 @@ int main(int argc, char* argv[])
             if (showIMGUI)
             {
                 ZoneScopedN("ImGui Update");
+                float transformInformationWidth = 0.0f;
                 {
                     // Start the Dear ImGui frame
                     ImGui_ImplOpenGL3_NewFrame();
@@ -455,7 +456,7 @@ int main(int argc, char* argv[])
                             GenericImGuiTable("for", "%+08.2f", forward.e, 4);
                             ImGui::EndTable();
                         }
-                        ImGui::Text("%.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+                        transformInformationWidth = ImGui::GetWindowSize().x;
                     }
                     ImGui::End();
 
@@ -475,6 +476,7 @@ int main(int argc, char* argv[])
                     ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, {});
 
                     ImGui::SetNextWindowBgAlpha(0.35f); // Transparent background
+                    ImGui::SetNextWindowPos(ImVec2(transformInformationWidth + PAD*2, PAD), ImGuiCond_Always);
                     if (ImGui::Begin("Camera Transform Information", nullptr, windowFlags))
                     {
                         ImGuiTableFlags flags = ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg | ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders;
@@ -546,11 +548,25 @@ White:  Uploaded,");
 
                         ImGui::Checkbox("MSAA Enabled", &g_renderer.msaaEnabled);
                         ImGui::SameLine(); HelpMarker("'v' will also toggle this");
-                        ImGui::SliderFloat("Anisotropic", &g_renderer.currentAnisotropic, 1.0f, g_renderer.maxAnisotropic);
-                        ImGui::Text("depthPeelingPasses:");
-                        ImGui::SliderInt("depthPeelingPasses:", &g_renderer.depthPeelingPasses, 2, 32);
-                        ImGui::Text("depthPeelingPassToDisplay:");
-                        ImGui::SliderInt("depthPeelingPassToDisplay:", &g_renderer.debug_DepthPeelingPassToDisplay, -1, g_renderer.depthPeelingPasses);
+                        ImGui::Text("Vertical Sync");
+                        ImGui::SameLine();
+                        ImGui::PushItemWidth(-FLT_MIN);
+                        if (ImGui::SliderInt("##Vertical Sync", &g_renderer.swapInterval, -1, 1))
+                        {
+                            SDL_GL_SetSwapInterval(g_renderer.swapInterval);
+                        }
+                        ImGui::Text("Anisotropic");
+                        ImGui::SameLine();
+                        ImGui::PushItemWidth(-FLT_MIN);
+                        ImGui::SliderFloat("##Anisotropic", &g_renderer.currentAnisotropic, 1.0f, g_renderer.maxAnisotropic);
+                        ImGui::Text("Depth Peeling Passes");
+                        ImGui::SameLine();
+                        ImGui::PushItemWidth(-FLT_MIN);
+                        ImGui::SliderInt("##DepthPeelingPasses", &g_renderer.depthPeelingPasses, 2, 32);
+                        ImGui::Text("Depth Peel To Display");
+                        ImGui::SameLine();
+                        ImGui::PushItemWidth(-FLT_MIN);
+                        ImGui::SliderInt("##Depth Peel To Display", &g_renderer.debug_DepthPeelingPassToDisplay, -1, g_renderer.depthPeelingPasses);
                         ImGui::TreePop();
                     }
 
@@ -600,8 +616,6 @@ White:  Uploaded,");
                         ImGui::Text("Core Count:");
                         ImGui::RadioButton("Multi", (int32*)&multiThreading.threads, +MultiThreading::Threads::multi_thread); ImGui::SameLine();
                         ImGui::RadioButton("Single", (int32*)&multiThreading.threads, +MultiThreading::Threads::single_thread); //ImGui::SameLine();
-                        ImGui::Spacing();
-                        ImGui::SliderInt("Layers", &g_renderer.depthPeelingPasses, 1, 6, 0);
                         ImGui::Spacing();
                         {
                             //#define RADIO_BUTTON_MACRO(type) 

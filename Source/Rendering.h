@@ -195,6 +195,7 @@ struct Renderer {
     float currentAnisotropic = 1.0f;
     int32 depthPeelingPasses = 3;
     int32 debug_DepthPeelingPassToDisplay = -1;
+    int32 swapInterval = 1;
     std::vector<Voxels> voxelModels[+Mesh::Count] = {};
     std::vector<VertexBuffer*> meshVertexBuffers[+Mesh::Count] = {};
     std::vector<IndexBuffer*> meshIndexBuffers[+Mesh::Count] = {};

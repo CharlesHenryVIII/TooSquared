@@ -655,7 +655,7 @@ void InitializeVideo()
     }
 
     /* This makes our buffer swap syncronized with the monitor's vertical refresh */
-    SDL_GL_SetSwapInterval(1);
+    SDL_GL_SetSwapInterval(g_renderer.swapInterval);
     glewExperimental = true;
     GLenum err = glewInit();
     if (GLEW_OK != err)
