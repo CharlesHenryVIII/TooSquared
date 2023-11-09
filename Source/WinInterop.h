@@ -49,3 +49,4 @@ void DebugPrint(const char* fmt, ...);
 std::string ToString(const char* fmt, ...);
 void SetThreadName(std::thread::native_handle_type threadID, std::string name);
 bool CreateFolder(const std::string& folderLocation);
+void HighDPIAwareHint();

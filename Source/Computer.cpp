@@ -2,7 +2,7 @@
 #include "Math.h"
 #include "WinInterop.h"
 #include "SDL\include\SDL.h"
-#include "tracy-master/Tracy.hpp"
+#include "Tracy.hpp"
 
 #include <Chrono>
 

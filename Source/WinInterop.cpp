@@ -261,3 +261,8 @@ void SetThreadName(std::thread::native_handle_type threadID, std::string name)
 {
     SetThreadName(GetThreadId(threadID), name.c_str());
 }
+
+void HighDPIAwareHint()
+{
+    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+}

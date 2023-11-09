@@ -4,7 +4,7 @@
 #include "Input.h"
 #include "Vox.h"
 
-#include "tracy-master/Tracy.hpp"
+#include "Tracy.hpp"
 #include "STB/stb_image.h"
 #include "imgui.h"
 #include "SDL/include/SDL.h"
@@ -618,6 +618,7 @@ void LoadVoxelRenderData(const Mesh& mesh, const std::string& filePath)
 uint8 s_pixelTextureData[] = { 255, 255, 255, 255 };
 void InitializeVideo()
 {
+    HighDPIAwareHint();
     SDL_Init(SDL_INIT_VIDEO);
     {
         SDL_Rect screenSize = {};

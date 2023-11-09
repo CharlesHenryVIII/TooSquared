@@ -1,6 +1,6 @@
 #include "Entity.h"
 #include "Chunk.h"
-#include "tracy-master/Tracy.hpp"
+#include "Tracy.hpp"
 
 
 Entitys g_entityList;

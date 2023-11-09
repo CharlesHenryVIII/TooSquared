@@ -20,7 +20,7 @@
 #include "imgui.h"
 #include "Imgui/imgui_impl_sdl.h"
 #include "Imgui/imgui_impl_opengl3.h"
-#include "tracy-master/Tracy.hpp"
+#include "Tracy.hpp"
 
 #include <unordered_map>
 #include <vector>

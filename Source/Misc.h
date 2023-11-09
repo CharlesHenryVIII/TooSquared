@@ -1,6 +1,6 @@
 #pragma once
 #include "WinInterop.h"
-#include "tracy-master/Tracy.hpp"
+#include "Tracy.hpp"
 
 #include "imgui.h"
 
