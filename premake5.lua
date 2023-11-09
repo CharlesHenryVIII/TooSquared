@@ -28,7 +28,7 @@ project "TooSquared"
         --"Contrib/*",
         "Contrib/imgui",
         "Contrib/SDL/include",
-        "Contrib/tracy-master",
+        "Contrib/tracy-master/public/tracy",
         "Contrib/Glew/include",
         "Contrib/Glew/include/GL",
         --"Contrib/**"
@@ -46,7 +46,7 @@ project "TooSquared"
     files {
         "Source/**",
         "Contrib/Glew/src/glew.c",
-        "Contrib/tracy-master/TracyClient.cpp",
+        "Contrib/tracy-master/public/TracyClient.cpp",
         "Contrib/imgui/*.cpp",
         "Contrib/imgui/*.h",
     }

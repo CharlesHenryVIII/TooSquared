@@ -7,16 +7,16 @@
 
 ### Building
 * open cmd and navigate to the UATHelper directory
-* Type and run: `C:/path/to/premake5.exe vs2019`
-    * fill out the correct path to premake5
+* Type and run: `C:/path/to/premake5.exe vs2022`
+    * fill out the correct path to premake5 and/or change the version of visual studios
 * open the VS solution
 * Build/run from there
 
 ## Current TODO
-- [ ] Convert to GLFW to remove the dependancy on dlls
 - [ ] Look into possibly removing one of file paths currently needed
 - [ ] cleanup?
 - [ ] Add support for fonts
+- [ ] Chunk LOD system
 
 ## Future TODO: 
  * Optimize block creation and deletion
@@ -26,7 +26,6 @@
 
  * Directional and point lighting
  * Block wireframe on target
- * Operator overloads on WorldPos and ChunkPos
  * Move main loops into a single loop that switches on chunk state?
  * Render water correctly
  * Added perlin seeding
@@ -36,6 +35,11 @@
  * Add Upload template type in vertex and index buffer objects
  * Remove the need to add SDL.dll to each building version
 	* Build directly against the lib instead?
+
+## Do Not TODO's:
+ * Operator overloads on WorldPos and ChunkPos
+ * Convert to GLFW to remove the dependancy on dlls
+
 
 &nbsp;
 
