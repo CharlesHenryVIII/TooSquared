@@ -300,9 +300,14 @@ void ComplexBlocks::Update(float dt, const ChunkPos& chunkPos)
 void ComplexBlocks::CleanUp()
 {
     std::erase_if(m_blocks,
-        [](const ComplexBlock* b)
+        [](ComplexBlock* b)
         {
-            return (!(b->m_inUse));
+            if (!b->m_inUse)
+            {
+                delete b;
+                return true;
+            }
+            return false;
         });
 }
 
