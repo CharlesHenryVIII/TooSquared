@@ -1056,9 +1056,23 @@ void VoronoiCell::BuildCell(GamePos* corners, GamePos cellCenter)
         Vec2 point = Vec2({ float(blockP.p.x), float(blockP.p.z) }) - m_lines[i].p0;
 
         //https://mathinsight.org/dot_product
+        //This was derived from the code in the #else and was found that we could remove the sqrtf() call
+        //TODO: THIS NEEDS TO BE TESTED
+        FAIL;
+        //__asm {
+            //int 0x03
+        //}
+        float pythagsInner = lineDest.x * lineDest.x + lineDest.y * lineDest.y;
+        float distanceRatioAlongLine = DotProduct(lineDest, point) / pythagsInner;
+
+        //first implementation
         float lineDistance = Distance({}, lineDest);
         float distanceAlongLine = DotProduct(lineDest, point) / lineDistance;
-        float distanceRatioAlongLine = distanceAlongLine / lineDistance;
+        float distanceRatioAlongLine2 = distanceAlongLine / lineDistance;
+        
+        //test both implementations
+        assert(distanceRatioAlongLine == distanceRatioAlongLine2);
+
         Vec2 pointOnLine = Lerp<Vec2>(Vec2({}), lineDest, distanceRatioAlongLine);
         //Vec2 hi = { Max(0.0f, lineDest.x), Max(0.0f, lineDest.y) };
         //Vec2 lo = { Min(0.0f, lineDest.x), Min(0.0f, lineDest.y) };
